@@ -1,0 +1,28 @@
+# ignore eclipse files
+.project
+.classpath
+.settings
+.metadata
+target
+
+# ignore IDEA files
+*.iml
+*.ipr
+*.iws
+.idea
+atlassian-ide-plugin.xml
+
+# ignore gradle build
+build
+.gradle
+out
+
+# ignore vim tmp files
+*.swp
+
+# ignore compile/test files
+classes
+/bin/
+
+#ignore checkstile files
+.checkstyle
