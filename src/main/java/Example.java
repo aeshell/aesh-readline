@@ -17,9 +17,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 import org.jboss.aesh.readline.Prompt;
 import org.jboss.aesh.readline.Readline;
+import org.jboss.aesh.readline.completion.Completion;
 import org.jboss.aesh.terminal.formatting.CharacterType;
 import org.jboss.aesh.terminal.formatting.Color;
 import org.jboss.aesh.terminal.formatting.TerminalCharacter;
@@ -32,12 +32,14 @@ import org.jboss.aesh.util.LoggerUtil;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Logger;
 
 /**
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
  */
 public class Example {
 
+    private static final Logger LOGGER = LoggerUtil.getLogger(Example.class.getName());
     private static boolean masking = false;
     private static Prompt defaultPrompt;
     private static Thread sleeperThread;
@@ -63,29 +65,6 @@ public class Example {
         //readInput(connection, readline, defaultPrompt);
         readInput(connection, readline, new Prompt("[aesh@rules]$ "));
         connection.startBlockingReader();
-
-        //a simple interruptHook
-        /*
-        builder.interruptHook(new InterruptHook() {
-            @Override
-            public void handleInterrupt(Console console, Action action) {
-                if(action == Action.INTERRUPT) {
-                    console.getShell().out().println("^C");
-                    console.clearBufferAndDisplayPrompt();
-                }
-                else if(action == Action.IGNOREEOF) {
-                    console.getShell().out().println("Use \"exit\" to leave the shell.");
-                    console.clearBufferAndDisplayPrompt();
-                }
-                else {
-                    console.getShell().out().println();
-                    console.stop();
-                }
-            }
-        });
-        */
-
-
     }
 
     public static void readInput(Connection connection, Readline readline, Prompt prompt) {
@@ -106,6 +85,7 @@ public class Example {
                 return;
             }
             else if(line.equals("sleep")) {
+                LOGGER.info("got sleep");
                 try {
                     connection.write("we're going to sleep for 5 seconds, you can interrupt me if you want.\n");
                     sleeperThread = Thread.currentThread();
@@ -118,7 +98,7 @@ public class Example {
                     readInput(connection, readline, defaultPrompt);
                 }
             }
-            else if(line.equals("password")) {
+            else if(line.equals("login")) {
                 masking = true;
                 readInput(connection, readline, new Prompt("password: ", (char) 0));
             }
@@ -133,7 +113,25 @@ public class Example {
             else {
                 readInput(connection, readline, prompt);
             }
+        }, getCompletions());
+    }
+
+    private static List<Completion> getCompletions() {
+        List<Completion> completions = new ArrayList<>();
+        completions.add( completeOperation -> {
+            if("exit".startsWith(completeOperation.getBuffer()))
+                completeOperation.addCompletionCandidate("exit");
+            if("quit".startsWith(completeOperation.getBuffer()))
+                completeOperation.addCompletionCandidate("quit");
+            if("sleep".startsWith(completeOperation.getBuffer()))
+                completeOperation.addCompletionCandidate("sleep");
+            if("login".startsWith(completeOperation.getBuffer()))
+                completeOperation.addCompletionCandidate("login");
+            if("man".startsWith(completeOperation.getBuffer()))
+                completeOperation.addCompletionCandidate("man");
+
         });
+       return completions;
     }
 
     private static Prompt createDefaultPrompt() {
@@ -157,153 +155,4 @@ public class Example {
 
     }
 
-        /*
-        final ConsoleCallback consoleCallback = new AeshConsoleCallback() {
-            @Override
-            public int execute(ConsoleOperation output) throws InterruptedException {
-                try {
-                //To change body of implemented methods use File | Settings | File Templates.
-                exampleConsole.getShell().out().println("======>\"" + output.getBuffer());
-                if(masking) {
-                    exampleConsole.getShell().out().print("got password: " + output.getBuffer() + ", stopping masking");
-                    masking = false;
-                    exampleConsole.setPrompt(prompt);
-                }
-                else if (output.getBuffer().equalsIgnoreCase("quit") || output.getBuffer().equalsIgnoreCase("exit") ||
-                        output.getBuffer().equalsIgnoreCase("reset")) {
-                    exampleConsole.stop();
-                }
-                else if(output.getBuffer().equalsIgnoreCase("password")) {
-                    masking = true;
-                    exampleConsole.setPrompt(new Prompt("password: ", (char) 0));
-                }
-                else if(output.getBuffer().startsWith("blah")) {
-                    exampleConsole.getShell().err().println("blah. command not found.");
-                    exampleConsole.getShell().out().print("BAH" + Config.getLineSeparator());
-                }
-                else if(output.getBuffer().equals("clear"))
-                    exampleConsole.clear();
-                else if(output.getBuffer().startsWith("man")) {
-                    //exampleConsole.attachProcess(test);
-                    //man = new ExampleConsoleCommand(exampleConsole, output);
-                    exampleConsole.getShell().out().println("trying to wait for input");
-                    exampleConsole.getShell().out().println("got: " + exampleConsole.getInputLine());
-                    //exampleConsole.attachProcess(test);
-                }
-                else if(output.getBuffer().startsWith("login")) {
-                    exampleConsole.setConsoleCallback(passwordCallback);
-                    exampleConsole.setPrompt(new Prompt("Username: "));
-                }
-                 return 0;
-                }
-                catch (IOException ioe) {
-                    exampleConsole.getShell().out().println("Exception: "+ioe.getMessage());
-                    return -1;
-                }
-            }
-        };
-
-        exampleConsole.setConsoleCallback(consoleCallback);
-        exampleConsole.start();
-        exampleConsole.setPrompt(prompt);
-
-        passwordCallback = new AeshConsoleCallback() {
-            private boolean hasUsername = false;
-
-            @Override
-            public int execute(ConsoleOperation output) throws InterruptedException {
-                if(hasUsername) {
-                    password = output.getBuffer();
-                    hasPassword = true;
-                    exampleConsole.getShell().out().print("Username: " + username + ", password: " + password + Config.getLineSeparator());
-                    exampleConsole.setPrompt(prompt);
-                    exampleConsole.setConsoleCallback(consoleCallback);
-                }
-                else {
-                    username = output.getBuffer();
-                    exampleConsole.setPrompt( new Prompt("Password: ", (char) 0));
-                    hasUsername = true;
-                }
-                return 0;
-            }
-        };
-
-        //show how we can change the prompt async
-        try {
-            Thread.sleep(4000);
-            exampleConsole.setPrompt(new Prompt(
-                    new TerminalString("[FOO]» ", new TerminalColor( Color.RED, Color.DEFAULT), new TerminalTextStyle(CharacterType.BOLD))));
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-
-    }
-
-    public static class ExampleConsoleCommand {
-
-        private final Console console;
-        private final ConsoleOperation operation;
-
-        public ExampleConsoleCommand(Console console, ConsoleOperation operation) {
-            this.console = console;
-            this.operation = operation;
-
-            init();
-        }
-
-        private void init() {
-            try {
-                if(!operation.getControlOperator().isRedirectionOut()) {
-                    console.getShell().out().print(ANSI.ALTERNATE_BUFFER);
-                    console.getShell().out().println("print alternate screen...");
-                    console.getShell().out().flush();
-                }
-
-                if(console.getShell().in().getStdIn().available() > 0) {
-                    java.util.Scanner s = new java.util.Scanner(console.getShell().in().getStdIn()).useDelimiter("\\A");
-                    String fileContent = s.hasNext() ? s.next() : "";
-                    console.getShell().out().println("FILECONTENT: ");
-                    console.getShell().out().print(fileContent);
-                    console.getShell().out().flush();
-                }
-                else
-                    console.getShell().out().println("console.in() == null");
-
-
-                readFromFile();
-
-                //detach after init if hasRedirectOut()
-                if(operation.getControlOperator().isRedirectionOut()) {
-                }
-
-                console.getShell().out().println("trying to wait on input");
-                int input = console.getShell().in().getStdIn().read();
-                console.getShell().out().println("we got: "+input);
-            }
-            catch(IOException ioe) {
-
-            }
-        }
-
-        private void readFromFile() throws IOException {
-            if(console.getShell().in().getStdIn().available() > 0) {
-                console.getShell().out().println("FROM STDOUT: ");
-            }
-            else
-                console.getShell().out().println("here should we present some text... press 'q' to quit");
-        }
-
-        public void processOperation(CommandOperation operation) throws IOException {
-            if(operation.getInput()[0] == 'q') {
-                console.getShell().out().print(ANSI.MAIN_BUFFER);
-            }
-            else if(operation.getInput()[0] == 'a') {
-                readFromFile();
-            }
-            else {
-
-            }
-        }
-    }
-        */
 }
