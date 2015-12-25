@@ -82,7 +82,7 @@ public class ReadlineBuilder {
                 history = new FileHistory(new File(historyFile), historySize);
         }
         if(completionHandler == null)
-            completionHandler = new SimpleCompletionHandler(null);
+            completionHandler = new SimpleCompletionHandler();
 
        return new Readline(editMode, history, completionHandler);
     }

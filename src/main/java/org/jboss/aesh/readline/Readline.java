@@ -129,7 +129,7 @@ public class Readline {
                 Consumer<String> requestHandler,
                 List<Completion> completions) {
 
-            completionHandler = new SimpleCompletionHandler(null);
+            completionHandler = new SimpleCompletionHandler();
             completionHandler.addCompletions(completions);
             consoleBuffer =
                     new AeshConsoleBuffer(conn, prompt, editMode, history, completionHandler, size, true);

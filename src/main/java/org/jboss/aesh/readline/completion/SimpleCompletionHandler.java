@@ -19,7 +19,6 @@
  */
 package org.jboss.aesh.readline.completion;
 
-import org.jboss.aesh.readline.context.AeshContext;
 import org.jboss.aesh.readline.Buffer;
 import org.jboss.aesh.readline.InputProcessor;
 import org.jboss.aesh.parser.Parser;
@@ -40,7 +39,6 @@ import java.util.logging.Logger;
  */
 public class SimpleCompletionHandler implements CompletionHandler {
 
-    private final AeshContext aeshContext;
     private boolean askDisplayCompletion = false;
     private int displayCompletionSize = 100;
     private final List<Completion> completionList;
@@ -48,9 +46,8 @@ public class SimpleCompletionHandler implements CompletionHandler {
 
     private static final Logger LOGGER = LoggerUtil.getLogger(SimpleCompletionHandler.class.getName());
 
-    public SimpleCompletionHandler(AeshContext aeshContext) {
+    public SimpleCompletionHandler() {
         completionList = new ArrayList<>();
-        this.aeshContext = aeshContext;
     }
 
     @Override
