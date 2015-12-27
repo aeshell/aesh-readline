@@ -34,7 +34,9 @@ public class WcWidthTest {
         assertEquals(1, WcWidth.width('h'));
         assertEquals(0, WcWidth.width('\0'));
         assertEquals(-1, WcWidth.width('\n'));
+        assertEquals(-1, WcWidth.width('\r'));
         assertEquals(-1, WcWidth.width('\t'));
+        assertEquals(-1, WcWidth.width('\u001B'));
     }
 
 }
