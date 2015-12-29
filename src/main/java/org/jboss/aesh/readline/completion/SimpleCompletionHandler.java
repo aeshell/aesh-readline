@@ -25,14 +25,12 @@ import org.jboss.aesh.parser.Parser;
 import org.jboss.aesh.readline.actions.ActionMapper;
 import org.jboss.aesh.terminal.formatting.TerminalString;
 import org.jboss.aesh.util.Config;
-import org.jboss.aesh.util.LoggerUtil;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
-import java.util.logging.Logger;
 
 /**
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
@@ -44,7 +42,7 @@ public class SimpleCompletionHandler implements CompletionHandler {
     private final List<Completion> completionList;
     private Function<Buffer, CompleteOperation> aliasHandler;
 
-    private static final Logger LOGGER = LoggerUtil.getLogger(SimpleCompletionHandler.class.getName());
+    //private static final Logger LOGGER = LoggerUtil.getLogger(SimpleCompletionHandler.class.getName());
 
     public SimpleCompletionHandler() {
         completionList = new ArrayList<>();
@@ -129,7 +127,7 @@ public class SimpleCompletionHandler implements CompletionHandler {
                 possibleCompletions.add(co);
         }
 
-        LOGGER.info("Found completions: "+possibleCompletions);
+        //LOGGER.info("Found completions: "+possibleCompletions);
 
         if(possibleCompletions.size() == 0) {
             //do nothing
@@ -152,7 +150,7 @@ public class SimpleCompletionHandler implements CompletionHandler {
             if(!possibleCompletions.get(0).isIgnoreStartsWith())
                 startsWith = Parser.findStartsWithOperation(possibleCompletions);
 
-            LOGGER.info("startsWith="+startsWith);
+            //LOGGER.info("startsWith="+startsWith);
             if(startsWith.length() > 0 ) {
                 if(startsWith.contains(" ") && !possibleCompletions.get(0).doIgnoreNonEscapedSpace())
                     displayCompletion(new TerminalString(Parser.switchSpacesToEscapedSpacesInWord(startsWith), true),

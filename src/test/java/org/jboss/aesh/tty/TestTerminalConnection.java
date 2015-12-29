@@ -30,7 +30,9 @@ import java.io.PipedOutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 /**
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
@@ -38,7 +40,7 @@ import static org.junit.Assert.assertEquals;
 public class TestTerminalConnection {
 
     @Test
-    public void testRead() throws IOException {
+    public void testRead() throws IOException, InterruptedException {
         PipedOutputStream outputStream = new PipedOutputStream();
         PipedInputStream pipedInputStream = new PipedInputStream(outputStream);
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
@@ -51,9 +53,11 @@ public class TestTerminalConnection {
         outputStream.write(("FOO").getBytes());
         outputStream.flush();
         outputStream.close();
+        Thread.sleep(50);
         connection.startBlockingReader();
 
-        assertEquals(Arrays.toString(result.get(0)), Arrays.toString( new int[] {70,79,79}));
+        assertArrayEquals(result.get(0), new int[] {70,79,79});
+
     }
 
     @Test
