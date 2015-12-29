@@ -19,6 +19,7 @@
  */
 package org.jboss.aesh.readline;
 
+import org.jboss.aesh.parser.Parser;
 import org.jboss.aesh.util.LoggerUtil;
 
 import java.util.Arrays;
@@ -430,7 +431,7 @@ public class Buffer {
      * @return complete line
      */
     public String getLineWithPrompt() {
-        return getPrompt().getPromptAsString() + line;
+        return Parser.fromCodePoints( getPrompt().getPromptAsString()) + line;
     }
 
     /**

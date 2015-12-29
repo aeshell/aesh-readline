@@ -19,9 +19,11 @@
  */
 package org.jboss.aesh.readline;
 
+import org.jboss.aesh.parser.Parser;
 import org.jboss.aesh.terminal.formatting.TerminalCharacter;
 import org.jboss.aesh.terminal.formatting.TerminalString;
 
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -34,40 +36,40 @@ import java.util.List;
  */
 public class Prompt {
 
-    private String prompt;
+    private int[] prompt;
     private Character mask;
-    private String ansiString;
+    private int[] ansiString;
 
     public Prompt(String prompt) {
         if(prompt != null)
-            this.prompt = prompt;
+            this.prompt = Parser.toCodePoints(prompt);
         else
-            this.prompt = "";
+            this.prompt = new int[]{};
     }
 
     public Prompt(String prompt, String ansiString) {
         if(prompt != null)
-            this.prompt = prompt;
+            this.prompt = Parser.toCodePoints(prompt);
         else
-            this.prompt = "";
-        this.ansiString = ansiString;
+            this.prompt = new int[]{};
+        this.ansiString = Parser.toCodePoints(ansiString);
     }
 
     public Prompt(String prompt, Character mask) {
         if(prompt != null)
-            this.prompt = prompt;
+            this.prompt = Parser.toCodePoints(prompt);
         else
-            this.prompt = "";
+            this.prompt = new int[]{};
         this.mask = mask;
     }
 
     public Prompt(TerminalString terminalString) {
         if(terminalString != null) {
-            ansiString = terminalString.toString();
-            this.prompt = terminalString.getCharacters();
+            ansiString = Parser.toCodePoints(terminalString.toString());
+            this.prompt = Parser.toCodePoints(terminalString.getCharacters());
         }
         else
-            this.prompt = "";
+            this.prompt = new int[]{};
     }
 
     public Prompt(List<TerminalCharacter> characters) {
@@ -91,8 +93,8 @@ public class Prompt {
             prev = c;
             promptBuilder.append(c.getCharacter());
         }
-        ansiString = builder.toString();
-        this.prompt = promptBuilder.toString();
+        ansiString = Parser.toCodePoints(builder.toString());
+        this.prompt = Parser.toCodePoints(promptBuilder.toString());
     }
 
     public Character getMask() {
@@ -103,19 +105,19 @@ public class Prompt {
         return mask != null;
     }
 
-    public String getPromptAsString() {
+    public int[] getPromptAsString() {
         return prompt;
     }
 
     public int getLength() {
-        return prompt.length();
+        return prompt.length;
     }
 
     public boolean hasANSI() {
         return ansiString != null;
     }
 
-    public String getANSI() {
+    public int[] getANSI() {
         if(ansiString == null)
             return prompt;
         return ansiString;
@@ -128,17 +130,17 @@ public class Prompt {
 
         Prompt prompt1 = (Prompt) o;
 
-        if (ansiString != null ? !ansiString.equals(prompt1.ansiString) : prompt1.ansiString != null) return false;
+        if (ansiString != null ? !Arrays.equals(ansiString, prompt1.ansiString) : prompt1.ansiString != null) return false;
 
         if (mask != null ? !mask.equals(prompt1.mask) : prompt1.mask != null) return false;
 
-        return prompt.equals(prompt1.prompt);
+        return Arrays.equals(prompt, prompt1.prompt);
     }
 
     @Override
     public int hashCode() {
-        int result = ansiString != null ? ansiString.hashCode() : 0;
-        result = 31 * result + prompt.hashCode();
+        int result = ansiString != null ? Arrays.hashCode(ansiString) : 0;
+        result = 31 * result + Arrays.hashCode(prompt);
         result = 31 * result + (mask != null ? mask.hashCode() : 0);
         return result;
     }

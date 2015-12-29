@@ -203,7 +203,7 @@ public class Readline {
                     }
                     else {
                         conn.stdoutHandler().accept(new int[]{'^', 'C', '\n'});
-                        conn.write(this.getBuffer().getBuffer().getPrompt().getANSI());
+                        conn.stdoutHandler().accept(this.getBuffer().getBuffer().getPrompt().getANSI());
                         this.getBuffer().getBuffer().reset();
                     }
                 }

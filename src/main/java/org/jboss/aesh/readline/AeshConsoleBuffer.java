@@ -150,18 +150,18 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
     @Override
     public void drawLine(boolean keepCursorPosition, boolean optimize) {
         if(isLogging)
-            LOGGER.info("drawing: "+buffer.getPrompt().getPromptAsString() + buffer.getLine());
+            LOGGER.info("drawing: "+ Parser.fromCodePoints( buffer.getPrompt().getPromptAsString()) + buffer.getLine());
         //need to clear more than one line
-        String line = buffer.getPrompt().getPromptAsString() + buffer.getLine();
         //if we're not in ansi mode, just write the string again:
         if(!ansiMode) {
             connection.stdoutHandler().accept(Config.CR);
-            connection.write(line);
+            connection.stdoutHandler().accept(buffer.getPrompt().getPromptAsString());
+            connection.write(buffer.getLine());
             return;
         }
 
-        if(line.length() > size.getWidth() ||
-                (buffer.getDelta() < 0 && line.length()+ Math.abs(buffer.getDelta()) > size.getWidth())) {
+        if(buffer.totalLength() > size.getWidth() ||
+                (buffer.getDelta() < 0 && buffer.totalLength()+ Math.abs(buffer.getDelta()) > size.getWidth())) {
             if(buffer.getDelta() == -1 && buffer.getCursor() >= buffer.length() && Config.isOSPOSIXCompatible())
                 connection.stdoutHandler().accept(MOVE_BACKWARD_AND_CLEAR);
             else
@@ -249,12 +249,16 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
 
     private void clearDelta(int currentRow, StringBuilder builder) {
         if(buffer.getDelta() < 0) {
-            int currentLength = buffer.getLineWithPrompt().length();
+            //int currentLength = buffer.getLineWithPrompt().length();
+            int currentLength = buffer.totalLength();
+            //buffer.getTotalLength add one extra char, need to check
+            if(currentLength > 1)
+                currentLength--;
             int numberOfCurrentRows =  currentLength /  size.getWidth();
             int numberOfPrevRows =
                     (currentLength + (buffer.getDelta()*-1)) / size.getWidth();
             int numberOfRowsToRemove = numberOfPrevRows - numberOfCurrentRows;
-            int numberofRows = ((buffer.getDelta()*-1)+ buffer.getLineWithPrompt().length()) /
+            int numberofRows = ((buffer.getDelta()*-1)+ buffer.totalLength()) /
                     size.getWidth();
 
             if (numberOfRowsToRemove == 0)
@@ -448,10 +452,10 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
 
     private void displayPrompt(Prompt prompt) {
         if(prompt.hasANSI() && ansiMode) {
-            connection.write(prompt.getANSI());
+            connection.stdoutHandler().accept(prompt.getANSI());
         }
         else
-            connection.write(prompt.getPromptAsString());
+            connection.stdoutHandler().accept(prompt.getPromptAsString());
     }
 
     /**
