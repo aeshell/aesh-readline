@@ -19,8 +19,13 @@
  */
 package org.jboss.aesh.readline;
 
+import org.jboss.aesh.readline.completion.Completion;
+import org.jboss.aesh.terminal.Key;
 import org.jboss.aesh.tty.TestConnection;
 import org.junit.Test;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
@@ -36,5 +41,29 @@ public class TestReadline {
         term.assertLine("foo bar");
         term.readline();
         term.assertBuffer("gah bah");
+    }
+
+    @Test
+    public void testSingleCompleteResult() {
+        List<Completion> completions = new ArrayList<>();
+        completions.add(completeOperation -> {
+            if(completeOperation.getBuffer().equals("f"))
+                completeOperation.addCompletionCandidate("foo");
+            else if(completeOperation.getBuffer().equals("b"))
+                completeOperation.addCompletionCandidate("bar");
+        });
+
+        TestConnection term = new TestConnection(completions);
+
+        term.read("fo");
+        term.read(Key.CTRL_I);
+        term.assertBuffer("fo");
+        term.read(Key.BACKSPACE);
+        term.read(Key.CTRL_I);
+        term.assertBuffer("foo ");
+        term.read("1");
+        term.assertBuffer("foo 1");
+        term.read(Key.ENTER);
+        term.assertLine("foo 1");
     }
 }

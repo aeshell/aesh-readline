@@ -21,10 +21,12 @@ package org.jboss.aesh.tty;
 
 import org.jboss.aesh.parser.Parser;
 import org.jboss.aesh.readline.Readline;
+import org.jboss.aesh.readline.completion.Completion;
 import org.jboss.aesh.readline.editing.EditMode;
 import org.jboss.aesh.readline.editing.EditModeBuilder;
 import org.jboss.aesh.terminal.Key;
 
+import java.util.List;
 import java.util.function.Consumer;
 
 import static org.junit.Assert.assertEquals;
@@ -46,22 +48,36 @@ public class TestConnection implements Connection {
 
     public TestConnection() {
         //default emacs mode
-        this(EditModeBuilder.builder().create());
+        this(EditModeBuilder.builder().create(), null);
     }
 
     public TestConnection(EditMode editMode) {
+        this(editMode, null);
+    }
 
+    public TestConnection(List<Completion> completions) {
+        this(EditModeBuilder.builder().create(), completions);
+    }
+
+    public TestConnection(EditMode editMode, List<Completion> completions) {
         bufferBuilder = new StringBuilder();
         stdOutHandler = ints -> {
            bufferBuilder.append(Parser.stripAwayAnsiCodes(Parser.fromCodePoints(ints)));
         };
 
         readline = new TestReadline(editMode);
-        readline();
+        if(completions != null)
+            readline(completions);
+        else
+            readline();
     }
 
     public void readline() {
         readline.readline(this, ": ", out -> { this.out = out; } );
+    }
+
+    public void readline(List<Completion> completions) {
+        readline.readline(this, ": ", out -> { this.out = out; }, completions );
     }
 
     public String getLine() {

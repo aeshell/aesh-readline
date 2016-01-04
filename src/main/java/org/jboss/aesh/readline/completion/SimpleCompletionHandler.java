@@ -202,20 +202,18 @@ public class SimpleCompletionHandler implements CompletionHandler {
             ActionMapper.mapToAction("backward-kill-word").apply(inputProcessor);
             //consoleBuffer.performAction(new PrevWordAction(buffer.getMultiCursor(), Action.DELETE, EditMode.Mode.EMACS));
             buffer.write(completion.getCharacters());
-            inputProcessor.getBuffer().writeString(completion.toString());
+            //inputProcessor.getBuffer().writeString(completion.toString());
 
             //only append space if its an actual complete, not a partial
         }
         else {
-            //buffer.write(completion.getCharacters());
-            inputProcessor.getBuffer().writeString(completion.toString());
+            buffer.write(completion.toString());
         }
         if(appendSpace) { // && fullCompletion.startsWith(buffer.getLine())) {
             buffer.write(separator);
-            inputProcessor.getBuffer().writeChar(separator);
         }
 
-        inputProcessor.getBuffer().drawLine();
+        inputProcessor.getBuffer().drawLine(false);
     }
 
     /**

@@ -86,11 +86,17 @@ public class Readline {
         readline(conn, new Prompt(prompt), requestHandler, null);
     }
 
+    public void readline(Connection conn, String prompt, Consumer<String> requestHandler,
+                         List<Completion> completions) {
+        readline(conn, new Prompt(prompt), requestHandler, completions);
+    }
+
     public void readline(Connection conn, Prompt prompt, Consumer<String> requestHandler) {
         readline(conn, prompt, requestHandler, null);
     }
 
-    public void readline(Connection conn, Prompt prompt, Consumer<String> requestHandler, List<Completion> completions) {
+    public void readline(Connection conn, Prompt prompt, Consumer<String> requestHandler,
+                         List<Completion> completions) {
         if (inputProcessor != null) {
             throw new IllegalStateException("Already reading a line");
         }
