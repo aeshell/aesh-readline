@@ -27,6 +27,8 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.junit.Assert.assertEquals;
+
 /**
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
  */
@@ -65,5 +67,34 @@ public class TestReadline {
         term.assertBuffer("foo 1");
         term.read(Key.ENTER);
         term.assertLine("foo 1");
+    }
+
+    @Test
+    public void testMultipleCompleteResults() {
+        List<Completion> completions = new ArrayList<>();
+        completions.add(completeOperation -> {
+            if(completeOperation.getBuffer().equals("f")) {
+                completeOperation.addCompletionCandidate("foo");
+                completeOperation.addCompletionCandidate("foo bar");
+            }
+            else if(completeOperation.getBuffer().equals("foo")) {
+                completeOperation.addCompletionCandidate("foo");
+                completeOperation.addCompletionCandidate("foo bar");
+            }
+            else if(completeOperation.getBuffer().equals("b")) {
+                completeOperation.addCompletionCandidate("bar bar");
+                completeOperation.addCompletionCandidate("bar baar");
+            }
+        });
+
+        TestConnection term = new TestConnection(completions);
+
+        term.read("f");
+        term.read(Key.CTRL_I);
+        term.assertBuffer("foo");
+        term.clearOutputBuffer();
+        term.read(Key.CTRL_I);
+        assertEquals("\nfoo  foo bar  \n"+term.getPrompt()+"foo", term.getOutputBuffer());
+
     }
 }

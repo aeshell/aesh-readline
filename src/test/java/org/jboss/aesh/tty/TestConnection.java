@@ -45,6 +45,9 @@ public class TestConnection implements Connection {
     private StringBuilder bufferBuilder;
     private String out;
     private TestReadline readline;
+    private Size size;
+
+    private String prompt = ": ";
 
     public TestConnection() {
         //default emacs mode
@@ -60,10 +63,17 @@ public class TestConnection implements Connection {
     }
 
     public TestConnection(EditMode editMode, List<Completion> completions) {
+        this(editMode, completions, null);
+    }
+
+    public TestConnection(EditMode editMode, List<Completion> completions, Size size) {
         bufferBuilder = new StringBuilder();
         stdOutHandler = ints -> {
            bufferBuilder.append(Parser.stripAwayAnsiCodes(Parser.fromCodePoints(ints)));
         };
+
+        if(size == null)
+            this.size = new Size(80, 20);
 
         readline = new TestReadline(editMode);
         if(completions != null)
@@ -73,11 +83,26 @@ public class TestConnection implements Connection {
     }
 
     public void readline() {
-        readline.readline(this, ": ", out -> { this.out = out; } );
+        clearOutputBuffer();
+        readline.readline(this, prompt, out -> { this.out = out; } );
     }
 
     public void readline(List<Completion> completions) {
-        readline.readline(this, ": ", out -> { this.out = out; }, completions );
+        clearOutputBuffer();
+        readline.readline(this, prompt, out -> { this.out = out; }, completions );
+    }
+
+    public void clearOutputBuffer() {
+        if(bufferBuilder.length() > 0)
+            bufferBuilder.delete(0, bufferBuilder.length());
+    }
+
+    public String getOutputBuffer() {
+        return bufferBuilder.toString();
+    }
+
+    public String getPrompt() {
+        return prompt;
     }
 
     public String getLine() {
@@ -91,7 +116,7 @@ public class TestConnection implements Connection {
 
     @Override
     public Size size() {
-        return new Size(80,20);
+        return size;
     }
 
     @Override
@@ -102,7 +127,6 @@ public class TestConnection implements Connection {
     @Override
     public void setSizeHandler(Consumer<Size> handler) {
         this.sizeHandler = handler;
-
     }
 
     @Override

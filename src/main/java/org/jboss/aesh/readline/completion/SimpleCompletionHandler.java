@@ -229,7 +229,6 @@ public class SimpleCompletionHandler implements CompletionHandler {
         inputProcessor.getBuffer().writeOut(Parser.formatDisplayListTerminalString(completions,
                 inputProcessor.getBuffer().getSize().getHeight(), inputProcessor.getBuffer().getSize().getWidth()));
 
-        inputProcessor.getBuffer().displayPrompt();
         inputProcessor.getBuffer().drawLine(false, false);
     }
 
