@@ -171,7 +171,7 @@ public class TestReadline {
 
     @Test
     public void testCompletionDoNotMatchBuffer() {
-               List<Completion> completions = new ArrayList<>();
+        List<Completion> completions = new ArrayList<>();
         completions.add(completeOperation -> {
             if(completeOperation.getBuffer().endsWith("f")) {
                 completeOperation.addCompletionCandidate("foo");
@@ -203,5 +203,42 @@ public class TestReadline {
         term.read("foo foo");
         term.read(Key.CTRL_I);
         term.assertBuffer("foo foo bar ");
+    }
+
+    @Test
+    public void testCompletionOnMultiline() {
+        List<Completion> completions = new ArrayList<>();
+        completions.add(completeOperation -> {
+            if(completeOperation.getBuffer().endsWith("f")) {
+                completeOperation.addCompletionCandidate("foo");
+                completeOperation.setOffset(completeOperation.getCursor()-1);
+            }
+            else if(completeOperation.getBuffer().endsWith("foo")) {
+                completeOperation.addCompletionCandidate("foo bar");
+                completeOperation.setOffset(completeOperation.getCursor()-3);
+            }
+            else if(completeOperation.getBuffer().endsWith("b")) {
+                completeOperation.addCompletionCandidate("bar bar");
+                completeOperation.addCompletionCandidate("bar baar");
+                completeOperation.setOffset(completeOperation.getCursor()-1);
+            }
+        });
+
+        TestConnection term = new TestConnection(completions);
+
+        term.read("fooish \\\noof");
+        term.read(Key.CTRL_I);
+        term.assertBuffer("fooish oofoo ");
+        term.read(Key.ENTER);
+        term.readline(completions);
+        term.read("bar bar \\\n bab");
+        term.read(Key.CTRL_I);
+        term.assertBuffer("bar bar  babar\\ ba");
+        term.read(Key.ENTER);
+        term.readline(completions);
+        term.read("foo \\\n foo \\\nfoo");
+        term.read(Key.CTRL_I);
+        term.assertBuffer("foo  foo foo bar ");
+
     }
 }
