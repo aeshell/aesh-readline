@@ -48,6 +48,31 @@ public class TestReadline {
     }
 
     @Test
+    public void testMasking() {
+        Prompt prompt = new Prompt(": ", '#');
+        TestConnection term = new TestConnection(null, null, null, prompt);
+        term.read("foo bar");
+        term.assertBuffer("#######");
+        term.read(Key.BACKSPACE);
+        term.read(Key.CTRL_A);
+        term.read(Key.CTRL_D);
+        term.assertBuffer("#####");
+        term.read(Key.ENTER);
+        term.assertLine("oo ba");
+
+        prompt = new Prompt("", '\0');
+        term.setPrompt(prompt);
+        term.readline();
+        term.read("foo bar");
+        term.assertBuffer("");
+        term.read(Key.BACKSPACE);
+        term.read(Key.BACKSPACE);
+        term.read(Key.ENTER);
+        term.assertLine("foo b");
+
+    }
+
+    @Test
     public void testMultiLine() {
         TestConnection term = new TestConnection();
         term.read("foo \\");

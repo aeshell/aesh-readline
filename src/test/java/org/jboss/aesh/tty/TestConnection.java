@@ -20,6 +20,7 @@
 package org.jboss.aesh.tty;
 
 import org.jboss.aesh.parser.Parser;
+import org.jboss.aesh.readline.Prompt;
 import org.jboss.aesh.readline.Readline;
 import org.jboss.aesh.readline.completion.Completion;
 import org.jboss.aesh.readline.editing.EditMode;
@@ -47,7 +48,7 @@ public class TestConnection implements Connection {
     private TestReadline readline;
     private Size size;
 
-    private String prompt = ": ";
+    private Prompt prompt = new Prompt(": ");
 
     public TestConnection() {
         //default emacs mode
@@ -67,6 +68,12 @@ public class TestConnection implements Connection {
     }
 
     public TestConnection(EditMode editMode, List<Completion> completions, Size size) {
+        this(editMode, completions, size, null);
+    }
+
+    public TestConnection(EditMode editMode, List<Completion> completions, Size size, Prompt prompt) {
+        if(editMode == null)
+            editMode = EditModeBuilder.builder().create();
         bufferBuilder = new StringBuilder();
         stdOutHandler = ints -> {
            bufferBuilder.append(Parser.stripAwayAnsiCodes(Parser.fromCodePoints(ints)));
@@ -76,6 +83,9 @@ public class TestConnection implements Connection {
             this.size = new Size(80, 20);
         else
             this.size = size;
+
+        if(prompt != null)
+            this.prompt = prompt;
 
         readline = new TestReadline(editMode);
         if(completions != null)
@@ -104,7 +114,12 @@ public class TestConnection implements Connection {
     }
 
     public String getPrompt() {
-        return prompt;
+        return Parser.fromCodePoints(prompt.getPromptAsString());
+    }
+
+    public void setPrompt(Prompt prompt) {
+        if(prompt != null)
+            this.prompt = prompt;
     }
 
     public String getLine() {
