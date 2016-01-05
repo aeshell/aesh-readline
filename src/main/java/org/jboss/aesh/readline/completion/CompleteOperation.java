@@ -205,7 +205,7 @@ public class CompleteOperation {
     }
 
     public List<TerminalString> getFormattedCompletionCandidatesTerminalString() {
-        List<TerminalString> fixedCandidates = new ArrayList<TerminalString>(completionCandidates.size());
+        List<TerminalString> fixedCandidates = new ArrayList<>(completionCandidates.size());
         for(TerminalString c : completionCandidates) {
             if(!ignoreOffset && offset < cursor) {
                 int pos = cursor - offset;

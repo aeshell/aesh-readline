@@ -61,6 +61,24 @@ public class TestReadline {
     }
 
     @Test
+    public void testMultiLineDelete() {
+        TestConnection term = new TestConnection();
+        term.read("foo \\");
+        term.clearOutputBuffer();
+        term.read(Key.ENTER);
+        term.assertBuffer("foo ");
+        term.assertLine(null);
+        assertEquals("\n> ", term.getOutputBuffer());
+        term.read("bar");
+        term.read(Key.BACKSPACE);
+        term.read(Key.BACKSPACE);
+        term.read(Key.BACKSPACE);
+        term.read(Key.BACKSPACE);
+        term.read(Key.ENTER);
+        term.assertLine("foo ");
+    }
+
+    @Test
     public void testSingleCompleteResult() {
         List<Completion> completions = new ArrayList<>();
         completions.add(completeOperation -> {
@@ -151,5 +169,39 @@ public class TestReadline {
         term.assertBuffer("11111111111foo ");
     }
 
+    @Test
+    public void testCompletionDoNotMatchBuffer() {
+               List<Completion> completions = new ArrayList<>();
+        completions.add(completeOperation -> {
+            if(completeOperation.getBuffer().endsWith("f")) {
+                completeOperation.addCompletionCandidate("foo");
+                completeOperation.setOffset(2);
+            }
+            else if(completeOperation.getBuffer().endsWith("foo")) {
+                completeOperation.addCompletionCandidate("foo bar");
+                completeOperation.setOffset(completeOperation.getCursor()-3);
+            }
+            else if(completeOperation.getBuffer().endsWith("b")) {
+                completeOperation.addCompletionCandidate("bar bar");
+                completeOperation.addCompletionCandidate("bar baar");
+                completeOperation.setOffset(completeOperation.getCursor()-1);
+            }
+        });
 
+        TestConnection term = new TestConnection(completions);
+
+        term.read("oof");
+        term.read(Key.CTRL_I);
+        term.assertBuffer("oofoo ");
+        term.read(Key.ENTER);
+        term.readline(completions);
+        term.read("bab");
+        term.read(Key.CTRL_I);
+        term.assertBuffer("babar\\ ba");
+        term.read(Key.ENTER);
+        term.readline(completions);
+        term.read("foo foo");
+        term.read(Key.CTRL_I);
+        term.assertBuffer("foo foo bar ");
+    }
 }
