@@ -92,7 +92,7 @@ public class ViModeTest {
         term.read(Key.w);
 
         term.assertBuffer("foo  -Bar.");
-        term.read(Key.CTRL_J);
+        term.read(Key.ENTER);
         term.assertLine("foo  -Bar.");
     }
 

@@ -42,7 +42,6 @@ public class InputrcParserTest {
                         Config.isOSPOSIXCompatible() ?
                                 new File("src/test/resources/inputrc1") : new File("src\\test\\resources\\inputrc1")));
 
-
         assertEquals("vi", editMode.getVariableValue(Variable.EDITING_MODE));
 
         assertEquals("visible", editMode.getVariableValue(Variable.BELL_STYLE));
