@@ -69,7 +69,6 @@ public class TestReadline {
         term.read(Key.BACKSPACE);
         term.read(Key.ENTER);
         term.assertLine("foo b");
-
     }
 
     @Test
