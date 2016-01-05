@@ -23,6 +23,7 @@ import org.jboss.aesh.readline.ConsoleBuffer;
 import org.jboss.aesh.readline.InputProcessor;
 import org.jboss.aesh.parser.Parser;
 import org.jboss.aesh.readline.Action;
+import org.jboss.aesh.util.Config;
 
 /**
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
@@ -42,16 +43,17 @@ public class Enter implements Action {
         consoleBuffer.getUndoManager().clear();
         boolean isCurrentLineEnding = true;
         if(!consoleBuffer.getBuffer().isMasking()) {// dont push to history if masking
-
             //dont push lines that end with \ to history
             if(consoleBuffer.getBuffer().getLine().endsWith(ENDS_WITH_BACKSLASH)) {
                 consoleBuffer.getBuffer().setMultiLine(true);
                 consoleBuffer.getBuffer().updateMultiLineBuffer();
+                inputProcessor.getBuffer().writeOut(Config.CR);
                 isCurrentLineEnding = false;
             }
             else if(Parser.doesStringContainOpenQuote(consoleBuffer.getBuffer().getMultiLine())) {
                 consoleBuffer.getBuffer().setMultiLine(true);
                 consoleBuffer.getBuffer().updateMultiLineBuffer();
+                inputProcessor.getBuffer().writeOut(Config.CR);
                 isCurrentLineEnding = false;
             }
             else if( inputProcessor.getBuffer().getHistory().isEnabled()) {

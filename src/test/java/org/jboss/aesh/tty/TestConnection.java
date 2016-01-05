@@ -74,6 +74,8 @@ public class TestConnection implements Connection {
 
         if(size == null)
             this.size = new Size(80, 20);
+        else
+            this.size = size;
 
         readline = new TestReadline(editMode);
         if(completions != null)

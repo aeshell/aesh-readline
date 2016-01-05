@@ -195,6 +195,8 @@ public class Readline {
                 readInput();
             });
             size = conn.size();
+            if(size == null)
+                throw new RuntimeException("Terminal size must not be null");
             consoleBuffer.setSize(size);
             conn.setSizeHandler(dim -> {
                 if (size != null) {

@@ -20,7 +20,9 @@
 package org.jboss.aesh.readline;
 
 import org.jboss.aesh.readline.completion.Completion;
+import org.jboss.aesh.readline.editing.EditModeBuilder;
 import org.jboss.aesh.terminal.Key;
+import org.jboss.aesh.tty.Size;
 import org.jboss.aesh.tty.TestConnection;
 import org.junit.Test;
 
@@ -43,6 +45,19 @@ public class TestReadline {
         term.assertLine("foo bar");
         term.readline();
         term.assertBuffer("gah bah");
+    }
+
+    @Test
+    public void testMultiLine() {
+        TestConnection term = new TestConnection();
+        term.read("foo \\");
+        term.clearOutputBuffer();
+        term.read(Key.ENTER);
+        term.assertBuffer("foo ");
+        term.assertLine(null);
+        assertEquals("\n> ", term.getOutputBuffer());
+        term.read("bar\n");
+        term.assertLine("foo bar");
     }
 
     @Test
@@ -95,6 +110,46 @@ public class TestReadline {
         term.clearOutputBuffer();
         term.read(Key.CTRL_I);
         assertEquals("\nfoo  foo bar  \n"+term.getPrompt()+"foo", term.getOutputBuffer());
-
+        term.read(Key.ENTER);
+        term.readline(completions);
+        term.read("b");
+        term.read(Key.CTRL_I);
+        term.assertBuffer("bar\\ ba");
     }
+
+    @Test
+    public void testCompleteResultsMultipleLines() {
+        List<Completion> completions = new ArrayList<>();
+        completions.add(completeOperation -> {
+            if(completeOperation.getBuffer().equals("ff")) {
+                completeOperation.addCompletionCandidate("ffoo");
+            }
+            else if(completeOperation.getBuffer().endsWith("f")) {
+                completeOperation.addCompletionCandidate(completeOperation.getBuffer()+"oo");
+            }
+            else if(completeOperation.getBuffer().endsWith("foo")) {
+                completeOperation.addCompletionCandidate(completeOperation.getBuffer()+"foo");
+                completeOperation.addCompletionCandidate(completeOperation.getBuffer()+"foo bar");
+            }
+            else if(completeOperation.getBuffer().endsWith("b")) {
+                completeOperation.addCompletionCandidate(completeOperation.getBuffer()+"bar bar");
+                completeOperation.addCompletionCandidate(completeOperation.getBuffer()+"bar baar");
+            }
+        });
+
+        Size termSize = new Size(10, 10);
+        TestConnection term =
+                new TestConnection(EditModeBuilder.builder().create(), completions, termSize);
+
+        term.read("ff");
+        term.read(Key.CTRL_I);
+        term.assertBuffer("ffoo ");
+        term.read(Key.ENTER);
+        term.readline(completions);
+        term.read("11111111111f");
+        term.read(Key.CTRL_I);
+        term.assertBuffer("11111111111foo ");
+    }
+
+
 }
