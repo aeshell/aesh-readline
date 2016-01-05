@@ -268,13 +268,6 @@ public class CygwinPty implements Pty {
         throw new IOException("Unable to parse " + name);
     }
 
-    @Override
-    public void setSize(Size size) throws IOException {
-        exec(OSUtils.STTY_COMMAND,
-             "rows", Integer.toString(size.getHeight()),
-             "columns", Integer.toString(size.getWidth()));
-    }
-
     private static String exec(final String... cmd) throws IOException {
         assert cmd != null;
         try {

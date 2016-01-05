@@ -138,10 +138,6 @@ public class LineDisciplineTerminal extends AbstractTerminal {
         return size;
     }
 
-    public void setSize(Size sz) {
-        size = new Size(sz.getWidth(), sz.getHeight());
-    }
-
    @Override
     public void raise(Signal signal) {
         assert signal != null;

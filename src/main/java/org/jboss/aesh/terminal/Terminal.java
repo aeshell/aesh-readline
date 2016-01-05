@@ -71,8 +71,6 @@ public interface Terminal extends Closeable, Flushable {
 
     Size getSize();
 
-    void setSize(Size size);
-
     default int getWidth() {
         return getSize().getWidth();
     }

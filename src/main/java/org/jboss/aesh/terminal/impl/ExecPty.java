@@ -272,14 +272,6 @@ public class ExecPty implements Pty {
         throw new IOException("Unable to parse " + name);
     }
 
-    @Override
-    public void setSize(Size size) throws IOException {
-        exec(OSUtils.STTY_COMMAND,
-             OSUtils.STTY_F_OPTION, getName(),
-             "rows", Integer.toString(size.getHeight()),
-             "columns", Integer.toString(size.getWidth()));
-    }
-
     private static String exec(final String... cmd) throws IOException {
         assert cmd != null && cmd[0].length() > 0;
         try {

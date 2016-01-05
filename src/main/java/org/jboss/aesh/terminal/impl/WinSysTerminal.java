@@ -141,10 +141,6 @@ public class WinSysTerminal extends AbstractTerminal {
                 WindowsSupport.getWindowsTerminalHeight());
     }
 
-    public void setSize(Size size) {
-        throw new UnsupportedOperationException("Can not resize windows console");
-    }
-
     public void close() throws IOException {
         ShutdownHooks.remove(closer);
         for (Map.Entry<Signal, Object> entry : nativeHandlers.entrySet()) {
