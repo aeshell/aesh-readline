@@ -221,7 +221,7 @@ abstract class SearchHistory implements SearchAction {
         inputProcessor.getBuffer().getBuffer().disablePrompt(true);
         inputProcessor.getBuffer().moveCursor(-inputProcessor.getBuffer().getBuffer().getMultiCursor());
         inputProcessor.getBuffer().writeOut(ANSI.CURSOR_START);
-        inputProcessor.getBuffer().writeOut(ANSI.START + "2K");
+        inputProcessor.getBuffer().writeOut(ANSI.ERASE_WHOLE_LINE);
         inputProcessor.getBuffer().setBufferLine(builder.toString());
         inputProcessor.getBuffer().drawLine(false, false);
         LOGGER.info("moving to: "+cursor);

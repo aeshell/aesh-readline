@@ -19,7 +19,10 @@
  */
 package org.jboss.aesh.util;
 
+import org.jboss.aesh.parser.Parser;
 import org.jboss.aesh.terminal.utils.InfoCmpHelper;
+
+import java.util.Arrays;
 
 /**
  * Utility class to provide ANSI codes for different operations
@@ -27,6 +30,8 @@ import org.jboss.aesh.terminal.utils.InfoCmpHelper;
  * @author Ståle W. Pedersen <stale.pedersen@jboss.org>
  */
 public class ANSI {
+
+    private static final int TAB = 4;
 
     public static final String START = "\u001B[";
     public static final String BLACK_TEXT = "\u001B[0;30m";
@@ -67,10 +72,11 @@ public class ANSI {
     public static final String BLINK =
             InfoCmpHelper.getCurrentTranslatedCapability("blink","\u001B[5m");
     public static final String BLINK_OFF = "\u001B[25m";
-    public static final String CURSOR_START = "\u001B[1G";
+    public static final int[] CURSOR_START = new int[]{'\u001B', '[', 'G'};
+    public static final int[] ERASE_WHOLE_LINE = new int[]{'\u001B', '[', '2','K'};
     public static final String CURSOR_ROW = "\u001B[6n";
-    public static final String CLEAR_SCREEN =
-            InfoCmpHelper.getCurrentTranslatedCapability("clear","\u001B[2J");
+    public static final int[] CLEAR_SCREEN = Parser.toCodePoints(
+            InfoCmpHelper.getCurrentTranslatedCapability("clear","\u001B[2J"));
     public static final String CURSOR_SAVE =
             InfoCmpHelper.getCurrentTranslatedCapability("sc","\u001B[s");
     public static final String CURSOR_RESTORE =
@@ -80,4 +86,50 @@ public class ANSI {
 
     private ANSI() {
     }
+
+       /**
+     * Return a ansified string based on param
+     *
+     * @param out string
+     * @return ansified string
+     */
+    public static int[] printAnsi(String out) {
+        return printAnsi(out.toCharArray());
+    }
+
+    /**
+     * Return a ansified string based on param
+     *
+     * @param out what will be ansified
+     * @return ansified string
+     */
+    public static int[] printAnsi(char... out) {
+        //calculate length of table:
+        int length = 0;
+        for(char c : out) {
+            if(c == '\t') {
+                length += TAB;
+            }
+            else
+                length++;
+        }
+
+        int[] ansi = new int[length+2];
+        ansi[0] = 27;
+        ansi[1] = '[';
+        int counter = 0;
+        for (char anOut : out) {
+            if (anOut == '\t') {
+                Arrays.fill(ansi, counter + 2, counter + 2 + TAB, ' ');
+                counter += TAB - 1;
+            }
+            else
+                ansi[counter + 2] = anOut;
+
+            counter++;
+        }
+
+        return ansi;
+    }
+
 }

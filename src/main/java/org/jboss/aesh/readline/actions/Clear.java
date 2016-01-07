@@ -35,7 +35,7 @@ public class Clear implements Action {
 
     @Override
     public void apply(InputProcessor inputProcessor) {
-        inputProcessor.getBuffer().writeString(ANSI.CLEAR_SCREEN);
+        inputProcessor.getBuffer().writeOut(ANSI.CLEAR_SCREEN);
         //move cursor to correct position
         inputProcessor.getBuffer().writeChars(Buffer.printAnsi("1;1H"));
         //then write prompt

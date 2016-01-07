@@ -85,7 +85,7 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
 
         this.editMode = editMode;
 
-        LOGGER.info("prompt: "+this.buffer.getPrompt().getPromptAsString());
+        LOGGER.info("prompt: "+ Parser.fromCodePoints( this.buffer.getPrompt().getPromptAsString()));
     }
 
     @Override
@@ -217,6 +217,14 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
             builder.append(ANSI.CURSOR_SAVE); //save cursor
 
         if(buffer.getDelta() > 0) {
+            currentRow = (buffer.getCursorWithPrompt()-buffer.getDelta()) / size.getWidth();
+            if(currentRow > 0 && (buffer.getCursorWithPrompt()-buffer.getDelta()) % size.getWidth() == 0)
+                currentRow--;
+            /*
+            if(buffer.length()-buffer.getDelta() < size.getWidth()) {
+                //no need to move..
+            }
+            else */
             if (currentRow > 0)
                 for (int i = 0; i < currentRow; i++)
                     builder.append(Buffer.printAnsi('A')); //move to top
@@ -228,9 +236,9 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
 
         if(!buffer.isPromptDisabled()) {
             if(buffer.getPrompt().hasANSI())
-                builder.append(buffer.getPrompt().getANSI());
+                builder.append( Parser.fromCodePoints(   buffer.getPrompt().getANSI()));
             else
-                builder.append(buffer.getPrompt().getPromptAsString());
+                builder.append(Parser.fromCodePoints(  buffer.getPrompt().getPromptAsString()));
         }
         builder.append(buffer.getLine());
         if(buffer.getDelta() < 0)
@@ -485,7 +493,7 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
             if(!Config.isOSPOSIXCompatible())
                 connection.stdoutHandler().accept(Config.CR);
             //first clear console
-            connection.write(ANSI.CLEAR_SCREEN);
+            connection.stdoutHandler().accept(ANSI.CLEAR_SCREEN);
             //move cursor to correct position
            // connection.stdoutHandler().accept(Buffer.printAnsi("1;1H"));
             connection.stdoutHandler().accept(new int[] {27, '[', '1', ';', '1', 'H'});
