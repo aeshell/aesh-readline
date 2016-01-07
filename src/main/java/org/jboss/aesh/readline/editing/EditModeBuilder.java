@@ -181,17 +181,27 @@ public class EditModeBuilder {
     private EditMode createDefaultViMode() {
         Vi vi = new Vi();
 
-        if(Key.ENTER.equals(Key.ENTER_2))
-        vi.addActionGroup(Key.ENTER, new Vi.ActionStatusGroup(new Vi.ActionStatus[]{
-                new Vi.ActionStatus("accept-line", EditMode.Status.EDIT, EditMode.Status.EDIT),
-                new Vi.ActionStatus("accept-line", EditMode.Status.COMMAND, EditMode.Status.EDIT),
-                new Vi.ActionStatus("accept-line", EditMode.Status.CHANGE, EditMode.Status.EDIT)}));
+        //we use raw mode which differentiate ctrl-j and ctrl-m/enter
+        if(Key.ENTER.equals(Key.ENTER_2)) {
+            vi.addActionGroup(Key.ENTER, new Vi.ActionStatusGroup(new Vi.ActionStatus[]{
+                    new Vi.ActionStatus("accept-line", EditMode.Status.EDIT, EditMode.Status.EDIT),
+                    new Vi.ActionStatus("accept-line", EditMode.Status.COMMAND, EditMode.Status.EDIT),
+                    new Vi.ActionStatus("accept-line", EditMode.Status.CHANGE, EditMode.Status.EDIT)}));
+            vi.addActionGroup(Key.CTRL_M, new Vi.ActionStatusGroup(new Vi.ActionStatus[]{
+                    new Vi.ActionStatus("accept-line", EditMode.Status.EDIT, EditMode.Status.EDIT),
+                    new Vi.ActionStatus("accept-line", EditMode.Status.COMMAND, EditMode.Status.EDIT),
+                    new Vi.ActionStatus("accept-line", EditMode.Status.CHANGE, EditMode.Status.EDIT)}));
+        }
         else {
             vi.addActionGroup(Key.ENTER, new Vi.ActionStatusGroup(new Vi.ActionStatus[]{
                     new Vi.ActionStatus("accept-line", EditMode.Status.EDIT, EditMode.Status.EDIT),
                     new Vi.ActionStatus("accept-line", EditMode.Status.COMMAND, EditMode.Status.EDIT),
                     new Vi.ActionStatus("accept-line", EditMode.Status.CHANGE, EditMode.Status.EDIT)}));
             vi.addActionGroup(Key.ENTER_2, new Vi.ActionStatusGroup(new Vi.ActionStatus[]{
+                    new Vi.ActionStatus("accept-line", EditMode.Status.EDIT, EditMode.Status.EDIT),
+                    new Vi.ActionStatus("accept-line", EditMode.Status.COMMAND, EditMode.Status.EDIT),
+                    new Vi.ActionStatus("accept-line", EditMode.Status.CHANGE, EditMode.Status.EDIT)}));
+            vi.addActionGroup(Key.CTRL_M, new Vi.ActionStatusGroup(new Vi.ActionStatus[]{
                     new Vi.ActionStatus("accept-line", EditMode.Status.EDIT, EditMode.Status.EDIT),
                     new Vi.ActionStatus("accept-line", EditMode.Status.COMMAND, EditMode.Status.EDIT),
                     new Vi.ActionStatus("accept-line", EditMode.Status.CHANGE, EditMode.Status.EDIT)}));
