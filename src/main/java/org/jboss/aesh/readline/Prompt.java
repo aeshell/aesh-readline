@@ -47,6 +47,12 @@ public class Prompt {
             this.prompt = new int[]{};
     }
 
+    public Prompt(Prompt prompt) {
+        this.prompt = prompt.prompt.clone();
+        this.mask = prompt.mask;
+        this.ansiString = prompt.ansiString.clone();
+    }
+
     public Prompt(String prompt, String ansiString) {
         if(prompt != null)
             this.prompt = Parser.toCodePoints(prompt);
@@ -121,6 +127,10 @@ public class Prompt {
         if(ansiString == null)
             return prompt;
         return ansiString;
+    }
+
+    public Prompt copy() {
+        return new Prompt(this);
     }
 
     @Override
