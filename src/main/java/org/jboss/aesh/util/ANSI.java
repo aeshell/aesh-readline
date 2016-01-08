@@ -72,8 +72,8 @@ public class ANSI {
     public static final String BLINK =
             InfoCmpHelper.getCurrentTranslatedCapability("blink","\u001B[5m");
     public static final String BLINK_OFF = "\u001B[25m";
-    public static final int[] CURSOR_START = new int[]{'\u001B', '[', 'G'};
-    public static final int[] ERASE_WHOLE_LINE = new int[]{'\u001B', '[', '2','K'};
+    public static final int[] CURSOR_START = new int[]{ 27, '[', 'G'};
+    public static final int[] ERASE_WHOLE_LINE = new int[]{ 27, '[', '2', 'K'};
     public static final String CURSOR_ROW = "\u001B[6n";
     public static final int[] CLEAR_SCREEN = Parser.toCodePoints(
             InfoCmpHelper.getCurrentTranslatedCapability("clear","\u001B[2J"));
@@ -83,6 +83,9 @@ public class ANSI {
             InfoCmpHelper.getCurrentTranslatedCapability("rc","\u001B[u");
     public static final String CURSOR_HIDE = "\u001B[?25l";
     public static final String CURSOR_SHOW = "\u001B[?25h";
+    public static final int[] ERASE_LINE_FROM_CURSOR = new int[]{ 27, '[', 'K'};
+    public static final int[] MOVE_LINE_UP = new int[]{ 27, '[', '1', 'A'};
+    public static final int[] MOVE_LINE_DOWN = new int[]{ 27, '[', '1', 'K'};
 
     private ANSI() {
     }
@@ -128,7 +131,6 @@ public class ANSI {
 
             counter++;
         }
-
         return ansi;
     }
 
