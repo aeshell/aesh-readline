@@ -23,6 +23,7 @@ apply plugin: 'maven'
 apply plugin: 'signing'
 apply plugin: 'application'
 apply plugin: 'checkstyle'
+apply plugin: 'jacoco'
 
 group = 'org.jboss.aesh'
 archivesBaseName = 'aesh-readline'
@@ -99,6 +100,10 @@ checkstyle {
   ]
 }
 
+jacocoTestReport {
+    additionalSourceDirs = files(sourceSets.main.allJava.srcDirs)
+}
+
 artifacts {
     archives javadocJar, sourcesJar
 }
@@ -154,5 +159,5 @@ uploadArchives {
 
 
 task wrapper(type: Wrapper) {
-    gradleVersion = '2.7'
+    gradleVersion = '2.10'
 }
