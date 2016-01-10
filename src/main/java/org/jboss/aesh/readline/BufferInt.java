@@ -49,6 +49,12 @@ public class BufferInt {
         prompt = new Prompt("");
     }
 
+    public BufferInt(Prompt prompt) {
+        line = new int[1024];
+        if(prompt != null)
+        this.prompt = prompt;
+    }
+
     public BufferInt(BufferInt buf) {
         line = buf.line.clone();
         cursor = buf.cursor;
@@ -63,7 +69,7 @@ public class BufferInt {
             throw new IndexOutOfBoundsException();
     }
 
-    public int getSize() {
+    public int size() {
         return size;
     }
 
@@ -293,13 +299,13 @@ public class BufferInt {
      * @param position in line
      * @return line from position
      */
-    protected int[] getLineFrom(int position) {
+    private int[] getLineFrom(int position) {
         return Arrays.copyOfRange(line, position, size);
     }
 
-    public int[] getLine() {
+    private int[] getLine() {
         if(!prompt.isMasking())
-            return line;
+            return Arrays.copyOf(line, size);
         else {
             if(size > 0 && prompt.getMask() != '\u0000') {
                 int[] tmpLine = new int[size];
@@ -311,8 +317,8 @@ public class BufferInt {
         }
     }
 
-    public int[] getLineNoMask() {
-        return line;
+    private int[] getLineNoMask() {
+        return Arrays.copyOf(line, size);
     }
 
     private void clearLine() {
@@ -321,12 +327,12 @@ public class BufferInt {
         size = 0;
     }
 
-    public void printLine(Consumer<int[]> out, int width) {
+    public void print(Consumer<int[]> out, int width) {
         replaceLineWhenCursorIsOnLine(out, width);
         delta = 0;
     }
 
-    public void replaceLine(Consumer<int[]> out, String line, int width) {
+    public void replace(Consumer<int[]> out, String line, int width) {
         int tmpDelta = line.length() - size;
         int oldCursor = cursor + prompt.getLength();
         clearLine();
@@ -374,21 +380,24 @@ public class BufferInt {
     }
 
     private void moveCursorToStartAndPrint(Consumer<int[]> out, boolean clearLine) {
-        out.accept(ANSI.CURSOR_START);
-        if(clearLine)
-            out.accept(ANSI.ERASE_LINE_FROM_CURSOR);
-        out.accept(prompt.getANSI());
-        out.accept(line);
+        if((prompt.getLength() > 0 && cursor != 0) || delta < 0) {
+            out.accept(ANSI.CURSOR_START);
+            if (clearLine)
+                out.accept(ANSI.ERASE_LINE_FROM_CURSOR);
+        }
+        if(prompt.getLength() > 0)
+            out.accept(prompt.getANSI());
+        out.accept(getMultiLine());
     }
 
-    public int[] getMultiLine() {
+    private int[] getMultiLine() {
         if (multiLine) {
             int[] tmpLine = Arrays.copyOf(multiLineBuffer, size);
             System.arraycopy(line, 0, tmpLine, multiLineBuffer.length, size);
             return  tmpLine;
         }
         else {
-            return line;
+            return getLine();
         }
     }
 
@@ -413,15 +422,6 @@ public class BufferInt {
             size += delta;
             cursor += delta;
         }
-    }
-
-    /**
-     * Get the complete line (including prompt)
-     *
-     * @return complete line
-     */
-    public String getLineWithPrompt() {
-        return Parser.fromCodePoints( prompt.getPromptAsString()) + line;
     }
 
     /**
