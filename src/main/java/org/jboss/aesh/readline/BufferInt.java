@@ -40,6 +40,9 @@ public class BufferInt {
     private int size;
     private Prompt prompt;
     private int delta; //need to keep track of a delta for ansi terminal
+    //if delta happens at the end of the buffer, we can optimize
+    //how we update the tty
+    private boolean deltaChangedAtEndOfBuffer = true;
     private boolean disablePrompt = false;
     private boolean multiLine = false;
     private int[] multiLineBuffer = new int[0];
@@ -150,6 +153,7 @@ public class BufferInt {
         for (int aData : data) insert(aData);
 
         delta = data.length;
+        deltaChangedAtEndOfBuffer = (size == cursor);
     }
 
     public void insert(int data) {
@@ -335,6 +339,7 @@ public class BufferInt {
     public void print(Consumer<int[]> out, int width) {
         replaceLineWhenCursorIsOnLine(out, width);
         delta = 0;
+        deltaChangedAtEndOfBuffer = true;
     }
 
     public void replace(Consumer<int[]> out, String line, int width) {
@@ -343,6 +348,7 @@ public class BufferInt {
         clearLine();
         insert(Parser.toCodePoints(line));
         delta = tmpDelta;
+        deltaChangedAtEndOfBuffer = (cursor == size);
 
         if(oldCursor > width) {
             int originalRow = oldCursor / width;
@@ -354,6 +360,7 @@ public class BufferInt {
 
         replaceLineWhenCursorIsOnLine(out, width);
         delta = 0;
+        deltaChangedAtEndOfBuffer = true;
     }
 
     private void replaceLineWhenCursorIsOnLine(Consumer<int[]> out, int width) {
@@ -392,7 +399,10 @@ public class BufferInt {
         }
         if(prompt.getLength() > 0)
             out.accept(prompt.getANSI());
-        out.accept(getMultiLine());
+
+        //dont print out the line if its empty
+        if(size > 0)
+            out.accept(getMultiLine());
     }
 
     private int[] getMultiLine() {
@@ -411,12 +421,14 @@ public class BufferInt {
             delta = Math.min(delta, size - cursor);
             System.arraycopy(line, cursor + delta, line, cursor, size - cursor + delta);
             size -= delta;
+            this.delta =+ delta;
         }
         else if (delta < 0) {
             delta = - Math.min(- delta, cursor);
             System.arraycopy(line, cursor, line, cursor + delta, size - cursor);
             size += delta;
             cursor += delta;
+            this.delta =+ delta;
         }
     }
 
@@ -427,7 +439,8 @@ public class BufferInt {
      */
     public void write(char c) {
         insert(c);
-        delta = 1;
+        delta++;
+        deltaChangedAtEndOfBuffer = (cursor == size);
     }
 
     /**

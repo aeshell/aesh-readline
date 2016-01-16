@@ -28,13 +28,12 @@ import java.util.List;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 /**
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
  */
 public class BufferIntTest {
-
-
 
     @Test
     public void testInsertNoPrompt() {
@@ -56,7 +55,7 @@ public class BufferIntTest {
         buffer.reset();
         outConsumer.clear();
         buffer.print(outConsumer::add, 120);
-        assertArrayEquals(new int[] {}, outConsumer.get(0));
+        assertTrue(outConsumer.isEmpty());
 
         buffer.write('A');
         buffer.write('B');
@@ -92,7 +91,7 @@ public class BufferIntTest {
         outConsumer.clear();
         buffer.print(outConsumer::add, 120);
         assertEquals(": ", Parser.fromCodePoints( outConsumer.get(0)));
-        assertArrayEquals(new int[] {}, outConsumer.get(1));
+        assertEquals(1, outConsumer.size());
 
         buffer.write('A');
         buffer.write('B');
@@ -124,6 +123,30 @@ public class BufferIntTest {
 
     @Test
     public void testDelete() {
+        BufferInt buffer = new BufferInt(new Prompt(": "));
+        buffer.write("foo bar");
+        buffer.delete(-2);
+        List<int[]> outConsumer = new ArrayList<>();
+        buffer.print(outConsumer::add, 120);
+        assertArrayEquals(new int[] {27,'[','G'}, outConsumer.get(0));
+        assertArrayEquals(new int[] {27,'[','K'}, outConsumer.get(1));
+        assertEquals(": ", Parser.fromCodePoints(outConsumer.get(2)));
+        assertEquals("foo b", Parser.fromCodePoints(outConsumer.get(3)));
+        outConsumer.clear();
+        buffer.delete(-2);
+        buffer.print(outConsumer::add, 120);
+        assertArrayEquals(new int[] {27,'[','G'}, outConsumer.get(0));
+        assertArrayEquals(new int[] {27,'[','K'}, outConsumer.get(1));
+        assertEquals(": ", Parser.fromCodePoints(outConsumer.get(2)));
+        assertEquals("foo", Parser.fromCodePoints(outConsumer.get(3)));
+        outConsumer.clear();
+        buffer.delete(-4);
+        buffer.print(outConsumer::add, 120);
+        System.out.println(Parser.fromCodePoints(outConsumer.get(0)));
+        assertArrayEquals(new int[] {27,'[','G'}, outConsumer.get(0));
+        assertArrayEquals(new int[] {27,'[','K'}, outConsumer.get(1));
+        assertEquals(": ", Parser.fromCodePoints(outConsumer.get(2)));
+        assertEquals(3, outConsumer.size());
 
     }
 
