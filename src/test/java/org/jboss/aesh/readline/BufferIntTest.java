@@ -25,7 +25,6 @@ import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Consumer;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -42,7 +41,7 @@ public class BufferIntTest {
         BufferInt buffer = new BufferInt();
 
         buffer.insert(65);
-        assertEquals(1, buffer.size());
+        assertEquals(1, buffer.length());
         assertEquals(65, buffer.get(0));
         buffer.insert(66);
         buffer.insert(67);
@@ -75,7 +74,7 @@ public class BufferIntTest {
     public void testInsert() {
         BufferInt buffer = new BufferInt(new Prompt(": "));
         buffer.insert(65);
-        assertEquals(1, buffer.size());
+        assertEquals(1, buffer.length());
         assertEquals(65, buffer.get(0));
         buffer.insert(66);
         buffer.insert(67);
@@ -107,6 +106,25 @@ public class BufferIntTest {
         assertArrayEquals(ANSI.CURSOR_START, outConsumer.get(0));
         assertEquals(": ", Parser.fromCodePoints( outConsumer.get(1)));
         assertEquals("ABC foo", Parser.fromCodePoints(outConsumer.get(2)));
+    }
+
+    @Test
+    public void testInsertString() {
+        BufferInt buffer = new BufferInt(new Prompt(": "));
+        buffer.write("foo bar");
+        buffer.write(" ");
+        buffer.write("foo bar");
+        List<int[]> outConsumer = new ArrayList<>();
+        buffer.print(outConsumer::add, 120);
+        assertArrayEquals(new int[] {27,'[','G'}, outConsumer.get(0));
+        assertEquals(": ", Parser.fromCodePoints(outConsumer.get(1)));
+        assertEquals("foo bar foo bar", Parser.fromCodePoints(outConsumer.get(2)));
+
+    }
+
+    @Test
+    public void testDelete() {
+
     }
 
 }

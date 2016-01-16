@@ -69,19 +69,24 @@ public class BufferInt {
             throw new IndexOutOfBoundsException();
     }
 
-    public int size() {
-        return size;
-    }
-
-    public int getCursor() {
+    private int getCursor() {
         return cursor;
     }
 
-    protected int getCursorWithPrompt() {
+    private int getCursorWithPrompt() {
         if(disablePrompt)
             return getCursor()+1;
         else
             return getCursor() + prompt.getLength()+1;
+    }
+
+    public int getMultiCursor() {
+        if (multiLine) {
+            return multiLineBuffer.length + getCursor();
+        }
+        else {
+            return getCursor();
+        }
     }
 
     public void reset() {
@@ -99,7 +104,7 @@ public class BufferInt {
         disablePrompt = disable;
     }
 
-    protected boolean isPromptDisabled() {
+    public boolean isPromptDisabled() {
         return disablePrompt;
     }
 
@@ -110,7 +115,7 @@ public class BufferInt {
             return size;
     }
 
-    public int totalLength() {
+    public int lengthWithPrompt() {
         if(prompt.isMasking()) {
             if(prompt.getMask() == 0)
                 return disablePrompt ? 1 : prompt.getLength()+1;
@@ -341,7 +346,7 @@ public class BufferInt {
 
         if(oldCursor > width) {
             int originalRow = oldCursor / width;
-            if(originalRow > 0 && totalLength() % width == 0)
+            if(originalRow > 0 && lengthWithPrompt() % width == 0)
                 originalRow--;
             for(int i=0; i < originalRow; i++)
                 out.accept(ANSI.MOVE_LINE_UP);
@@ -356,12 +361,12 @@ public class BufferInt {
             moveCursorToStartAndPrint(out, false);
         }
         else { // delta < 0
-            if((totalLength()+delta) <= width) {
+            if((lengthWithPrompt()+delta) <= width) {
                 moveCursorToStartAndPrint(out, true);
             }
             else {
-                int numRows = totalLength() / width;
-                if(numRows > 0 && totalLength() % width == 0)
+                int numRows = lengthWithPrompt() / width;
+                if(numRows > 0 && lengthWithPrompt() % width == 0)
                     numRows--;
                 clearRowsAndMoveBack(out, numRows);
                 moveCursorToStartAndPrint(out, false);
@@ -398,15 +403,6 @@ public class BufferInt {
         }
         else {
             return getLine();
-        }
-    }
-
-    public int getMultiCursor() {
-        if (multiLine) {
-            return multiLineBuffer.length + getCursor();
-        }
-        else {
-            return getCursor();
         }
     }
 
