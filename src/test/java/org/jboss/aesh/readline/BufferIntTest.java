@@ -147,6 +147,13 @@ public class BufferIntTest {
         assertArrayEquals(new int[] {27,'[','K'}, outConsumer.get(1));
         assertEquals(": ", Parser.fromCodePoints(outConsumer.get(2)));
         assertEquals(3, outConsumer.size());
+    }
+
+    @Test
+    public void testMove() {
+        BufferInt buffer = new BufferInt(new Prompt(": "));
+        buffer.write("foo bar");
+        assertEquals(7, buffer.getMultiCursor());
 
     }
 

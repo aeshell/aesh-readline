@@ -177,12 +177,12 @@ public class BufferInt {
      * @param termWidth terminal width
      * @return ansi string that represent the move
      */
-    protected int[] move(int move, int termWidth) {
-        return move(move, termWidth, false);
+    public void move(Consumer<int[]> out,  int move, int termWidth) {
+        move(out, move, termWidth, false);
     }
 
-    protected int[] move(int move, int termWidth, boolean viMode) {
-        LOGGER.info("moving: "+move+", width: "+termWidth+", buffer: "+getLine());
+    public void move(Consumer<int[]> out, int move, int termWidth, boolean viMode) {
+        //LOGGER.info("moving: "+move+", width: "+termWidth+", buffer: "+getLine());
         move = moveCursor(move, viMode);
 
         int currentRow = (getCursorWithPrompt() / (termWidth));
@@ -202,14 +202,14 @@ public class BufferInt {
         // to put new characters in the correct location in the invisible line,
         // but this method should always return an empty character so the UI cursor does not move.
         if(prompt.isMasking() && prompt.getMask() == 0){
-            return new int[0];
+            return;
         }
 
         int cursor = getCursorWithPrompt() % termWidth;
         if(cursor == 0 && getCursorWithPrompt() > 0)
             cursor = termWidth;
         if(row > 0) {
-            return moveToRowAndColumn(row, 'B', cursor);
+            out.accept(moveToRowAndColumn(row, 'B', cursor));
 
             //StringBuilder sb = new StringBuilder();
             //sb.append(printAnsi(row+"B")).append(printAnsi(cursor+"G"));
@@ -220,23 +220,21 @@ public class BufferInt {
             //check if we are on the "first" row:
             //StringBuilder sb = new StringBuilder();
             //sb.append(printAnsi(Math.abs(row)+"A")).append(printAnsi(cursor+"G"));
-            return moveToRowAndColumn(row, 'A', cursor);
+            out.accept(moveToRowAndColumn(row, 'A', cursor));
             //return sb.toString().toCharArray();
         }
         //staying at the same row
         else {
             LOGGER.info("staying at same row "+move);
             if(move < 0)
-                return moveToColumn(move, 'D');
+                out.accept(moveToColumn(move, 'D'));
                 //return printAnsi(Math.abs(move)+"D");
 
             else if(move > 0) {
                 LOGGER.info("returning: "+ Arrays.toString( moveToColumn(move,'C')));
                 //return printAnsi(move + "C");
-                return moveToColumn(move, 'C');
+                out.accept(moveToColumn(move, 'C'));
             }
-            else
-                return new int[0];
         }
     }
 
