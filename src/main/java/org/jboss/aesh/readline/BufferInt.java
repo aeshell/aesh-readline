@@ -152,7 +152,7 @@ public class BufferInt {
     public void insert(int[] data) {
         for (int aData : data) insert(aData);
 
-        delta = data.length;
+        delta =+ data.length;
         deltaChangedAtEndOfBuffer = (size == cursor);
     }
 
