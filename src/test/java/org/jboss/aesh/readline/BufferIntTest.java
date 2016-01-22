@@ -205,7 +205,24 @@ public class BufferIntTest {
         outConsumer.clear();
         buffer.print(outConsumer::add, 120);
         assertEquals("foobar", Parser.fromCodePoints(outConsumer.get(3)));
-
+        buffer.move(outConsumer::add, 1, 120);
+        buffer.delete(-3);
+        outConsumer.clear();
+        buffer.print(outConsumer::add, 120);
+        assertEquals("far", Parser.fromCodePoints(outConsumer.get(3)));
+        buffer.delete(2);
+        outConsumer.clear();
+        buffer.print(outConsumer::add, 120);
+        assertEquals("f", Parser.fromCodePoints(outConsumer.get(3)));
+        buffer.delete(2);
+        outConsumer.clear();
+        buffer.print(outConsumer::add, 120);
+        assertEquals("f", Parser.fromCodePoints(outConsumer.get(2)));
+        buffer.delete(-5);
+        outConsumer.clear();
+        buffer.print(outConsumer::add, 120);
+        assertEquals(": ", Parser.fromCodePoints(outConsumer.get(2)));
+        assertEquals(3, outConsumer.size());
     }
 
 }

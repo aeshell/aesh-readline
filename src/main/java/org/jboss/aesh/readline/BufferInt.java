@@ -419,7 +419,7 @@ public class BufferInt {
             delta = Math.min(delta, size - cursor);
             System.arraycopy(line, cursor + delta, line, cursor, size - cursor + delta);
             size -= delta;
-            this.delta =+ delta;
+            this.delta =- delta;
         }
         else if (delta < 0) {
             delta = - Math.min(- delta, cursor);
