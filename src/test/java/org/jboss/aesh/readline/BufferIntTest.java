@@ -289,4 +289,19 @@ public class BufferIntTest {
         assertEquals(" gard", Parser.fromCodePoints(outConsumer.get(2)));
     }
 
+    @Test
+    public void multiLine() {
+        BufferInt buffer = new BufferInt(new Prompt(": "));
+        List<int[]> outConsumer = new ArrayList<>();
+        buffer.write("foo bar \\");
+        buffer.setMultiLine(true);
+        buffer.updateMultiLineBuffer();
+        buffer.write(" bar ");
+        buffer.print(outConsumer::add, 120);
+        assertEquals("> ", Parser.fromCodePoints(outConsumer.get(1)));
+        assertEquals(" bar ", Parser.fromCodePoints(outConsumer.get(2)));
+
+        assertEquals("foo bar  bar ", buffer.asString());
+    }
+
 }

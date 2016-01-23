@@ -130,26 +130,28 @@ public class BufferInt {
     }
 
     public void setMultiLine(boolean multi) {
-        multiLine = multi;
+        if(!prompt.isMasking())
+            multiLine = multi;
     }
 
     public void updateMultiLineBuffer() {
         int originalSize = multiLineBuffer.length;
         if(lineEndsWithBackslash()) {
-            multiLineBuffer = Arrays.copyOf(multiLineBuffer, size);
-            System.arraycopy(line, 0, multiLineBuffer, originalSize, size);
+            multiLineBuffer = Arrays.copyOf(multiLineBuffer, size-1);
+            System.arraycopy(line, 0, multiLineBuffer, originalSize, size-1);
         }
         else {
             multiLineBuffer = Arrays.copyOf(multiLineBuffer, size);
             System.arraycopy(line, 0, multiLineBuffer, size, originalSize);
         }
         clearLine();
+        prompt = new Prompt("> ");
         cursor = 0;
         size = 0;
     }
 
     private boolean lineEndsWithBackslash() {
-        return (size > 1 && line[size] == '\\' && line[size-1] == ' ');
+        return (size > 1 && line[size-1] == '\\' && line[size-2] == ' ');
     }
 
     /**
@@ -423,12 +425,12 @@ public class BufferInt {
 
         //dont print out the line if its empty
         if(size > 0)
-            out.accept(getMultiLine());
+            out.accept(getLine());
     }
 
     private int[] getMultiLine() {
         if (multiLine) {
-            int[] tmpLine = Arrays.copyOf(multiLineBuffer, size);
+            int[] tmpLine = Arrays.copyOf(multiLineBuffer, multiLineBuffer.length + size);
             System.arraycopy(line, 0, tmpLine, multiLineBuffer.length, size);
             return  tmpLine;
         }
@@ -518,4 +520,10 @@ public class BufferInt {
             line[pos] = rChar;
     }
 
+    /**
+     * @return the buffer as string
+     */
+    public String asString() {
+        return Parser.fromCodePoints(getMultiLine());
+    }
 }
