@@ -29,6 +29,9 @@ import java.util.function.Consumer;
 import java.util.logging.Logger;
 
 /**
+ * Buffer to keep track of text and cursor position in the console.
+ * Is using ANSI-codes to clear text and move cursor in the terminal.
+ *
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
  */
 public class BufferInt {
@@ -149,6 +152,11 @@ public class BufferInt {
         return (size > 1 && line[size] == '\\' && line[size-1] == ' ');
     }
 
+    /**
+     * Insert text at cursor position
+     *
+     * @param data text
+     */
     public void insert(int[] data) {
         for (int aData : data) insert(aData);
 
@@ -156,6 +164,11 @@ public class BufferInt {
         deltaChangedAtEndOfBuffer = (size == cursor);
     }
 
+    /**
+     * Insert at cursor position.
+     *
+     * @param data char
+     */
     public void insert(int data) {
         int width = WcWidth.width(data);
         if(width == -1) {
@@ -169,18 +182,25 @@ public class BufferInt {
         }
     }
     /**
-     * Move the cursor left if the param is negative,
-     * and right if its positive.
-     * Return ansi code to represent the move
+     * Move the cursor left if the param is negative, right if its positive.
      *
+     * @param out stream
      * @param move where to move
      * @param termWidth terminal width
-     * @return ansi string that represent the move
      */
     public void move(Consumer<int[]> out,  int move, int termWidth) {
         move(out, move, termWidth, false);
     }
 
+    /**
+     * Move the cursor left if the param is negative, right if its positive.
+     * If viMode is true, the cursor will not move beyond the current buffer size
+     *
+     * @param out stream
+     * @param move where to move
+     * @param termWidth terminal width
+     * @param viMode edit mode (vi or emacs)
+     */
     public void move(Consumer<int[]> out, int move, int termWidth, boolean viMode) {
         //LOGGER.info("moving: "+move+", width: "+termWidth+", buffer: "+getLine());
         move = moveCursor(move, viMode);
@@ -300,12 +320,6 @@ public class BufferInt {
         return move;
     }
 
-    /**
-     * Get line from given param
-     *
-     * @param position in line
-     * @return line from position
-     */
     private int[] getLineFrom(int position) {
         return Arrays.copyOfRange(line, position, size);
     }
@@ -340,6 +354,15 @@ public class BufferInt {
         deltaChangedAtEndOfBuffer = true;
     }
 
+    /**
+     * Replace the entire current buffer with the given line.
+     * The new line will be pushed to the consumer
+     * Cursor will be moved to the end of the new buffer line
+     *
+     * @param out stream
+     * @param line new buffer line
+     * @param width term width
+     */
     public void replace(Consumer<int[]> out, String line, int width) {
         int tmpDelta = line.length() - size;
         int oldCursor = cursor + prompt.getLength();
@@ -414,6 +437,11 @@ public class BufferInt {
         }
     }
 
+    /**
+     * Delete from cursor position and backwards if delta is < 0
+     * Delete from cursor position and forwards if delta is > 0
+     * @param delta
+     */
     public void delete(int delta) {
         if (delta > 0) {
             delta = Math.min(delta, size - cursor);
@@ -450,16 +478,10 @@ public class BufferInt {
         insert(Parser.toCodePoints(str));
     }
 
-    public int getDelta() {
-        return delta;
-    }
-
     /**
      * Switch case if the current character is a letter.
-     *
-     * @return false if the character is not a letter, else true
      */
-    protected void changeCase() {
+    public void changeCase() {
         if(Character.isLetter(line[cursor])) {
             if(Character.isLowerCase(line[cursor]))
                 line[cursor] = Character.toUpperCase(line[cursor]);
@@ -468,16 +490,25 @@ public class BufferInt {
         }
     }
 
+    /**
+     * Up case if the current character is a letter
+     */
     public void upCase() {
         if(Character.isLetter(line[cursor]))
             line[cursor] = Character.toUpperCase(line[cursor]);
     }
 
+    /**
+     * Lower case if the current character is a letter
+     */
     public void lowCase() {
         if(Character.isLetter(line[cursor]))
             line[cursor] = Character.toLowerCase(line[cursor]);
     }
 
+    /**
+     * Replace the current character
+     */
     public void replace(char rChar) {
         replace(getCursor(), rChar);
     }

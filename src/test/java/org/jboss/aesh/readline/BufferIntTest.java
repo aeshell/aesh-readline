@@ -36,7 +36,7 @@ import static org.junit.Assert.assertTrue;
 public class BufferIntTest {
 
     @Test
-    public void testInsertNoPrompt() {
+    public void insertNoPrompt() {
         BufferInt buffer = new BufferInt();
 
         buffer.insert(65);
@@ -70,7 +70,7 @@ public class BufferIntTest {
     }
 
     @Test
-    public void testInsert() {
+    public void insert() {
         BufferInt buffer = new BufferInt(new Prompt(": "));
         buffer.insert(65);
         assertEquals(1, buffer.length());
@@ -108,7 +108,7 @@ public class BufferIntTest {
     }
 
     @Test
-    public void testInsertString() {
+    public void insertString() {
         BufferInt buffer = new BufferInt(new Prompt(": "));
         buffer.write("foo bar");
         buffer.write(" ");
@@ -122,7 +122,7 @@ public class BufferIntTest {
     }
 
     @Test
-    public void testDelete() {
+    public void delete() {
         BufferInt buffer = new BufferInt(new Prompt(": "));
         buffer.write("foo bar");
         buffer.delete(-2);
@@ -150,7 +150,7 @@ public class BufferIntTest {
     }
 
     @Test
-    public void testMove() {
+    public void move() {
         BufferInt buffer = new BufferInt(new Prompt(": "));
         buffer.write("foo bar");
         assertEquals(7, buffer.getMultiCursor());
@@ -166,7 +166,7 @@ public class BufferIntTest {
     }
 
     @Test
-    public void testMoveAndInsert() {
+    public void moveAndInsert() {
         BufferInt buffer = new BufferInt(new Prompt(": "));
         List<int[]> outConsumer = new ArrayList<>();
         buffer.write("foo bar");
@@ -223,6 +223,70 @@ public class BufferIntTest {
         buffer.print(outConsumer::add, 120);
         assertEquals(": ", Parser.fromCodePoints(outConsumer.get(2)));
         assertEquals(3, outConsumer.size());
+    }
+
+    @Test
+    public void replaceChar() {
+        BufferInt buffer = new BufferInt(new Prompt(": "));
+        List<int[]> outConsumer = new ArrayList<>();
+        buffer.write("foo bar");
+        buffer.replace('R');
+        buffer.print(outConsumer::add, 120);
+        assertEquals("foo bar", Parser.fromCodePoints(outConsumer.get(2)));
+        buffer.move(outConsumer::add, -1, 120);
+        buffer.replace('R');
+        outConsumer.clear();
+        buffer.print(outConsumer::add, 120);
+        assertEquals("foo baR", Parser.fromCodePoints(outConsumer.get(2)));
+        buffer.move(outConsumer::add, -4, 120);
+        buffer.replace('O');
+        outConsumer.clear();
+        buffer.print(outConsumer::add, 120);
+        assertEquals("foO baR", Parser.fromCodePoints(outConsumer.get(2)));
+    }
+
+    @Test
+    public void changeCase() {
+        BufferInt buffer = new BufferInt(new Prompt(": "));
+        List<int[]> outConsumer = new ArrayList<>();
+        buffer.write("foo bar");
+        buffer.move(outConsumer::add, -1, 120);
+        buffer.upCase();
+        outConsumer.clear();
+        buffer.print(outConsumer::add, 120);
+        assertEquals("foo baR", Parser.fromCodePoints(outConsumer.get(2)));
+        buffer.move(outConsumer::add, -4, 120);
+        buffer.changeCase();
+        outConsumer.clear();
+        buffer.print(outConsumer::add, 120);
+        assertEquals("foO baR", Parser.fromCodePoints(outConsumer.get(2)));
+        buffer.changeCase();
+        outConsumer.clear();
+        buffer.print(outConsumer::add, 120);
+        assertEquals("foo baR", Parser.fromCodePoints(outConsumer.get(2)));
+        buffer.move(outConsumer::add, 10, 120);
+        buffer.lowCase();
+        outConsumer.clear();
+        buffer.print(outConsumer::add, 120);
+        assertEquals("foo baR", Parser.fromCodePoints(outConsumer.get(2)));
+        buffer.move(outConsumer::add, -1, 120);
+        buffer.lowCase();
+        outConsumer.clear();
+        buffer.print(outConsumer::add, 120);
+        assertEquals("foo bar", Parser.fromCodePoints(outConsumer.get(2)));
+    }
+
+    @Test
+    public void replace() {
+        BufferInt buffer = new BufferInt(new Prompt(": "));
+        List<int[]> outConsumer = new ArrayList<>();
+        buffer.write("foo bar");
+        buffer.replace(outConsumer::add, " gar", 120);
+        assertEquals(" gar", Parser.fromCodePoints(outConsumer.get(3)));
+        outConsumer.clear();
+        buffer.write('d');
+        buffer.print(outConsumer::add, 120);
+        assertEquals(" gard", Parser.fromCodePoints(outConsumer.get(2)));
     }
 
 }
