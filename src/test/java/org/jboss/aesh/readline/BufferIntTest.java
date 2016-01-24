@@ -302,6 +302,16 @@ public class BufferIntTest {
         assertEquals(" bar ", Parser.fromCodePoints(outConsumer.get(2)));
 
         assertEquals("foo bar  bar ", buffer.asString());
+
+        buffer.write("\\");
+        buffer.updateMultiLineBuffer();
+        buffer.write("gar");
+        outConsumer.clear();
+        buffer.print(outConsumer::add, 120);
+        assertEquals("> ", Parser.fromCodePoints(outConsumer.get(1)));
+        assertEquals("gar", Parser.fromCodePoints(outConsumer.get(2)));
+
+        assertEquals("foo bar  bar gar", buffer.asString());
     }
 
 }

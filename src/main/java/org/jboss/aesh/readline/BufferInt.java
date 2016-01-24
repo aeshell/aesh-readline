@@ -137,7 +137,7 @@ public class BufferInt {
     public void updateMultiLineBuffer() {
         int originalSize = multiLineBuffer.length;
         if(lineEndsWithBackslash()) {
-            multiLineBuffer = Arrays.copyOf(multiLineBuffer, size-1);
+            multiLineBuffer = Arrays.copyOf(multiLineBuffer, originalSize + size-1);
             System.arraycopy(line, 0, multiLineBuffer, originalSize, size-1);
         }
         else {
