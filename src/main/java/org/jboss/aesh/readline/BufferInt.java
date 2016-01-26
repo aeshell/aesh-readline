@@ -162,8 +162,6 @@ public class BufferInt {
     public void insert(int[] data) {
         for (int aData : data) insert(aData);
 
-        delta =+ data.length;
-        deltaChangedAtEndOfBuffer = (size == cursor);
     }
 
     /**
@@ -181,6 +179,9 @@ public class BufferInt {
                 System.arraycopy(line, cursor, line, cursor + 1, size - cursor);
             line[cursor++] = data;
             size++;
+            delta++;
+
+            deltaChangedAtEndOfBuffer = (size == cursor);
         }
     }
     /**
@@ -242,14 +243,14 @@ public class BufferInt {
             //check if we are on the "first" row:
             //StringBuilder sb = new StringBuilder();
             //sb.append(printAnsi(Math.abs(row)+"A")).append(printAnsi(cursor+"G"));
-            out.accept(moveToRowAndColumn(row, 'A', cursor));
+            out.accept(moveToRowAndColumn(Math.abs(row), 'A', cursor));
             //return sb.toString().toCharArray();
         }
         //staying at the same row
         else {
             LOGGER.info("staying at same row "+move);
             if(move < 0)
-                out.accept(moveToColumn(move, 'D'));
+                out.accept(moveToColumn(Math.abs(move), 'D'));
                 //return printAnsi(Math.abs(move)+"D");
 
             else if(move > 0) {
@@ -467,7 +468,6 @@ public class BufferInt {
      */
     public void write(char c) {
         insert(c);
-        delta++;
         deltaChangedAtEndOfBuffer = (cursor == size);
     }
 

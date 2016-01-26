@@ -314,4 +314,24 @@ public class BufferIntTest {
         assertEquals("foo bar  bar gar", buffer.asString());
     }
 
+    @Test
+    public void manyLinesInsert() {
+        BufferInt buffer = new BufferInt(new Prompt(": "));
+        List<int[]> outConsumer = new ArrayList<>();
+        buffer.write("1234567890");
+        buffer.print(outConsumer::add, 5);
+        outConsumer.clear();
+        buffer.move(outConsumer::add, -10, 5);
+
+        assertArrayEquals(new int[] {27,'[',2,'A',27,'[',3,'G'}, outConsumer.get(0));
+
+        buffer.insert(' ');
+        outConsumer.clear();
+        buffer.print(outConsumer::add, 5);
+
+
+        assertEquals(" 1234567890", buffer.asString());
+
+    }
+
 }
