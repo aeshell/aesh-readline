@@ -466,7 +466,7 @@ public class BufferInt {
      *
      * @param str string
      */
-    public void write(final String str) {
+    public void insert(final String str) {
         insert(Parser.toCodePoints(str));
     }
 
