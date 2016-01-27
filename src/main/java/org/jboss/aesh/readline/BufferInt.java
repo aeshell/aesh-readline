@@ -462,16 +462,6 @@ public class BufferInt {
     }
 
     /**
-     * Write a char to the line and update cursor accordingly
-     *
-     * @param c char
-     */
-    public void write(char c) {
-        insert(c);
-        deltaChangedAtEndOfBuffer = (cursor == size);
-    }
-
-    /**
      * Write a string to the line and update cursor accordingly
      *
      * @param str string

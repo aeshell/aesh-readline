@@ -57,9 +57,9 @@ public class BufferIntTest {
         buffer.print(outConsumer::add, 120);
         assertTrue(outConsumer.isEmpty());
 
-        buffer.write('A');
-        buffer.write('B');
-        buffer.write('C');
+        buffer.insert('A');
+        buffer.insert('B');
+        buffer.insert('C');
         assertEquals(66, buffer.get(1));
         assertEquals(67, buffer.get(2));
 
@@ -93,9 +93,9 @@ public class BufferIntTest {
         assertEquals(": ", Parser.fromCodePoints( outConsumer.get(0)));
         assertEquals(1, outConsumer.size());
 
-        buffer.write('A');
-        buffer.write('B');
-        buffer.write('C');
+        buffer.insert('A');
+        buffer.insert('B');
+        buffer.insert('C');
         assertEquals(66, buffer.get(1));
         assertEquals(67, buffer.get(2));
 
@@ -284,7 +284,7 @@ public class BufferIntTest {
         buffer.replace(outConsumer::add, " gar", 120);
         assertEquals(" gar", Parser.fromCodePoints(outConsumer.get(3)));
         outConsumer.clear();
-        buffer.write('d');
+        buffer.insert('d');
         buffer.print(outConsumer::add, 120);
         assertEquals(" gard", Parser.fromCodePoints(outConsumer.get(2)));
     }
