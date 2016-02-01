@@ -159,9 +159,9 @@ public class BufferInt {
      *
      * @param data text
      */
-    public void insert(int[] data) {
-        for (int aData : data) insert(aData);
-
+    public void insert(int[] data, Consumer<int[]> out) {
+        for (int aData : data)
+            insert(aData, out);
     }
 
     /**
@@ -169,7 +169,7 @@ public class BufferInt {
      *
      * @param data char
      */
-    public void insert(int data) {
+    public void insert(int data, Consumer<int[]> out) {
         int width = WcWidth.width(data);
         if(width == -1) {
             //todo: handle control chars...
@@ -366,6 +366,7 @@ public class BufferInt {
      * @param line new buffer line
      * @param width term width
      */
+    /*
     public void replace(Consumer<int[]> out, String line, int width) {
         int tmpDelta = line.length() - size;
         int oldCursor = cursor + prompt.getLength();
@@ -386,6 +387,7 @@ public class BufferInt {
         delta = 0;
         deltaChangedAtEndOfBuffer = true;
     }
+    */
 
     private void replaceLineWhenCursorIsOnLine(Consumer<int[]> out, int width) {
         if(delta >= 0) {
@@ -445,12 +447,13 @@ public class BufferInt {
      * Delete from cursor position and forwards if delta is > 0
      * @param delta
      */
-    public void delete(int delta) {
+    public void delete(int delta, Consumer<int[]> out, int width) {
         if (delta > 0) {
             delta = Math.min(delta, size - cursor);
             System.arraycopy(line, cursor + delta, line, cursor, size - cursor + delta);
             size -= delta;
             this.delta =- delta;
+            print(out, width);
         }
         else if (delta < 0) {
             delta = - Math.min(- delta, cursor);
@@ -458,6 +461,7 @@ public class BufferInt {
             size += delta;
             cursor += delta;
             this.delta =+ delta;
+            print(out, width);
         }
     }
 
@@ -465,9 +469,10 @@ public class BufferInt {
      * Write a string to the line and update cursor accordingly
      *
      * @param str string
+     * @param out
      */
-    public void insert(final String str) {
-        insert(Parser.toCodePoints(str));
+    public void insert(final String str, Consumer<int[]> out) {
+        insert(Parser.toCodePoints(str), out);
     }
 
     /**
