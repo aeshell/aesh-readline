@@ -58,7 +58,9 @@ public class BufferInt {
     public BufferInt(Prompt prompt) {
         line = new int[1024];
         if(prompt != null)
-        this.prompt = prompt;
+            this.prompt = prompt;
+        else
+            this.prompt = new Prompt("");
     }
 
     public BufferInt(BufferInt buf) {
@@ -161,7 +163,28 @@ public class BufferInt {
      */
     public void insert(int[] data, Consumer<int[]> out) {
         for (int aData : data)
-            insert(aData, out);
+            doInsert(aData);
+
+        doPrint(out);
+    }
+
+    private void doPrint(Consumer<int[]> out) {
+        //print out prompt first
+        if(size == delta && prompt.getLength() > 0)
+            out.accept(prompt.getANSI());
+
+        if(deltaChangedAtEndOfBuffer) {
+            if(delta == 1)
+                out.accept(new int[]{line[cursor-1]});
+            else
+                out.accept( Arrays.copyOfRange(line, cursor-delta, cursor));
+        }
+        else {
+            out.accept(Arrays.copyOfRange(line, cursor-delta, size));
+        }
+
+        delta = 0;
+        deltaChangedAtEndOfBuffer = true;
     }
 
     /**
@@ -170,6 +193,11 @@ public class BufferInt {
      * @param data char
      */
     public void insert(int data, Consumer<int[]> out) {
+        doInsert(data);
+        doPrint(out);
+   }
+
+    private void doInsert(int data) {
         int width = WcWidth.width(data);
         if(width == -1) {
             //todo: handle control chars...
