@@ -161,7 +161,7 @@ public class BufferInt {
      *
      * @param data text
      */
-    public void insert(int[] data, Consumer<int[]> out) {
+    public void insert(Consumer<int[]> out, int[] data) {
         for (int aData : data)
             doInsert(aData);
 
@@ -192,7 +192,7 @@ public class BufferInt {
      *
      * @param data char
      */
-    public void insert(int data, Consumer<int[]> out) {
+    public void insert(Consumer<int[]> out, int data) {
         doInsert(data);
         doPrint(out);
    }
@@ -475,7 +475,7 @@ public class BufferInt {
      * Delete from cursor position and forwards if delta is > 0
      * @param delta
      */
-    public void delete(int delta, Consumer<int[]> out, int width) {
+    public void delete(Consumer<int[]> out, int delta, int width) {
         if (delta > 0) {
             delta = Math.min(delta, size - cursor);
             System.arraycopy(line, cursor + delta, line, cursor, size - cursor + delta);
@@ -496,51 +496,59 @@ public class BufferInt {
     /**
      * Write a string to the line and update cursor accordingly
      *
-     * @param str string
      * @param out
+     * @param str string
      */
-    public void insert(final String str, Consumer<int[]> out) {
-        insert(Parser.toCodePoints(str), out);
+    public void insert(Consumer<int[]> out, final String str) {
+        insert(out, Parser.toCodePoints(str));
     }
 
     /**
      * Switch case if the current character is a letter.
      */
-    public void changeCase() {
+    public void changeCase(Consumer<int[]> out) {
         if(Character.isLetter(line[cursor])) {
             if(Character.isLowerCase(line[cursor]))
                 line[cursor] = Character.toUpperCase(line[cursor]);
             else
                 line[cursor] = Character.toLowerCase(line[cursor]);
+
+            out.accept(new int[]{line[cursor]});
         }
     }
 
     /**
      * Up case if the current character is a letter
      */
-    public void upCase() {
-        if(Character.isLetter(line[cursor]))
+    public void upCase(Consumer<int[]> out) {
+        if(Character.isLetter(line[cursor])) {
             line[cursor] = Character.toUpperCase(line[cursor]);
+            out.accept(new int[]{line[cursor]});
+        }
     }
 
     /**
      * Lower case if the current character is a letter
      */
-    public void lowCase() {
-        if(Character.isLetter(line[cursor]))
+    public void lowCase(Consumer<int[]> out) {
+        if(Character.isLetter(line[cursor])) {
             line[cursor] = Character.toLowerCase(line[cursor]);
+            out.accept(new int[]{line[cursor]});
+        }
     }
 
     /**
      * Replace the current character
      */
-    public void replace(char rChar) {
-        replace(getCursor(), rChar);
+    public void replace(Consumer<int[]> out, char rChar) {
+        doReplace(out, getCursor(), rChar);
     }
 
-    public void replace(int pos, int rChar) {
-        if(pos > -1 && pos <= size)
+    private void doReplace(Consumer<int[]> out, int pos, int rChar) {
+        if(pos > -1 && pos <= size) {
             line[pos] = rChar;
+            out.accept(new int[]{rChar});
+        }
     }
 
     /**
