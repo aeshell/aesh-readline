@@ -48,8 +48,6 @@ public class BufferIntTest {
         assertEquals(66, buffer.get(1));
         assertEquals(67, buffer.get(2));
 
-        //buffer.print(outConsumer::add, 120);
-
         assertArrayEquals(new int[] {65}, outConsumer.get(0));
         assertArrayEquals(new int[] {66}, outConsumer.get(1));
         assertArrayEquals(new int[] {67}, outConsumer.get(2));
@@ -278,10 +276,12 @@ public class BufferIntTest {
         BufferInt buffer = new BufferInt(new Prompt(": "));
         List<int[]> outConsumer = new ArrayList<>();
         buffer.insert(outConsumer::add, "foo bar");
-        //buffer.replace(outConsumer::add, " gar", 120);
+        outConsumer.clear();
+        buffer.replace(outConsumer::add, " gar", 120);
         assertEquals(" gar", Parser.fromCodePoints(outConsumer.get(3)));
         outConsumer.clear();
         buffer.insert(outConsumer::add, 'd');
+        outConsumer.clear();
         buffer.print(outConsumer::add, 120);
         assertEquals(" gard", Parser.fromCodePoints(outConsumer.get(2)));
     }
@@ -294,6 +294,7 @@ public class BufferIntTest {
         buffer.setMultiLine(true);
         buffer.updateMultiLineBuffer();
         buffer.insert(outConsumer::add, " bar ");
+        outConsumer.clear();
         buffer.print(outConsumer::add, 120);
         assertEquals("> ", Parser.fromCodePoints(outConsumer.get(1)));
         assertEquals(" bar ", Parser.fromCodePoints(outConsumer.get(2)));
@@ -316,19 +317,14 @@ public class BufferIntTest {
         BufferInt buffer = new BufferInt(new Prompt(": "));
         List<int[]> outConsumer = new ArrayList<>();
         buffer.insert(outConsumer::add, "1234567890");
-        buffer.print(outConsumer::add, 5);
         outConsumer.clear();
         buffer.move(outConsumer::add, -10, 5);
-
         assertArrayEquals(new int[] {27,'[',2,'A',27,'[',3,'G'}, outConsumer.get(0));
 
         buffer.insert(outConsumer::add, ' ');
         outConsumer.clear();
         buffer.print(outConsumer::add, 5);
-
-
         assertEquals(" 1234567890", buffer.asString());
-
     }
 
 }

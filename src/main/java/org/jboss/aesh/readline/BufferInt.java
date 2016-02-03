@@ -162,8 +162,7 @@ public class BufferInt {
      * @param data text
      */
     public void insert(Consumer<int[]> out, int[] data) {
-        for (int aData : data)
-            doInsert(aData);
+        doInsert(data);
 
         doPrint(out);
     }
@@ -212,6 +211,29 @@ public class BufferInt {
             deltaChangedAtEndOfBuffer = (size == cursor);
         }
     }
+
+    private void doInsert(int[] data) {
+        boolean gotControlChar = false;
+        for(int i=0; i < data.length; i++) {
+            int width = WcWidth.width(data[i]);
+            if (width == -1) {
+                gotControlChar = true;
+                //todo: handle control chars...
+            }
+        }
+
+        if(!gotControlChar) {
+            if(cursor < size)
+                System.arraycopy(line, cursor, line, cursor + data.length, size - cursor);
+            for(int i=0; i < data.length; i++)
+                line[cursor++] = data[i];
+            size += data.length;
+            delta += data.length;
+
+            deltaChangedAtEndOfBuffer = (size == cursor);
+        }
+    }
+
     /**
      * Move the cursor left if the param is negative, right if its positive.
      *
@@ -394,12 +416,11 @@ public class BufferInt {
      * @param line new buffer line
      * @param width term width
      */
-    /*
     public void replace(Consumer<int[]> out, String line, int width) {
         int tmpDelta = line.length() - size;
         int oldCursor = cursor + prompt.getLength();
         clearLine();
-        insert(Parser.toCodePoints(line));
+        doInsert(Parser.toCodePoints(line));
         delta = tmpDelta;
         deltaChangedAtEndOfBuffer = (cursor == size);
 
@@ -415,7 +436,6 @@ public class BufferInt {
         delta = 0;
         deltaChangedAtEndOfBuffer = true;
     }
-    */
 
     private void replaceLineWhenCursorIsOnLine(Consumer<int[]> out, int width) {
         if(delta >= 0) {
