@@ -309,8 +309,6 @@ public class ShellExample {
                     conn.write("we got: "+event);
                     latch.countDown();
                 });
-                // Subscribe to key events and print them
-
                 try {
                     // Wait until interrupted
                     latch.await();

@@ -114,6 +114,7 @@ public class TerminalConnection implements Connection {
 
     public void startBlockingReader() {
         try {
+            reading = true;
             byte[] bBuf = new byte[1024];
             attributes = terminal.enterRawMode();
             while (reading) {
@@ -135,13 +136,14 @@ public class TerminalConnection implements Connection {
                 getCloseHandler().accept(null);
             close();
         }
+        System.out.println("finished in blocking reader");
     }
 
     public boolean isReading() {
         return reading;
     }
 
-    private void stop() {
+    public void stopReading() {
         reading = false;
     }
 
@@ -214,7 +216,7 @@ public class TerminalConnection implements Connection {
     @Override
     public void close() {
         try {
-            stop();
+            stopReading();
             if (attributes != null && terminal != null) {
                 terminal.setAttributes(attributes);
                 terminal.close();

@@ -19,6 +19,7 @@
  */
 
 import org.jboss.aesh.readline.Readline;
+import org.jboss.aesh.readline.ReadlineBuilder;
 import org.jboss.aesh.tty.terminal.TerminalConnection;
 
 /**
@@ -28,7 +29,7 @@ public class SimpleExample {
 
     public static void main(String... args) {
         TerminalConnection connection = new TerminalConnection();
-        Readline readline = new Readline();
+        Readline readline = ReadlineBuilder.builder().enableHistory(false).build();
         read(connection, readline, "[aesh@rules]$ ");
         connection.startBlockingReader();
     }
