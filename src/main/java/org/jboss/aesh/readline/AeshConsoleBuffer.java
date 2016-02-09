@@ -76,9 +76,10 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
         undoManager = new UndoManager();
         if(history == null)
             this.history = new InMemoryHistory();
-        else
+        else {
             this.history = history;
-        this.history.enable();
+            this.history.enable();
+        }
 
         this.completionHandler = completionHandler;
         this.size = size;

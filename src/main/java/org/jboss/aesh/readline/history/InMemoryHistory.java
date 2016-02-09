@@ -54,7 +54,7 @@ public class InMemoryHistory extends History {
 
     @Override
     public void push(String entry) {
-        if(entry != null && entry.trim().length() > 0) {
+        if(isEnabled() && entry != null && entry.trim().length() > 0) {
             // Don't add repeated lines to the history
             if(historyList.size() > 0 && historyList.get(historyList.size()-1).equals(entry.trim())) {
                 lastId = size();

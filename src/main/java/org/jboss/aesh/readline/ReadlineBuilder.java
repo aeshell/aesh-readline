@@ -39,6 +39,7 @@ public class ReadlineBuilder {
     private CompletionHandler completionHandler;
     private int historySize = 50;
     private String historyFile;
+    private boolean enableHistory = true;
 
     public static ReadlineBuilder builder() {
         return new ReadlineBuilder();
@@ -54,6 +55,11 @@ public class ReadlineBuilder {
 
     public ReadlineBuilder history(History history) {
         this.history = history;
+        return this;
+    }
+
+    public ReadlineBuilder enableHistory(boolean history) {
+        this.enableHistory = history;
         return this;
     }
 
@@ -75,7 +81,10 @@ public class ReadlineBuilder {
     public Readline build() {
         if(editMode == null)
             editMode = EditModeBuilder.builder().create();
-        if(history == null) {
+        if(!enableHistory) {
+            history = null;
+        }
+        else if(history == null) {
             if(historyFile == null || !new File(historyFile).isFile())
                 history = new InMemoryHistory(historySize);
             else
