@@ -325,6 +325,21 @@ public class BufferIntTest {
         outConsumer.clear();
         buffer.print(outConsumer::add, 5);
         assertEquals(" 1234567890", buffer.asString());
+        buffer.move(outConsumer::add, 3, 5);
+        buffer.insert(outConsumer::add, ' ');
+        outConsumer.clear();
+        buffer.print(outConsumer::add, 5);
+        assertEquals(" 123 4567890", buffer.asString());
+        buffer.move(outConsumer::add, 13, 5);
+        buffer.insert(outConsumer::add, ' ');
+        outConsumer.clear();
+        buffer.print(outConsumer::add, 5);
+        assertEquals(" 123 4567890 ", buffer.asString());
+        buffer.move(outConsumer::add, -6, 5);
+        buffer.insert(outConsumer::add, ' ');
+        outConsumer.clear();
+        buffer.print(outConsumer::add, 5);
+        assertEquals(" 123 45 67890 ", buffer.asString());
     }
 
 }
