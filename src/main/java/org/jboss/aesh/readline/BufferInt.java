@@ -21,6 +21,7 @@ package org.jboss.aesh.readline;
 
 import org.jboss.aesh.parser.Parser;
 import org.jboss.aesh.util.ANSI;
+import org.jboss.aesh.util.IntArrayBuilder;
 import org.jboss.aesh.util.LoggerUtil;
 import org.jboss.aesh.util.WcWidth;
 
@@ -416,7 +417,8 @@ public class BufferInt {
      * @param line new buffer line
      * @param width term width
      */
-    public void replace(Consumer<int[]> out, String line, int width) {
+    /*
+    public void replace2(Consumer<int[]> out, String line, int width) {
         int tmpDelta = line.length() - size;
         int oldCursor = cursor + prompt.getLength();
         clearLine();
@@ -436,47 +438,84 @@ public class BufferInt {
         delta = 0;
         deltaChangedAtEndOfBuffer = true;
     }
+    */
+
+    public void replace(Consumer<int[]> out, String line, int width) {
+        int tmpDelta = line.length() - size;
+        int oldCursor = cursor + prompt.getLength();
+        clearLine();
+        doInsert(Parser.toCodePoints(line));
+        delta = tmpDelta;
+        //deltaChangedAtEndOfBuffer = false;
+        deltaChangedAtEndOfBuffer = (cursor == size);
+
+        if(oldCursor > width) {
+            IntArrayBuilder builder = new IntArrayBuilder();
+            int originalRow = oldCursor / width;
+            if (originalRow > 0 && lengthWithPrompt() % width == 0)
+                originalRow--;
+            for (int i = 0; i < originalRow; i++) {
+                if (delta < 0) {
+                    builder.append(ANSI.ERASE_WHOLE_LINE);
+                }
+                builder.append(ANSI.MOVE_LINE_UP);
+            }
+            builder.append(ANSI.CURSOR_START);
+            builder.append(getLine());
+            out.accept(builder.toArray());
+            delta = 0;
+            deltaChangedAtEndOfBuffer = true;
+        }
+        else {
+            replaceLineWhenCursorIsOnLine(out, width);
+            delta = 0;
+            deltaChangedAtEndOfBuffer = true;
+        }
+    }
 
     private void replaceLineWhenCursorIsOnLine(Consumer<int[]> out, int width) {
         if(delta >= 0) {
-            moveCursorToStartAndPrint(out, false);
+            moveCursorToStartAndPrint(out, new IntArrayBuilder(), false);
         }
         else { // delta < 0
             if((lengthWithPrompt()+delta) <= width) {
-                moveCursorToStartAndPrint(out, true);
+                moveCursorToStartAndPrint(out, new IntArrayBuilder(), true);
             }
             else {
                 int numRows = lengthWithPrompt() / width;
                 if(numRows > 0 && lengthWithPrompt() % width == 0)
                     numRows--;
-                clearRowsAndMoveBack(out, numRows);
-                moveCursorToStartAndPrint(out, false);
+                IntArrayBuilder builder = new IntArrayBuilder();
+                clearRowsAndMoveBack(builder, numRows);
+                moveCursorToStartAndPrint(out, builder, false);
             }
         }
     }
 
-    private void clearRowsAndMoveBack(Consumer<int[]> out, int rows) {
+    private void clearRowsAndMoveBack(IntArrayBuilder builder, int rows) {
         for(int i=0; i < rows; i++) {
-            out.accept(ANSI.MOVE_LINE_DOWN);
-            out.accept(ANSI.ERASE_WHOLE_LINE);
+            builder.append(ANSI.MOVE_LINE_DOWN);
+            builder.append(ANSI.ERASE_WHOLE_LINE);
         }
         //move back again
-        out.accept(new int[]{27,'[',(char)rows,'A'});
-
+        builder.append(new int[]{27,'[',(char)rows,'A'});
     }
 
-    private void moveCursorToStartAndPrint(Consumer<int[]> out, boolean clearLine) {
+    private void moveCursorToStartAndPrint(Consumer<int[]> out, IntArrayBuilder builder,
+                                           boolean clearLine) {
         if((prompt.getLength() > 0 && cursor != 0) || delta < 0) {
-            out.accept(ANSI.CURSOR_START);
+            builder.append(ANSI.CURSOR_START);
             if (clearLine)
-                out.accept(ANSI.ERASE_LINE_FROM_CURSOR);
+                builder.append(ANSI.ERASE_LINE_FROM_CURSOR);
         }
         if(prompt.getLength() > 0)
-            out.accept(prompt.getANSI());
+            builder.append(prompt.getANSI());
 
         //dont print out the line if its empty
         if(size > 0)
-            out.accept(getLine());
+            builder.append(getLine());
+
+        out.accept(builder.toArray());
     }
 
     private int[] getMultiLine() {

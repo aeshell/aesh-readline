@@ -41,7 +41,10 @@ public class IntArrayBuilder {
     }
 
     public int[] toArray() {
-        return Arrays.copyOf(data, size);
+        if(size == 0)
+            return new int[]{};
+        else
+            return Arrays.copyOf(data, size);
     }
 
     private void ensureCapacityInternal(int minimumCapacity) {

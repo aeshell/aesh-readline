@@ -107,17 +107,7 @@ public class ANSI {
      * @return ansified string
      */
     public static int[] printAnsi(char... out) {
-        //calculate length of table:
-        int length = 0;
-        for(char c : out) {
-            if(c == '\t') {
-                length += TAB;
-            }
-            else
-                length++;
-        }
-
-        int[] ansi = new int[length+2];
+        int[] ansi = new int[out.length+2];
         ansi[0] = 27;
         ansi[1] = '[';
         int counter = 0;

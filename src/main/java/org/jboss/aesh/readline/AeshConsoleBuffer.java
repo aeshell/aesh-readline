@@ -275,7 +275,7 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
 
             int tmpCurrentRow = currentRow;
             while(tmpCurrentRow < numberofRows) {
-                builder.append(Buffer.printAnsi('B')); //move to the last row
+                builder.append(ANSI.printAnsi('B')); //move to the last row
                 tmpCurrentRow++;
             }
             while(tmpCurrentRow > 0) {
