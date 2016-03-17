@@ -34,17 +34,10 @@ public class ChangeCaseChar implements Action {
 
     @Override
     public void apply(InputProcessor inputProcessor) {
-        if(inputProcessor.getBuffer().getBuffer().getLine().length() >=
+        if(inputProcessor.getBuffer().getBuffer().length() >=
                 inputProcessor.getBuffer().getBuffer().getMultiCursor()) {
             inputProcessor.getBuffer().addActionToUndoStack();
-            char c = inputProcessor.getBuffer().getBuffer().getLine().charAt(inputProcessor.getBuffer().getBuffer().getMultiCursor());
-            if(Character.isUpperCase(c))
-                inputProcessor.getBuffer().getBuffer().replaceChar(Character.toLowerCase(c),
-                        inputProcessor.getBuffer().getBuffer().getMultiCursor());
-            else
-                inputProcessor.getBuffer().getBuffer().replaceChar(Character.toUpperCase(c),
-                        inputProcessor.getBuffer().getBuffer().getMultiCursor());
-            inputProcessor.getBuffer().drawLine();
+            inputProcessor.getBuffer().changeCase();
             inputProcessor.getBuffer().moveCursor(1);
         }
 

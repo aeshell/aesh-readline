@@ -117,7 +117,7 @@ public class SimpleCompletionHandler implements CompletionHandler {
 
             final CompleteOperation co;
             if(aliasHandler == null)
-            co = new CompleteOperation(buffer.getMultiLine(), buffer.getMultiCursor());
+            co = new CompleteOperation(buffer.getAsString(), buffer.getMultiCursor());
             else
                 co = aliasHandler.apply(buffer);
 
@@ -198,19 +198,19 @@ public class SimpleCompletionHandler implements CompletionHandler {
     private void displayCompletion(TerminalString completion, Buffer buffer, InputProcessor inputProcessor,
                                    boolean appendSpace, char separator) {
         //LOGGER.info("completion: "+completion.getCharacters()+" and buffer: "+buffer.getMultiLine());
-        if(completion.getCharacters().startsWith(buffer.getMultiLine())) {
+        if(completion.getCharacters().startsWith(buffer.getAsString())) {
             ActionMapper.mapToAction("backward-kill-word").apply(inputProcessor);
             //consoleBuffer.performAction(new PrevWordAction(buffer.getMultiCursor(), Action.DELETE, EditMode.Mode.EMACS));
-            buffer.write(completion.getCharacters());
+            //buffer.write(completion.getCharacters());
             //inputProcessor.getBuffer().writeString(completion.toString());
 
             //only append space if its an actual complete, not a partial
         }
         else {
-            buffer.write(completion.toString());
+            //buffer.write(completion.toString());
         }
         if(appendSpace) { // && fullCompletion.startsWith(buffer.getLine())) {
-            buffer.write(separator);
+            //buffer.write(separator);
         }
 
         inputProcessor.getBuffer().drawLine(false);

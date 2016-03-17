@@ -39,7 +39,7 @@ import static org.junit.Assert.assertTrue;
 public class ConsoleBufferTest {
 
     private ConsoleBuffer createConsoleBuffer(Connection connection) {
-       return new AeshConsoleBuffer(connection, new Prompt("[aesh@rules]: "), EditModeBuilder.builder().create(),
+       return new AeshConsoleBufferString(connection, new Prompt("[aesh@rules]: "), EditModeBuilder.builder().create(),
                 new InMemoryHistory(50), null, connection.size(), true);
     }
 

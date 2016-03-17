@@ -45,27 +45,26 @@ public class DeletePrevChar implements Action {
 
     private void deleteNoMasking(ConsoleBuffer consoleBuffer) {
         //int cursor = consoleBuffer.getBuffer().getMultiCursor();
-        int cursor = consoleBuffer.getBuffer().getCursor();
+        int cursor = consoleBuffer.getBuffer().getMultiCursor();
         if(cursor > 0) {
-            int lineSize = consoleBuffer.getBuffer().getLine().length();
+            int lineSize = consoleBuffer.getBuffer().length();
             if(cursor > lineSize)
                 cursor = lineSize;
 
             consoleBuffer.addActionToUndoStack();
             consoleBuffer.getPasteManager().addText(new StringBuilder(
-                    consoleBuffer.getBuffer().getLine().substring(cursor - 1, cursor)));
-            consoleBuffer.getBuffer().delete(cursor - 1, cursor);
-            consoleBuffer.moveCursor(-1);
-            consoleBuffer.drawLine();
+                    consoleBuffer.getBuffer().getAsString().substring(cursor - 1, cursor)));
+            consoleBuffer.delete(-1);
+            //consoleBuffer.moveCursor(-1);
+            //consoleBuffer.drawLine();
         }
     }
 
     private void deleteWithMaskEnabled(ConsoleBuffer consoleBuffer) {
-        if(consoleBuffer.getBuffer().getLineNoMask().length() > 0) {
-            consoleBuffer.getBuffer().delete(consoleBuffer.getBuffer().getLineNoMask().length() - 1,
-                    consoleBuffer.getBuffer().getLineNoMask().length());
-            consoleBuffer.moveCursor(consoleBuffer.getBuffer().getLineNoMask().length());
-            consoleBuffer.drawLine();
+        if(consoleBuffer.getBuffer().length() > 0) {
+            consoleBuffer.delete(-1);
+            consoleBuffer.moveCursor(consoleBuffer.getBuffer().length());
+            //consoleBuffer.drawLine();
         }
     }
 }

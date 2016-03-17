@@ -156,7 +156,7 @@ public class Readline {
             //LOGGER.info("got event: "+event);
             //ctrl-d
             if (event.length() == 1) {
-                if (event.getCodePointAt(0) == 4 && getBuffer().getBuffer().getLine().length() == 0) {
+                if (event.getCodePointAt(0) == 4 && getBuffer().getBuffer().length() == 0) {
                     finish(null);
                     return;
                 }

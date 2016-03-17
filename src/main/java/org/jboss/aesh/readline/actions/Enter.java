@@ -44,13 +44,13 @@ public class Enter implements Action {
         boolean isCurrentLineEnding = true;
         if(!consoleBuffer.getBuffer().isMasking()) {// dont push to history if masking
             //dont push lines that end with \ to history
-            if(consoleBuffer.getBuffer().getLine().endsWith(ENDS_WITH_BACKSLASH)) {
+            if(consoleBuffer.getBuffer().getAsString().endsWith(ENDS_WITH_BACKSLASH)) {
                 consoleBuffer.getBuffer().setMultiLine(true);
                 consoleBuffer.getBuffer().updateMultiLineBuffer();
                 inputProcessor.getBuffer().writeOut(Config.CR);
                 isCurrentLineEnding = false;
             }
-            else if(Parser.doesStringContainOpenQuote(consoleBuffer.getBuffer().getMultiLine())) {
+            else if(Parser.doesStringContainOpenQuote(consoleBuffer.getBuffer().getAsString())) {
                 consoleBuffer.getBuffer().setMultiLine(true);
                 consoleBuffer.getBuffer().updateMultiLineBuffer();
                 inputProcessor.getBuffer().writeOut(Config.CR);
@@ -58,22 +58,22 @@ public class Enter implements Action {
             }
             else if( inputProcessor.getBuffer().getHistory().isEnabled()) {
                 if(consoleBuffer.getBuffer().isMultiLine())
-                   inputProcessor.getBuffer().getHistory().push(consoleBuffer.getBuffer().getMultiLineBuffer() + consoleBuffer.getBuffer().getLine());
+                   inputProcessor.getBuffer().getHistory().push(consoleBuffer.getBuffer().getAsString());
                 else
-                    inputProcessor.getBuffer().getHistory().push(consoleBuffer.getBuffer().getLine());
+                    inputProcessor.getBuffer().getHistory().push(consoleBuffer.getBuffer().getAsString());
             }
         }
 
         if(isCurrentLineEnding)
-            consoleBuffer.moveCursor(consoleBuffer.getBuffer().getLine().length());
+            consoleBuffer.moveCursor(consoleBuffer.getBuffer().length());
         //consoleBuffer.writeString(Config.getLineSeparator());
 
         String result;
         if(consoleBuffer.getBuffer().isMultiLine()) {
-            result = consoleBuffer.getBuffer().getMultiLineBuffer() + consoleBuffer.getBuffer().getLineNoMask();
+            result = consoleBuffer.getBuffer().getAsString();
         }
         else
-            result = consoleBuffer.getBuffer().getLineNoMask();
+            result = consoleBuffer.getBuffer().getAsString();
         //search = null;
         if(isCurrentLineEnding) {
             consoleBuffer.getBuffer().setMultiLine(false);

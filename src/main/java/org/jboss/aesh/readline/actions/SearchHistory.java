@@ -133,8 +133,8 @@ abstract class SearchHistory implements SearchAction {
                case SEARCH_NOT_STARTED:
                    status = Status.SEARCH_PREV;
                    inputProcessor.getBuffer().getHistory().setSearchDirection(SearchDirection.REVERSE);
-                   if(inputProcessor.getBuffer().getBuffer().getLine().length() > 0) {
-                       searchArgument = new StringBuilder( inputProcessor.getBuffer().getBuffer().getLine());
+                   if(inputProcessor.getBuffer().getBuffer().length() > 0) {
+                       searchArgument = new StringBuilder( inputProcessor.getBuffer().getBuffer().getAsString());
                        searchResult = inputProcessor.getBuffer().getHistory().search(searchArgument.toString());
                    }
                    break;
@@ -149,7 +149,7 @@ abstract class SearchHistory implements SearchAction {
                        inputProcessor.getBuffer().moveCursor(-inputProcessor.getBuffer().getBuffer().getMultiCursor());
                        inputProcessor.getBuffer().setBufferLine( searchResult);
                        inputProcessor.getBuffer().drawLine();
-                       inputProcessor.getBuffer().getHistory().push(inputProcessor.getBuffer().getBuffer().getLineNoMask());
+                       inputProcessor.getBuffer().getHistory().push(inputProcessor.getBuffer().getBuffer().getLine());
                        inputProcessor.getBuffer().getBuffer().reset();
                        inputProcessor.setReturnValue(searchResult);
                        break;
@@ -232,7 +232,7 @@ abstract class SearchHistory implements SearchAction {
     //TODO: depending on specific actions, the cursor should be moved to a correct spot
     private void moveCursorAtExit(InputProcessor inputProcessor) {
         if(status == Status.SEARCH_MOVE_RIGHT)
-            inputProcessor.getBuffer().moveCursor(inputProcessor.getBuffer().getBuffer().getLine().length());
+            inputProcessor.getBuffer().moveCursor(inputProcessor.getBuffer().getBuffer().length());
     }
 
  }

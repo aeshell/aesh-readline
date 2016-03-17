@@ -19,7 +19,6 @@
  */
 package org.jboss.aesh.readline.actions;
 
-import org.jboss.aesh.readline.Buffer;
 import org.jboss.aesh.readline.InputProcessor;
 import org.jboss.aesh.readline.Action;
 import org.jboss.aesh.util.ANSI;
@@ -37,7 +36,7 @@ public class Clear implements Action {
     public void apply(InputProcessor inputProcessor) {
         inputProcessor.getBuffer().writeOut(ANSI.CLEAR_SCREEN);
         //move cursor to correct position
-        inputProcessor.getBuffer().writeChars(Buffer.printAnsi("1;1H"));
+        inputProcessor.getBuffer().writeChars(ANSI.printAnsi("1;1H"));
         //then write prompt
         inputProcessor.getBuffer().getBuffer().reset();
         inputProcessor.getBuffer().getUndoManager().clear();

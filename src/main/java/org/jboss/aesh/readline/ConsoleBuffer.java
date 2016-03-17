@@ -74,6 +74,14 @@ public interface ConsoleBuffer {
 
     void insertBufferLine(String insert, int position);
 
+    void delete(int delta);
+
+    void upCase();
+
+    void downCase();
+
+    void changeCase();
+
     /**
      * Clear an ansi terminal.
      * Set includeBuffer to true if the current buffer should be
