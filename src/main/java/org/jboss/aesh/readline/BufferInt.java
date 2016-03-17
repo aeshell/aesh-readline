@@ -462,9 +462,10 @@ public class BufferInt {
                 }
                 builder.append(ANSI.MOVE_LINE_UP);
             }
-            builder.append(ANSI.CURSOR_START);
-            builder.append(getLine());
-            out.accept(builder.toArray());
+            //builder.append(ANSI.CURSOR_START);
+            //builder.append(getLine());
+            //out.accept(builder.toArray());
+            moveCursorToStartAndPrint(out, builder, false);
             delta = 0;
             deltaChangedAtEndOfBuffer = true;
         }

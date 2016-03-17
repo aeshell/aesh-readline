@@ -398,6 +398,10 @@ public class BufferIntTest {
                 Arrays.copyOfRange(outConsumer.get(0), 12, 16));
         assertArrayEquals(ANSI.CURSOR_START,
                 Arrays.copyOfRange(outConsumer.get(0), 16, 19));
+
+        assertEquals(": foo",
+                Parser.fromCodePoints(Arrays.copyOfRange(outConsumer.get(0),
+                        outConsumer.get(0).length-5, outConsumer.get(0).length)));
     }
 
     @Test
