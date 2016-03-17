@@ -117,10 +117,12 @@ public class BufferIntTest {
         buffer.insert(outConsumer::add, "foo bar");
         buffer.insert(outConsumer::add, " ");
         buffer.insert(outConsumer::add, "foo bar");
-        assertEquals(": ", Parser.fromCodePoints(outConsumer.get(0)));
-        assertEquals("foo bar", Parser.fromCodePoints(outConsumer.get(1)));
-        assertEquals(" ", Parser.fromCodePoints(outConsumer.get(2)));
-        assertEquals("foo bar", Parser.fromCodePoints(outConsumer.get(3)));
+        assertEquals(": ",
+                Parser.fromCodePoints(Arrays.copyOfRange(outConsumer.get(0), 0, 2 )));
+        assertEquals("foo bar",
+                Parser.fromCodePoints(Arrays.copyOfRange(outConsumer.get(0), 2, 9 )));
+        assertEquals(" ", Parser.fromCodePoints(outConsumer.get(1)));
+        assertEquals("foo bar", Parser.fromCodePoints(outConsumer.get(2)));
 
     }
 
@@ -396,6 +398,32 @@ public class BufferIntTest {
                 Arrays.copyOfRange(outConsumer.get(0), 12, 16));
         assertArrayEquals(ANSI.CURSOR_START,
                 Arrays.copyOfRange(outConsumer.get(0), 16, 19));
+    }
+
+    @Test
+    public void disablePrompt() {
+        BufferInt buffer = new BufferInt(new Prompt(": "));
+        List<int[]> outConsumer = new ArrayList<>();
+        buffer.insert(outConsumer::add, "foo");
+
+        assertEquals(": foo",
+                Parser.fromCodePoints(Arrays.copyOfRange(outConsumer.get(0),
+                        outConsumer.get(0).length-5, outConsumer.get(0).length )));
+
+        buffer.clear();
+        buffer.insert(outConsumer::add, "foo");
+
+        assertEquals(": foo",
+                Parser.fromCodePoints(Arrays.copyOfRange(outConsumer.get(0),
+                        outConsumer.get(0).length-5, outConsumer.get(0).length )));
+
+        buffer.clear();
+        buffer.disablePrompt(true);
+        buffer.insert(outConsumer::add, "foo");
+
+        assertEquals("foo",
+                Parser.fromCodePoints(Arrays.copyOfRange(outConsumer.get(0),
+                        outConsumer.get(0).length-3, outConsumer.get(0).length )));
 
     }
 

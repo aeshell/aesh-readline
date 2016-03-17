@@ -147,7 +147,7 @@ public class BufferInt {
             multiLineBuffer = Arrays.copyOf(multiLineBuffer, size);
             System.arraycopy(line, 0, multiLineBuffer, size, originalSize);
         }
-        clearLine();
+        clear();
         prompt = new Prompt("> ");
         cursor = 0;
         size = 0;
@@ -170,19 +170,21 @@ public class BufferInt {
 
     private void doPrint(Consumer<int[]> out) {
         //print out prompt first
+        IntArrayBuilder builder = new IntArrayBuilder();
         if(size == delta && prompt.getLength() > 0)
-            out.accept(prompt.getANSI());
+            builder.append(prompt.getANSI());
 
         if(deltaChangedAtEndOfBuffer) {
             if(delta == 1)
-                out.accept(new int[]{line[cursor-1]});
+                builder.append(new int[]{line[cursor-1]});
             else
-                out.accept( Arrays.copyOfRange(line, cursor-delta, cursor));
+                builder.append( Arrays.copyOfRange(line, cursor-delta, cursor));
         }
         else {
-            out.accept(Arrays.copyOfRange(line, cursor-delta, size));
+            builder.append(Arrays.copyOfRange(line, cursor-delta, size));
         }
 
+        out.accept(builder.toArray());
         delta = 0;
         deltaChangedAtEndOfBuffer = true;
     }
@@ -396,7 +398,7 @@ public class BufferInt {
         return Arrays.copyOf(line, size);
     }
 
-    private void clearLine() {
+    public void clear() {
         Arrays.fill(this.line, 0, size, 0);
         cursor = 0;
         size = 0;
@@ -421,7 +423,7 @@ public class BufferInt {
     public void replace2(Consumer<int[]> out, String line, int width) {
         int tmpDelta = line.length() - size;
         int oldCursor = cursor + prompt.getLength();
-        clearLine();
+        clear();
         doInsert(Parser.toCodePoints(line));
         delta = tmpDelta;
         deltaChangedAtEndOfBuffer = (cursor == size);
@@ -443,7 +445,7 @@ public class BufferInt {
     public void replace(Consumer<int[]> out, String line, int width) {
         int tmpDelta = line.length() - size;
         int oldCursor = cursor + prompt.getLength();
-        clearLine();
+        clear();
         doInsert(Parser.toCodePoints(line));
         delta = tmpDelta;
         //deltaChangedAtEndOfBuffer = false;
