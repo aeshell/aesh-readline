@@ -117,6 +117,13 @@ public class BufferInt {
         return disablePrompt;
     }
 
+    public void setPrompt(Prompt prompt, Consumer<int[]> out, int width) {
+        if(prompt != null) {
+            delta =  prompt.getLength() - this.prompt.getLength();
+            this.prompt = prompt;
+            print(out, width);
+        }
+    }
     public int length() {
         if(prompt.isMasking() && prompt.getMask() == 0)
             return 1;
@@ -164,7 +171,16 @@ public class BufferInt {
      */
     public void insert(Consumer<int[]> out, int[] data) {
         doInsert(data);
+        doPrint(out);
+    }
 
+    /**
+     * Insert text at cursor position
+     *
+     * @param data text
+     */
+    public void insert(Consumer<int[]> out, char[] data) {
+        doInsert(data);
         doPrint(out);
     }
 
@@ -224,17 +240,45 @@ public class BufferInt {
                 //todo: handle control chars...
             }
         }
-
         if(!gotControlChar) {
-            if(cursor < size)
-                System.arraycopy(line, cursor, line, cursor + data.length, size - cursor);
-            for(int i=0; i < data.length; i++)
-                line[cursor++] = data[i];
-            size += data.length;
-            delta += data.length;
-
-            deltaChangedAtEndOfBuffer = (size == cursor);
+            doActualInsert(data);
         }
+    }
+
+    private void doInsert(char[] data) {
+        boolean gotControlChar = false;
+        for(int i=0; i < data.length; i++) {
+            int width = WcWidth.width(data[i]);
+            if (width == -1) {
+                gotControlChar = true;
+                //todo: handle control chars...
+            }
+        }
+        if(!gotControlChar) {
+            doActualInsert(data);
+        }
+    }
+
+    private void doActualInsert(int[] data) {
+        if(cursor < size)
+            System.arraycopy(line, cursor, line, cursor + data.length, size - cursor);
+        for(int i=0; i < data.length; i++)
+            line[cursor++] = data[i];
+        size += data.length;
+        delta += data.length;
+
+        deltaChangedAtEndOfBuffer = (size == cursor);
+    }
+
+    private void doActualInsert(char[] data) {
+        if(cursor < size)
+            System.arraycopy(line, cursor, line, cursor + data.length, size - cursor);
+        for(int i=0; i < data.length; i++)
+            line[cursor++] = data[i];
+        size += data.length;
+        delta += data.length;
+
+        deltaChangedAtEndOfBuffer = (size == cursor);
     }
 
     /**
@@ -462,9 +506,6 @@ public class BufferInt {
                 }
                 builder.append(ANSI.MOVE_LINE_UP);
             }
-            //builder.append(ANSI.CURSOR_START);
-            //builder.append(getLine());
-            //out.accept(builder.toArray());
             moveCursorToStartAndPrint(out, builder, false);
             delta = 0;
             deltaChangedAtEndOfBuffer = true;
