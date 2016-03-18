@@ -120,7 +120,7 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
 
     @Override
     public void writeChar(char input) {
-        buffer.insert(connection.stdoutHandler(), input);
+        buffer.insert(connection.stdoutHandler(), input, getSize().getWidth());
     }
 
     @Override
@@ -135,22 +135,22 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
 
     @Override
     public void writeChars(int[] input) {
-        buffer.insert(connection.stdoutHandler(), input);
+        buffer.insert(connection.stdoutHandler(), input, getSize().getWidth());
     }
 
     @Override
     public void writeChars(char[] input) {
-        buffer.insert(connection.stdoutHandler(), input);
+        buffer.insert(connection.stdoutHandler(), input, getSize().getWidth());
     }
 
     @Override
     public void writeString(String input) {
-        buffer.insert(connection.stdoutHandler(), input);
+        buffer.insert(connection.stdoutHandler(), input, getSize().getWidth());
     }
 
     @Override
     public void displayPrompt() {
-        buffer.print(connection.stdoutHandler(), getSize().getWidth());
+        //buffer.print(connection.stdoutHandler(), getSize().getWidth());
     }
 
     @Override
@@ -165,7 +165,7 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
 
     @Override
     public void insertBufferLine(String insert, int position) {
-        buffer.insert(connection.stdoutHandler(), insert);
+        buffer.insert(connection.stdoutHandler(), insert, getSize().getWidth());
     }
 
     @Override

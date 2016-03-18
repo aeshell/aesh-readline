@@ -21,6 +21,7 @@
 import org.jboss.aesh.readline.Readline;
 import org.jboss.aesh.readline.ReadlineBuilder;
 import org.jboss.aesh.tty.terminal.TerminalConnection;
+import org.jboss.aesh.util.LoggerUtil;
 
 /**
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
@@ -28,6 +29,7 @@ import org.jboss.aesh.tty.terminal.TerminalConnection;
 public class SimpleExample {
 
     public static void main(String... args) {
+        LoggerUtil.doLog();
         TerminalConnection connection = new TerminalConnection();
         Readline readline = ReadlineBuilder.builder().enableHistory(false).build();
         read(connection, readline, "[aesh@rules]$ ");

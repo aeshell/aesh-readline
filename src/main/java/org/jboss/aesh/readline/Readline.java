@@ -218,7 +218,7 @@ public class Readline {
             });
 
             //last, display prompt
-            consoleBuffer.displayPrompt();
+            //consoleBuffer.displayPrompt();
         }
 
         private void resize(Size size) {

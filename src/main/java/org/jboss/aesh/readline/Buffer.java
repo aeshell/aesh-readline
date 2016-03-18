@@ -50,6 +50,8 @@ public class Buffer {
     private boolean disablePrompt = false;
     private boolean multiLine = false;
     private int[] multiLineBuffer = new int[0];
+    private boolean isPromptDisplayed = false;
+
 
     public Buffer() {
         line = new int[1024];
@@ -186,9 +188,9 @@ public class Buffer {
      *
      * @param data text
      */
-    public void insert(Consumer<int[]> out, int[] data) {
+    public void insert(Consumer<int[]> out, int[] data, int width) {
         doInsert(data);
-        printInsertedData(out);
+        printInsertedData(out, width);
     }
 
     /**
@@ -196,16 +198,18 @@ public class Buffer {
      *
      * @param data text
      */
-    public void insert(Consumer<int[]> out, char[] data) {
+    public void insert(Consumer<int[]> out, char[] data, int width) {
         doInsert(data);
-        printInsertedData(out);
+        printInsertedData(out, width);
     }
 
-    private void printInsertedData(Consumer<int[]> out) {
+    private void printInsertedData(Consumer<int[]> out, int width) {
         //print out prompt first
         IntArrayBuilder builder = new IntArrayBuilder();
-        if(size == delta && prompt.getLength() > 0)
+        if(size == delta && !isPromptDisplayed && prompt.getLength() > 0) {
             builder.append(prompt.getANSI());
+            isPromptDisplayed = true;
+        }
 
         if(deltaChangedAtEndOfBuffer) {
             if(delta == 1)
@@ -215,6 +219,11 @@ public class Buffer {
         }
         else {
             builder.append(Arrays.copyOfRange(line, cursor-delta, size));
+        }
+
+        //pad if we are at the end of the terminal
+        if((size + prompt.getLength()+1) % width == 1) {
+            builder.append(new int[]{32, 13});
         }
 
         out.accept(builder.toArray());
@@ -227,9 +236,9 @@ public class Buffer {
      *
      * @param data char
      */
-    public void insert(Consumer<int[]> out, int data) {
+    public void insert(Consumer<int[]> out, int data, int width) {
         doInsert(data);
-        printInsertedData(out);
+        printInsertedData(out, width);
    }
 
     private void doInsert(int data) {
@@ -319,7 +328,7 @@ public class Buffer {
      * @param viMode edit mode (vi or emacs)
      */
     public void move(Consumer<int[]> out, int move, int termWidth, boolean viMode) {
-        //LOGGER.info("moving: "+move+", width: "+termWidth+", buffer: "+getLine());
+        LOGGER.info("moving: "+move+", width: "+termWidth+", buffer: "+getLine());
         move = moveCursor(move, viMode);
 
         int currentRow = (getCursorWithPrompt() / (termWidth));
@@ -363,9 +372,12 @@ public class Buffer {
         //staying at the same row
         else {
             LOGGER.info("staying at same row "+move);
-            if(move < 0)
+            if(move < 0) {
+                LOGGER.info("returning: " + Arrays.toString(moveToColumn(Math.abs(move), 'D')));
+                //out.accept(new int[]{'\b'});
                 out.accept(moveToColumn(Math.abs(move), 'D'));
                 //return printAnsi(Math.abs(move)+"D");
+            }
 
             else if(move > 0) {
                 LOGGER.info("returning: "+ Arrays.toString( moveToColumn(move,'C')));
@@ -377,20 +389,20 @@ public class Buffer {
 
     private int[] moveToColumn(int column, char direction) {
         int[] out = new int[4];
-        out[0] = 27;
+        out[0] = '\033';
         out[1] = '[';
-        out[2] = column;
+        out[2] = '1';
         out[3] = direction;
         return out;
     }
 
     private int[] moveToRowAndColumn(int row, char rowCommand, int column) {
         int[] out = new int[8];
-        out[0] = 27;
+        out[0] = '\033';
         out[1] = '[';
         out[2] = row;
         out[3] = rowCommand;
-        out[4] = 27;
+        out[4] = '\033';
         out[5] = '[';
         out[6] = column;
         out[7] = 'G';
@@ -463,8 +475,25 @@ public class Buffer {
         Arrays.fill(this.line, 0, size, 0);
         cursor = 0;
         size = 0;
+        isPromptDisplayed = false;
     }
 
+    /**
+     * If delta > 0 * print from cursor
+     *   if keepCursor, move cursor back to previous position
+     * if delta < 0
+     *   if deltaChangedAtEndOf buffer {
+     *       if delta == -1 {
+     *         clear line from cursor
+     *         move cursor back
+     *       }
+     *       else if cursor + delta > width {
+     *           check if we need to delete more than the current line
+     *       }
+     *   }
+     * @param out
+     * @param width
+     */
     public void print(Consumer<int[]> out, int width) {
         if(cursor < width)
             replaceLineWhenCursorIsOnLine(out, width);
@@ -563,7 +592,7 @@ public class Buffer {
             builder.append(ANSI.ERASE_WHOLE_LINE);
         }
         //move back again
-        builder.append(new int[]{27,'[',(char)rows,'A'});
+        builder.append(new int[]{'\033','[',(char)rows,'A'});
     }
 
     private void moveCursorToStartAndPrint(Consumer<int[]> out, IntArrayBuilder builder,
@@ -623,8 +652,8 @@ public class Buffer {
      * @param out
      * @param str string
      */
-    public void insert(Consumer<int[]> out, final String str) {
-        insert(out, Parser.toCodePoints(str));
+    public void insert(Consumer<int[]> out, final String str, int width) {
+        insert(out, Parser.toCodePoints(str), width);
     }
 
     /**
