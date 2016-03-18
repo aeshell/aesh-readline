@@ -188,7 +188,7 @@ public class Buffer {
      */
     public void insert(Consumer<int[]> out, int[] data) {
         doInsert(data);
-        doPrint(out);
+        printInsertedData(out);
     }
 
     /**
@@ -198,10 +198,10 @@ public class Buffer {
      */
     public void insert(Consumer<int[]> out, char[] data) {
         doInsert(data);
-        doPrint(out);
+        printInsertedData(out);
     }
 
-    private void doPrint(Consumer<int[]> out) {
+    private void printInsertedData(Consumer<int[]> out) {
         //print out prompt first
         IntArrayBuilder builder = new IntArrayBuilder();
         if(size == delta && prompt.getLength() > 0)
@@ -229,7 +229,7 @@ public class Buffer {
      */
     public void insert(Consumer<int[]> out, int data) {
         doInsert(data);
-        doPrint(out);
+        printInsertedData(out);
    }
 
     private void doInsert(int data) {
@@ -466,7 +466,11 @@ public class Buffer {
     }
 
     public void print(Consumer<int[]> out, int width) {
-        replaceLineWhenCursorIsOnLine(out, width);
+        if(cursor < width)
+            replaceLineWhenCursorIsOnLine(out, width);
+        else {
+
+        }
         delta = 0;
         deltaChangedAtEndOfBuffer = true;
     }

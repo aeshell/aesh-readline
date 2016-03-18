@@ -217,7 +217,7 @@ public class TestConnection implements Connection {
         }
 
         public String getBuffer() {
-            return getInputProcessor().getBuffer().getBuffer().getMultiLine();
+            return getInputProcessor().getBuffer().getBuffer().getAsString();
         }
 
     }
