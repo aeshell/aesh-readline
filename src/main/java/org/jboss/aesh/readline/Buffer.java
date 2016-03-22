@@ -710,4 +710,23 @@ public class Buffer {
     public String asString() {
         return Parser.fromCodePoints(getMultiLine());
     }
+
+    /**
+     * we assume that value is > 0
+     * @param value
+     * @return
+     */
+    private int[] intToAsciiInts(int value) {
+        int length = 1;
+        //very simple way of getting the length
+        if(value > 9)
+            length = 2;
+        else if(value > 99)
+            length = 3;
+        else if(value > 999)
+            length = 4;
+
+
+        return null;
+    }
 }
