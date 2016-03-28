@@ -203,33 +203,6 @@ public class Buffer {
         printInsertedData(out, width);
     }
 
-    private void printInsertedData(Consumer<int[]> out, int width) {
-        //print out prompt first
-        IntArrayBuilder builder = new IntArrayBuilder();
-        if(size == delta && !isPromptDisplayed && prompt.getLength() > 0) {
-            builder.append(prompt.getANSI());
-            isPromptDisplayed = true;
-        }
-
-        if(deltaChangedAtEndOfBuffer) {
-            if(delta == 1)
-                builder.append(new int[]{line[cursor-1]});
-            else
-                builder.append( Arrays.copyOfRange(line, cursor-delta, cursor));
-        }
-        else {
-            builder.append(Arrays.copyOfRange(line, cursor-delta, size));
-        }
-
-        //pad if we are at the end of the terminal
-        if((size + prompt.getLength()+1) % width == 1) {
-            builder.append(new int[]{32, 13});
-        }
-
-        out.accept(builder.toArray());
-        delta = 0;
-        deltaChangedAtEndOfBuffer = true;
-    }
 
     /**
      * Insert at cursor position.
@@ -329,7 +302,7 @@ public class Buffer {
      */
     public void move(Consumer<int[]> out, int move, int termWidth, boolean viMode) {
         LOGGER.info("moving: "+move+", width: "+termWidth+", buffer: "+getLine());
-        move = moveCursor(move, viMode);
+        move = calulateActualMovement(move, viMode);
 
         int currentRow = (getCursorWithPrompt() / (termWidth));
         if(currentRow > 0 && getCursorWithPrompt() % termWidth == 0)
@@ -341,10 +314,12 @@ public class Buffer {
 
         int row = newRow - currentRow;
 
+        LOGGER.info("currentRow: "+currentRow+", newRow: "+newRow+", row: "+row+", cursor: "+cursor);
+
         cursor = cursor + move;
 
         // 0 Masking separates the UI cursor position from the 'real' cursor position.
-        // Cursor movement still has to occur, via moveCursor and setCursor above,
+        // Cursor movement still has to occur, via calulateActualMovement and setCursor above,
         // to put new characters in the correct location in the invisible line,
         // but this method should always return an empty character so the UI cursor does not move.
         if(prompt.isMasking() && prompt.getMask() == 0){
@@ -355,7 +330,7 @@ public class Buffer {
         if(cursor == 0 && getCursorWithPrompt() > 0)
             cursor = termWidth;
         if(row > 0) {
-            out.accept(moveToRowAndColumn(row, 'B', cursor));
+            out.accept(moveNumberOfColumnsAndRows(row, 'B', cursor));
 
             //StringBuilder sb = new StringBuilder();
             //sb.append(printAnsi(row+"B")).append(printAnsi(cursor+"G"));
@@ -366,47 +341,80 @@ public class Buffer {
             //check if we are on the "first" row:
             //StringBuilder sb = new StringBuilder();
             //sb.append(printAnsi(Math.abs(row)+"A")).append(printAnsi(cursor+"G"));
-            out.accept(moveToRowAndColumn(Math.abs(row), 'A', cursor));
+            LOGGER.info("moving up a row: "+Arrays.toString(moveNumberOfColumnsAndRows(Math.abs(row), 'A', cursor)));
+            out.accept(moveNumberOfColumnsAndRows(Math.abs(row), 'A', cursor));
             //return sb.toString().toCharArray();
         }
         //staying at the same row
         else {
             LOGGER.info("staying at same row "+move);
             if(move < 0) {
-                LOGGER.info("returning: " + Arrays.toString(moveToColumn(Math.abs(move), 'D')));
+                LOGGER.info("returning: " + Arrays.toString(moveNumberOfColumns(Math.abs(move), 'D')));
                 //out.accept(new int[]{'\b'});
-                out.accept(moveToColumn(Math.abs(move), 'D'));
+                out.accept(moveNumberOfColumns(Math.abs(move), 'D'));
                 //return printAnsi(Math.abs(move)+"D");
             }
 
             else if(move > 0) {
-                LOGGER.info("returning: "+ Arrays.toString( moveToColumn(move,'C')));
+                LOGGER.info("returning: "+ Arrays.toString( moveNumberOfColumns(move,'C')));
                 //return printAnsi(move + "C");
-                out.accept(moveToColumn(move, 'C'));
+                out.accept(moveNumberOfColumns(move, 'C'));
             }
         }
     }
 
-    private int[] moveToColumn(int column, char direction) {
-        int[] out = new int[4];
-        out[0] = '\033';
-        out[1] = '[';
-        out[2] = '1';
-        out[3] = direction;
-        return out;
+    private int[] moveNumberOfColumns(int column, char direction) {
+        LOGGER.info("trying to move: "+column+" columns in direction: "+direction);
+        if(column < 10) {
+            int[] out = new int[4];
+            out[0] = 27; // esc
+            out[1] = '['; // [
+            out[2] = 48 + column;
+            out[3] = direction;
+            return out;
+        }
+        else {
+            int[] asciiColumn = intToAsciiInts(column);
+            int[] out = new int[3+asciiColumn.length];
+            out[0] = 27; // esc
+            out[1] = '['; // [
+            for(int i=0; i < asciiColumn.length; i++)
+                out[2+i] = asciiColumn[i];
+            out[out.length-1] = direction;
+            return out;
+        }
     }
 
-    private int[] moveToRowAndColumn(int row, char rowCommand, int column) {
-        int[] out = new int[8];
-        out[0] = '\033';
-        out[1] = '[';
-        out[2] = row;
-        out[3] = rowCommand;
-        out[4] = '\033';
-        out[5] = '[';
-        out[6] = column;
-        out[7] = 'G';
-        return out;
+    private int[] moveNumberOfColumnsAndRows(int row, char rowCommand, int column) {
+        if(row < 10 && column < 10) {
+            int[] out = new int[8];
+            out[0] = 27; //esc, \033
+            out[1] = '[';
+            out[2] = 48 + row;
+            out[3] = rowCommand;
+            out[4] = 27;
+            out[5] = '[';
+            out[6] = 48 + column;
+            out[7] = 'G';
+            return out;
+        }
+        else {
+            int[] asciiRow = intToAsciiInts(row);
+            int[] asciiColumn = intToAsciiInts(column);
+            LOGGER.info("column: "+column+", transformed to: "+Arrays.toString(asciiColumn));
+            int[] out = new int[6+asciiColumn.length+asciiRow.length];
+            out[0] = 27; //esc, \033
+            out[1] = '[';
+            for(int i=0; i < asciiRow.length; i++)
+                out[2+i] = asciiRow[i];
+            out[2+asciiRow.length] = rowCommand;
+            out[3+asciiRow.length] = 27;
+            out[4+asciiRow.length] = '[';
+            for(int i=0; i < asciiColumn.length; i++)
+                out[5+asciiRow.length+i] = asciiColumn[i];
+            out[out.length-1] = 'G';
+            return out;
+        }
     }
 
 
@@ -419,7 +427,7 @@ public class Buffer {
      * to emacs movement
      * @return adjusted movement
      */
-    private int moveCursor(final int move, boolean viMode) {
+    private int calulateActualMovement(final int move, boolean viMode) {
         // cant move to a negative value
         if(getCursor() == 0 && move <=0 )
             return 0;
@@ -495,11 +503,56 @@ public class Buffer {
      * @param width
      */
     public void print(Consumer<int[]> out, int width) {
-        if(cursor < width)
-            replaceLineWhenCursorIsOnLine(out, width);
+        if(delta >= 0)
+            printInsertedData(out, width);
         else {
 
         }
+    }
+
+    private void printInsertedData(Consumer<int[]> out, int width) {
+        //print out prompt first
+        IntArrayBuilder builder = new IntArrayBuilder();
+        if(size == delta && !isPromptDisplayed && prompt.getLength() > 0) {
+            builder.append(prompt.getANSI());
+            isPromptDisplayed = true;
+        }
+
+        if(deltaChangedAtEndOfBuffer) {
+            if(delta == 1)
+                builder.append(new int[]{line[cursor-1]});
+            else
+                builder.append( Arrays.copyOfRange(line, cursor-delta, cursor));
+        }
+        else {
+            builder.append(Arrays.copyOfRange(line, cursor-delta, size));
+        }
+
+        //pad if we are at the end of the terminal
+        if((size + prompt.getLength()+1) % width == 1) {
+            builder.append(new int[]{32, 13});
+        }
+        //make sure we sync the cursor back
+        if(!deltaChangedAtEndOfBuffer) {
+            //if cursor and and of buffer is on the same line:
+            LOGGER.info("syncing cursor, size: "+size+", cursor:"+cursor);
+            LOGGER.info("size % width: "+(size / width)+" cursor % width: "+(cursor / width));
+            if(size / width == cursor / width) {
+                builder.append(moveNumberOfColumns(size-cursor, 'D'));
+            }
+            //if cursor and enf of buffer is on different lines, we need to move the cursor
+            else {
+                int numLines = (size / width) - (cursor / width);
+                int sameLine = size - (width * numLines);
+                if(sameLine < cursor)
+                    builder.append(moveNumberOfColumns(cursor-sameLine, 'C'));
+                else
+                    builder.append(moveNumberOfColumns(cursor-sameLine, 'D'));
+            }
+        }
+
+        LOGGER.info("sending: "+Arrays.toString(builder.toArray()));
+        out.accept(builder.toArray());
         delta = 0;
         deltaChangedAtEndOfBuffer = true;
     }
@@ -513,29 +566,6 @@ public class Buffer {
      * @param line new buffer line
      * @param width term width
      */
-    /*
-    public void replace2(Consumer<int[]> out, String line, int width) {
-        int tmpDelta = line.length() - size;
-        int oldCursor = cursor + prompt.getLength();
-        clear();
-        doInsert(Parser.toCodePoints(line));
-        delta = tmpDelta;
-        deltaChangedAtEndOfBuffer = (cursor == size);
-
-        if(oldCursor > width) {
-            int originalRow = oldCursor / width;
-            if(originalRow > 0 && lengthWithPrompt() % width == 0)
-                originalRow--;
-            for(int i=0; i < originalRow; i++)
-                out.accept(ANSI.MOVE_LINE_UP);
-        }
-
-        replaceLineWhenCursorIsOnLine(out, width);
-        delta = 0;
-        deltaChangedAtEndOfBuffer = true;
-    }
-    */
-
     public void replace(Consumer<int[]> out, String line, int width) {
         int tmpDelta = line.length() - size;
         int oldCursor = cursor + prompt.getLength();
@@ -592,7 +622,10 @@ public class Buffer {
             builder.append(ANSI.ERASE_WHOLE_LINE);
         }
         //move back again
-        builder.append(new int[]{'\033','[',(char)rows,'A'});
+        if(rows < 10)
+            builder.append(new int[]{27,'[', 48+rows,'A'});
+        else
+            builder.append(moveNumberOfColumns(rows, 'A'));
     }
 
     private void moveCursorToStartAndPrint(Consumer<int[]> out, IntArrayBuilder builder,
@@ -713,20 +746,34 @@ public class Buffer {
 
     /**
      * we assume that value is > 0
+     *
      * @param value
-     * @return
+     * @return ascii represented int value
      */
     private int[] intToAsciiInts(int value) {
         int length = 1;
         //very simple way of getting the length
-        if(value > 9)
+        if(value > 9 && value < 99)
             length = 2;
-        else if(value > 99)
+        else if(value > 99 && value < 999)
             length = 3;
-        else if(value > 999)
+        else if(value > 999 && value < 9999)
             length = 4;
+        else if(value > 9999)
+            length = 5;
 
-
-        return null;
+        int[] asciiValue = new int[length];
+        if(length == 1) {
+            asciiValue[0] = 48+value;
+        }
+        else {
+            while(length > 0) {
+                length--;
+                int num = value % 10;
+                asciiValue[length] = 48+num;
+                value = value / 10;
+            }
+        }
+        return asciiValue;
     }
 }
