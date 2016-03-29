@@ -364,7 +364,6 @@ public class Buffer {
     }
 
     private int[] moveNumberOfColumns(int column, char direction) {
-        LOGGER.info("trying to move: "+column+" columns in direction: "+direction);
         if(column < 10) {
             int[] out = new int[4];
             out[0] = 27; // esc
@@ -401,7 +400,6 @@ public class Buffer {
         else {
             int[] asciiRow = intToAsciiInts(row);
             int[] asciiColumn = intToAsciiInts(column);
-            LOGGER.info("column: "+column+", transformed to: "+Arrays.toString(asciiColumn));
             int[] out = new int[6+asciiColumn.length+asciiRow.length];
             out[0] = 27; //esc, \033
             out[1] = '[';
@@ -511,7 +509,7 @@ public class Buffer {
     }
 
     private void printInsertedData(Consumer<int[]> out, int width) {
-        //print out prompt first
+        //print out prompt first if needed
         IntArrayBuilder builder = new IntArrayBuilder();
         if(size == delta && !isPromptDisplayed && prompt.getLength() > 0) {
             builder.append(prompt.getANSI());
@@ -535,8 +533,6 @@ public class Buffer {
         //make sure we sync the cursor back
         if(!deltaChangedAtEndOfBuffer) {
             //if cursor and and of buffer is on the same line:
-            LOGGER.info("syncing cursor, size: "+size+", cursor:"+cursor);
-            LOGGER.info("size % width: "+(size / width)+" cursor % width: "+(cursor / width));
             if(size / width == cursor / width) {
                 builder.append(moveNumberOfColumns(size-cursor, 'D'));
             }
@@ -551,7 +547,6 @@ public class Buffer {
             }
         }
 
-        LOGGER.info("sending: "+Arrays.toString(builder.toArray()));
         out.accept(builder.toArray());
         delta = 0;
         deltaChangedAtEndOfBuffer = true;
@@ -664,6 +659,7 @@ public class Buffer {
     public void delete(Consumer<int[]> out, int delta, int width) {
         if (delta > 0) {
             delta = Math.min(delta, size - cursor);
+            LOGGER.info("deleting, delta: "+delta+", cursor: "+cursor+", size: "+size);
             System.arraycopy(line, cursor + delta, line, cursor, size - cursor + delta);
             size -= delta;
             this.delta =- delta;
@@ -671,6 +667,7 @@ public class Buffer {
         }
         else if (delta < 0) {
             delta = - Math.min(- delta, cursor);
+            LOGGER.info("deleting, delta: "+delta+", cursor: "+cursor+", size: "+size);
             System.arraycopy(line, cursor, line, cursor + delta, size - cursor);
             size += delta;
             cursor += delta;
@@ -751,18 +748,9 @@ public class Buffer {
      * @return ascii represented int value
      */
     private int[] intToAsciiInts(int value) {
-        int length = 1;
-        //very simple way of getting the length
-        if(value > 9 && value < 99)
-            length = 2;
-        else if(value > 99 && value < 999)
-            length = 3;
-        else if(value > 999 && value < 9999)
-            length = 4;
-        else if(value > 9999)
-            length = 5;
-
+        int length = getAsciiSize(value);
         int[] asciiValue = new int[length];
+
         if(length == 1) {
             asciiValue[0] = 48+value;
         }
@@ -775,5 +763,19 @@ public class Buffer {
             }
         }
         return asciiValue;
+    }
+
+    private int getAsciiSize(int value) {
+        if(value < 10)
+            return 1;
+        //very simple way of getting the length
+        if(value > 9 && value < 99)
+            return 2;
+        else if(value > 99 && value < 999)
+            return 3;
+        else if(value > 999 && value < 9999)
+            return 4;
+        else
+            return 5;
     }
 }
