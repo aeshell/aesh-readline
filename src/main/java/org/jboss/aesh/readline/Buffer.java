@@ -504,6 +504,7 @@ public class Buffer {
         if(delta >= 0)
             printInsertedData(out, width);
         else {
+            printDeletedData(out, width);
 
         }
     }
@@ -517,7 +518,7 @@ public class Buffer {
         }
 
         if(deltaChangedAtEndOfBuffer) {
-            if(delta == 1)
+            if(delta == 1 || delta == 0)
                 builder.append(new int[]{line[cursor-1]});
             else
                 builder.append( Arrays.copyOfRange(line, cursor-delta, cursor));
@@ -552,6 +553,17 @@ public class Buffer {
         deltaChangedAtEndOfBuffer = true;
     }
 
+    private void printDeletedData(Consumer<int[]> out, int width) {
+        IntArrayBuilder builder = new IntArrayBuilder();
+        LOGGER.info("cursor: "+cursor+", prompt.length: "+prompt.getLength()+", width: "+width+", size: "+size);
+        if(cursor+prompt.getLength()+1 >= width)
+            clearAllLinesAndReturnToFirstLine(builder, width, cursor+prompt.getLength()+1, size+prompt.getLength()+1);
+
+        LOGGER.info("builder after clearAllExtraLines: "+Arrays.toString(builder.toArray()));
+
+        moveCursorToStartAndPrint(out, builder, width, delta < 0);
+    }
+
     /**
      * Replace the entire current buffer with the given line.
      * The new line will be pushed to the consumer
@@ -562,69 +574,84 @@ public class Buffer {
      * @param width term width
      */
     public void replace(Consumer<int[]> out, String line, int width) {
-        int tmpDelta = line.length() - size;
+        replace(out, Parser.toCodePoints(line), width);
+    }
+
+    public void replace(Consumer<int[]> out, int[] line, int width) {
+        LOGGER.info("replacing "+Parser.fromCodePoints(getLine())+", with: "+
+                Parser.fromCodePoints(line)+", delta="+(line.length-size));
+        //quick exit
+        if(size == 0 && line.length == 0)
+            return;
+
+        int tmpDelta = line.length - size;
+        int oldSize = size+prompt.getLength();
         int oldCursor = cursor + prompt.getLength();
         clear();
-        doInsert(Parser.toCodePoints(line));
+        doInsert(line);
         delta = tmpDelta;
         //deltaChangedAtEndOfBuffer = false;
         deltaChangedAtEndOfBuffer = (cursor == size);
 
-        if(oldCursor > width) {
-            IntArrayBuilder builder = new IntArrayBuilder();
-            int originalRow = oldCursor / width;
-            if (originalRow > 0 && lengthWithPrompt() % width == 0)
-                originalRow--;
-            for (int i = 0; i < originalRow; i++) {
-                if (delta < 0) {
-                    builder.append(ANSI.ERASE_WHOLE_LINE);
-                }
-                builder.append(ANSI.MOVE_LINE_UP);
-            }
-            moveCursorToStartAndPrint(out, builder, false);
-            delta = 0;
-            deltaChangedAtEndOfBuffer = true;
-        }
-        else {
-            replaceLineWhenCursorIsOnLine(out, width);
-            delta = 0;
-            deltaChangedAtEndOfBuffer = true;
-        }
+        IntArrayBuilder builder = new IntArrayBuilder();
+        if(oldCursor > width)
+            clearAllLinesAndReturnToFirstLine(builder, width, oldCursor, oldSize);
+
+        moveCursorToStartAndPrint(out, builder, width, delta > 0);
+        delta = 0;
+        deltaChangedAtEndOfBuffer = true;
     }
 
-    private void replaceLineWhenCursorIsOnLine(Consumer<int[]> out, int width) {
-        if(delta >= 0) {
-            moveCursorToStartAndPrint(out, new IntArrayBuilder(), false);
-        }
-        else { // delta < 0
-            if((lengthWithPrompt()+delta) <= width) {
-                moveCursorToStartAndPrint(out, new IntArrayBuilder(), true);
+    /**
+     * All parameter values are included the prompt length
+     * @param builder
+     * @param width
+     * @param oldCursor
+     * @param oldSize
+     */
+    private void clearAllLinesAndReturnToFirstLine(IntArrayBuilder builder, int width, int oldCursor, int oldSize) {
+        if(oldCursor >= width) {
+            int cursorRow = oldCursor / width;
+            //if (cursorRow > 0 && oldSize % width == 0)
+            //    cursorRow--;
+
+            int totalRows = oldSize / width;
+            //if (totalRows > 0 && oldSize % width == 0)
+            //    totalRows--;
+
+            LOGGER.info("cursorRow: "+cursorRow+", totalRows: "+totalRows+", oldCursor: "
+                    +oldCursor+", oldSize: "+oldSize+", width: "+width);
+
+            //if total row > cursor row it means that the cursor is not at the last line of the row
+            //then we need to move down number of rows first
+            //TODO: we can optimize here by going the number of rows down in one step
+            if(totalRows > cursorRow && delta < 0) {
+                for(int i=0; i < (totalRows-cursorRow); i++) {
+                    builder.append(ANSI.MOVE_LINE_DOWN);
+                }
+                for (int i = 0; i < totalRows; i++) {
+                    builder.append(ANSI.ERASE_WHOLE_LINE);
+                    builder.append(ANSI.MOVE_LINE_UP);
+                }
             }
             else {
-                int numRows = lengthWithPrompt() / width;
-                if(numRows > 0 && lengthWithPrompt() % width == 0)
-                    numRows--;
-                IntArrayBuilder builder = new IntArrayBuilder();
-                clearRowsAndMoveBack(builder, numRows);
-                moveCursorToStartAndPrint(out, builder, false);
+                for (int i = 0; i < cursorRow; i++) {
+                    if (delta < 0) {
+                        builder.append(ANSI.ERASE_WHOLE_LINE);
+                    }
+                    builder.append(ANSI.MOVE_LINE_UP);
+                }
             }
         }
     }
 
-    private void clearRowsAndMoveBack(IntArrayBuilder builder, int rows) {
-        for(int i=0; i < rows; i++) {
-            builder.append(ANSI.MOVE_LINE_DOWN);
-            builder.append(ANSI.ERASE_WHOLE_LINE);
-        }
-        //move back again
-        if(rows < 10)
-            builder.append(new int[]{27,'[', 48+rows,'A'});
-        else
-            builder.append(moveNumberOfColumns(rows, 'A'));
-    }
-
-    private void moveCursorToStartAndPrint(Consumer<int[]> out, IntArrayBuilder builder,
+    private void moveCursorToStartAndPrint(Consumer<int[]> out, IntArrayBuilder builder, int width,
                                            boolean clearLine) {
+        clearLine = true;
+
+        //if((size+prompt.getLength()+1) % width == 1)
+        //    builder.append(ANSI.MOVE_LINE_UP);
+
         if((prompt.getLength() > 0 && cursor != 0) || delta < 0) {
             builder.append(ANSI.CURSOR_START);
             if (clearLine)
@@ -637,7 +664,15 @@ public class Buffer {
         if(size > 0)
             builder.append(getLine());
 
-        out.accept(builder.toArray());
+        //pad if we are at the end of the terminal
+        if((size + prompt.getLength()+1) % width == 1) {
+            builder.append(ANSI.CURSOR_START);
+            builder.append(ANSI.MOVE_LINE_DOWN);
+        }
+
+        LOGGER.info("printing: "+Arrays.toString(builder.toArray()));
+
+         out.accept(builder.toArray());
     }
 
     private int[] getMultiLine() {

@@ -82,6 +82,10 @@ public interface ConsoleBuffer {
 
     void changeCase();
 
+    void replace(int[] line);
+
+    void replace(String line);
+
     /**
      * Clear an ansi terminal.
      * Set includeBuffer to true if the current buffer should be

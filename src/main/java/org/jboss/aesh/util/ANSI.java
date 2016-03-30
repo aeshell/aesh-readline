@@ -85,7 +85,7 @@ public class ANSI {
     public static final String CURSOR_SHOW = "\u001B[?25h";
     public static final int[] ERASE_LINE_FROM_CURSOR = new int[]{ 27, '[', 'K'};
     public static final int[] MOVE_LINE_UP = new int[]{ 27, '[', '1', 'A'};
-    public static final int[] MOVE_LINE_DOWN = new int[]{ 27, '[', '1', 'K'};
+    public static final int[] MOVE_LINE_DOWN = new int[]{ 27, '[', '1', 'B'};
 
     private ANSI() {
     }

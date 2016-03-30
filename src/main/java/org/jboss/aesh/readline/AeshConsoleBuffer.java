@@ -190,6 +190,16 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
     }
 
     @Override
+    public void replace(int[] line) {
+        buffer.replace(connection.stdoutHandler(), line, getSize().getWidth());
+    }
+
+    @Override
+    public void replace(String line) {
+        buffer.replace(connection.stdoutHandler(), line, getSize().getWidth());
+    }
+
+    @Override
     public void clear(boolean includeBuffer) {
         //(windows fix)
         if(!Config.isOSPOSIXCompatible())

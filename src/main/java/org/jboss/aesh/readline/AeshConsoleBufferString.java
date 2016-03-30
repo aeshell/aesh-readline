@@ -479,6 +479,16 @@ public class AeshConsoleBufferString implements ConsoleBuffer {
 
     }
 
+    @Override
+    public void replace(int[] line) {
+
+    }
+
+    @Override
+    public void replace(String line) {
+
+    }
+
     private void displayPrompt(Prompt prompt) {
         if(prompt.hasANSI() && ansiMode) {
             connection.stdoutHandler().accept(prompt.getANSI());

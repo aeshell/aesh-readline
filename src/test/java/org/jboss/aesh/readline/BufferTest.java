@@ -313,11 +313,11 @@ public class BufferTest {
                 outConsumer.get(0).length-4, outConsumer.get(0).length )));
         outConsumer.clear();
         buffer.insert(outConsumer::add, 'd', 100);
-        outConsumer.clear();
-        buffer.print(outConsumer::add, 120);
-        assertEquals(" gard",
-        Parser.fromCodePoints(Arrays.copyOfRange(outConsumer.get(0),
-                outConsumer.get(0).length-5, outConsumer.get(0).length )));
+        //outConsumer.clear();
+        //buffer.print(outConsumer::add, 120);
+        assertEquals("d",
+        Parser.fromCodePoints((outConsumer.get(0))));
+                //outConsumer.get(0).length-5, outConsumer.get(0).length )));
     }
 
     @Test
