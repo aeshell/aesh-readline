@@ -670,9 +670,28 @@ public class Buffer {
             builder.append(ANSI.MOVE_LINE_DOWN);
         }
 
+        //make sure we sync the cursor back
+        if(!deltaChangedAtEndOfBuffer) {
+            LOGGER.info("syncing cursor...");
+            //if cursor and and of buffer is on the same line:
+            if(size / width == cursor / width) {
+                LOGGER.info("cursor and end of buffer is at the same line");
+                builder.append(moveNumberOfColumns(size-cursor, 'D'));
+            }
+            //if cursor and enf of buffer is on different lines, we need to move the cursor
+            else {
+                int numLines = ((size+getPrompt().getLength()) / width) - ((cursor+getPrompt().getLength()) / width);
+                int sameLine = (size+getPrompt().getLength()) - (width * numLines);
+                if(sameLine < cursor+prompt.getLength())
+                    builder.append(moveNumberOfColumns(Math.abs(cursor-sameLine), 'C'));
+                else
+                    builder.append(moveNumberOfColumns(Math.abs(cursor-sameLine), 'D'));
+            }
+        }
+
         LOGGER.info("printing: "+Arrays.toString(builder.toArray()));
 
-         out.accept(builder.toArray());
+        out.accept(builder.toArray());
     }
 
     private int[] getMultiLine() {
@@ -698,6 +717,7 @@ public class Buffer {
             System.arraycopy(line, cursor + delta, line, cursor, size - cursor + delta);
             size -= delta;
             this.delta =- delta;
+            deltaChangedAtEndOfBuffer = (cursor == size);
             print(out, width);
         }
         else if (delta < 0) {
@@ -707,6 +727,7 @@ public class Buffer {
             size += delta;
             cursor += delta;
             this.delta =+ delta;
+            deltaChangedAtEndOfBuffer = (cursor == size);
             print(out, width);
         }
     }
