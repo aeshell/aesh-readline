@@ -302,7 +302,7 @@ public class Buffer {
      */
     public void move(Consumer<int[]> out, int move, int termWidth, boolean viMode) {
         LOGGER.info("moving: "+move+", width: "+termWidth+", buffer: "+getLine());
-        move = calulateActualMovement(move, viMode);
+        move = calculateActualMovement(move, viMode);
 
         int currentRow = (getCursorWithPrompt() / (termWidth));
         if(currentRow > 0 && getCursorWithPrompt() % termWidth == 0)
@@ -319,7 +319,7 @@ public class Buffer {
         cursor = cursor + move;
 
         // 0 Masking separates the UI cursor position from the 'real' cursor position.
-        // Cursor movement still has to occur, via calulateActualMovement and setCursor above,
+        // Cursor movement still has to occur, via calculateActualMovement and setCursor above,
         // to put new characters in the correct location in the invisible line,
         // but this method should always return an empty character so the UI cursor does not move.
         if(prompt.isMasking() && prompt.getMask() == 0){
@@ -425,7 +425,7 @@ public class Buffer {
      * to emacs movement
      * @return adjusted movement
      */
-    private int calulateActualMovement(final int move, boolean viMode) {
+    private int calculateActualMovement(final int move, boolean viMode) {
         // cant move to a negative value
         if(getCursor() == 0 && move <=0 )
             return 0;
@@ -505,7 +505,6 @@ public class Buffer {
             printInsertedData(out, width);
         else {
             printDeletedData(out, width);
-
         }
     }
 
@@ -556,8 +555,9 @@ public class Buffer {
     private void printDeletedData(Consumer<int[]> out, int width) {
         IntArrayBuilder builder = new IntArrayBuilder();
         LOGGER.info("cursor: "+cursor+", prompt.length: "+prompt.getLength()+", width: "+width+", size: "+size);
-        if(cursor+prompt.getLength()+1 >= width)
-            clearAllLinesAndReturnToFirstLine(builder, width, cursor+prompt.getLength()+1, size+prompt.getLength()+1);
+        if(size+prompt.getLength()+1+Math.abs(delta) >= width)
+            clearAllLinesAndReturnToFirstLine(builder, width, cursor+prompt.getLength()+1,
+                    size+prompt.getLength()+Math.abs(delta)+1);
 
         LOGGER.info("builder after clearAllExtraLines: "+Arrays.toString(builder.toArray()));
 
@@ -610,7 +610,8 @@ public class Buffer {
      * @param oldSize
      */
     private void clearAllLinesAndReturnToFirstLine(IntArrayBuilder builder, int width, int oldCursor, int oldSize) {
-        if(oldCursor >= width) {
+        LOGGER.info("oldSize: "+oldSize+", oldCursor: "+oldCursor);
+        if(oldSize >= width) {
             int cursorRow = oldCursor / width;
             //if (cursorRow > 0 && oldSize % width == 0)
             //    cursorRow--;
@@ -673,6 +674,24 @@ public class Buffer {
         //make sure we sync the cursor back
         if(!deltaChangedAtEndOfBuffer) {
             LOGGER.info("syncing cursor...");
+            if((size+prompt.getLength()) / width == (cursor+prompt.getLength()) / width) {
+                LOGGER.info("cursor and end of buffer is at the same line");
+                builder.append(moveNumberOfColumns(size-cursor, 'D'));
+            }
+            //if cursor and end of buffer is on different lines, we need to move the cursor
+            else {
+                int moveToLine = (size+prompt.getLength()) / width - (cursor+prompt.getLength()) / width;
+                int moveToColumn = (size+prompt.getLength()) % width - (cursor+prompt.getLength()) % width;
+
+                builder.append(moveNumberOfColumns(moveToLine, 'A'));
+                if(moveToColumn < 0)
+                    builder.append(moveNumberOfColumns(Math.abs(moveToColumn), 'C'));
+                else
+                    builder.append(moveNumberOfColumns(moveToColumn, 'D'));
+            }
+
+
+            /*
             //if cursor and and of buffer is on the same line:
             if(size / width == cursor / width) {
                 LOGGER.info("cursor and end of buffer is at the same line");
@@ -682,11 +701,15 @@ public class Buffer {
             else {
                 int numLines = ((size+getPrompt().getLength()) / width) - ((cursor+getPrompt().getLength()) / width);
                 int sameLine = (size+getPrompt().getLength()) - (width * numLines);
-                if(sameLine < cursor+prompt.getLength())
-                    builder.append(moveNumberOfColumns(Math.abs(cursor-sameLine), 'C'));
-                else
-                    builder.append(moveNumberOfColumns(Math.abs(cursor-sameLine), 'D'));
+                if(sameLine < cursor+prompt.getLength()) {
+
+                    builder.append(moveNumberOfColumns(Math.abs(cursor - sameLine), 'C'));
+                }
+                else {
+                    builder.append(moveNumberOfColumns(Math.abs(cursor - sameLine), 'D'));
+                }
             }
+            */
         }
 
         LOGGER.info("printing: "+Arrays.toString(builder.toArray()));
