@@ -80,17 +80,17 @@ public enum Key implements KeyAction {
     PERIOD(new int[]{46}), // .
     SLASH(new int[]{47}), // /
     ZERO(new int[]{48}), // 0
-    ONE(new int[]{49}), // 0
-    TWO(new int[]{50}), // 0
-    THREE(new int[]{51}), // 0
-    FOUR(new int[]{52}), // 0
-    FIVE(new int[]{53}), // 0
-    SIX(new int[]{54}), // 0
-    SEVEN(new int[]{55}), // 0
-    EIGHT(new int[]{56}), // 0
-    NINE(new int[]{57}), // 0
+    ONE(new int[]{49}), // 1
+    TWO(new int[]{50}), // 2
+    THREE(new int[]{51}), // 3
+    FOUR(new int[]{52}), // 4
+    FIVE(new int[]{53}), // 5
+    SIX(new int[]{54}), // 6
+    SEVEN(new int[]{55}), // 7
+    EIGHT(new int[]{56}), // 8
+    NINE(new int[]{57}), // 9
     COLON(new int[]{58}), // :
-    SEMI_COLON(new int[]{59}), // :
+    SEMI_COLON(new int[]{59}), // ;
     LESS_THAN(new int[]{60}), // <
     EQUALS(new int[]{61}), // =
     GREATER_THAN(new int[]{62}), // >
@@ -155,8 +155,8 @@ public enum Key implements KeyAction {
     y(new int[]{121}),
     z(new int[]{122}),
     LEFT_CURLY_BRACKET(new int[]{123}), // {
-    VERTICAL_BAR(new int[]{124}), // {
-    RIGHT_CURLY_BRACKET(new int[]{125}), // {
+    VERTICAL_BAR(new int[]{124}), // |
+    RIGHT_CURLY_BRACKET(new int[]{125}), // }
     TILDE(new int[]{126}), // ~
 
     BACKSPACE(Config.isOSPOSIXCompatible() ?

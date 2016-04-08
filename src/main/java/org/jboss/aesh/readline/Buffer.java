@@ -303,20 +303,9 @@ public class Buffer {
     public void move(Consumer<int[]> out, int move, int termWidth, boolean viMode) {
         LOGGER.info("moving: "+move+", width: "+termWidth+", buffer: "+getLine());
         move = calculateActualMovement(move, viMode);
-
-        int currentRow = (getCursorWithPrompt() / (termWidth));
-        if(currentRow > 0 && getCursorWithPrompt() % termWidth == 0)
-            currentRow--;
-
-        int newRow = ((move + getCursorWithPrompt()) / (termWidth));
-        if(newRow > 0 && ((move + getCursorWithPrompt()) % (termWidth) == 0))
-            newRow--;
-
-        int row = newRow - currentRow;
-
-        LOGGER.info("currentRow: "+currentRow+", newRow: "+newRow+", row: "+row+", cursor: "+cursor);
-
-        cursor = cursor + move;
+        //quick exit
+        if(move == 0)
+            return;
 
         // 0 Masking separates the UI cursor position from the 'real' cursor position.
         // Cursor movement still has to occur, via calculateActualMovement and setCursor above,
@@ -326,41 +315,41 @@ public class Buffer {
             return;
         }
 
-        int cursor = getCursorWithPrompt() % termWidth;
-        if(cursor == 0 && getCursorWithPrompt() > 0)
-            cursor = termWidth;
-        if(row > 0) {
-            out.accept(moveNumberOfColumnsAndRows(row, 'B', cursor));
+        out.accept( syncCursor(prompt.getLength()+cursor, prompt.getLength()+cursor+move, termWidth));
 
-            //StringBuilder sb = new StringBuilder();
-            //sb.append(printAnsi(row+"B")).append(printAnsi(cursor+"G"));
-            //return sb.toString().toCharArray();
+        cursor = cursor + move;
+
+
+    }
+
+    private int[] syncCursor(int currentPos, int newPos, int width) {
+        IntArrayBuilder builder = new IntArrayBuilder();
+        if(newPos < 1)
+            newPos = 1;
+        LOGGER.info("currentPos: "+currentPos+", newPos: "+newPos+", width: "+width);
+        if(currentPos / width == newPos / width) {
+            LOGGER.info("cursor and end of buffer is at the same line");
+            if(currentPos > newPos)
+                builder.append(moveNumberOfColumns(currentPos-newPos, 'D'));
+            else
+                builder.append(moveNumberOfColumns(newPos-currentPos, 'C'));
         }
-        //going up
-        else if (row < 0) {
-            //check if we are on the "first" row:
-            //StringBuilder sb = new StringBuilder();
-            //sb.append(printAnsi(Math.abs(row)+"A")).append(printAnsi(cursor+"G"));
-            LOGGER.info("moving up a row: "+Arrays.toString(moveNumberOfColumnsAndRows(Math.abs(row), 'A', cursor)));
-            out.accept(moveNumberOfColumnsAndRows(Math.abs(row), 'A', cursor));
-            //return sb.toString().toCharArray();
-        }
-        //staying at the same row
+        //if cursor and end of buffer is on different lines, we need to move the cursor
         else {
-            LOGGER.info("staying at same row "+move);
-            if(move < 0) {
-                LOGGER.info("returning: " + Arrays.toString(moveNumberOfColumns(Math.abs(move), 'D')));
-                //out.accept(new int[]{'\b'});
-                out.accept(moveNumberOfColumns(Math.abs(move), 'D'));
-                //return printAnsi(Math.abs(move)+"D");
+            int moveToLine = currentPos / width - newPos / width;
+            int moveToColumn = currentPos % width - newPos % width;
+            char rowDirection = 'A';
+            LOGGER.info("currentPos: "+currentPos+", newPos: "+newPos+", moveToLine: "+moveToLine+
+                    ", moveToColumn: "+moveToColumn);
+            if(moveToLine < 0) {
+                rowDirection = 'B';
+                moveToLine = Math.abs(moveToLine);
             }
 
-            else if(move > 0) {
-                LOGGER.info("returning: "+ Arrays.toString( moveNumberOfColumns(move,'C')));
-                //return printAnsi(move + "C");
-                out.accept(moveNumberOfColumns(move, 'C'));
-            }
+            builder.append(  moveNumberOfColumnsAndRows(  moveToLine, rowDirection, moveToColumn));
+            LOGGER.info("out from syncCursor: "+Arrays.toString(builder.toArray()));
         }
+        return builder.toArray();
     }
 
     private int[] moveNumberOfColumns(int column, char direction) {
@@ -385,6 +374,11 @@ public class Buffer {
     }
 
     private int[] moveNumberOfColumnsAndRows(int row, char rowCommand, int column) {
+        char direction = 'D'; //forward
+        if(column < 0) {
+            column = Math.abs(column);
+            direction = 'C';
+        }
         if(row < 10 && column < 10) {
             int[] out = new int[8];
             out[0] = 27; //esc, \033
@@ -394,7 +388,7 @@ public class Buffer {
             out[4] = 27;
             out[5] = '[';
             out[6] = 48 + column;
-            out[7] = 'G';
+            out[7] = direction;
             return out;
         }
         else {
@@ -410,7 +404,7 @@ public class Buffer {
             out[4+asciiRow.length] = '[';
             for(int i=0; i < asciiColumn.length; i++)
                 out[5+asciiRow.length+i] = asciiColumn[i];
-            out[out.length-1] = 'G';
+            out[out.length-1] = direction;
             return out;
         }
     }
@@ -674,42 +668,7 @@ public class Buffer {
         //make sure we sync the cursor back
         if(!deltaChangedAtEndOfBuffer) {
             LOGGER.info("syncing cursor...");
-            if((size+prompt.getLength()) / width == (cursor+prompt.getLength()) / width) {
-                LOGGER.info("cursor and end of buffer is at the same line");
-                builder.append(moveNumberOfColumns(size-cursor, 'D'));
-            }
-            //if cursor and end of buffer is on different lines, we need to move the cursor
-            else {
-                int moveToLine = (size+prompt.getLength()) / width - (cursor+prompt.getLength()) / width;
-                int moveToColumn = (size+prompt.getLength()) % width - (cursor+prompt.getLength()) % width;
-
-                builder.append(moveNumberOfColumns(moveToLine, 'A'));
-                if(moveToColumn < 0)
-                    builder.append(moveNumberOfColumns(Math.abs(moveToColumn), 'C'));
-                else
-                    builder.append(moveNumberOfColumns(moveToColumn, 'D'));
-            }
-
-
-            /*
-            //if cursor and and of buffer is on the same line:
-            if(size / width == cursor / width) {
-                LOGGER.info("cursor and end of buffer is at the same line");
-                builder.append(moveNumberOfColumns(size-cursor, 'D'));
-            }
-            //if cursor and enf of buffer is on different lines, we need to move the cursor
-            else {
-                int numLines = ((size+getPrompt().getLength()) / width) - ((cursor+getPrompt().getLength()) / width);
-                int sameLine = (size+getPrompt().getLength()) - (width * numLines);
-                if(sameLine < cursor+prompt.getLength()) {
-
-                    builder.append(moveNumberOfColumns(Math.abs(cursor - sameLine), 'C'));
-                }
-                else {
-                    builder.append(moveNumberOfColumns(Math.abs(cursor - sameLine), 'D'));
-                }
-            }
-            */
+            builder.append(syncCursor(size+getPrompt().getLength(), cursor+prompt.getLength(), width));
         }
 
         LOGGER.info("printing: "+Arrays.toString(builder.toArray()));
