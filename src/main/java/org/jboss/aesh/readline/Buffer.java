@@ -686,6 +686,7 @@ public class Buffer {
         LOGGER.info("printing: "+Arrays.toString(builder.toArray()));
 
         out.accept(builder.toArray());
+        isPromptDisplayed = true;
     }
 
     private int[] getMultiLine() {
