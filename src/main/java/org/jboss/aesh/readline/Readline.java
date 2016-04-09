@@ -217,6 +217,7 @@ public class Readline {
                 }
             });
 
+            consoleBuffer.drawLine();
             //last, display prompt
             //consoleBuffer.displayPrompt();
         }

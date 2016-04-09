@@ -88,6 +88,6 @@ public class Complete implements ActionEvent {
     private void clearBufferAndDisplayPrompt(ConsoleBuffer consoleBuffer) {
         consoleBuffer.getBuffer().reset();
         consoleBuffer.getUndoManager().clear();
-        consoleBuffer.displayPrompt();
+        consoleBuffer.drawLine();
     }
 }

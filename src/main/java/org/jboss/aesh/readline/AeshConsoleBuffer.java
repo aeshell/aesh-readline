@@ -139,18 +139,9 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
     }
 
     @Override
-    public void writeChars(char[] input) {
-        buffer.insert(connection.stdoutHandler(), input, getSize().getWidth());
-    }
-
-    @Override
     public void writeString(String input) {
-        buffer.insert(connection.stdoutHandler(), input, getSize().getWidth());
-    }
-
-    @Override
-    public void displayPrompt() {
-        //buffer.print(connection.stdoutHandler(), getSize().getWidth());
+        if(input != null && input.length() > 0)
+            buffer.insert(connection.stdoutHandler(), input, getSize().getWidth());
     }
 
     @Override
@@ -181,7 +172,6 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
     @Override
     public void downCase() {
         buffer.downCase(connection.stdoutHandler());
-
     }
 
     @Override

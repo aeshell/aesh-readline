@@ -182,7 +182,7 @@ public class AeshConsoleBufferString implements ConsoleBuffer {
                     connection.stdoutHandler().accept(resetLineAndSetCursorToStart);
                 if(!buffer.isPromptDisabled()) {
                     writeOut(CLEAR_LINE);
-                    displayPrompt();
+                    //displayPrompt();
                 }
                 //write line and restore cursor
                 if(keepCursorPosition)
@@ -306,12 +306,6 @@ public class AeshConsoleBufferString implements ConsoleBuffer {
     }
 
     @Override
-    public void writeChars(char[] chars) {
-        for(char c : chars)
-            writeChar(c);
-    }
-
-    @Override
     public void writeString(String input) {
         for(char c : input.toCharArray())
             writeChar(c);
@@ -367,11 +361,6 @@ public class AeshConsoleBufferString implements ConsoleBuffer {
             }
             drawLine();
         }
-    }
-
-    @Override
-    public void displayPrompt() {
-        displayPrompt(buffer.getPrompt());
     }
 
     private void write(char c) {
@@ -530,7 +519,7 @@ public class AeshConsoleBufferString implements ConsoleBuffer {
             connection.stdoutHandler().accept(new int[] {27, '[', '1', ';', '1', 'H'});
             //then write prompt
             if(includeBuffer) {
-                displayPrompt();
+                //displayPrompt();
                 connection.write(buffer.getLine());
             }
         }

@@ -81,7 +81,7 @@ public class Enter implements Action {
             inputProcessor.setReturnValue(result);
         }
         else
-            consoleBuffer.displayPrompt();
+            consoleBuffer.drawLine();
 
     }
 }

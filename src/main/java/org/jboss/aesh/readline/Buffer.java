@@ -114,8 +114,14 @@ public class Buffer {
 
     public void reset() {
         cursor = 0;
-        line = new int[1024];
+        for(int i=0; i<size; i++)
+            line[i] = 0;
         size = 0;
+        isPromptDisplayed = false;
+    }
+
+    public void setIsPromptDisplayed(boolean isPromptDisplayed) {
+        this.isPromptDisplayed = isPromptDisplayed;
     }
 
     /**
@@ -500,14 +506,20 @@ public class Buffer {
         else {
             printDeletedData(out, width);
         }
+        delta = 0;
     }
 
     private void printInsertedData(Consumer<int[]> out, int width) {
         //print out prompt first if needed
         IntArrayBuilder builder = new IntArrayBuilder();
-        if(size == delta && !isPromptDisplayed && prompt.getLength() > 0) {
+        if(!isPromptDisplayed && prompt.getLength() > 0) {
             builder.append(prompt.getANSI());
             isPromptDisplayed = true;
+        }
+        //quick exit if buffer is empty
+        if(size == 0) {
+            out.accept(builder.toArray());
+            return;
         }
 
         if(deltaChangedAtEndOfBuffer) {

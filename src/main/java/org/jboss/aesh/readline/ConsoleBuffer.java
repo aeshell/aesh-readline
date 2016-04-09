@@ -62,11 +62,7 @@ public interface ConsoleBuffer {
 
     void writeChars(int[] input);
 
-    void writeChars(char[] chars);
-
     void writeString(String input);
-
-    void displayPrompt();
 
     void setPrompt(Prompt prompt);
 

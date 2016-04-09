@@ -48,7 +48,7 @@ public class ConsoleBufferTest {
         SimpleConnection connection = new SimpleConnection();
         ConsoleBuffer consoleBuffer = createConsoleBuffer(connection);
 
-        consoleBuffer.displayPrompt();
+        consoleBuffer.drawLine();
         assertTrue(connection.bufferBuilder.toString().contains("aesh"));
         connection.bufferBuilder.delete(0, connection.bufferBuilder.length());
         //byteArrayOutputStream.reset();
