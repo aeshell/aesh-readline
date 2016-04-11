@@ -561,9 +561,9 @@ public class Buffer {
     private void printDeletedData(Consumer<int[]> out, int width) {
         IntArrayBuilder builder = new IntArrayBuilder();
         LOGGER.info("cursor: "+cursor+", prompt.length: "+prompt.getLength()+", width: "+width+", size: "+size);
-        if(size+prompt.getLength()+1+Math.abs(delta) >= width)
-            clearAllLinesAndReturnToFirstLine(builder, width, cursor+prompt.getLength()+1,
-                    size+prompt.getLength()+Math.abs(delta)+1);
+        if(size+prompt.getLength()+Math.abs(delta) >= width)
+            clearAllLinesAndReturnToFirstLine(builder, width, cursor+prompt.getLength(),
+                    size+prompt.getLength()+Math.abs(delta));
 
         LOGGER.info("builder after clearAllExtraLines: "+Arrays.toString(builder.toArray()));
 
@@ -660,22 +660,37 @@ public class Buffer {
         //    builder.append(ANSI.MOVE_LINE_UP);
 
         if((prompt.getLength() > 0 && cursor != 0) || delta < 0) {
-            builder.append(ANSI.CURSOR_START);
+            int length = cursor % width + prompt.getLength();
+            if(delta < 0)
+                length += Math.abs(delta);
+            builder.append(moveNumberOfColumns(length, 'D'));
+            //builder.append(ANSI.CURSOR_START);
             if (clearLine)
                 builder.append(ANSI.ERASE_LINE_FROM_CURSOR);
+            LOGGER.info("builder after clear: "+ Arrays.toString(builder.toArray()));
         }
         if(prompt.getLength() > 0)
             builder.append(prompt.getANSI());
 
+        LOGGER.info("builder after prompt: "+ Arrays.toString(builder.toArray()));
         //dont print out the line if its empty
         if(size > 0)
             builder.append(getLine());
 
+        LOGGER.info("builder after line: "+ Arrays.toString(builder.toArray()));
         //pad if we are at the end of the terminal
         if((size + prompt.getLength()+1) % width == 1) {
-            builder.append(ANSI.CURSOR_START);
-            builder.append(ANSI.MOVE_LINE_DOWN);
+            if(delta < 0) {
+                //move all the way to column 0
+                builder.append(moveNumberOfColumns(width, 'D'));
+                //builder.append(ANSI.CURSOR_START);
+                builder.append(ANSI.MOVE_LINE_DOWN);
+            }
+            else {
+                builder.append(new int[]{32, 13});
+            }
         }
+        LOGGER.info("builder after line edge: "+ Arrays.toString(builder.toArray()));
 
         //make sure we sync the cursor back
         if(!deltaChangedAtEndOfBuffer) {

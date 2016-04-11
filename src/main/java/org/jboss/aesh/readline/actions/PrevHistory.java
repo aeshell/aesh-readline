@@ -36,7 +36,6 @@ public class PrevHistory implements Action {
         String history = inputProcessor.getBuffer().getHistory().getPreviousFetch();
         if(history != null) {
             inputProcessor.getBuffer().setBufferLine(history);
-            inputProcessor.getBuffer().drawLine(false, false);
         }
     }
 }
