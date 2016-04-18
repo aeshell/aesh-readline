@@ -85,10 +85,7 @@ public class Buffer {
     }
 
     private int getCursorWithPrompt() {
-        if(disablePrompt)
-            return getCursor()+1;
-        else
-            return getCursor() + prompt.getLength()+1;
+        return getCursor() + promptLength()+1;
     }
 
     public int getMultiCursor() {
@@ -156,12 +153,12 @@ public class Buffer {
             return size;
     }
 
-    public int lengthWithPrompt() {
+    public int promptLength() {
         if(prompt.isMasking()) {
             if(prompt.getMask() == 0)
-                return disablePrompt ? 1 : prompt.getLength()+1;
+                return 0;
         }
-        return disablePrompt ? size+1 : size + prompt.getLength()+1;
+        return disablePrompt ? 0 : prompt.getLength();
     }
 
     public void setMultiLine(boolean multi) {
@@ -321,7 +318,7 @@ public class Buffer {
             return;
         }
 
-        out.accept( syncCursor(prompt.getLength()+cursor, prompt.getLength()+cursor+move, termWidth));
+        out.accept( syncCursor(promptLength()+cursor, promptLength()+cursor+move, termWidth));
 
         cursor = cursor + move;
 
@@ -512,7 +509,7 @@ public class Buffer {
     private void printInsertedData(Consumer<int[]> out, int width) {
         //print out prompt first if needed
         IntArrayBuilder builder = new IntArrayBuilder();
-        if(!isPromptDisplayed && prompt.getLength() > 0) {
+        if(!isPromptDisplayed && promptLength() > 0) {
             builder.append(prompt.getANSI());
             isPromptDisplayed = true;
         }
@@ -533,7 +530,7 @@ public class Buffer {
         }
 
         //pad if we are at the end of the terminal
-        if((size + prompt.getLength()+1) % width == 1) {
+        if((size + promptLength()+1) % width == 1) {
             builder.append(new int[]{32, 13});
         }
         //make sure we sync the cursor back
@@ -560,10 +557,10 @@ public class Buffer {
 
     private void printDeletedData(Consumer<int[]> out, int width) {
         IntArrayBuilder builder = new IntArrayBuilder();
-        LOGGER.info("cursor: "+cursor+", prompt.length: "+prompt.getLength()+", width: "+width+", size: "+size);
-        if(size+prompt.getLength()+Math.abs(delta) >= width)
-            clearAllLinesAndReturnToFirstLine(builder, width, cursor+prompt.getLength(),
-                    size+prompt.getLength()+Math.abs(delta));
+        LOGGER.info("cursor: "+cursor+", prompt.length: "+promptLength()+", width: "+width+", size: "+size);
+        if(size+promptLength()+Math.abs(delta) >= width)
+            clearAllLinesAndReturnToFirstLine(builder, width, cursor+promptLength(),
+                    size+promptLength()+Math.abs(delta));
 
         LOGGER.info("builder after clearAllExtraLines: "+Arrays.toString(builder.toArray()));
 
@@ -591,8 +588,8 @@ public class Buffer {
             return;
 
         int tmpDelta = line.length - size;
-        int oldSize = size+prompt.getLength();
-        int oldCursor = cursor + prompt.getLength();
+        int oldSize = size+promptLength();
+        int oldCursor = cursor + promptLength();
         clear();
         doInsert(line);
         delta = tmpDelta;
@@ -600,7 +597,7 @@ public class Buffer {
         deltaChangedAtEndOfBuffer = (cursor == size);
 
         IntArrayBuilder builder = new IntArrayBuilder();
-        if(oldCursor > width)
+        if(oldCursor >= width)
             clearAllLinesAndReturnToFirstLine(builder, width, oldCursor, oldSize);
 
         moveCursorToStartAndPrint(out, builder, width, delta > 0);
@@ -625,6 +622,11 @@ public class Buffer {
             int totalRows = oldSize / width;
             //if (totalRows > 0 && oldSize % width == 0)
             //    totalRows--;
+
+            if((oldSize+1) % width == 1 && oldSize == oldCursor+1) {
+                LOGGER.info("size and cursor is on the edge...");
+                builder.append(ANSI.MOVE_LINE_UP);
+            }
 
             LOGGER.info("cursorRow: "+cursorRow+", totalRows: "+totalRows+", oldCursor: "
                     +oldCursor+", oldSize: "+oldSize+", width: "+width);
@@ -656,11 +658,11 @@ public class Buffer {
                                            boolean clearLine) {
         clearLine = true;
 
-        //if((size+prompt.getLength()+1) % width == 1)
+        //if((size+promptLength()+1) % width == 1)
         //    builder.append(ANSI.MOVE_LINE_UP);
 
-        if((prompt.getLength() > 0 && cursor != 0) || delta < 0) {
-            int length = cursor % width + prompt.getLength();
+        if((promptLength() > 0 && cursor != 0) || delta < 0) {
+            int length = cursor % width + promptLength();
             if(delta < 0)
                 length += Math.abs(delta);
             builder.append(moveNumberOfColumns(length, 'D'));
@@ -669,7 +671,7 @@ public class Buffer {
                 builder.append(ANSI.ERASE_LINE_FROM_CURSOR);
             LOGGER.info("builder after clear: "+ Arrays.toString(builder.toArray()));
         }
-        if(prompt.getLength() > 0)
+        if(promptLength() > 0)
             builder.append(prompt.getANSI());
 
         LOGGER.info("builder after prompt: "+ Arrays.toString(builder.toArray()));
@@ -679,7 +681,7 @@ public class Buffer {
 
         LOGGER.info("builder after line: "+ Arrays.toString(builder.toArray()));
         //pad if we are at the end of the terminal
-        if((size + prompt.getLength()+1) % width == 1) {
+        if((size + promptLength()+1) % width == 1) {
             if(delta < 0) {
                 //move all the way to column 0
                 builder.append(moveNumberOfColumns(width, 'D'));
@@ -695,7 +697,7 @@ public class Buffer {
         //make sure we sync the cursor back
         if(!deltaChangedAtEndOfBuffer) {
             LOGGER.info("syncing cursor...");
-            builder.append(syncCursor(size+getPrompt().getLength(), cursor+prompt.getLength(), width));
+            builder.append(syncCursor(size+getPrompt().getLength(), cursor+promptLength(), width));
         }
 
         LOGGER.info("printing: "+Arrays.toString(builder.toArray()));

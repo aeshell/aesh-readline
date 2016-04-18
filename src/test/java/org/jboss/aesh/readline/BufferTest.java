@@ -133,23 +133,20 @@ public class BufferTest {
         buffer.insert(outConsumer::add, "foo bar", 100);
         outConsumer.clear();
         buffer.delete(outConsumer::add, -2, 120);
-        assertArrayEquals(new int[] {27,'[','G'}, Arrays.copyOfRange(outConsumer.get(0), 0, 3 ));
-        assertArrayEquals(new int[] {27,'[','K'}, Arrays.copyOfRange(outConsumer.get(0), 3, 6 ));
-        assertEquals(": foo b",
-                Parser.fromCodePoints(Arrays.copyOfRange(outConsumer.get(0), 6, outConsumer.get(0).length )));
+        assertArrayEquals(new int[] {27,'[', '9', 'D'}, Arrays.copyOfRange(outConsumer.get(0), 0, 4 ));
+        assertArrayEquals(new int[] {27,'[','K'}, Arrays.copyOfRange(outConsumer.get(0), 4, 7 ));
+        assertEquals("foo b", buffer.getAsString());
         outConsumer.clear();
         buffer.delete(outConsumer::add, -2, 120);
-        assertArrayEquals(new int[] {27,'[','G'}, Arrays.copyOfRange(outConsumer.get(0), 0, 3 ));
-        assertArrayEquals(new int[] {27,'[','K'}, Arrays.copyOfRange(outConsumer.get(0), 3, 6 ));
-        assertEquals(": foo",
-                Parser.fromCodePoints(Arrays.copyOfRange(outConsumer.get(0), 6, outConsumer.get(0).length )));
+        assertArrayEquals(new int[] {27,'[', '7', 'D'}, Arrays.copyOfRange(outConsumer.get(0), 0, 4 ));
+        assertArrayEquals(new int[] {27,'[','K'}, Arrays.copyOfRange(outConsumer.get(0), 4, 7 ));
+        assertEquals("foo", buffer.getAsString());
         outConsumer.clear();
         buffer.delete(outConsumer::add, -4, 120);
-        assertArrayEquals(new int[] {27,'[','G'},
-                Arrays.copyOfRange(outConsumer.get(0), 0, 3 ));
-        assertArrayEquals(new int[] {27,'[','K'}, Arrays.copyOfRange(outConsumer.get(0), 3, 6 ));
-        assertEquals(": ",
-                Parser.fromCodePoints(Arrays.copyOfRange(outConsumer.get(0), 6, outConsumer.get(0).length )));
+        assertArrayEquals(new int[] {27,'[', '5', 'D'},
+                Arrays.copyOfRange(outConsumer.get(0), 0, 4 ));
+        assertArrayEquals(new int[] {27,'[','K'}, Arrays.copyOfRange(outConsumer.get(0), 4, 7 ));
+        assertEquals("", buffer.getAsString());
     }
 
     @Test
@@ -176,21 +173,15 @@ public class BufferTest {
         buffer.move(outConsumer::add, -1, 120);
         buffer.insert(outConsumer::add, 'A', 100);
         outConsumer.clear();
-        buffer.print(outConsumer::add, 120);
-        assertArrayEquals(new int[] {27,'[','G'},
-                Arrays.copyOfRange(outConsumer.get(0), 0, 3));
-        assertEquals(": ",
-                Parser.fromCodePoints( Arrays.copyOfRange(outConsumer.get(0), 3, 5)));
-        assertEquals("foo baAr",
-        Parser.fromCodePoints( Arrays.copyOfRange(outConsumer.get(0), 5, 13)));
+        assertEquals("foo baAr", buffer.getAsString());
         buffer.move(outConsumer::add, -1, 120);
         outConsumer.clear();
         buffer.insert(outConsumer::add, 'b', 100);
-        assertEquals("bAr", Parser.fromCodePoints(outConsumer.get(0)));
+        assertEquals("foo babAr", buffer.getAsString());
         buffer.move(outConsumer::add, -10, 120);
         outConsumer.clear();
         buffer.insert(outConsumer::add, "foo ", 100);
-        assertEquals("foo foo babAr", Parser.fromCodePoints(outConsumer.get(0)));
+        assertEquals("foo foo babAr", buffer.getAsString());
         buffer.move(outConsumer::add, 20, 120);
         outConsumer.clear();
         buffer.insert(outConsumer::add, " bar", 100);
@@ -206,30 +197,20 @@ public class BufferTest {
         buffer.move(outConsumer::add, -3, 120);
         outConsumer.clear();
         buffer.delete(outConsumer::add, -1, 120);
-        assertEquals("foobar",
-                Parser.fromCodePoints(Arrays.copyOfRange(outConsumer.get(0),
-                        outConsumer.get(0).length-6, outConsumer.get(0).length )));
+        assertEquals("foobar", buffer.getAsString());
         buffer.move(outConsumer::add, 1, 120);
         outConsumer.clear();
         buffer.delete(outConsumer::add, -3, 120);
-        assertEquals("far",
-                Parser.fromCodePoints(Arrays.copyOfRange(outConsumer.get(0),
-                        outConsumer.get(0).length-3, outConsumer.get(0).length )));
+        assertEquals("far", buffer.getAsString());
         outConsumer.clear();
         buffer.delete(outConsumer::add, 2, 120);
-        assertEquals("f",
-                Parser.fromCodePoints(Arrays.copyOfRange(outConsumer.get(0),
-                        outConsumer.get(0).length-1, outConsumer.get(0).length )));
+        assertEquals("f", buffer.getAsString());
         outConsumer.clear();
         buffer.delete(outConsumer::add, 2, 120);
-        assertEquals("f",
-                Parser.fromCodePoints(Arrays.copyOfRange(outConsumer.get(0),
-                        outConsumer.get(0).length-1, outConsumer.get(0).length )));
+        assertEquals("f", buffer.getAsString());
         outConsumer.clear();
         buffer.delete(outConsumer::add, -5, 120);
-        assertEquals(": ",
-                Parser.fromCodePoints(Arrays.copyOfRange(outConsumer.get(0),
-                        outConsumer.get(0).length-2, outConsumer.get(0).length )));
+        assertEquals("", buffer.getAsString());
     }
 
     @Test
@@ -327,7 +308,7 @@ public class BufferTest {
         buffer.insert(outConsumer::add, "1234567890", 100);
         outConsumer.clear();
         buffer.move(outConsumer::add, -10, 5);
-        assertArrayEquals(new int[] {27,'[',2,'A',27,'[',3,'G'}, outConsumer.get(0));
+        assertArrayEquals(new int[] {27,'[','2','A',27,'[','0','D'}, outConsumer.get(0));
 
         buffer.insert(outConsumer::add, ' ', 100);
         outConsumer.clear();
@@ -335,7 +316,7 @@ public class BufferTest {
         assertEquals(" 1234567890", buffer.asString());
         outConsumer.clear();
         buffer.move(outConsumer::add, 5, 5);
-        assertArrayEquals(new int[] {27,'[',1,'B',27,'[',4,'G'}, outConsumer.get(0));
+        assertArrayEquals(new int[] {27,'[','1','B',27,'[','0','D'}, outConsumer.get(0));
         buffer.insert(outConsumer::add, ' ', 100);
         outConsumer.clear();
         buffer.print(outConsumer::add, 5);
@@ -367,12 +348,10 @@ public class BufferTest {
                 Arrays.copyOfRange(outConsumer.get(0), 8, 12));
         assertArrayEquals(ANSI.MOVE_LINE_UP,
                 Arrays.copyOfRange(outConsumer.get(0), 12, 16));
-        assertArrayEquals(ANSI.CURSOR_START,
-                Arrays.copyOfRange(outConsumer.get(0), 16, 19));
+        assertArrayEquals(new int[]{27,'[', '1','2','D'},
+                Arrays.copyOfRange(outConsumer.get(0), 16, 21));
 
-        assertEquals(": foo",
-                Parser.fromCodePoints(Arrays.copyOfRange(outConsumer.get(0),
-                        outConsumer.get(0).length-5, outConsumer.get(0).length)));
+        assertEquals("foo", buffer.getAsString());
     }
 
     @Test
