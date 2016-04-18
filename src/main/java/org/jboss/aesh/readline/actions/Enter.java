@@ -66,22 +66,13 @@ public class Enter implements Action {
 
         if(isCurrentLineEnding)
             consoleBuffer.moveCursor(consoleBuffer.getBuffer().length());
-        //consoleBuffer.writeString(Config.getLineSeparator());
 
-        String result;
-        if(consoleBuffer.getBuffer().isMultiLine()) {
-            result = consoleBuffer.getBuffer().getAsString();
-        }
-        else
-            result = consoleBuffer.getBuffer().getAsString();
-        //search = null;
         if(isCurrentLineEnding) {
             consoleBuffer.getBuffer().setMultiLine(false);
+            inputProcessor.setReturnValue(consoleBuffer.getBuffer().getAsString());
             consoleBuffer.getBuffer().reset();
-            inputProcessor.setReturnValue(result);
         }
         else
             consoleBuffer.drawLine();
-
     }
 }

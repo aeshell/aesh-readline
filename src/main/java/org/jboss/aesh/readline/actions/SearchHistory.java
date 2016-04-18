@@ -102,7 +102,6 @@ abstract class SearchHistory implements SearchAction {
 
        if(status == Status.SEARCH_INTERRUPT) {
            inputProcessor.getBuffer().setBufferLine("");
-           inputProcessor.getBuffer().drawLine(false);
            searchArgument = null;
            searchResult = null;
        }
@@ -148,7 +147,6 @@ abstract class SearchHistory implements SearchAction {
                    if(searchResult != null) {
                        inputProcessor.getBuffer().moveCursor(-inputProcessor.getBuffer().getBuffer().getMultiCursor());
                        inputProcessor.getBuffer().setBufferLine( searchResult);
-                       inputProcessor.getBuffer().drawLine();
                        inputProcessor.getBuffer().getHistory().push(inputProcessor.getBuffer().getBuffer().getLine());
                        inputProcessor.getBuffer().getBuffer().reset();
                        inputProcessor.setReturnValue(searchResult);
@@ -157,7 +155,6 @@ abstract class SearchHistory implements SearchAction {
                    else {
                        inputProcessor.getBuffer().moveCursor(-inputProcessor.getBuffer().getBuffer().getMultiCursor());
                        inputProcessor.getBuffer().setBufferLine("");
-                       inputProcessor.getBuffer().drawLine();
                    }
                    break;
                case SEARCH_EXIT:
@@ -186,7 +183,7 @@ abstract class SearchHistory implements SearchAction {
                searchArgument = null;
                searchResult = null;
                if(status != Status.SEARCH_END) {
-                   inputProcessor.getBuffer().drawLine(false);
+                   //inputProcessor.getBuffer().drawLine(false);
                    moveCursorAtExit(inputProcessor);
                }
            }
@@ -216,15 +213,15 @@ abstract class SearchHistory implements SearchAction {
             builder = new StringBuilder("(forward-i-search) `");
         builder.append(searchTerm).append("': ");
         cursor += builder.length();
-        LOGGER.info("setting cursor to: "+cursor);
+        //LOGGER.info("setting cursor to: "+cursor);
         builder.append(result);
         inputProcessor.getBuffer().getBuffer().disablePrompt(true);
         inputProcessor.getBuffer().moveCursor(-inputProcessor.getBuffer().getBuffer().getMultiCursor());
         inputProcessor.getBuffer().writeOut(ANSI.CURSOR_START);
         inputProcessor.getBuffer().writeOut(ANSI.ERASE_WHOLE_LINE);
         inputProcessor.getBuffer().setBufferLine(builder.toString());
-        inputProcessor.getBuffer().drawLine(false, false);
-        LOGGER.info("moving to: "+cursor);
+        //inputProcessor.getBuffer().drawLine(false, false);
+        //LOGGER.info("moving to: "+cursor);
         inputProcessor.getBuffer().moveCursor(cursor-inputProcessor.getBuffer().getBuffer().getMultiCursor());
         inputProcessor.getBuffer().getBuffer().disablePrompt(false);
     }

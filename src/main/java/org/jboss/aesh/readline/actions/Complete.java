@@ -57,9 +57,9 @@ public class Complete implements ActionEvent {
                 inputProcessor.getBuffer().getCompleter().setAskDisplayCompletion(false);
                 inputProcessor.getBuffer().getUndoManager().clear();
                 inputProcessor.getBuffer().writeOut(Config.CR);
-                clearBufferAndDisplayPrompt(inputProcessor.getBuffer());
+                //clearBufferAndDisplayPrompt(inputProcessor.getBuffer());
                 inputProcessor.getBuffer().drawLine();
-                inputProcessor.getBuffer().moveCursor(inputProcessor.getBuffer().getBuffer().getMultiCursor());
+                //inputProcessor.getBuffer().moveCursor(inputProcessor.getBuffer().getBuffer().getMultiCursor());
             }
         }
         else {
@@ -85,9 +85,10 @@ public class Complete implements ActionEvent {
         return askForCompletion;
     }
 
+    /*
     private void clearBufferAndDisplayPrompt(ConsoleBuffer consoleBuffer) {
         consoleBuffer.getBuffer().reset();
         consoleBuffer.getUndoManager().clear();
-        consoleBuffer.drawLine();
     }
+    */
 }

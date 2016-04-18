@@ -39,7 +39,6 @@ public class Undo implements Action {
         UndoAction ua = inputProcessor.getBuffer().getUndoManager().getNext();
         if(ua != null) {
             inputProcessor.getBuffer().setBufferLine(Parser.fromCodePoints(ua.getBuffer()));
-            inputProcessor.getBuffer().drawLine();
             inputProcessor.getBuffer().moveCursor(ua.getCursorPosition() -
                     inputProcessor.getBuffer().getBuffer().getMultiCursor());
         }

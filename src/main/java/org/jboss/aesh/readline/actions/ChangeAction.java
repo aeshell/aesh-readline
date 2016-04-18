@@ -85,7 +85,6 @@ abstract class ChangeAction extends MovementAction {
                     oldCursor == inputProcessor.getBuffer().getBuffer().length())
                 inputProcessor.getBuffer().moveCursor(-1);
 
-            inputProcessor.getBuffer().drawLine();
         }
         else if(status == EditMode.Status.MOVE) {
             inputProcessor.getBuffer().moveCursor(cursor - oldCursor);
@@ -115,7 +114,6 @@ abstract class ChangeAction extends MovementAction {
                 }
             }
             inputProcessor.getBuffer().moveCursor(cursor - oldCursor);
-            inputProcessor.getBuffer().drawLine();
         }
         else if(status == EditMode.Status.DOWN_CASE) {
             if(cursor < oldCursor) {
@@ -131,7 +129,6 @@ abstract class ChangeAction extends MovementAction {
                 }
             }
             inputProcessor.getBuffer().moveCursor(cursor - oldCursor);
-            inputProcessor.getBuffer().drawLine();
         }
         else if(status == EditMode.Status.CAPITALIZE) {
             String word = Parser.findWordClosestToCursor(inputProcessor.getBuffer().getBuffer().getAsString(),
@@ -145,7 +142,6 @@ abstract class ChangeAction extends MovementAction {
                 inputProcessor.getBuffer().upCase();
 
                 inputProcessor.getBuffer().moveCursor(cursor - oldCursor);
-                inputProcessor.getBuffer().drawLine();
             }
         }
     }

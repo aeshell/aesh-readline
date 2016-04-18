@@ -40,6 +40,5 @@ public class Clear implements Action {
         //then write prompt
         inputProcessor.getBuffer().getBuffer().reset();
         inputProcessor.getBuffer().getUndoManager().clear();
-        inputProcessor.getBuffer().drawLine();
     }
 }
