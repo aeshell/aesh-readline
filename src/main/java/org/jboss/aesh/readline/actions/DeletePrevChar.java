@@ -45,7 +45,7 @@ public class DeletePrevChar implements Action {
 
     private void deleteNoMasking(ConsoleBuffer consoleBuffer) {
         //int cursor = consoleBuffer.getBuffer().getMultiCursor();
-        int cursor = consoleBuffer.getBuffer().getMultiCursor();
+        int cursor = consoleBuffer.getBuffer().getCursor();
         if(cursor > 0) {
             int lineSize = consoleBuffer.getBuffer().length();
             if(cursor > lineSize)
@@ -53,7 +53,7 @@ public class DeletePrevChar implements Action {
 
             consoleBuffer.addActionToUndoStack();
             consoleBuffer.getPasteManager().addText(new StringBuilder(
-                    consoleBuffer.getBuffer().getAsString().substring(cursor - 1, cursor)));
+                    consoleBuffer.getBuffer().getLineAsString().substring(cursor - 1, cursor)));
             consoleBuffer.delete(-1);
             //consoleBuffer.moveCursor(-1);
             //consoleBuffer.drawLine();

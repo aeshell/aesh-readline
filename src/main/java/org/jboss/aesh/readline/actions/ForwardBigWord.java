@@ -37,8 +37,8 @@ abstract class ForwardBigWord extends ChangeAction {
 
     @Override
     public void apply(InputProcessor inputProcessor) {
-        int cursor = inputProcessor.getBuffer().getBuffer().getMultiCursor();
-        String buffer = inputProcessor.getBuffer().getBuffer().getAsString();
+        int cursor = inputProcessor.getBuffer().getBuffer().getCursor();
+        String buffer = inputProcessor.getBuffer().getBuffer().getLineAsString();
                //if cursor stand on a delimiter, move till its no more delimiters
         if(cursor < buffer.length() && (isDelimiter(buffer.charAt(cursor))))
             while(cursor < buffer.length() && (isDelimiter(buffer.charAt(cursor))))

@@ -52,7 +52,7 @@ abstract class ChangeAction extends MovementAction {
     }
 
     protected final void apply(int cursor, InputProcessor inputProcessor) {
-        apply(cursor, inputProcessor.getBuffer().getBuffer().getMultiCursor(), inputProcessor);
+        apply(cursor, inputProcessor.getBuffer().getBuffer().getCursor(), inputProcessor);
     }
 
     protected final void apply(int cursor, int oldCursor, InputProcessor inputProcessor) {
@@ -62,19 +62,19 @@ abstract class ChangeAction extends MovementAction {
             if(cursor < oldCursor) {
                 //add to pastemanager
                 inputProcessor.getBuffer().getPasteManager().addText(new StringBuilder(
-                        inputProcessor.getBuffer().getBuffer().getAsString().substring(
+                        inputProcessor.getBuffer().getBuffer().getLineAsString().substring(
                                 cursor,
                                 oldCursor)));
                 //delete buffer
-                LOGGER.info("buffer before delete: "+inputProcessor.getBuffer().getBuffer().getLine());
+                LOGGER.info("buffer before delete: "+inputProcessor.getBuffer().getBuffer().getLineAsString());
                 inputProcessor.getBuffer().delete(cursor - oldCursor);
-                LOGGER.info("buffer after delete: "+inputProcessor.getBuffer().getBuffer().getLine());
+                LOGGER.info("buffer after delete: "+inputProcessor.getBuffer().getBuffer().getLineAsString());
                 inputProcessor.getBuffer().moveCursor(cursor-oldCursor);
             }
             else {
                 //add to pastemanager
                 inputProcessor.getBuffer().getPasteManager().addText(new StringBuilder(
-                        inputProcessor.getBuffer().getBuffer().getAsString().substring(
+                        inputProcessor.getBuffer().getBuffer().getLineAsString().substring(
                                 oldCursor, cursor)));
                 //delete buffer
                 inputProcessor.getBuffer().delete(cursor - oldCursor);
@@ -92,11 +92,11 @@ abstract class ChangeAction extends MovementAction {
         else if(status == EditMode.Status.YANK) {
             if(cursor < oldCursor)
                 inputProcessor.getBuffer().getPasteManager().addText(
-                        new StringBuilder(inputProcessor.getBuffer().getBuffer().getAsString().substring(cursor,
+                        new StringBuilder(inputProcessor.getBuffer().getBuffer().getLineAsString().substring(cursor,
                                 oldCursor)));
             else if(cursor > oldCursor)
                 inputProcessor.getBuffer().getPasteManager().addText(
-                        new StringBuilder(inputProcessor.getBuffer().getBuffer().getAsString().substring(
+                        new StringBuilder(inputProcessor.getBuffer().getBuffer().getLineAsString().substring(
                                 oldCursor, cursor)));
         }
 
@@ -131,11 +131,11 @@ abstract class ChangeAction extends MovementAction {
             inputProcessor.getBuffer().moveCursor(cursor - oldCursor);
         }
         else if(status == EditMode.Status.CAPITALIZE) {
-            String word = Parser.findWordClosestToCursor(inputProcessor.getBuffer().getBuffer().getAsString(),
+            String word = Parser.findWordClosestToCursor(inputProcessor.getBuffer().getBuffer().getLineAsString(),
                     oldCursor);
             if(word.length() > 0) {
                 addActionToUndoStack(inputProcessor);
-                int pos = inputProcessor.getBuffer().getBuffer().getAsString().indexOf(word,
+                int pos = inputProcessor.getBuffer().getBuffer().getLineAsString().indexOf(word,
                         oldCursor-word.length());
                 if(pos < 0)
                     pos = 0;
@@ -148,8 +148,8 @@ abstract class ChangeAction extends MovementAction {
 
     protected final void addActionToUndoStack(InputProcessor inputProcessor) {
         inputProcessor.getBuffer().getUndoManager().addUndo(new UndoAction(
-                inputProcessor.getBuffer().getBuffer().getMultiCursor(),
-                inputProcessor.getBuffer().getBuffer().getLine()));
+                inputProcessor.getBuffer().getBuffer().getCursor(),
+                inputProcessor.getBuffer().getBuffer().getLineAsString()));
     }
 
 }

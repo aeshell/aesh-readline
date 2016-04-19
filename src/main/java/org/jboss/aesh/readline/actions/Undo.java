@@ -40,7 +40,7 @@ public class Undo implements Action {
         if(ua != null) {
             inputProcessor.getBuffer().setBufferLine(Parser.fromCodePoints(ua.getBuffer()));
             inputProcessor.getBuffer().moveCursor(ua.getCursorPosition() -
-                    inputProcessor.getBuffer().getBuffer().getMultiCursor());
+                    inputProcessor.getBuffer().getBuffer().getCursor());
         }
     }
 }

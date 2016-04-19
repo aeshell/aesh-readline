@@ -35,7 +35,7 @@ public class ChangeCaseChar implements Action {
     @Override
     public void apply(InputProcessor inputProcessor) {
         if(inputProcessor.getBuffer().getBuffer().length() >=
-                inputProcessor.getBuffer().getBuffer().getMultiCursor()) {
+                inputProcessor.getBuffer().getBuffer().getCursor()) {
             inputProcessor.getBuffer().addActionToUndoStack();
             inputProcessor.getBuffer().changeCase();
             inputProcessor.getBuffer().moveCursor(1);

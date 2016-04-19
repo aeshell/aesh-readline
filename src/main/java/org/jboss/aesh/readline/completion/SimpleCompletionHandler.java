@@ -119,7 +119,7 @@ public class SimpleCompletionHandler implements CompletionHandler {
 
             final CompleteOperation co;
             if(aliasHandler == null)
-            co = new CompleteOperation(buffer.getAsString(), buffer.getMultiCursor());
+            co = new CompleteOperation(buffer.getLineAsString(), buffer.getCursor());
             else
                 co = aliasHandler.apply(buffer);
 
@@ -199,8 +199,8 @@ public class SimpleCompletionHandler implements CompletionHandler {
      */
     private void displayCompletion(TerminalString completion, Buffer buffer, InputProcessor inputProcessor,
                                    boolean appendSpace, char separator) {
-        LOGGER.info("completion: "+completion.getCharacters()+" and buffer: "+buffer.getAsString());
-        if(completion.getCharacters().startsWith(buffer.getAsString())) {
+        LOGGER.info("completion: "+completion.getCharacters()+" and buffer: "+buffer.getLineAsString());
+        if(completion.getCharacters().startsWith(buffer.getLineAsString())) {
             ActionMapper.mapToAction("backward-kill-word").apply(inputProcessor);
             //consoleBuffer.performAction(new PrevWordAction(buffer.getMultiCursor(), Action.DELETE, EditMode.Mode.EMACS));
             //buffer.write(completion.getCharacters());

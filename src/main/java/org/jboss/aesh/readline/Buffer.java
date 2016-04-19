@@ -80,21 +80,12 @@ public class Buffer {
             throw new IndexOutOfBoundsException();
     }
 
-    private int getCursor() {
+    public int getCursor() {
         return cursor;
     }
 
     private int getCursorWithPrompt() {
         return getCursor() + promptLength()+1;
-    }
-
-    public int getMultiCursor() {
-        if (multiLine) {
-            return multiLineBuffer.length + getCursor();
-        }
-        else {
-            return getCursor();
-        }
     }
 
     public boolean isMasking() {
@@ -105,7 +96,7 @@ public class Buffer {
         return multiLine;
     }
 
-    public String getAsString() {
+    public String getLineAsString() {
         return Parser.fromCodePoints(getLine());
     }
 
@@ -456,7 +447,7 @@ public class Buffer {
         return Arrays.copyOfRange(line, position, size);
     }
 
-    public int[] getLine() {
+    public int[] getLineMasked() {
         if(!prompt.isMasking())
             return Arrays.copyOf(line, size);
         else {
@@ -470,7 +461,7 @@ public class Buffer {
         }
     }
 
-    private int[] getLineNoMask() {
+    private int[] getLine() {
         return Arrays.copyOf(line, size);
     }
 
