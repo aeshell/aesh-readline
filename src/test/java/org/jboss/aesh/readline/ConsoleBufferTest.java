@@ -39,7 +39,12 @@ import static org.junit.Assert.assertTrue;
 public class ConsoleBufferTest {
 
     private ConsoleBuffer createConsoleBuffer(Connection connection) {
-       return new AeshConsoleBufferString(connection, new Prompt("[aesh@rules]: "), EditModeBuilder.builder().create(),
+       return new AeshConsoleBuffer(connection, new Prompt("[aesh@rules]: "), EditModeBuilder.builder().create(),
+                new InMemoryHistory(50), null, connection.size(), true);
+    }
+
+    private ConsoleBuffer createConsoleBuffer(Connection connection, String prompt) {
+       return new AeshConsoleBuffer(connection, new Prompt(prompt), EditModeBuilder.builder().create(),
                 new InMemoryHistory(50), null, connection.size(), true);
     }
 
@@ -65,23 +70,23 @@ public class ConsoleBufferTest {
     public void testMovement()  throws IOException {
 
         SimpleConnection connection = new SimpleConnection();
-        ConsoleBuffer consoleBuffer = createConsoleBuffer(connection);
+        ConsoleBuffer consoleBuffer = createConsoleBuffer(connection,"");
 
         consoleBuffer.writeString("foo0");
         consoleBuffer.moveCursor(-1);
         assertEquals("foo0" + new String(BufferString.printAnsi("1D")), connection.bufferBuilder.toString());
         consoleBuffer.moveCursor(-10);
-        assertEquals("foo0" + new String(BufferString.printAnsi("1D")) + new String(BufferString.printAnsi("3D")), connection.bufferBuilder.toString());
+        assertEquals("foo0" + new String(BufferString.printAnsi("1D")) + new String(BufferString.printAnsi("2D")), connection.bufferBuilder.toString());
 
         consoleBuffer.writeString("1");
-        assertEquals("1foo0", consoleBuffer.getBuffer().getLine());
+        assertEquals("1foo0", consoleBuffer.getBuffer().getAsString());
 
         connection.bufferBuilder.delete(0, connection.bufferBuilder.length());
         consoleBuffer.moveCursor(1);
         assertEquals(new String(BufferString.printAnsi("1C")), connection.bufferBuilder.toString());
 
         consoleBuffer.writeString("2");
-        assertEquals("1f2oo0", consoleBuffer.getBuffer().getLine());
+        assertEquals("1f2oo0", consoleBuffer.getBuffer().getAsString());
     }
 
     class SimpleConnection implements Connection {

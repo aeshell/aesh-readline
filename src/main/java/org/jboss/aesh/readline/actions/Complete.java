@@ -19,7 +19,6 @@
  */
 package org.jboss.aesh.readline.actions;
 
-import org.jboss.aesh.readline.ConsoleBuffer;
 import org.jboss.aesh.readline.InputProcessor;
 import org.jboss.aesh.readline.Action;
 import org.jboss.aesh.readline.ActionEvent;

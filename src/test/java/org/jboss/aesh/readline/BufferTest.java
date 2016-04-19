@@ -124,6 +124,15 @@ public class BufferTest {
         assertEquals(" ", Parser.fromCodePoints(outConsumer.get(1)));
         assertEquals("foo bar", Parser.fromCodePoints(outConsumer.get(2)));
 
+
+        buffer = new Buffer(new Prompt(": "));
+        outConsumer.clear();
+        buffer.insert(outConsumer::add, "foo", 100);
+        buffer.move(outConsumer::add, -10, 100);
+        outConsumer.clear();
+        buffer.insert(outConsumer::add, "1", 100);
+        assertArrayEquals( new int[]{'1','f','o','o',27,'[','3','D'}, outConsumer.get(0));
+
     }
 
     @Test

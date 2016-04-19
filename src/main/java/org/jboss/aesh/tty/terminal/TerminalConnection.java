@@ -136,7 +136,6 @@ public class TerminalConnection implements Connection {
                 getCloseHandler().accept(null);
             close();
         }
-        System.out.println("finished in blocking reader");
     }
 
     public boolean isReading() {
