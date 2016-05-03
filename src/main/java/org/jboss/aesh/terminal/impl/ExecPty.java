@@ -98,7 +98,12 @@ public class ExecPty implements Pty {
     @Override
     public Attributes getAttr() throws IOException {
         String cfg = doGetConfig();
-        return doGetAttr(cfg);
+        if(OSUtils.IS_HPUX) {
+            //TODO: need to parse output from ttytype -s
+            return null;
+        }
+        else
+            return doGetAttr(cfg);
     }
 
     @Override
@@ -166,8 +171,10 @@ public class ExecPty implements Pty {
     }
 
     protected String doGetConfig() throws IOException {
-        return exec(OSUtils.STTY_COMMAND, OSUtils.STTY_F_OPTION, getName(), "-a");
-        //return exec(OSUtils.STTY_COMMAND, "-a");
+        if(OSUtils.IS_HPUX)
+            return exec("ttytype", "-s");
+        else
+            return exec(OSUtils.STTY_COMMAND, OSUtils.STTY_F_OPTION, getName(), "-a");
     }
 
     static Attributes doGetAttr(String cfg) throws IOException {

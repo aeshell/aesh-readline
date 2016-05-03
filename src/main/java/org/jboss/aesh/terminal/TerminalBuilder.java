@@ -110,7 +110,13 @@ public final class TerminalBuilder {
             }
             else if (OSUtils.IS_WINDOWS) {
                 return new WinSysTerminal(name, nativeSignals);
-            } else {
+            }
+            else if(OSUtils.IS_HPUX) {
+                //TODO: need to parse differently than "normal" PosixSysTerminals...
+                // just fallback to ExternalTerminal for now
+                return new ExternalTerminal(name, type, System.in, System.out, encoding);
+            }
+            else {
                 String type = this.type;
                 if (type == null) {
                     type = System.getenv("TERM");

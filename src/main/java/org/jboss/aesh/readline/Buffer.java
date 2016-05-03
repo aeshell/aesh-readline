@@ -84,10 +84,6 @@ public class Buffer {
         return cursor;
     }
 
-    private int getCursorWithPrompt() {
-        return getCursor() + promptLength()+1;
-    }
-
     public boolean isMasking() {
         return prompt.isMasking();
     }
