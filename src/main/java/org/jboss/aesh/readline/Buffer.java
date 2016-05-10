@@ -484,24 +484,12 @@ public class Buffer {
         }
 
         //pad if we are at the end of the terminal
-        if((size + promptLength()+1) % width == 1) {
+        if((size + promptLength()+1) % width == 1 && deltaChangedAtEndOfBuffer) {
             builder.append(new int[]{32, 13});
         }
         //make sure we sync the cursor back
         if(!deltaChangedAtEndOfBuffer) {
-            //if cursor and and of buffer is on the same line:
-            if(size / width == cursor / width) {
-                builder.append(moveNumberOfColumns(size-cursor, 'D'));
-            }
-            //if cursor and enf of buffer is on different lines, we need to move the cursor
-            else {
-                int numLines = (size / width) - (cursor / width);
-                int sameLine = size - (width * numLines);
-                if(sameLine < cursor)
-                    builder.append(moveNumberOfColumns(cursor-sameLine, 'C'));
-                else
-                    builder.append(moveNumberOfColumns(cursor-sameLine, 'D'));
-            }
+            builder.append(syncCursor(size+getPrompt().getLength(), cursor+promptLength(), width));
         }
 
         out.accept(builder.toArray());
