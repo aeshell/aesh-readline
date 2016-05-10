@@ -53,12 +53,12 @@ public class Buffer {
     private boolean isPromptDisplayed = false;
 
 
-    public Buffer() {
+    Buffer() {
         line = new int[1024];
         prompt = new Prompt("");
     }
 
-    public Buffer(Prompt prompt) {
+    Buffer(Prompt prompt) {
         line = new int[1024];
         if(prompt != null)
             this.prompt = prompt;
@@ -121,7 +121,7 @@ public class Buffer {
         return disablePrompt;
     }
 
-    public void setPrompt(Prompt prompt, Consumer<int[]> out, int width) {
+    void setPrompt(Prompt prompt, Consumer<int[]> out, int width) {
         if(prompt != null) {
             delta =  prompt.getLength() - this.prompt.getLength();
             this.prompt = prompt;
@@ -140,7 +140,7 @@ public class Buffer {
             return size;
     }
 
-    public int promptLength() {
+    private int promptLength() {
         if(prompt.isMasking()) {
             if(prompt.getMask() == 0)
                 return 0;
@@ -184,17 +184,6 @@ public class Buffer {
     }
 
     /**
-     * Insert text at cursor position
-     *
-     * @param data text
-     */
-    public void insert(Consumer<int[]> out, char[] data, int width) {
-        doInsert(data);
-        printInsertedData(out, width);
-    }
-
-
-    /**
      * Insert at cursor position.
      *
      * @param data char
@@ -222,22 +211,8 @@ public class Buffer {
 
     private void doInsert(int[] data) {
         boolean gotControlChar = false;
-        for(int i=0; i < data.length; i++) {
-            int width = WcWidth.width(data[i]);
-            if (width == -1) {
-                gotControlChar = true;
-                //todo: handle control chars...
-            }
-        }
-        if(!gotControlChar) {
-            doActualInsert(data);
-        }
-    }
-
-    private void doInsert(char[] data) {
-        boolean gotControlChar = false;
-        for(int i=0; i < data.length; i++) {
-            int width = WcWidth.width(data[i]);
+        for (int aData : data) {
+            int width = WcWidth.width(aData);
             if (width == -1) {
                 gotControlChar = true;
                 //todo: handle control chars...
@@ -251,19 +226,8 @@ public class Buffer {
     private void doActualInsert(int[] data) {
         if(cursor < size)
             System.arraycopy(line, cursor, line, cursor + data.length, size - cursor);
-        for(int i=0; i < data.length; i++)
-            line[cursor++] = data[i];
-        size += data.length;
-        delta += data.length;
-
-        deltaChangedAtEndOfBuffer = (size == cursor);
-    }
-
-    private void doActualInsert(char[] data) {
-        if(cursor < size)
-            System.arraycopy(line, cursor, line, cursor + data.length, size - cursor);
-        for(int i=0; i < data.length; i++)
-            line[cursor++] = data[i];
+        for (int aData : data)
+            line[cursor++] = aData;
         size += data.length;
         delta += data.length;
 
@@ -291,7 +255,8 @@ public class Buffer {
      * @param viMode edit mode (vi or emacs)
      */
     public void move(Consumer<int[]> out, int move, int termWidth, boolean viMode) {
-        LOGGER.info("moving: "+move+", width: "+termWidth+", buffer: "+getLine());
+        LOGGER.info("moving: "+move+", width: "+termWidth+", buffer: "
+                +Arrays.toString(getLine()));
         move = calculateActualMovement(move, viMode);
         //quick exit
         if(move == 0)
@@ -356,8 +321,9 @@ public class Buffer {
             int[] out = new int[3+asciiColumn.length];
             out[0] = 27; // esc
             out[1] = '['; // [
-            for(int i=0; i < asciiColumn.length; i++)
-                out[2+i] = asciiColumn[i];
+            //for(int i=0; i < asciiColumn.length; i++)
+            //    out[2+i] = asciiColumn[i];
+            System.arraycopy(asciiColumn, 0, out, 2, asciiColumn.length);
             out[out.length-1] = direction;
             return out;
         }
@@ -387,8 +353,9 @@ public class Buffer {
             int[] out = new int[6+asciiColumn.length+asciiRow.length];
             out[0] = 27; //esc, \033
             out[1] = '[';
-            for(int i=0; i < asciiRow.length; i++)
-                out[2+i] = asciiRow[i];
+            //for(int i=0; i < asciiRow.length; i++)
+            //    out[2+i] = asciiRow[i];
+            System.arraycopy(asciiRow, 0, out, 2, asciiRow.length);
             out[2+asciiRow.length] = rowCommand;
             out[3+asciiRow.length] = 27;
             out[4+asciiRow.length] = '[';
@@ -481,10 +448,10 @@ public class Buffer {
      *           check if we need to delete more than the current line
      *       }
      *   }
-     * @param out
-     * @param width
+     * @param out output
+     * @param width terminal size
      */
-    public void print(Consumer<int[]> out, int width) {
+    void print(Consumer<int[]> out, int width) {
         if(delta >= 0)
             printInsertedData(out, width);
         else {
@@ -594,10 +561,10 @@ public class Buffer {
 
     /**
      * All parameter values are included the prompt length
-     * @param builder
-     * @param width
-     * @param oldCursor
-     * @param oldSize
+     * @param builder int[] builder
+     * @param width terminal size
+     * @param oldCursor prev position
+     * @param oldSize prev terminal size
      */
     private void clearAllLinesAndReturnToFirstLine(IntArrayBuilder builder, int width, int oldCursor, int oldSize) {
         LOGGER.info("oldSize: "+oldSize+", oldCursor: "+oldCursor);
@@ -641,8 +608,8 @@ public class Buffer {
         }
     }
 
-    private void moveCursorToStartAndPrint(Consumer<int[]> out, IntArrayBuilder builder, int width,
-                                           boolean clearLine) {
+    private void moveCursorToStartAndPrint(Consumer<int[]> out, IntArrayBuilder builder,
+                                           int width, boolean clearLine) {
         clearLine = true;
 
         //if((size+promptLength()+1) % width == 1)
@@ -707,7 +674,7 @@ public class Buffer {
     /**
      * Delete from cursor position and backwards if delta is < 0
      * Delete from cursor position and forwards if delta is > 0
-     * @param delta
+     * @param delta difference
      */
     public void delete(Consumer<int[]> out, int delta, int width) {
         if (delta > 0) {
@@ -734,7 +701,7 @@ public class Buffer {
     /**
      * Write a string to the line and update cursor accordingly
      *
-     * @param out
+     * @param out consumer
      * @param str string
      */
     public void insert(Consumer<int[]> out, final String str, int width) {
@@ -744,7 +711,7 @@ public class Buffer {
     /**
      * Switch case if the current character is a letter.
      */
-    public void changeCase(Consumer<int[]> out) {
+    void changeCase(Consumer<int[]> out) {
         if(Character.isLetter(line[cursor])) {
             if(Character.isLowerCase(line[cursor]))
                 line[cursor] = Character.toUpperCase(line[cursor]);
@@ -758,7 +725,7 @@ public class Buffer {
     /**
      * Up case if the current character is a letter
      */
-    public void upCase(Consumer<int[]> out) {
+    void upCase(Consumer<int[]> out) {
         if(Character.isLetter(line[cursor])) {
             line[cursor] = Character.toUpperCase(line[cursor]);
             out.accept(new int[]{line[cursor]});
@@ -768,7 +735,7 @@ public class Buffer {
     /**
      * Lower case if the current character is a letter
      */
-    public void downCase(Consumer<int[]> out) {
+    void downCase(Consumer<int[]> out) {
         if(Character.isLetter(line[cursor])) {
             line[cursor] = Character.toLowerCase(line[cursor]);
             out.accept(new int[]{line[cursor]});
@@ -799,7 +766,7 @@ public class Buffer {
     /**
      * we assume that value is > 0
      *
-     * @param value
+     * @param value int value (non ascii value)
      * @return ascii represented int value
      */
     private int[] intToAsciiInts(int value) {
