@@ -93,7 +93,7 @@ public class Buffer {
     }
 
     public String getLineAsString() {
-        return Parser.fromCodePoints(getLine());
+        return Parser.fromCodePoints(getMultiLine());
     }
 
     public void reset() {
@@ -102,6 +102,8 @@ public class Buffer {
             line[i] = 0;
         size = 0;
         isPromptDisplayed = false;
+        if(multiLine)
+            multiLineBuffer = new int[0];
     }
 
     public void setIsPromptDisplayed(boolean isPromptDisplayed) {
@@ -154,6 +156,7 @@ public class Buffer {
     }
 
     public void updateMultiLineBuffer() {
+        LOGGER.info("updateing multiline..");
         int originalSize = multiLineBuffer.length;
         if(lineEndsWithBackslash()) {
             multiLineBuffer = Arrays.copyOf(multiLineBuffer, originalSize + size-1);

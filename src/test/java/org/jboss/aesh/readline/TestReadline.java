@@ -77,7 +77,6 @@ public class TestReadline {
         term.read("foo \\");
         term.clearOutputBuffer();
         term.read(Key.ENTER);
-        term.assertBuffer("foo ");
         term.assertLine(null);
         assertEquals("\n> ", term.getOutputBuffer());
         term.read("bar\n");

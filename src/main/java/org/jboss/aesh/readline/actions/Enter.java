@@ -68,7 +68,6 @@ public class Enter implements Action {
             consoleBuffer.moveCursor(consoleBuffer.getBuffer().length());
 
         if(isCurrentLineEnding) {
-            consoleBuffer.getBuffer().setMultiLine(false);
             inputProcessor.setReturnValue(consoleBuffer.getBuffer().asString());
             consoleBuffer.getBuffer().reset();
         }
