@@ -136,14 +136,14 @@ public class Buffer {
     }
 
     public int length() {
-        if(prompt.isMasking() && prompt.getMask() == 0)
+        if(isMasking() && prompt.getMask() == 0)
             return 1;
         else
             return size;
     }
 
     private int promptLength() {
-        if(prompt.isMasking()) {
+        if(isMasking()) {
             if(prompt.getMask() == 0)
                 return 0;
         }
@@ -151,7 +151,7 @@ public class Buffer {
     }
 
     public void setMultiLine(boolean multi) {
-        if(!prompt.isMasking())
+        if(!isMasking())
             multiLine = multi;
     }
 
@@ -269,7 +269,7 @@ public class Buffer {
         // Cursor movement still has to occur, via calculateActualMovement and setCursor above,
         // to put new characters in the correct location in the invisible line,
         // but this method should always return an empty character so the UI cursor does not move.
-        if(prompt.isMasking() && prompt.getMask() == 0){
+        if(isMasking() && prompt.getMask() == 0){
             return;
         }
 
@@ -414,7 +414,7 @@ public class Buffer {
     }
 
     public int[] getLineMasked() {
-        if(!prompt.isMasking())
+        if(!isMasking())
             return Arrays.copyOf(line, size);
         else {
             if(size > 0 && prompt.getMask() != '\u0000') {
@@ -469,6 +469,10 @@ public class Buffer {
         if(!isPromptDisplayed && promptLength() > 0) {
             builder.append(prompt.getANSI());
             isPromptDisplayed = true;
+            //need to print the entire buffer
+            //force that by setting delta = cursor if delta is 0
+            if(delta == 0)
+                delta = cursor;
         }
         //quick exit if buffer is empty
         if(size == 0) {
@@ -476,14 +480,22 @@ public class Buffer {
             return;
         }
 
-        if(deltaChangedAtEndOfBuffer) {
-            if(delta == 1 || delta == 0)
-                builder.append(new int[]{line[cursor-1]});
-            else
-                builder.append( Arrays.copyOfRange(line, cursor-delta, cursor));
+        if(isMasking()) {
+            if(prompt.getMask() != 0) {
+                int[] mask = new int[delta];
+                Arrays.fill(mask, prompt.getMask());
+                builder.append(mask);
+            }
         }
         else {
-            builder.append(Arrays.copyOfRange(line, cursor-delta, size));
+            if (deltaChangedAtEndOfBuffer) {
+                if (delta == 1 || delta == 0)
+                    builder.append(new int[]{line[cursor - 1]});
+                else
+                    builder.append(Arrays.copyOfRange(line, cursor - delta, cursor));
+            } else {
+                builder.append(Arrays.copyOfRange(line, cursor - delta, size));
+            }
         }
 
         //pad if we are at the end of the terminal

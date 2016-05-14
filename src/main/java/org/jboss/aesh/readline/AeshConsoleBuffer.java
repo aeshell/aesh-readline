@@ -100,7 +100,8 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
 
     @Override
     public void moveCursor(int where) {
-        buffer.move(connection.stdoutHandler(), where, getSize().getWidth());
+        buffer.move(connection.stdoutHandler(), where,
+                getSize().getWidth(), isViMode());
     }
 
     @Override
@@ -206,6 +207,11 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
         }
 
 
+    }
+
+    private boolean isViMode() {
+        return editMode.getMode() == EditMode.Mode.VI &&
+                editMode.getCurrentStatus() != EditMode.Status.EDIT;
     }
 
 

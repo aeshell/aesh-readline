@@ -51,6 +51,14 @@ public class ViModeTest {
         term.assertBuffer("Tco");
         term.read(Key.ENTER);
         term.assertLine("Tco");
+
+        term.readline();
+        term.read("123");
+        term.read(Key.ESC);
+        term.assertBuffer("123");
+        term.read(Key.ONE);
+        term.read(Key.z);
+        term.assertBuffer("123");
     }
 
     @Test

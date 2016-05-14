@@ -52,11 +52,10 @@ public class TestReadline {
         Prompt prompt = new Prompt(": ", '#');
         TestConnection term = new TestConnection(null, null, null, prompt);
         term.read("foo bar");
-        term.assertBuffer("#######");
+        assertEquals(": #######", term.getOutputBuffer());
         term.read(Key.BACKSPACE);
         term.read(Key.CTRL_A);
         term.read(Key.CTRL_D);
-        term.assertBuffer("#####");
         term.read(Key.ENTER);
         term.assertLine("oo ba");
 
@@ -64,7 +63,7 @@ public class TestReadline {
         term.setPrompt(prompt);
         term.readline();
         term.read("foo bar");
-        term.assertBuffer("");
+        assertEquals("", term.getOutputBuffer());
         term.read(Key.BACKSPACE);
         term.read(Key.BACKSPACE);
         term.read(Key.ENTER);

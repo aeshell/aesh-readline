@@ -177,9 +177,14 @@ public class Readline {
                 }
             }
             else {
-                if(Key.isPrintable(event.buffer().array()))
+                if(Key.isPrintable(event.buffer().array()) && notInCommandNode())
                     this.getBuffer().writeChar((char) event.buffer().array()[0]);
             }
+        }
+
+        private boolean notInCommandNode() {
+            return !(editMode.getMode() == EditMode.Mode.VI &&
+                    editMode.getCurrentStatus() == EditMode.Status.COMMAND);
         }
 
         public final Size size() {
