@@ -46,6 +46,7 @@ public class Yank extends ChangeAction {
                     inputProcessor.getBuffer().getBuffer().length()) {
                 inputProcessor.getBuffer().insertBufferLine(pasteBuffer.toString(),
                         inputProcessor.getBuffer().getBuffer().getCursor());
+                inputProcessor.getBuffer().moveCursor(-1);
             }
         }
     }
