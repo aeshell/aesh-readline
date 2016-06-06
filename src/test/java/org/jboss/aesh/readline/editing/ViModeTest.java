@@ -105,6 +105,21 @@ public class ViModeTest {
     }
 
     @Test
+    public void testWordMovementAndEdit3() throws Exception {
+        TestConnection term = new TestConnection(EditModeBuilder.builder(EditMode.Mode.VI).create());
+        term.read("foo bar... Bar");
+        term.read(Key.ESC);
+        term.read(Key.ZERO);
+        term.read(Key.w);
+        term.read(Key.h);
+        term.read(Key.W);
+        term.read(Key.D);
+        term.read(Key.ENTER);
+
+        term.assertLine("foo ");
+    }
+
+    @Test
     public void testRepeatAndEdit() throws Exception {
         TestConnection term = new TestConnection(EditModeBuilder.builder(EditMode.Mode.VI).create());
 

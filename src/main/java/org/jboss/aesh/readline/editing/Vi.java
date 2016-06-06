@@ -137,8 +137,13 @@ public class Vi implements EditMode {
     }
 
     @Override
-    public Status getCurrentStatus() {
+    public Status getStatus() {
         return status;
+    }
+
+    @Override
+    public void setStatus(Status status) {
+        this.status = status;
     }
 
     @Override

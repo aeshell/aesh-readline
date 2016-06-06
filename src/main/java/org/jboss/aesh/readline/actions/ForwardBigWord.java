@@ -53,8 +53,8 @@ abstract class ForwardBigWord extends ChangeAction {
                 while(cursor < buffer.length() && isSpace(buffer.charAt(cursor)))
                     cursor++;
 
-            apply(cursor, inputProcessor);
         }
+        apply(cursor, inputProcessor);
     }
 
 }

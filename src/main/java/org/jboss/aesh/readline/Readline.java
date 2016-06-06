@@ -184,7 +184,7 @@ public class Readline {
 
         private boolean notInCommandNode() {
             return !(editMode.getMode() == EditMode.Mode.VI &&
-                    editMode.getCurrentStatus() == EditMode.Status.COMMAND);
+                    editMode.getStatus() == EditMode.Status.COMMAND);
         }
 
         public final Size size() {
@@ -245,6 +245,11 @@ public class Readline {
         @Override
         public void setReturnValue(String value) {
             returnValue = value;
+        }
+
+        @Override
+        public EditMode getEditMode() {
+            return editMode;
         }
     }
 

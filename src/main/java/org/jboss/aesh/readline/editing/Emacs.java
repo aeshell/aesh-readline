@@ -124,8 +124,13 @@ public class Emacs implements EditMode {
     }
 
     @Override
-    public Status getCurrentStatus() {
+    public Status getStatus() {
         return Status.EDIT;
+    }
+
+    @Override
+    public void setStatus(Status status) {
+        //nothing to do
     }
 
     @Override

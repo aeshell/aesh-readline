@@ -211,7 +211,7 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
 
     private boolean isViMode() {
         return editMode.getMode() == EditMode.Mode.VI &&
-                editMode.getCurrentStatus() != EditMode.Status.EDIT;
+                editMode.getStatus() != EditMode.Status.EDIT;
     }
 
 

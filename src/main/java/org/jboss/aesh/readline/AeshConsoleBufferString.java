@@ -128,8 +128,8 @@ public class AeshConsoleBufferString implements ConsoleBuffer {
     public void moveCursor(int where) {
         if(ansiMode) {
             if(editMode.getMode() == EditMode.Mode.VI &&
-                    (editMode.getCurrentStatus() == EditMode.Status.COMMAND ||
-                            editMode.getCurrentStatus() == EditMode.Status.DELETE)) {
+                    (editMode.getStatus() == EditMode.Status.COMMAND ||
+                            editMode.getStatus() == EditMode.Status.DELETE)) {
                 write(buffer.move(where, size.getWidth(), true));
             }
             else {

@@ -19,6 +19,8 @@
  */
 package org.jboss.aesh.readline;
 
+import org.jboss.aesh.readline.editing.EditMode;
+
 /**
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
  */
@@ -30,4 +32,5 @@ public interface InputProcessor {
 
     void setReturnValue(String value);
 
+    EditMode getEditMode();
 }

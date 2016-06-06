@@ -44,10 +44,25 @@ public class YankAfter extends ChangeAction {
             addActionToUndoStack(inputProcessor);
             if(inputProcessor.getBuffer().getBuffer().getCursor() <=
                     inputProcessor.getBuffer().getBuffer().length()) {
-                inputProcessor.getBuffer().insertBufferLine(pasteBuffer.toString(),
-                        inputProcessor.getBuffer().getBuffer().getCursor() + 1);
-                //inputProcessor.getBuffer().drawLine();
-                inputProcessor.getBuffer().moveCursor(1);
+                //if we're at the end, we need to do some magic in vi-mode
+                if(inputProcessor.getEditMode().getMode() == EditMode.Mode.VI &&
+                        inputProcessor.getEditMode().getStatus() == EditMode.Status.COMMAND &&
+                        inputProcessor.getBuffer().getBuffer().getCursor() ==
+                        inputProcessor.getBuffer().getBuffer().length()-1) {
+                    inputProcessor.getEditMode().setStatus(EditMode.Status.EDIT);
+                    inputProcessor.getBuffer().moveCursor(1);
+                    inputProcessor.getBuffer().insertBufferLine(pasteBuffer.toString(),
+                            inputProcessor.getBuffer().getBuffer().getCursor());
+                    inputProcessor.getBuffer().moveCursor(-1);
+                    inputProcessor.getEditMode().setStatus(EditMode.Status.COMMAND);
+                }
+                else {
+                    inputProcessor.getBuffer().moveCursor(1);
+                    inputProcessor.getBuffer().insertBufferLine(pasteBuffer.toString(),
+                            inputProcessor.getBuffer().getBuffer().getCursor());
+                    //inputProcessor.getBuffer().drawLine();
+                    inputProcessor.getBuffer().moveCursor(-1);
+                }
             }
         }
     }
