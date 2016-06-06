@@ -51,7 +51,7 @@ public class TestTerminalConnection {
         outputStream.write(("FOO").getBytes());
         outputStream.flush();
         outputStream.close();
-        Thread.sleep(50);
+        Thread.sleep(150);
         connection.startBlockingReader();
 
         assertArrayEquals(result.get(0), new int[] {70,79,79});
