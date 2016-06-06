@@ -120,6 +120,21 @@ public class ViModeTest {
     }
 
     @Test
+    public void testEnter() throws Exception {
+        TestConnection term = new TestConnection(EditModeBuilder.builder(EditMode.Mode.VI).create());
+        term.read("foo bar");
+        term.read(Key.ENTER);
+        term.assertLine("foo bar");
+
+        term = new TestConnection(EditModeBuilder.builder(EditMode.Mode.VI).create());
+        term.read("bar");
+        term.read(Key.ESC);
+        term.read(Key.CTRL_M);
+
+        term.assertLine("bar");
+    }
+
+    @Test
     public void testRepeatAndEdit() throws Exception {
         TestConnection term = new TestConnection(EditModeBuilder.builder(EditMode.Mode.VI).create());
 

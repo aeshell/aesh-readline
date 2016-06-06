@@ -186,25 +186,30 @@ public class EditModeBuilder {
             vi.addActionGroup(Key.ENTER, new Vi.ActionStatusGroup(new Vi.ActionStatus[]{
                     new Vi.ActionStatus("accept-line", EditMode.Status.EDIT, EditMode.Status.EDIT),
                     new Vi.ActionStatus("accept-line", EditMode.Status.COMMAND, EditMode.Status.EDIT),
-                    new Vi.ActionStatus("accept-line", EditMode.Status.CHANGE, EditMode.Status.EDIT)}));
+                    new Vi.ActionStatus("accept-line", EditMode.Status.DELETE, EditMode.Status.COMMAND),
+                    new Vi.ActionStatus("accept-line", EditMode.Status.CHANGE, EditMode.Status.COMMAND)}));
             vi.addActionGroup(Key.CTRL_M, new Vi.ActionStatusGroup(new Vi.ActionStatus[]{
                     new Vi.ActionStatus("accept-line", EditMode.Status.EDIT, EditMode.Status.EDIT),
                     new Vi.ActionStatus("accept-line", EditMode.Status.COMMAND, EditMode.Status.EDIT),
-                    new Vi.ActionStatus("accept-line", EditMode.Status.CHANGE, EditMode.Status.EDIT)}));
+                    new Vi.ActionStatus("accept-line", EditMode.Status.DELETE, EditMode.Status.COMMAND),
+                    new Vi.ActionStatus("accept-line", EditMode.Status.CHANGE, EditMode.Status.COMMAND)}));
         }
         else {
             vi.addActionGroup(Key.ENTER, new Vi.ActionStatusGroup(new Vi.ActionStatus[]{
                     new Vi.ActionStatus("accept-line", EditMode.Status.EDIT, EditMode.Status.EDIT),
                     new Vi.ActionStatus("accept-line", EditMode.Status.COMMAND, EditMode.Status.EDIT),
-                    new Vi.ActionStatus("accept-line", EditMode.Status.CHANGE, EditMode.Status.EDIT)}));
+                    new Vi.ActionStatus("accept-line", EditMode.Status.DELETE, EditMode.Status.COMMAND),
+                    new Vi.ActionStatus("accept-line", EditMode.Status.CHANGE, EditMode.Status.COMMAND)}));
             vi.addActionGroup(Key.ENTER_2, new Vi.ActionStatusGroup(new Vi.ActionStatus[]{
                     new Vi.ActionStatus("accept-line", EditMode.Status.EDIT, EditMode.Status.EDIT),
                     new Vi.ActionStatus("accept-line", EditMode.Status.COMMAND, EditMode.Status.EDIT),
-                    new Vi.ActionStatus("accept-line", EditMode.Status.CHANGE, EditMode.Status.EDIT)}));
+                    new Vi.ActionStatus("accept-line", EditMode.Status.DELETE, EditMode.Status.COMMAND),
+                    new Vi.ActionStatus("accept-line", EditMode.Status.CHANGE, EditMode.Status.COMMAND)}));
             vi.addActionGroup(Key.CTRL_M, new Vi.ActionStatusGroup(new Vi.ActionStatus[]{
                     new Vi.ActionStatus("accept-line", EditMode.Status.EDIT, EditMode.Status.EDIT),
                     new Vi.ActionStatus("accept-line", EditMode.Status.COMMAND, EditMode.Status.EDIT),
-                    new Vi.ActionStatus("accept-line", EditMode.Status.CHANGE, EditMode.Status.EDIT)}));
+                    new Vi.ActionStatus("accept-line", EditMode.Status.DELETE, EditMode.Status.COMMAND),
+                    new Vi.ActionStatus("accept-line", EditMode.Status.CHANGE, EditMode.Status.COMMAND)}));
         }
 
         vi.addActionGroup(Key.CTRL_C, new Vi.ActionStatusGroup(new Vi.ActionStatus[]{
@@ -221,7 +226,6 @@ public class EditModeBuilder {
         vi.addAction(Key.CTRL_L, "clear-screen"); //ctrl-l
         vi.addAction(Key.CTRL_Z, new NoAction());
         vi.addAction(Key.CTRL_J, "accept-line");
-        vi.addAction(Key.CTRL_M, "accept-line");
 
         //search
         vi.addAction(Key.CTRL_R, "reverse-search-history");
