@@ -30,7 +30,7 @@ public interface InputProcessor {
 
     ConsoleBuffer getBuffer();
 
-    void setReturnValue(String value);
+    void setReturnValue(int[] value);
 
     EditMode getEditMode();
 }

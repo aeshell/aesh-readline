@@ -58,9 +58,9 @@ public class Enter implements Action {
             }
             else if( inputProcessor.getBuffer().getHistory().isEnabled()) {
                 if(consoleBuffer.getBuffer().isMultiLine())
-                   inputProcessor.getBuffer().getHistory().push(consoleBuffer.getBuffer().asString());
+                   inputProcessor.getBuffer().getHistory().push(consoleBuffer.getBuffer().getMultiLine());
                 else
-                    inputProcessor.getBuffer().getHistory().push(consoleBuffer.getBuffer().asString());
+                    inputProcessor.getBuffer().getHistory().push(consoleBuffer.getBuffer().getMultiLine());
             }
         }
 
@@ -68,7 +68,7 @@ public class Enter implements Action {
             consoleBuffer.moveCursor(consoleBuffer.getBuffer().length());
 
         if(isCurrentLineEnding) {
-            inputProcessor.setReturnValue(consoleBuffer.getBuffer().asString());
+            inputProcessor.setReturnValue(consoleBuffer.getBuffer().getMultiLine());
             consoleBuffer.getBuffer().reset();
         }
         else

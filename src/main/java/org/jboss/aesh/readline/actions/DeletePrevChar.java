@@ -23,6 +23,8 @@ import org.jboss.aesh.readline.ConsoleBuffer;
 import org.jboss.aesh.readline.InputProcessor;
 import org.jboss.aesh.readline.Action;
 
+import java.util.Arrays;
+
 /**
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
  */
@@ -52,11 +54,8 @@ public class DeletePrevChar implements Action {
                 cursor = lineSize;
 
             consoleBuffer.addActionToUndoStack();
-            consoleBuffer.getPasteManager().addText(new StringBuilder(
-                    consoleBuffer.getBuffer().asString().substring(cursor - 1, cursor)));
+            consoleBuffer.getPasteManager().addText(Arrays.copyOfRange(consoleBuffer.getBuffer().getMultiLine(), cursor-1, cursor));
             consoleBuffer.delete(-1);
-            //consoleBuffer.moveCursor(-1);
-            //consoleBuffer.drawLine();
         }
     }
 
@@ -64,7 +63,6 @@ public class DeletePrevChar implements Action {
         if(consoleBuffer.getBuffer().length() > 0) {
             consoleBuffer.delete(-1);
             consoleBuffer.moveCursor(consoleBuffer.getBuffer().length());
-            //consoleBuffer.drawLine();
         }
     }
 }

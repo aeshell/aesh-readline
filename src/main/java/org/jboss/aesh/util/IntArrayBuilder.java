@@ -47,6 +47,15 @@ public class IntArrayBuilder {
             return Arrays.copyOf(data, size);
     }
 
+    public int size() {
+        return size;
+    }
+
+    public void deleteLastEntry() {
+        if(size > 0)
+            size--;
+    }
+
     private void ensureCapacityInternal(int minimumCapacity) {
         // overflow-conscious code
         if (minimumCapacity - data.length > 0)

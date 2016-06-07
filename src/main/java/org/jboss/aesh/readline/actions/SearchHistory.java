@@ -19,6 +19,7 @@
  */
 package org.jboss.aesh.readline.actions;
 
+import org.jboss.aesh.parser.Parser;
 import org.jboss.aesh.readline.InputProcessor;
 import org.jboss.aesh.readline.Action;
 import org.jboss.aesh.readline.KeyAction;
@@ -26,6 +27,7 @@ import org.jboss.aesh.readline.SearchAction;
 import org.jboss.aesh.readline.history.SearchDirection;
 import org.jboss.aesh.terminal.Key;
 import org.jboss.aesh.util.ANSI;
+import org.jboss.aesh.util.IntArrayBuilder;
 import org.jboss.aesh.util.LoggerUtil;
 
 import java.util.logging.Logger;
@@ -36,10 +38,13 @@ import java.util.logging.Logger;
 abstract class SearchHistory implements SearchAction {
 
     private SearchAction.Status status = Status.SEARCH_NOT_STARTED;
-    private StringBuilder searchArgument;
-    private String searchResult;
+    private IntArrayBuilder searchArgument;
+    private int[] searchResult;
     private SearchAction.Status defaultAction;
 
+    private static final int[] REVERSE_SEARCH_TEXT = Parser.toCodePoints("(reverse-i-search) `");
+    private static final int[] FORWARD_SEARCH_TEXT = Parser.toCodePoints("(forward-i-search) `");
+    private static final int[] DIVIDER = Parser.toCodePoints("': ");
     private static final Logger LOGGER = LoggerUtil.getLogger(SearchHistory.class.getName());
 
     SearchHistory(SearchAction.Status defaultAction) {
@@ -50,9 +55,9 @@ abstract class SearchHistory implements SearchAction {
     public void input(Action action, KeyAction key) {
          if(action == null && Key.isPrintable(key.buffer().array())) {
              if(searchArgument == null)
-                 searchArgument = new StringBuilder();
+                 searchArgument = new IntArrayBuilder(1);
              status = defaultAction;
-             searchArgument.append((char) key.buffer().array()[0]);
+             searchArgument.append(key.buffer().array()[0]);
          }
          else if(action instanceof Interrupt) {
              status = Status.SEARCH_INTERRUPT;
@@ -84,9 +89,9 @@ abstract class SearchHistory implements SearchAction {
              }
              if(Key.isPrintable(key.buffer().array())) {
                  if(searchArgument == null)
-                     searchArgument = new StringBuilder();
+                     searchArgument = new IntArrayBuilder(1);
                  status = defaultAction;
-                 searchArgument.append((char) key.buffer().array()[0]);
+                 searchArgument.append(key.buffer().array()[0]);
              }
          }
     }
@@ -101,7 +106,7 @@ abstract class SearchHistory implements SearchAction {
     public void apply(InputProcessor inputProcessor) {
 
        if(status == Status.SEARCH_INTERRUPT) {
-           inputProcessor.getBuffer().setBufferLine("");
+           inputProcessor.getBuffer().replace(new int[]{});
            searchArgument = null;
            searchResult = null;
        }
@@ -110,10 +115,10 @@ abstract class SearchHistory implements SearchAction {
                case SEARCH_PREV:
                    if(inputProcessor.getBuffer().getHistory().getSearchDirection() != SearchDirection.REVERSE)
                        inputProcessor.getBuffer().getHistory().setSearchDirection(SearchDirection.REVERSE);
-                   if(searchArgument != null && searchArgument.length() > 0) {
-                       String tmpResult = inputProcessor.getBuffer().getHistory().search(searchArgument.toString());
+                   if(searchArgument != null && searchArgument.size() > 0) {
+                       int[] tmpResult = inputProcessor.getBuffer().getHistory().search(searchArgument.toArray());
                        if(tmpResult == null)
-                           searchArgument.deleteCharAt(searchArgument.length()-1);
+                           searchArgument.deleteLastEntry();
                        else
                            searchResult = tmpResult;
                    }
@@ -121,10 +126,10 @@ abstract class SearchHistory implements SearchAction {
                case SEARCH_NEXT:
                    if(inputProcessor.getBuffer().getHistory().getSearchDirection() != SearchDirection.FORWARD)
                        inputProcessor.getBuffer().getHistory().setSearchDirection(SearchDirection.FORWARD);
-                   if(searchArgument != null && searchArgument.length() > 0) {
-                       String tmpResult = inputProcessor.getBuffer().getHistory().search(searchArgument.toString());
+                   if(searchArgument != null && searchArgument.size() > 0) {
+                       int[] tmpResult = inputProcessor.getBuffer().getHistory().search(searchArgument.toArray());
                        if(tmpResult == null)
-                           searchArgument.deleteCharAt(searchArgument.length()-1);
+                           searchArgument.deleteLastEntry();
                        else
                            searchResult = tmpResult;
                    }
@@ -133,50 +138,50 @@ abstract class SearchHistory implements SearchAction {
                    status = Status.SEARCH_PREV;
                    inputProcessor.getBuffer().getHistory().setSearchDirection(SearchDirection.REVERSE);
                    if(inputProcessor.getBuffer().getBuffer().length() > 0) {
-                       searchArgument = new StringBuilder( inputProcessor.getBuffer().getBuffer().asString());
-                       searchResult = inputProcessor.getBuffer().getHistory().search(searchArgument.toString());
+                       searchArgument = new IntArrayBuilder(inputProcessor.getBuffer().getBuffer().getMultiLine());
+                       searchResult = inputProcessor.getBuffer().getHistory().search(inputProcessor.getBuffer().getBuffer().getMultiLine());
                    }
                    break;
                case SEARCH_DELETE:
-                   if(searchArgument != null && searchArgument.length() > 0) {
-                       searchArgument.deleteCharAt(searchArgument.length() - 1);
-                       searchResult = inputProcessor.getBuffer().getHistory().search(searchArgument.toString());
+                   if(searchArgument != null && searchArgument.size() > 0) {
+                       searchArgument.deleteLastEntry();
+                       searchResult = inputProcessor.getBuffer().getHistory().search(searchArgument.toArray());
                    }
                    break;
                case SEARCH_END:
                    if(searchResult != null) {
                        inputProcessor.getBuffer().moveCursor(-inputProcessor.getBuffer().getBuffer().getCursor());
-                       inputProcessor.getBuffer().setBufferLine( searchResult);
-                       inputProcessor.getBuffer().getHistory().push(inputProcessor.getBuffer().getBuffer().asString());
+                       inputProcessor.getBuffer().replace( searchResult);
+                       inputProcessor.getBuffer().getHistory().push(inputProcessor.getBuffer().getBuffer().getMultiLine());
                        inputProcessor.getBuffer().getBuffer().reset();
                        inputProcessor.setReturnValue(searchResult);
                        break;
                    }
                    else {
                        inputProcessor.getBuffer().moveCursor(-inputProcessor.getBuffer().getBuffer().getCursor());
-                       inputProcessor.getBuffer().setBufferLine("");
+                       inputProcessor.getBuffer().replace(new int[]{});
                    }
                    break;
                case SEARCH_EXIT:
                    if(searchResult != null) {
-                       inputProcessor.getBuffer().setBufferLine(searchResult);
+                       inputProcessor.getBuffer().replace(searchResult);
                    }
                    else {
-                       inputProcessor.getBuffer().setBufferLine("");
+                       inputProcessor.getBuffer().replace(new int[]{});
                    }
                    break;
                case SEARCH_MOVE_NEXT:
                    searchResult = inputProcessor.getBuffer().getHistory().getNextFetch();
-                   inputProcessor.getBuffer().setBufferLine(searchResult);
+                   inputProcessor.getBuffer().replace(searchResult);
                    break;
                case SEARCH_MOVE_PREV:
                    searchResult = inputProcessor.getBuffer().getHistory().getPreviousFetch();
-                   inputProcessor.getBuffer().setBufferLine(searchResult);
+                   inputProcessor.getBuffer().replace(searchResult);
                    break;
                case SEARCH_MOVE_RIGHT:
-                   inputProcessor.getBuffer().setBufferLine(searchResult);
+                   inputProcessor.getBuffer().replace(searchResult);
                case SEARCH_MOVE_LEFT:
-                   inputProcessor.getBuffer().setBufferLine(searchResult);
+                   inputProcessor.getBuffer().replace(searchResult);
            }
 
            if(!keepFocus()) {
@@ -188,38 +193,38 @@ abstract class SearchHistory implements SearchAction {
                }
            }
            else {
-               if(searchArgument == null || searchArgument.length() == 0) {
+               if(searchArgument == null || searchArgument.size() == 0) {
                    if(searchResult != null)
-                       printSearch("", searchResult, inputProcessor);
+                       printSearch(new int[]{}, searchResult, inputProcessor);
                    else
-                       printSearch("", "", inputProcessor);
+                       printSearch(new int[]{}, new int[]{}, inputProcessor);
                }
                else {
-                   if(searchResult != null && searchResult.length() > 0)
-                       printSearch(searchArgument.toString(), searchResult, inputProcessor);
+                   if(searchResult != null && searchResult.length > 0)
+                       printSearch(searchArgument.toArray(), searchResult, inputProcessor);
                }
            }
        }
     }
 
-    private void printSearch(String searchTerm, String result, InputProcessor inputProcessor) {
+    private void printSearch(int[] searchTerm, int[] result, InputProcessor inputProcessor) {
         //cursor should be placed at the index of searchTerm
-        int cursor = result.indexOf(searchTerm);
+        int cursor = Parser.arrayIndexOf(result, searchTerm);
 
-        StringBuilder builder;
+        IntArrayBuilder builder;
         if(inputProcessor.getBuffer().getHistory().getSearchDirection() == SearchDirection.REVERSE)
-            builder = new StringBuilder("(reverse-i-search) `");
+            builder = new IntArrayBuilder(REVERSE_SEARCH_TEXT);
         else
-            builder = new StringBuilder("(forward-i-search) `");
-        builder.append(searchTerm).append("': ");
-        cursor += builder.length();
+            builder = new IntArrayBuilder(FORWARD_SEARCH_TEXT);
+        builder.append(searchTerm).append(DIVIDER);
+        cursor += builder.size();
         //LOGGER.info("setting cursor to: "+cursor);
         builder.append(result);
         inputProcessor.getBuffer().getBuffer().disablePrompt(true);
         inputProcessor.getBuffer().moveCursor(-inputProcessor.getBuffer().getBuffer().getCursor());
         inputProcessor.getBuffer().writeOut(ANSI.CURSOR_START);
         inputProcessor.getBuffer().writeOut(ANSI.ERASE_WHOLE_LINE);
-        inputProcessor.getBuffer().setBufferLine(builder.toString());
+        inputProcessor.getBuffer().replace(builder.toArray());
         //inputProcessor.getBuffer().drawLine(false, false);
         //LOGGER.info("moving to: "+cursor);
         inputProcessor.getBuffer().moveCursor(cursor-inputProcessor.getBuffer().getBuffer().getCursor());

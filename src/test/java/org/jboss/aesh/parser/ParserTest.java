@@ -272,4 +272,51 @@ public class ParserTest {
         assertEquals("foo bar", Parser.stripAwayAnsiCodes("foo" + ANSI.RESET + " bar"));
     }
 
+    @Test
+    public void testIsTrimmedArrayEmpty() {
+        int[] input = {};
+        assertTrue(Parser.isTrimmedArrayEmpty(input));
+        input = new int[]{32,32};
+        assertTrue(Parser.isTrimmedArrayEmpty(input));
+        input = new int[]{32,32,68};
+        assertFalse(Parser.isTrimmedArrayEmpty(input));
+        input = new int[]{68,32,32};
+        assertFalse(Parser.isTrimmedArrayEmpty(input));
+        input = new int[]{70};
+        assertFalse(Parser.isTrimmedArrayEmpty(input));
+    }
+
+    @Test
+    public void testArrayContains() {
+        int[] source = new int[] {1,2,3,4,5,6,7,8};
+        int[] target = new int[] {7};
+        assertTrue(Parser.arrayContains(source, target));
+        target = new int[] {7,8};
+        assertTrue(Parser.arrayContains(source, target));
+        target = new int[] {7,8,9};
+        assertFalse(Parser.arrayContains(source, target));
+        target = new int[] {1,2,3,4};
+        assertTrue(Parser.arrayContains(source, target));
+        target = new int[] {1,2,3,4,6};
+        assertFalse(Parser.arrayContains(source, target));
+        target = new int[] {0,1,2,3,4};
+        assertFalse(Parser.arrayContains(source, target));
+    }
+
+    @Test
+    public void testArrayIndexOf() {
+        int[] source = new int[] {1,2,3,4,5,6,7,8};
+        int[] target = new int[] {7};
+        assertEquals(6, Parser.arrayIndexOf(source, target));
+        target = new int[] {7,8};
+        assertEquals(6, Parser.arrayIndexOf(source, target));
+        target = new int[] {7,8,9};
+        assertEquals(-1, Parser.arrayIndexOf(source, target));
+        target = new int[] {1,2,3,4};
+        assertEquals(0, Parser.arrayIndexOf(source, target));
+        target = new int[] {1,2,3,4,6};
+        assertEquals(-1, Parser.arrayIndexOf(source, target));
+        target = new int[] {0,1,2,3,4};
+        assertEquals(-1, Parser.arrayIndexOf(source, target));
+    }
 }

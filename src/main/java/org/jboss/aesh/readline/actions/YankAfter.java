@@ -38,7 +38,7 @@ public class YankAfter extends ChangeAction {
 
     @Override
     public void apply(InputProcessor inputProcessor) {
-        StringBuilder pasteBuffer = inputProcessor.getBuffer().getPasteManager().get(0);
+        int[] pasteBuffer = inputProcessor.getBuffer().getPasteManager().get(0);
         if(pasteBuffer != null) {
 
             if(inputProcessor.getBuffer().getBuffer().getCursor() <=
@@ -51,16 +51,13 @@ public class YankAfter extends ChangeAction {
                         inputProcessor.getBuffer().getBuffer().length()-1) {
                     inputProcessor.getEditMode().setStatus(EditMode.Status.EDIT);
                     inputProcessor.getBuffer().moveCursor(1);
-                    inputProcessor.getBuffer().insert(pasteBuffer.toString(),
-                            inputProcessor.getBuffer().getBuffer().getCursor());
+                    inputProcessor.getBuffer().insert(pasteBuffer);
                     inputProcessor.getBuffer().moveCursor(-1);
                     inputProcessor.getEditMode().setStatus(EditMode.Status.COMMAND);
                 }
                 else {
                     inputProcessor.getBuffer().moveCursor(1);
-                    inputProcessor.getBuffer().insert(pasteBuffer.toString(),
-                            inputProcessor.getBuffer().getBuffer().getCursor());
-                    //inputProcessor.getBuffer().drawLine();
+                    inputProcessor.getBuffer().insert(pasteBuffer);
                     inputProcessor.getBuffer().moveCursor(-1);
                 }
             }

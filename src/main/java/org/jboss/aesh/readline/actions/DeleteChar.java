@@ -23,6 +23,8 @@ import org.jboss.aesh.readline.ConsoleBuffer;
 import org.jboss.aesh.readline.InputProcessor;
 import org.jboss.aesh.readline.Action;
 
+import java.util.Arrays;
+
 /**
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
  */
@@ -53,8 +55,7 @@ public class DeleteChar implements Action {
         int lineSize = consoleBuffer.getBuffer().length();
         if(cursor < lineSize) {
             consoleBuffer.addActionToUndoStack();
-            consoleBuffer.getPasteManager().addText(new StringBuilder(
-                    consoleBuffer.getBuffer().asString().substring(cursor, cursor+1)));
+            consoleBuffer.getPasteManager().addText(Arrays.copyOfRange(consoleBuffer.getBuffer().getMultiLine(), cursor, cursor+1));
             consoleBuffer.delete(1);
             if(cursor == lineSize-1 && cursor > 0 && viMode)
                 consoleBuffer.moveCursor(-1);

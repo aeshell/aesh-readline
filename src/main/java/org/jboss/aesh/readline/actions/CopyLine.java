@@ -35,6 +35,6 @@ public class CopyLine implements Action {
 
     @Override
     public void apply(InputProcessor inputProcessor) {
-        inputProcessor.getBuffer().getPasteManager().addText(new StringBuilder(inputProcessor.getBuffer().getBuffer().asString()));
+        inputProcessor.getBuffer().getPasteManager().addText(inputProcessor.getBuffer().getBuffer().getMultiLine());
     }
 }

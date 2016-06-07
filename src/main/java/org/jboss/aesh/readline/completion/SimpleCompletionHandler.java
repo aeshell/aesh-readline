@@ -232,7 +232,7 @@ public class SimpleCompletionHandler implements CompletionHandler {
                 inputProcessor.getBuffer().getSize().getHeight(), inputProcessor.getBuffer().getSize().getWidth()));
 
         buffer.setIsPromptDisplayed(false);
-        inputProcessor.getBuffer().drawLine(false, false);
+        inputProcessor.getBuffer().drawLine();
     }
 
     /*

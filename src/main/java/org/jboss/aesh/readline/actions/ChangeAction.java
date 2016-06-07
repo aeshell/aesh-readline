@@ -24,6 +24,7 @@ import org.jboss.aesh.parser.Parser;
 import org.jboss.aesh.readline.editing.EditMode;
 import org.jboss.aesh.util.LoggerUtil;
 
+import java.util.Arrays;
 import java.util.logging.Logger;
 
 /**
@@ -60,10 +61,8 @@ abstract class ChangeAction extends MovementAction {
             inputProcessor.getBuffer().addActionToUndoStack();
             if(cursor < oldCursor) {
                 //add to pastemanager
-                inputProcessor.getBuffer().getPasteManager().addText(new StringBuilder(
-                        inputProcessor.getBuffer().getBuffer().asString().substring(
-                                cursor,
-                                oldCursor)));
+                inputProcessor.getBuffer().getPasteManager().addText(
+                        Arrays.copyOfRange(inputProcessor.getBuffer().getBuffer().getMultiLine(), cursor, oldCursor));
                 //delete buffer
                 LOGGER.info("buffer before delete: "+inputProcessor.getBuffer().getBuffer().asString());
                 inputProcessor.getBuffer().delete(cursor - oldCursor);
@@ -72,9 +71,8 @@ abstract class ChangeAction extends MovementAction {
             }
             else {
                 //add to pastemanager
-                inputProcessor.getBuffer().getPasteManager().addText(new StringBuilder(
-                        inputProcessor.getBuffer().getBuffer().asString().substring(
-                                oldCursor, cursor)));
+                inputProcessor.getBuffer().getPasteManager().addText(
+                        Arrays.copyOfRange(inputProcessor.getBuffer().getBuffer().getMultiLine(), oldCursor, cursor));
                 //delete buffer
                 inputProcessor.getBuffer().delete(cursor - oldCursor);
             }
@@ -91,12 +89,10 @@ abstract class ChangeAction extends MovementAction {
         else if(status == EditMode.Status.YANK) {
             if(cursor < oldCursor)
                 inputProcessor.getBuffer().getPasteManager().addText(
-                        new StringBuilder(inputProcessor.getBuffer().getBuffer().asString().substring(cursor,
-                                oldCursor)));
+                        Arrays.copyOfRange(inputProcessor.getBuffer().getBuffer().getMultiLine(), cursor, oldCursor));
             else if(cursor > oldCursor)
                 inputProcessor.getBuffer().getPasteManager().addText(
-                        new StringBuilder(inputProcessor.getBuffer().getBuffer().asString().substring(
-                                oldCursor, cursor)));
+                        Arrays.copyOfRange(inputProcessor.getBuffer().getBuffer().getMultiLine(), oldCursor, cursor));
         }
 
         else if(status == EditMode.Status.UP_CASE) {

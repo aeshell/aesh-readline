@@ -41,15 +41,11 @@ public abstract class History {
         this.enabled = false;
     }
 
-    public abstract void push(String entry);
-
     public abstract void push(int[] entry);
 
-    public abstract String find(String search);
+    public abstract int[] find(int[] search);
 
-    public abstract String get(int index);
-
-    abstract int[] getAsInts(int index);
+    public abstract int[] get(int index);
 
     public abstract int size();
 
@@ -57,17 +53,17 @@ public abstract class History {
 
     public abstract SearchDirection getSearchDirection();
 
-    public abstract String getNextFetch();
+    public abstract int[] getNextFetch();
 
-    public abstract String getPreviousFetch();
+    public abstract int[] getPreviousFetch();
 
-    public abstract String search(String search);
+    public abstract int[] search(int[] search);
 
-    public abstract void setCurrent(String line);
+    public abstract void setCurrent(int[] line);
 
-    public abstract String getCurrent();
+    public abstract int[] getCurrent();
 
-    public abstract List<String> getAll();
+    public abstract List<int[]> getAll();
 
     public abstract void clear();
 

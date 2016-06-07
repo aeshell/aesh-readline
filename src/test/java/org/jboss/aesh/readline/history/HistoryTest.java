@@ -19,6 +19,7 @@
  */
 package org.jboss.aesh.readline.history;
 
+import org.jboss.aesh.parser.Parser;
 import org.jboss.aesh.readline.editing.EditMode;
 import org.jboss.aesh.readline.editing.EditModeBuilder;
 import org.jboss.aesh.terminal.Key;
@@ -30,6 +31,7 @@ import org.junit.Test;
 import java.io.File;
 import java.io.IOException;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -61,43 +63,43 @@ public class HistoryTest {
     @Test
     public void testSearch() {
         History history = new InMemoryHistory(20);
-        history.push("foo1");
-        history.push("foo2");
-        history.push("foo3");
+        history.push(Parser.toCodePoints("foo1"));
+        history.push(Parser.toCodePoints("foo2"));
+        history.push(Parser.toCodePoints("foo3"));
 
         history.setSearchDirection(SearchDirection.REVERSE);
-        assertEquals("foo3",history.search("foo") );
-        assertEquals("foo2",history.search("foo") );
-        assertEquals("foo1",history.search("foo") );
+        assertArrayEquals(Parser.toCodePoints("foo3"),history.search(Parser.toCodePoints("foo")) );
+        assertArrayEquals(Parser.toCodePoints("foo2"),history.search(Parser.toCodePoints("foo")) );
+        assertArrayEquals(Parser.toCodePoints("foo1"),history.search(Parser.toCodePoints("foo")) );
 
         history.setSearchDirection(SearchDirection.FORWARD);
-        assertEquals("foo1",history.search("foo") );
-        assertEquals("foo2",history.search("foo") );
-        assertEquals("foo3",history.search("foo") );
+        assertArrayEquals(Parser.toCodePoints("foo1"),history.search(Parser.toCodePoints("foo")) );
+        assertArrayEquals(Parser.toCodePoints("foo2"),history.search(Parser.toCodePoints("foo")) );
+        assertArrayEquals(Parser.toCodePoints("foo3"),history.search(Parser.toCodePoints("foo")) );
 
         history.setSearchDirection(SearchDirection.REVERSE);
-        assertEquals("foo3",history.search("foo") );
-        assertEquals("foo2",history.search("foo") );
-        assertEquals("foo1",history.search("foo") );
+        assertArrayEquals(Parser.toCodePoints("foo3"),history.search(Parser.toCodePoints("foo")) );
+        assertArrayEquals(Parser.toCodePoints("foo2"),history.search(Parser.toCodePoints("foo")) );
+        assertArrayEquals(Parser.toCodePoints("foo1"),history.search(Parser.toCodePoints("foo")) );
 
         history.setSearchDirection(SearchDirection.REVERSE);
 
-        assertEquals("foo3",history.search("foo") );
-        assertEquals("foo2",history.search("foo") );
-        assertEquals("foo1",history.search("foo") );
-        assertEquals("foo3",history.search("foo") );
+        assertArrayEquals(Parser.toCodePoints("foo3"),history.search(Parser.toCodePoints("foo")) );
+        assertArrayEquals(Parser.toCodePoints("foo2"),history.search(Parser.toCodePoints("foo")) );
+        assertArrayEquals(Parser.toCodePoints("foo1"),history.search(Parser.toCodePoints("foo")) );
+        assertArrayEquals(Parser.toCodePoints("foo3"),history.search(Parser.toCodePoints("foo")) );
     }
 
     @Test
     public void testSearchAndFetch() {
         History history = new InMemoryHistory(20);
-        history.push("foo1");
-        history.push("foo2");
-        history.push("foo3");
+        history.push(Parser.toCodePoints("foo1"));
+        history.push(Parser.toCodePoints("foo2"));
+        history.push(Parser.toCodePoints("foo3"));
 
         history.setSearchDirection(SearchDirection.REVERSE);
-        assertEquals("foo3",history.search("foo") );
-        assertEquals("foo2", history.getPreviousFetch());
+        assertArrayEquals(Parser.toCodePoints("foo3"),history.search(Parser.toCodePoints("foo")) );
+        assertArrayEquals(Parser.toCodePoints("foo2"), history.getPreviousFetch());
     }
 
     @Test
@@ -105,20 +107,20 @@ public class HistoryTest {
         History history = new InMemoryHistory(20);
 
         for(int i=0; i < 25; i++)
-            history.push(String.valueOf(i));
+            history.push(Parser.toCodePoints(String.valueOf(i)));
 
 
         assertEquals(20, history.size());
-        assertEquals("24", history.getPreviousFetch());
+        assertArrayEquals(Parser.toCodePoints("24"), history.getPreviousFetch());
     }
 
     @Test
     public void testClear() {
         History history = new InMemoryHistory(10);
-        history.push("1");
-        history.push("2");
+        history.push(Parser.toCodePoints("1"));
+        history.push(Parser.toCodePoints("2"));
 
-        assertEquals("2", history.getPreviousFetch());
+        assertArrayEquals(Parser.toCodePoints("2"), history.getPreviousFetch());
         history.clear();
         assertEquals(null, history.getPreviousFetch());
     }
@@ -126,17 +128,17 @@ public class HistoryTest {
     @Test
     public void testDupes() {
         History history = new InMemoryHistory(10);
-        history.push("1");
-        history.push("2");
-        history.push("3");
-        history.push("1");
-        history.push("1");
-        assertEquals("1", history.getPreviousFetch());
-        assertEquals("3", history.getPreviousFetch());
-        assertEquals("1", history.getNextFetch());
-        assertEquals("3", history.getPreviousFetch());
-        assertEquals("2", history.getPreviousFetch());
-        assertEquals("1", history.getPreviousFetch());
+        history.push(Parser.toCodePoints("1"));
+        history.push(Parser.toCodePoints("2"));
+        history.push(Parser.toCodePoints("3"));
+        history.push(Parser.toCodePoints("1"));
+        history.push(Parser.toCodePoints("1"));
+        assertArrayEquals(Parser.toCodePoints("1"), history.getPreviousFetch());
+        assertArrayEquals(Parser.toCodePoints("3"), history.getPreviousFetch());
+        assertArrayEquals(Parser.toCodePoints("1"), history.getNextFetch());
+        assertArrayEquals(Parser.toCodePoints("3"), history.getPreviousFetch());
+        assertArrayEquals(Parser.toCodePoints("2"), history.getPreviousFetch());
+        assertArrayEquals(Parser.toCodePoints("1"), history.getPreviousFetch());
         assertEquals(4, history.getAll().size());
     }
 
@@ -153,7 +155,7 @@ public class HistoryTest {
         perm.setWritable(true);
         perm.setWritableOwnerOnly(true);
         History history = new FileHistory(historyFile, maxSize, perm, false);
-        history.push("1");
+        history.push(Parser.toCodePoints("1"));
         history.stop(); // it will write history to local file
         assertTrue(historyFile.canRead());
         assertFalse(historyFile.canExecute());
@@ -169,7 +171,7 @@ public class HistoryTest {
         perm.setWritable(true);
         perm.setWritableOwnerOnly(true);
         history = new FileHistory(historyFile, maxSize, perm, false);
-        history.push("1");
+        history.push(Parser.toCodePoints("1"));
         history.stop(); // it will write history to local file
         assertFalse(historyFile.canRead());
         assertTrue(historyFile.canExecute());
@@ -185,7 +187,7 @@ public class HistoryTest {
         perm.setWritable(false);
         perm.setWritableOwnerOnly(true);
         history = new FileHistory(historyFile, maxSize, perm, false);
-        history.push("1");
+        history.push(Parser.toCodePoints("1"));
         history.stop(); // it will write history to local file
         assertFalse(historyFile.canRead());
         assertFalse(historyFile.canExecute());
@@ -195,13 +197,13 @@ public class HistoryTest {
     @Test
     public void testPrevHistory() {
         History history = new InMemoryHistory(20);
-        history.push("foo1");
-        history.push("foo2");
-        history.push("foo3");
+        history.push(Parser.toCodePoints("foo1"));
+        history.push(Parser.toCodePoints("foo2"));
+        history.push(Parser.toCodePoints("foo3"));
 
-        assertEquals("foo3", history.getPreviousFetch());
-        history.push("foo3");
-        assertEquals("foo3", history.getPreviousFetch());
+        assertArrayEquals(Parser.toCodePoints("foo3"), history.getPreviousFetch());
+        history.push(Parser.toCodePoints("foo3"));
+        assertArrayEquals(Parser.toCodePoints("foo3"), history.getPreviousFetch());
 
     }
 }

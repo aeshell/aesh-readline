@@ -19,6 +19,7 @@
  */
 package org.jboss.aesh.readline;
 
+import org.jboss.aesh.parser.Parser;
 import org.jboss.aesh.readline.completion.Completion;
 import org.jboss.aesh.readline.completion.CompletionHandler;
 import org.jboss.aesh.readline.completion.SimpleCompletionHandler;
@@ -243,8 +244,8 @@ public class Readline {
         }
 
         @Override
-        public void setReturnValue(String value) {
-            returnValue = value;
+        public void setReturnValue(int[] value) {
+            returnValue = Parser.fromCodePoints(value);
         }
 
         @Override

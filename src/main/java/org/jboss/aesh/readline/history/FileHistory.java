@@ -19,6 +19,7 @@
  */
 package org.jboss.aesh.readline.history;
 
+import org.jboss.aesh.parser.Parser;
 import org.jboss.aesh.util.Config;
 import org.jboss.aesh.util.FileAccessPermission;
 import org.jboss.aesh.util.LoggerUtil;
@@ -69,7 +70,7 @@ public class FileHistory extends InMemoryHistory {
             try (BufferedReader reader = new BufferedReader(new FileReader(historyFile))) {
                 String line;
                 while((line = reader.readLine()) != null)
-                    push(line);
+                    push(Parser.toCodePoints(line));
             } catch(FileNotFoundException ignored) {
                 //AESH-205
             } catch (IOException e) {
@@ -88,7 +89,7 @@ public class FileHistory extends InMemoryHistory {
         historyFile.delete();
         try (FileWriter fw = new FileWriter(historyFile)) {
             for(int i=0; i < size();i++)
-                fw.write(get(i) + (Config.getLineSeparator()));
+                fw.write(Parser.fromCodePoints(get(i)) + (Config.getLineSeparator()));
         }
         if (historyFilePermission != null) {
             historyFile.setReadable(false, false);

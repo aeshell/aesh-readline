@@ -686,4 +686,58 @@ public class Parser {
         return new String(input, 0, input.length);
     }
 
+    public static boolean isTrimmedArrayEmpty(int[] input) {
+        for(int i : input) {
+            if(i != 32)
+                return false;
+        }
+        return true;
+    }
+
+    public static int arrayIndexOf(int[] source, int[] target) {
+        return arrayIndexOf(source, 0, source.length, target, 0, target.length, 0);
+
+    }
+
+    public static int arrayIndexOf(int[] source, int sourceOffset, int sourceCount,
+                              int[] target, int targetOffset, int targetCount, int fromIndex) {
+        if (fromIndex >= sourceCount) {
+            return (targetCount == 0 ? sourceCount : -1);
+        }
+        if (fromIndex < 0) {
+            fromIndex = 0;
+        }
+        if (targetCount == 0) {
+            return fromIndex;
+        }
+
+        int first = target[targetOffset];
+        int max = sourceOffset + (sourceCount - targetCount);
+
+        for (int i = sourceOffset + fromIndex; i <= max; i++) {
+            /* Look for first character. */
+            if (source[i] != first) {
+                while (++i <= max && source[i] != first);
+            }
+
+            /* Found first character, now look at the rest of v2 */
+            if (i <= max) {
+                int j = i + 1;
+                int end = j + targetCount - 1;
+                for (int k = targetOffset + 1; j < end && source[j]
+                        == target[k]; j++, k++);
+
+                if (j == end) {
+                    /* Found whole string. */
+                    return i - sourceOffset;
+                }
+            }
+        }
+        return -1;
+    }
+
+    public static boolean arrayContains(int[] source, int[] target) {
+        return arrayIndexOf(source, target) > -1;
+
+    }
 }

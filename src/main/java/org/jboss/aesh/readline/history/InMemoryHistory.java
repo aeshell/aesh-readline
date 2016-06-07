@@ -22,6 +22,7 @@ package org.jboss.aesh.readline.history;
 import org.jboss.aesh.parser.Parser;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -32,12 +33,12 @@ import java.util.List;
  */
 public class InMemoryHistory extends History {
 
-    private final List<String> historyList;
+    private final List<int[]> historyList;
     private int lastId = 0;
-    private String current;
+    private int[] current;
     private SearchDirection searchDirection = SearchDirection.REVERSE;
     private final int maxSize;
-    private String lastSearchArgument;
+    private int[] lastSearchArgument;
 
     public InMemoryHistory() {
         this(500);
@@ -49,14 +50,16 @@ public class InMemoryHistory extends History {
         else
             this.maxSize = maxSize;
         historyList = new ArrayList<>();
-        current = "";
+        current = new int[]{};
     }
 
     @Override
-    public void push(String entry) {
-        if(isEnabled() && entry != null && entry.trim().length() > 0) {
+    public void push(int[] entry) {
+        if(isEnabled() && entry != null && !Parser.isTrimmedArrayEmpty(entry)) {
             // Don't add repeated lines to the history
-            if(historyList.size() > 0 && historyList.get(historyList.size()-1).equals(entry.trim())) {
+            if(historyList.size() > 0 &&
+                    Arrays.equals(historyList.get(historyList.size()-1), entry)) {
+                    //historyList.get(historyList.size()-1).equals(entry.trim())) {
                 lastId = size();
                return;
             }
@@ -65,18 +68,13 @@ public class InMemoryHistory extends History {
                 historyList.remove(0);
             }
 
-            historyList.add(entry.trim());
+            historyList.add(entry);
             lastId = size();
         }
     }
 
     @Override
-    public void push(int[] entry) {
-        push(Parser.fromCodePoints(entry));
-    }
-
-    @Override
-    public String find(String search) {
+    public int[] find(int[] search) {
         int index = historyList.indexOf(search);
         if(index >= 0) {
             return get(index);
@@ -87,13 +85,8 @@ public class InMemoryHistory extends History {
     }
 
     @Override
-    public String get(int index) {
+    public int[] get(int index) {
         return historyList.get(index);
-    }
-
-    @Override
-    public int[] getAsInts(int index) {
-        return historyList.get(index).chars().toArray();
     }
 
     @Override
@@ -116,7 +109,7 @@ public class InMemoryHistory extends History {
     }
 
     @Override
-    public String getPreviousFetch() {
+    public int[] getPreviousFetch() {
         if(size() < 1)
             return null;
 
@@ -128,7 +121,7 @@ public class InMemoryHistory extends History {
     }
 
     @Override
-    public String getNextFetch() {
+    public int[] getNextFetch() {
         if(size() < 1)
             return null;
 
@@ -143,21 +136,22 @@ public class InMemoryHistory extends History {
     }
 
     @Override
-    public String search(String search) {
+    public int[] search(int[] search) {
         if(searchDirection == SearchDirection.REVERSE)
             return searchReverse(search);
         else
             return searchForward(search);
     }
 
-    private String searchReverse(String search) {
+    private int[] searchReverse(int[] search) {
         if(lastId <= 0 || lastId > size()-1)
             lastId = size()-1;
-        else if(lastSearchArgument != null && lastSearchArgument.equals(search))
+        else if(lastSearchArgument != null && Arrays.equals(lastSearchArgument, search))
             lastId--;
 
         for(; lastId >= 0; lastId--)
-            if(historyList.get(lastId).contains(search)) {
+            if(Parser.arrayContains(historyList.get(lastId), search)) {
+            //if(historyList.get(lastId).contains(search)) {
                 lastSearchArgument = search;
                 return get(lastId);
             }
@@ -165,14 +159,16 @@ public class InMemoryHistory extends History {
         return null;
     }
 
-    private String searchForward(String search) {
+    private int[] searchForward(int[] search) {
         if(lastId >= size())
             lastId = 0;
-        else if(lastSearchArgument != null && lastSearchArgument.equals(search))
+        else if(lastSearchArgument != null &&
+                Arrays.equals(lastSearchArgument, search))
           lastId++;
 
         for(; lastId < size(); lastId++ ) {
-            if(historyList.get(lastId).contains(search)) {
+            if(Parser.arrayContains(historyList.get(lastId), search)) {
+            //if(historyList.get(lastId).contains(search)) {
                 lastSearchArgument = search;
                 return get(lastId);
             }
@@ -181,17 +177,17 @@ public class InMemoryHistory extends History {
     }
 
     @Override
-    public void setCurrent(String line) {
+    public void setCurrent(int[] line) {
         this.current = line;
     }
 
     @Override
-    public String getCurrent() {
+    public int[] getCurrent() {
         return current;
     }
 
     @Override
-    public List<String> getAll() {
+    public List<int[]> getAll() {
         return historyList;
     }
 
@@ -199,7 +195,7 @@ public class InMemoryHistory extends History {
     public void clear() {
         lastId = 0;
         historyList.clear();
-        current = "";
+        current = new int[]{};
     }
 
     @Override

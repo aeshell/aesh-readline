@@ -20,7 +20,6 @@
 package org.jboss.aesh.readline.actions;
 
 import org.jboss.aesh.readline.InputProcessor;
-import org.jboss.aesh.parser.Parser;
 import org.jboss.aesh.readline.Action;
 import org.jboss.aesh.readline.undo.UndoAction;
 
@@ -38,7 +37,7 @@ public class Undo implements Action {
     public void apply(InputProcessor inputProcessor) {
         UndoAction ua = inputProcessor.getBuffer().getUndoManager().getNext();
         if(ua != null) {
-            inputProcessor.getBuffer().setBufferLine(Parser.fromCodePoints(ua.getBuffer()));
+            inputProcessor.getBuffer().replace(ua.getBuffer());
             inputProcessor.getBuffer().moveCursor(ua.getCursorPosition() -
                     inputProcessor.getBuffer().getBuffer().getCursor());
         }

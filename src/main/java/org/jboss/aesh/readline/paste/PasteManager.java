@@ -30,13 +30,13 @@ import java.util.List;
 public class PasteManager {
 
     private static final int PASTE_SIZE = 10;
-    private final List<StringBuilder> pasteStack;
+    private final List<int[]> pasteStack;
 
     public PasteManager() {
         pasteStack = new ArrayList<>(PASTE_SIZE);
     }
 
-    public void addText(StringBuilder buffer) {
+    public void addText(int[] buffer) {
         checkSize();
         pasteStack.add(buffer);
     }
@@ -47,7 +47,7 @@ public class PasteManager {
         }
     }
 
-    public StringBuilder get(int index) {
+    public int[] get(int index) {
         if(index < pasteStack.size())
             return pasteStack.get((pasteStack.size()-index-1));
         else

@@ -112,16 +112,6 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
     }
 
     @Override
-    public void drawLine(boolean keepCursorPosition) {
-        buffer.print(connection.stdoutHandler(), getSize().getWidth());
-    }
-
-    @Override
-    public void drawLine(boolean keepCursorPosition, boolean optimize) {
-        buffer.print(connection.stdoutHandler(), getSize().getWidth());
-    }
-
-    @Override
     public void writeChar(char input) {
         buffer.insert(connection.stdoutHandler(), input, getSize().getWidth());
     }
@@ -150,11 +140,6 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
     @Override
     public void setPrompt(Prompt prompt) {
         buffer.setPrompt(prompt, connection.stdoutHandler(), getSize().getWidth());
-    }
-
-    @Override
-    public void setBufferLine(String line) {
-        buffer.replace(connection.stdoutHandler(), line, getSize().getWidth());
     }
 
     @Override

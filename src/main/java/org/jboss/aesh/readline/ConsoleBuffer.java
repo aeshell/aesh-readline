@@ -50,10 +50,6 @@ public interface ConsoleBuffer {
 
     void drawLine();
 
-    void drawLine(boolean keepCursorPosition);
-
-    void drawLine(boolean keepCursorPosition, boolean optimize);
-
     void writeChar(char input);
 
     void writeOut(String out);
@@ -65,8 +61,6 @@ public interface ConsoleBuffer {
     void writeString(String input);
 
     void setPrompt(Prompt prompt);
-
-    void setBufferLine(String line);
 
     void insert(String insert, int position);
 
