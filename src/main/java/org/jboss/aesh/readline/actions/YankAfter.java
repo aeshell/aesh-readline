@@ -51,14 +51,14 @@ public class YankAfter extends ChangeAction {
                         inputProcessor.getBuffer().getBuffer().length()-1) {
                     inputProcessor.getEditMode().setStatus(EditMode.Status.EDIT);
                     inputProcessor.getBuffer().moveCursor(1);
-                    inputProcessor.getBuffer().insertBufferLine(pasteBuffer.toString(),
+                    inputProcessor.getBuffer().insert(pasteBuffer.toString(),
                             inputProcessor.getBuffer().getBuffer().getCursor());
                     inputProcessor.getBuffer().moveCursor(-1);
                     inputProcessor.getEditMode().setStatus(EditMode.Status.COMMAND);
                 }
                 else {
                     inputProcessor.getBuffer().moveCursor(1);
-                    inputProcessor.getBuffer().insertBufferLine(pasteBuffer.toString(),
+                    inputProcessor.getBuffer().insert(pasteBuffer.toString(),
                             inputProcessor.getBuffer().getBuffer().getCursor());
                     //inputProcessor.getBuffer().drawLine();
                     inputProcessor.getBuffer().moveCursor(-1);

@@ -68,7 +68,9 @@ public interface ConsoleBuffer {
 
     void setBufferLine(String line);
 
-    void insertBufferLine(String insert, int position);
+    void insert(String insert, int position);
+
+    void insert(int[] insert);
 
     void delete(int delta);
 

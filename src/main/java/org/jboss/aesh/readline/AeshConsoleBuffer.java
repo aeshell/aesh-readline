@@ -158,7 +158,12 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
     }
 
     @Override
-    public void insertBufferLine(String insert, int position) {
+    public void insert(String insert, int position) {
+        buffer.insert(connection.stdoutHandler(), insert, getSize().getWidth());
+    }
+
+    @Override
+    public void insert(int[] insert) {
         buffer.insert(connection.stdoutHandler(), insert, getSize().getWidth());
     }
 
