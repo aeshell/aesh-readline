@@ -5,6 +5,7 @@ import org.jboss.aesh.readline.editing.EditMode;
 import org.jboss.aesh.readline.history.History;
 import org.jboss.aesh.readline.history.InMemoryHistory;
 import org.jboss.aesh.readline.paste.PasteManager;
+import org.jboss.aesh.readline.undo.UndoAction;
 import org.jboss.aesh.readline.undo.UndoManager;
 import org.jboss.aesh.tty.Connection;
 import org.jboss.aesh.tty.Size;
@@ -90,7 +91,8 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
 
     @Override
     public void addActionToUndoStack() {
-
+        undoManager.addUndo(new UndoAction(
+                getBuffer().getCursor(), getBuffer().getLineAsString()));
     }
 
     @Override

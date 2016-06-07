@@ -58,7 +58,7 @@ abstract class ChangeAction extends MovementAction {
     protected final void apply(int cursor, int oldCursor, InputProcessor inputProcessor) {
         LOGGER.info("applying "+status+" delta: "+cursor+", current pos: "+oldCursor);
         if(status == EditMode.Status.DELETE || status == EditMode.Status.CHANGE) {
-            addActionToUndoStack(inputProcessor);
+            inputProcessor.getBuffer().addActionToUndoStack();
             if(cursor < oldCursor) {
                 //add to pastemanager
                 inputProcessor.getBuffer().getPasteManager().addText(new StringBuilder(
@@ -102,13 +102,13 @@ abstract class ChangeAction extends MovementAction {
 
         else if(status == EditMode.Status.UP_CASE) {
             if(cursor < oldCursor) {
-                addActionToUndoStack(inputProcessor);
+                inputProcessor.getBuffer().addActionToUndoStack();
                 for( int i = cursor; i < oldCursor; i++) {
                     inputProcessor.getBuffer().upCase();
                 }
             }
             else {
-                addActionToUndoStack(inputProcessor);
+                inputProcessor.getBuffer().addActionToUndoStack();
                 for( int i = oldCursor; i < cursor; i++) {
                     inputProcessor.getBuffer().upCase();
                 }
@@ -117,13 +117,13 @@ abstract class ChangeAction extends MovementAction {
         }
         else if(status == EditMode.Status.DOWN_CASE) {
             if(cursor < oldCursor) {
-                addActionToUndoStack(inputProcessor);
+                inputProcessor.getBuffer().addActionToUndoStack();
                 for( int i = cursor; i < oldCursor; i++) {
                     inputProcessor.getBuffer().downCase();
                 }
             }
             else {
-                addActionToUndoStack(inputProcessor);
+                inputProcessor.getBuffer().addActionToUndoStack();
                 for( int i = oldCursor; i < cursor; i++) {
                     inputProcessor.getBuffer().downCase();
                 }
@@ -134,7 +134,7 @@ abstract class ChangeAction extends MovementAction {
             String word = Parser.findWordClosestToCursor(inputProcessor.getBuffer().getBuffer().getLineAsString(),
                     oldCursor);
             if(word.length() > 0) {
-                addActionToUndoStack(inputProcessor);
+                inputProcessor.getBuffer().addActionToUndoStack();
                 int pos = inputProcessor.getBuffer().getBuffer().getLineAsString().indexOf(word,
                         oldCursor-word.length());
                 if(pos < 0)
@@ -146,10 +146,5 @@ abstract class ChangeAction extends MovementAction {
         }
     }
 
-    protected final void addActionToUndoStack(InputProcessor inputProcessor) {
-        inputProcessor.getBuffer().getUndoManager().addUndo(new UndoAction(
-                inputProcessor.getBuffer().getBuffer().getCursor(),
-                inputProcessor.getBuffer().getBuffer().getLineAsString()));
-    }
 
 }
