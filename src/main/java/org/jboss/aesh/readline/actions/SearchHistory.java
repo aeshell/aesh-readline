@@ -133,7 +133,7 @@ abstract class SearchHistory implements SearchAction {
                    status = Status.SEARCH_PREV;
                    inputProcessor.getBuffer().getHistory().setSearchDirection(SearchDirection.REVERSE);
                    if(inputProcessor.getBuffer().getBuffer().length() > 0) {
-                       searchArgument = new StringBuilder( inputProcessor.getBuffer().getBuffer().getLineAsString());
+                       searchArgument = new StringBuilder( inputProcessor.getBuffer().getBuffer().asString());
                        searchResult = inputProcessor.getBuffer().getHistory().search(searchArgument.toString());
                    }
                    break;
@@ -147,7 +147,7 @@ abstract class SearchHistory implements SearchAction {
                    if(searchResult != null) {
                        inputProcessor.getBuffer().moveCursor(-inputProcessor.getBuffer().getBuffer().getCursor());
                        inputProcessor.getBuffer().setBufferLine( searchResult);
-                       inputProcessor.getBuffer().getHistory().push(inputProcessor.getBuffer().getBuffer().getLineAsString());
+                       inputProcessor.getBuffer().getHistory().push(inputProcessor.getBuffer().getBuffer().asString());
                        inputProcessor.getBuffer().getBuffer().reset();
                        inputProcessor.setReturnValue(searchResult);
                        break;

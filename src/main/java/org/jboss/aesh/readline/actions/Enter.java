@@ -44,13 +44,13 @@ public class Enter implements Action {
         boolean isCurrentLineEnding = true;
         if(!consoleBuffer.getBuffer().isMasking()) {// dont push to history if masking
             //dont push lines that end with \ to history
-            if(consoleBuffer.getBuffer().getLineAsString().endsWith(ENDS_WITH_BACKSLASH)) {
+            if(consoleBuffer.getBuffer().asString().endsWith(ENDS_WITH_BACKSLASH)) {
                 consoleBuffer.getBuffer().setMultiLine(true);
                 consoleBuffer.getBuffer().updateMultiLineBuffer();
                 inputProcessor.getBuffer().writeOut(Config.CR);
                 isCurrentLineEnding = false;
             }
-            else if(Parser.doesStringContainOpenQuote(consoleBuffer.getBuffer().getLineAsString())) {
+            else if(Parser.doesStringContainOpenQuote(consoleBuffer.getBuffer().asString())) {
                 consoleBuffer.getBuffer().setMultiLine(true);
                 consoleBuffer.getBuffer().updateMultiLineBuffer();
                 inputProcessor.getBuffer().writeOut(Config.CR);
@@ -58,9 +58,9 @@ public class Enter implements Action {
             }
             else if( inputProcessor.getBuffer().getHistory().isEnabled()) {
                 if(consoleBuffer.getBuffer().isMultiLine())
-                   inputProcessor.getBuffer().getHistory().push(consoleBuffer.getBuffer().getLineAsString());
+                   inputProcessor.getBuffer().getHistory().push(consoleBuffer.getBuffer().asString());
                 else
-                    inputProcessor.getBuffer().getHistory().push(consoleBuffer.getBuffer().getLineAsString());
+                    inputProcessor.getBuffer().getHistory().push(consoleBuffer.getBuffer().asString());
             }
         }
 

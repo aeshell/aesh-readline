@@ -48,7 +48,7 @@ abstract class ForwardWord extends ChangeAction {
     @Override
     public void apply(InputProcessor inputProcessor) {
         int cursor = inputProcessor.getBuffer().getBuffer().getCursor();
-        String buffer = inputProcessor.getBuffer().getBuffer().getLineAsString();
+        String buffer = inputProcessor.getBuffer().getBuffer().asString();
 
         if(viMode) {
             if(cursor < buffer.length() && (isDelimiter(buffer.charAt(cursor))))

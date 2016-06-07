@@ -22,7 +22,6 @@ package org.jboss.aesh.readline.actions;
 import org.jboss.aesh.readline.InputProcessor;
 import org.jboss.aesh.parser.Parser;
 import org.jboss.aesh.readline.editing.EditMode;
-import org.jboss.aesh.readline.undo.UndoAction;
 import org.jboss.aesh.util.LoggerUtil;
 
 import java.util.logging.Logger;
@@ -62,19 +61,19 @@ abstract class ChangeAction extends MovementAction {
             if(cursor < oldCursor) {
                 //add to pastemanager
                 inputProcessor.getBuffer().getPasteManager().addText(new StringBuilder(
-                        inputProcessor.getBuffer().getBuffer().getLineAsString().substring(
+                        inputProcessor.getBuffer().getBuffer().asString().substring(
                                 cursor,
                                 oldCursor)));
                 //delete buffer
-                LOGGER.info("buffer before delete: "+inputProcessor.getBuffer().getBuffer().getLineAsString());
+                LOGGER.info("buffer before delete: "+inputProcessor.getBuffer().getBuffer().asString());
                 inputProcessor.getBuffer().delete(cursor - oldCursor);
-                LOGGER.info("buffer after delete: "+inputProcessor.getBuffer().getBuffer().getLineAsString());
+                LOGGER.info("buffer after delete: "+inputProcessor.getBuffer().getBuffer().asString());
                 inputProcessor.getBuffer().moveCursor(cursor-oldCursor);
             }
             else {
                 //add to pastemanager
                 inputProcessor.getBuffer().getPasteManager().addText(new StringBuilder(
-                        inputProcessor.getBuffer().getBuffer().getLineAsString().substring(
+                        inputProcessor.getBuffer().getBuffer().asString().substring(
                                 oldCursor, cursor)));
                 //delete buffer
                 inputProcessor.getBuffer().delete(cursor - oldCursor);
@@ -92,11 +91,11 @@ abstract class ChangeAction extends MovementAction {
         else if(status == EditMode.Status.YANK) {
             if(cursor < oldCursor)
                 inputProcessor.getBuffer().getPasteManager().addText(
-                        new StringBuilder(inputProcessor.getBuffer().getBuffer().getLineAsString().substring(cursor,
+                        new StringBuilder(inputProcessor.getBuffer().getBuffer().asString().substring(cursor,
                                 oldCursor)));
             else if(cursor > oldCursor)
                 inputProcessor.getBuffer().getPasteManager().addText(
-                        new StringBuilder(inputProcessor.getBuffer().getBuffer().getLineAsString().substring(
+                        new StringBuilder(inputProcessor.getBuffer().getBuffer().asString().substring(
                                 oldCursor, cursor)));
         }
 
@@ -131,11 +130,11 @@ abstract class ChangeAction extends MovementAction {
             inputProcessor.getBuffer().moveCursor(cursor - oldCursor);
         }
         else if(status == EditMode.Status.CAPITALIZE) {
-            String word = Parser.findWordClosestToCursor(inputProcessor.getBuffer().getBuffer().getLineAsString(),
+            String word = Parser.findWordClosestToCursor(inputProcessor.getBuffer().getBuffer().asString(),
                     oldCursor);
             if(word.length() > 0) {
                 inputProcessor.getBuffer().addActionToUndoStack();
-                int pos = inputProcessor.getBuffer().getBuffer().getLineAsString().indexOf(word,
+                int pos = inputProcessor.getBuffer().getBuffer().asString().indexOf(word,
                         oldCursor-word.length());
                 if(pos < 0)
                     pos = 0;

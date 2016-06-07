@@ -53,7 +53,7 @@ public class DeletePrevChar implements Action {
 
             consoleBuffer.addActionToUndoStack();
             consoleBuffer.getPasteManager().addText(new StringBuilder(
-                    consoleBuffer.getBuffer().getLineAsString().substring(cursor - 1, cursor)));
+                    consoleBuffer.getBuffer().asString().substring(cursor - 1, cursor)));
             consoleBuffer.delete(-1);
             //consoleBuffer.moveCursor(-1);
             //consoleBuffer.drawLine();

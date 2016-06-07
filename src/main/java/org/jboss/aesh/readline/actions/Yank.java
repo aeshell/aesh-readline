@@ -41,9 +41,9 @@ public class Yank extends ChangeAction {
         StringBuilder pasteBuffer = inputProcessor.getBuffer().getPasteManager().get(0);
         if(pasteBuffer != null) {
 
-            addActionToUndoStack(inputProcessor);
             if(inputProcessor.getBuffer().getBuffer().getCursor() <=
                     inputProcessor.getBuffer().getBuffer().length()) {
+                inputProcessor.getBuffer().addActionToUndoStack();
                 inputProcessor.getBuffer().insertBufferLine(pasteBuffer.toString(),
                         inputProcessor.getBuffer().getBuffer().getCursor());
                 inputProcessor.getBuffer().moveCursor(-1);

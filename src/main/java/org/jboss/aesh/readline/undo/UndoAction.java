@@ -19,8 +19,6 @@
  */
 package org.jboss.aesh.readline.undo;
 
-import org.jboss.aesh.parser.Parser;
-
 /**
  * @author Ståle W. Pedersen <stale.pedersen@jboss.org>
  */
@@ -28,11 +26,6 @@ public class UndoAction {
 
     private int cursorPosition;
     private int[] buffer;
-
-    public UndoAction(int cursorPosition, String buffer) {
-        setCursorPosition(cursorPosition);
-        setBuffer(Parser.toCodePoints(buffer));
-    }
 
     public UndoAction(int cursorPosition, int[] buffer) {
         setCursorPosition(cursorPosition);

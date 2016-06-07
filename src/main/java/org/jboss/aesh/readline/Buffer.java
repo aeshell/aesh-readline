@@ -92,7 +92,7 @@ public class Buffer {
         return multiLine;
     }
 
-    public String getLineAsString() {
+    public String asString() {
         return Parser.fromCodePoints(getMultiLine());
     }
 
@@ -663,7 +663,7 @@ public class Buffer {
         isPromptDisplayed = true;
     }
 
-    private int[] getMultiLine() {
+    public int[] getMultiLine() {
         if (multiLine) {
             int[] tmpLine = Arrays.copyOf(multiLineBuffer, multiLineBuffer.length + size);
             System.arraycopy(line, 0, tmpLine, multiLineBuffer.length, size);
@@ -757,13 +757,6 @@ public class Buffer {
             line[pos] = rChar;
             out.accept(new int[]{rChar});
         }
-    }
-
-    /**
-     * @return the buffer as string
-     */
-    public String asString() {
-        return Parser.fromCodePoints(getMultiLine());
     }
 
     /**

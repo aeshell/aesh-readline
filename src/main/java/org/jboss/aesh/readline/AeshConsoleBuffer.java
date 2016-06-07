@@ -92,7 +92,7 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
     @Override
     public void addActionToUndoStack() {
         undoManager.addUndo(new UndoAction(
-                getBuffer().getCursor(), getBuffer().getLineAsString()));
+                getBuffer().getCursor(), getBuffer().getMultiLine()));
     }
 
     @Override

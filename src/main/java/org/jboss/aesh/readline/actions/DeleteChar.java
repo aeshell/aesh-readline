@@ -54,7 +54,7 @@ public class DeleteChar implements Action {
         if(cursor < lineSize) {
             consoleBuffer.addActionToUndoStack();
             consoleBuffer.getPasteManager().addText(new StringBuilder(
-                    consoleBuffer.getBuffer().getLineAsString().substring(cursor, cursor+1)));
+                    consoleBuffer.getBuffer().asString().substring(cursor, cursor+1)));
             consoleBuffer.delete(1);
             if(cursor == lineSize-1 && cursor > 0 && viMode)
                 consoleBuffer.moveCursor(-1);
