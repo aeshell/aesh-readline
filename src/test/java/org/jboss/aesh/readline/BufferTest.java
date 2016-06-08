@@ -357,8 +357,8 @@ public class BufferTest {
                 Arrays.copyOfRange(outConsumer.get(0), 8, 12));
         assertArrayEquals(ANSI.MOVE_LINE_UP,
                 Arrays.copyOfRange(outConsumer.get(0), 12, 16));
-        assertArrayEquals(new int[]{27,'[', '1','2','D'},
-                Arrays.copyOfRange(outConsumer.get(0), 16, 21));
+        assertArrayEquals(new int[]{27,'[', '5','D'},
+                Arrays.copyOfRange(outConsumer.get(0), 16, 20));
 
         assertEquals("foo", buffer.asString());
     }

@@ -521,7 +521,7 @@ public class Buffer {
 
         LOGGER.info("builder after clearAllExtraLines: "+Arrays.toString(builder.toArray()));
 
-        moveCursorToStartAndPrint(out, builder, width, delta < 0);
+        moveCursorToStartAndPrint(out, builder, width, false);
     }
 
     /**
@@ -557,7 +557,7 @@ public class Buffer {
         if(oldCursor >= width)
             clearAllLinesAndReturnToFirstLine(builder, width, oldCursor, oldSize);
 
-        moveCursorToStartAndPrint(out, builder, width, delta > 0);
+        moveCursorToStartAndPrint(out, builder, width, true);
         delta = 0;
         deltaChangedAtEndOfBuffer = true;
     }
@@ -573,14 +573,9 @@ public class Buffer {
         LOGGER.info("oldSize: "+oldSize+", oldCursor: "+oldCursor);
         if(oldSize >= width) {
             int cursorRow = oldCursor / width;
-            //if (cursorRow > 0 && oldSize % width == 0)
-            //    cursorRow--;
-
             int totalRows = oldSize / width;
-            //if (totalRows > 0 && oldSize % width == 0)
-            //    totalRows--;
 
-            if((oldSize+1) % width == 1 && oldSize == oldCursor+1) {
+            if((oldSize) % width == 1 && oldSize == oldCursor) {
                 LOGGER.info("size and cursor is on the edge...");
                 builder.append(ANSI.MOVE_LINE_UP);
             }
@@ -612,22 +607,29 @@ public class Buffer {
     }
 
     private void moveCursorToStartAndPrint(Consumer<int[]> out, IntArrayBuilder builder,
-                                           int width, boolean clearLine) {
-        clearLine = true;
-
-        //if((size+promptLength()+1) % width == 1)
-        //    builder.append(ANSI.MOVE_LINE_UP);
+                                           int width, boolean replace) {
 
         if((promptLength() > 0 && cursor != 0) || delta < 0) {
-            int length = cursor % width + promptLength();
-            if(delta < 0)
-                length += Math.abs(delta);
-            builder.append(moveNumberOfColumns(length, 'D'));
-            //builder.append(ANSI.CURSOR_START);
-            if (clearLine)
-                builder.append(ANSI.ERASE_LINE_FROM_CURSOR);
+            //if we replace we do a quick way of moving to the beginning
+            if(replace) {
+                builder.append(moveNumberOfColumns(width, 'D'));
+            }
+            else {
+                int length = promptLength() + cursor;
+                if(length > 0 && (length % width == 0))
+                    length = width;
+                else {
+                    length = length % width;
+                    if(delta < 0)
+                        length += Math.abs(delta);
+                }
+                builder.append(moveNumberOfColumns(length, 'D'));
+            }
+            //TODO: could optimize this i think if delta > 0 it should not be needed
+            builder.append(ANSI.ERASE_LINE_FROM_CURSOR);
             LOGGER.info("builder after clear: "+ Arrays.toString(builder.toArray()));
         }
+
         if(promptLength() > 0)
             builder.append(prompt.getANSI());
 
