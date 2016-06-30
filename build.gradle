@@ -40,6 +40,14 @@ ext {
   }
 }
 
+sourceSets {
+    example {
+        java {
+            srcDirs 'src/example/java'
+        }
+    }
+}
+
 [compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
 
 sourceCompatibility = JavaVersion.VERSION_1_8
@@ -53,11 +61,6 @@ jar {
 
 test {
     testLogging.showStandardStreams = true
-    //maxParallelForks = 1
-    //forkEvery = 1
-    //onOutput { descriptor, event ->
-    //logger.lifecycle("Test: " + descriptor + " produced standard out/err: " + event.message )
-    //}
 }
 
 repositories {
@@ -67,6 +70,8 @@ repositories {
 dependencies {
     compile group: 'org.fusesource.jansi', name: 'jansi', version: '1.11'
     testCompile group: 'junit', name: 'junit', version: '4.+'
+
+    exampleCompile sourceSets.main.output
 }
 
 mainClassName = "Example"
@@ -159,5 +164,5 @@ uploadArchives {
 
 
 task wrapper(type: Wrapper) {
-    gradleVersion = '2.10'
+    gradleVersion = '2.14'
 }
