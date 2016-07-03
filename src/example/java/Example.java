@@ -62,8 +62,7 @@ public class Example {
             connection.write("we're shutting down, do something...!");
         });
 
-        //readInput(connection, readline, defaultPrompt);
-        readInput(connection, readline, new Prompt("[aesh@rules]$ "));
+        readInput(connection, readline, defaultPrompt);
         connection.startBlockingReader();
     }
 
