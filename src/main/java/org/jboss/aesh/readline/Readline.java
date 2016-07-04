@@ -154,7 +154,7 @@ public class Readline {
         }
 
         private void parse(KeyAction event) {
-            //LOGGER.info("got event: "+event);
+            //TODO: the editModes need to parse/handle this, ref ignoreeof
             //ctrl-d
             if (event.length() == 1) {
                 if (event.getCodePointAt(0) == 4 && getBuffer().getBuffer().length() == 0) {
