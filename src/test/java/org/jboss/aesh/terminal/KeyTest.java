@@ -142,5 +142,6 @@ public class KeyTest {
     public void testHomeEndKeysNotPrintable() {
         assertFalse(Key.HOME.isPrintable());
         assertFalse(Key.END.isPrintable());
+        assertFalse(Key.LEFT.isPrintable());
     }
 }

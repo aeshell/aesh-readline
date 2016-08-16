@@ -24,6 +24,7 @@ import org.jboss.aesh.readline.editing.EditModeBuilder;
 import org.jboss.aesh.terminal.Key;
 import org.jboss.aesh.tty.Size;
 import org.jboss.aesh.tty.TestConnection;
+import org.jboss.aesh.util.Config;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -77,7 +78,7 @@ public class TestReadline {
         term.clearOutputBuffer();
         term.read(Key.ENTER);
         term.assertLine(null);
-        assertEquals("\n> ", term.getOutputBuffer());
+        assertEquals(Config.getLineSeparator()+"> ", term.getOutputBuffer());
         term.read("bar\n");
         term.assertLine("foo bar");
     }
@@ -90,7 +91,7 @@ public class TestReadline {
         term.read(Key.ENTER);
         term.assertBuffer("foo ");
         term.assertLine(null);
-        assertEquals("\n> ", term.getOutputBuffer());
+        assertEquals(Config.getLineSeparator()+"> ", term.getOutputBuffer());
         term.read("bar");
         term.read(Key.BACKSPACE);
         term.read(Key.BACKSPACE);
@@ -149,7 +150,8 @@ public class TestReadline {
         term.assertBuffer("foo");
         term.clearOutputBuffer();
         term.read(Key.CTRL_I);
-        assertEquals("\nfoo  foo bar  \n"+term.getPrompt()+"foo", term.getOutputBuffer());
+        assertEquals(Config.getLineSeparator()+"foo  foo bar  "+
+                Config.getLineSeparator()+term.getPrompt()+"foo", term.getOutputBuffer());
         term.read(Key.ENTER);
         term.readline(completions);
         term.read("b");
