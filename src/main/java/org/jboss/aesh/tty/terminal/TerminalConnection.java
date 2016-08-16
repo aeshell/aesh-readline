@@ -155,6 +155,10 @@ public class TerminalConnection implements Connection {
         }
     }
 
+    public Terminal getTerminal() {
+        return terminal;
+    }
+
     @Override
     public String terminalType() {
         return terminal.getName();
@@ -173,7 +177,6 @@ public class TerminalConnection implements Connection {
     @Override
     public void setSizeHandler(Consumer<Size> handler) {
         sizeHandler = handler;
-
     }
 
     @Override

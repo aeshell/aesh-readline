@@ -56,6 +56,8 @@ public class Snake {
 
         conn.setCloseHandler(close -> end());
 
+        conn.setSizeHandler(size -> reset(size));
+
         setup();
         conn.startNonBlockingReader();
         try {
@@ -66,7 +68,7 @@ public class Snake {
         }
     }
 
-    private void run() throws InterruptedException {
+   private void run() throws InterruptedException {
         while(!interrupted) {
             StringBuilder builder = new StringBuilder();
             Point next = getNextPoint();
@@ -104,6 +106,7 @@ public class Snake {
                 Thread.sleep(sleepTime);
             }
         }
+
     }
 
     private void displayEnd() throws InterruptedException {
@@ -122,6 +125,21 @@ public class Snake {
         conn.write(ANSI.CURSOR_SHOW);
 
         conn.close();
+    }
+
+    private void reset(Size size) {
+        interrupted = true;
+        sleepTime = 120;
+        snake.clear();
+        setup();
+        interrupted = false;
+        setup();
+        try {
+            run();
+        }
+        catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 
     private void setup() {
