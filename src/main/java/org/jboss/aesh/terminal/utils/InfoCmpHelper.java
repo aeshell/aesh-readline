@@ -20,6 +20,7 @@
 package org.jboss.aesh.terminal.utils;
 
 import org.jboss.aesh.parser.Parser;
+import org.jboss.aesh.util.Config;
 
 import java.io.StringWriter;
 import java.util.HashMap;
@@ -38,10 +39,14 @@ public class InfoCmpHelper {
     private static Map<InfoCmp.Capability, String> strings = new HashMap<>();
 
     public static int[] getCurrentTranslatedCapabilityAsInts(String cap, int[] defaultValue) {
-        String s = getCurrentTranslatedCapability(cap, Parser.fromCodePoints(defaultValue));
-        if(s.length() == 0)
+        if(Config.isWindows())
             return defaultValue;
-        return s.codePoints().toArray();
+        else {
+            String s = getCurrentTranslatedCapability(cap, Parser.fromCodePoints(defaultValue));
+            if (s.length() == 0)
+                return defaultValue;
+            return s.codePoints().toArray();
+        }
     }
 
     public static String getCurrentTranslatedCapability(String cap, String defaultValue) {

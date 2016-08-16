@@ -32,6 +32,7 @@ import java.util.logging.Logger;
  */
 public class Config {
 
+    private static final boolean windows = System.getProperty("os.name").startsWith("Windows");
     private static final String lineSeparator = System.getProperty("line.separator");
     private static final String pathSeparator = System.getProperty("file.separator");
     private static final String tmpDir = System.getProperty("java.io.tmpdir");
@@ -47,6 +48,10 @@ public class Config {
 
     public static boolean isCygwin() {
         return cygwin;
+    }
+
+    public static boolean isWindows() {
+        return windows;
     }
 
     public static String getLineSeparator() {
@@ -70,7 +75,7 @@ public class Config {
     }
 
     private static boolean checkPosixCompability() {
-        if(System.getProperty("os.name").startsWith("Windows")) {
+        if(isWindows()) {
             //need to check if we're running under cygwin
             try {
                 Process process = Runtime.getRuntime().exec(new String[]{"uname"});

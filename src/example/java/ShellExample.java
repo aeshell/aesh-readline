@@ -76,7 +76,7 @@ public class ShellExample {
     }
 
     public void start(final Connection conn) {
-        Readline readline = new Readline(EditModeBuilder.builder(EditMode.Mode.VI).create());
+        Readline readline = new Readline(EditModeBuilder.builder(EditMode.Mode.EMACS).create());
         read(conn, readline);
     }
 

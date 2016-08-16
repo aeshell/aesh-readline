@@ -165,82 +165,47 @@ public enum Key implements KeyAction {
     WINDOWS_ESC(new int[]{224}), // just used to identify win special chars
     WINDOWS_ESC_2(new int[]{341}), // just used to identify win special chars
     //movement
-    UP(Config.isOSPOSIXCompatible() ?
-            new int[]{ESC.getFirstValue(),91,65} : new int[]{WINDOWS_ESC.getFirstValue(),72}),
-    DOWN(Config.isOSPOSIXCompatible() ?
-            new int[]{ESC.getFirstValue(),91,66} : new int[]{WINDOWS_ESC.getFirstValue(),80}),
-    RIGHT(Config.isOSPOSIXCompatible() ?
-            new int[]{ESC.getFirstValue(),91,67} : new int[]{WINDOWS_ESC.getFirstValue(),77}),
-    LEFT(Config.isOSPOSIXCompatible() ?
-            new int[]{ESC.getFirstValue(),91,68} : new int[]{WINDOWS_ESC.getFirstValue(),75}),
+    UP( new int[]{ESC.getFirstValue(),91,65}),
+    DOWN( new int[]{ESC.getFirstValue(),91,66}),
+    RIGHT( new int[]{ESC.getFirstValue(),91,67}),
+    LEFT( new int[]{ESC.getFirstValue(),91,68}),
 
-    UP_2(Config.isOSPOSIXCompatible() ?
-            InfoCmpHelper.getCurrentTranslatedCapabilityAsInts("kcuu1", new int[]{27,79,65}) :
-            new int[]{WINDOWS_ESC.getFirstValue(),72}),
-    DOWN_2(Config.isOSPOSIXCompatible() ?
-            InfoCmpHelper.getCurrentTranslatedCapabilityAsInts("kcud1", new int[]{27,79,66}) :
-            new int[]{WINDOWS_ESC.getFirstValue(),80}),
-    RIGHT_2(Config.isOSPOSIXCompatible() ?
-            InfoCmpHelper.getCurrentTranslatedCapabilityAsInts("cuf1", new int[]{27,79,68}) :
-            new int[]{WINDOWS_ESC.getFirstValue(),77}),
-    LEFT_2(Config.isOSPOSIXCompatible() ?
-            InfoCmpHelper.getCurrentTranslatedCapabilityAsInts("kcub1", new int[]{27,79,68}) :
-            new int[]{WINDOWS_ESC.getFirstValue(),75}),
+    UP_2(InfoCmpHelper.getCurrentTranslatedCapabilityAsInts("kcuu1", new int[]{27,79,65})),
+    DOWN_2( InfoCmpHelper.getCurrentTranslatedCapabilityAsInts("kcud1", new int[]{27,79,66})),
+    RIGHT_2( InfoCmpHelper.getCurrentTranslatedCapabilityAsInts("cuf1", new int[]{27,79,67})),
+    LEFT_2( InfoCmpHelper.getCurrentTranslatedCapabilityAsInts("kcub1", new int[]{27,79,68})),
+
     //meta
     META_a(new int[]{ESC.getFirstValue(),a.getFirstValue()}),
-    META_b(Config.isOSPOSIXCompatible() ?
-            new int[]{ESC.getFirstValue(),98} : new int[]{0,48}),
+    META_b(new int[]{ESC.getFirstValue(),b.getFirstValue()}),
     META_c(new int[]{ESC.getFirstValue(),c.getFirstValue()}),
-    META_d(Config.isOSPOSIXCompatible() ?
-            new int[]{ESC.getFirstValue(),d.getFirstValue()} : new int[]{0,32}),
+    META_d(new int[]{ESC.getFirstValue(),d.getFirstValue()}),
     META_e(new int[]{ESC.getFirstValue(),e.getFirstValue()}),
-    META_f(Config.isOSPOSIXCompatible() ?
-            new int[]{ESC.getFirstValue(),102} : new int[]{0,33}),
+    META_f(new int[]{ESC.getFirstValue(),f.getFirstValue()}),
     META_l(new int[]{ESC.getFirstValue(),l.getFirstValue()}),
     META_u(new int[]{ESC.getFirstValue(),u.getFirstValue()}),
 
     META_BACKSPACE(new int[]{ESC.getFirstValue(),BACKSPACE.getFirstValue()}),
 
     //div
-    DELETE(Config.isOSPOSIXCompatible() ?
-            InfoCmpHelper.getCurrentTranslatedCapabilityAsInts("kdch1", new int[]{27,91,51,126}) :
-            new int[]{WINDOWS_ESC.getFirstValue(),83}),
-    INSERT(Config.isOSPOSIXCompatible() ?
-            InfoCmpHelper.getCurrentTranslatedCapabilityAsInts("kich1", new int[]{27,91,50,126}) :
-            new int[]{WINDOWS_ESC.getFirstValue(),82}),
-    PGUP(Config.isOSPOSIXCompatible() ?
-            InfoCmpHelper.getCurrentTranslatedCapabilityAsInts("kpp", new int[]{27,91,53,126}) :
-            new int[]{WINDOWS_ESC.getFirstValue(),73}),
-    PGDOWN(Config.isOSPOSIXCompatible() ?
-            InfoCmpHelper.getCurrentTranslatedCapabilityAsInts("knp", new int[]{27,91,54,126}) :
-            new int[]{WINDOWS_ESC.getFirstValue(),81}),
-    HOME(Config.isOSPOSIXCompatible() ?
-            InfoCmpHelper.getCurrentTranslatedCapabilityAsInts("khome", new int[]{27,79,72}) :
-            new int[]{WINDOWS_ESC.getFirstValue(),71}),
-    HOME_2(Config.isOSPOSIXCompatible() ?
-            InfoCmpHelper.getCurrentTranslatedCapabilityAsInts("home", new int[]{27,91,72}) :
-            new int[]{WINDOWS_ESC.getFirstValue(),71}),
-    END(Config.isOSPOSIXCompatible() ?
-            InfoCmpHelper.getCurrentTranslatedCapabilityAsInts("kend", new int[]{27,79,70}) :
-            new int[]{WINDOWS_ESC.getFirstValue(),79}),
-    END_2(Config.isOSPOSIXCompatible() ?
-            InfoCmpHelper.getCurrentTranslatedCapabilityAsInts("end", new int[]{27,91,70}) :
-            new int[]{WINDOWS_ESC.getFirstValue(),79}),
+    DELETE( InfoCmpHelper.getCurrentTranslatedCapabilityAsInts("kdch1", new int[]{27,91,51,126})),
 
-    META_CTRL_J(Config.isOSPOSIXCompatible() ?
-            new int[]{ESC.getFirstValue(),10} : new int[]{0,36}),
+    INSERT(InfoCmpHelper.getCurrentTranslatedCapabilityAsInts("kich1", new int[]{27,91,50,126})),
+    PGUP(InfoCmpHelper.getCurrentTranslatedCapabilityAsInts("kpp", new int[]{27,91,53,126})),
+    PGDOWN(InfoCmpHelper.getCurrentTranslatedCapabilityAsInts("knp", new int[]{27,91,54,126})),
+    HOME(InfoCmpHelper.getCurrentTranslatedCapabilityAsInts("khome", new int[]{27,79,72})),
+    HOME_2(InfoCmpHelper.getCurrentTranslatedCapabilityAsInts("home", new int[]{27,91,72})),
+    END(InfoCmpHelper.getCurrentTranslatedCapabilityAsInts("kend", new int[]{27,79,70})),
+    END_2(InfoCmpHelper.getCurrentTranslatedCapabilityAsInts("end", new int[]{27,91,70})),
+
+    META_CTRL_J( new int[]{ESC.getFirstValue(),10}),
     META_CTRL_D(new int[]{ESC.getFirstValue(),4}),
-    CTRL_X_CTRL_U(Config.isOSPOSIXCompatible() ?
-            new int[]{ESC.getFirstValue(),21} : new int[]{0,36}),
+    CTRL_X_CTRL_U(new int[]{ESC.getFirstValue(),21}),
 
-    CTRL_LEFT(Config.isOSPOSIXCompatible() ?
-            new int[] {ESC.getFirstValue(),91,49,59,53,68} : new int[]{WINDOWS_ESC.getFirstValue(), 115}),
-    CTRL_RIGHT(Config.isOSPOSIXCompatible() ?
-            new int[] {ESC.getFirstValue(),91,49,59,53,67} : new int[]{WINDOWS_ESC.getFirstValue(), 116}),
-    CTRL_UP(Config.isOSPOSIXCompatible() ?
-            new int[] {ESC.getFirstValue(),91,49,59,53,65} : new int[]{WINDOWS_ESC.getFirstValue(), 141}),
-    CTRL_DOWN(Config.isOSPOSIXCompatible() ?
-            new int[] {ESC.getFirstValue(),91,49,59,53,66} : new int[]{WINDOWS_ESC.getFirstValue(), 145}),
+    CTRL_LEFT(new int[] {ESC.getFirstValue(),91,49,59,53,68}),
+    CTRL_RIGHT(new int[] {ESC.getFirstValue(),91,49,59,53,67}),
+    CTRL_UP(new int[] {ESC.getFirstValue(),91,49,59,53,65}),
+    CTRL_DOWN(new int[] {ESC.getFirstValue(),91,49,59,53,66}),
 
     ENTER(Config.isOSPOSIXCompatible() ?
             new int[]{10} : new int[]{13}),

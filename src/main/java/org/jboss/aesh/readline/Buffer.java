@@ -156,7 +156,7 @@ public class Buffer {
     }
 
     public void updateMultiLineBuffer() {
-        LOGGER.info("updateing multiline..");
+        LOGGER.info("updating multiline..");
         int originalSize = multiLineBuffer.length;
         if(lineEndsWithBackslash()) {
             multiLineBuffer = Arrays.copyOf(multiLineBuffer, originalSize + size-1);

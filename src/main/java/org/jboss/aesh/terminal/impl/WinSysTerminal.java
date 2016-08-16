@@ -24,6 +24,7 @@ import org.fusesource.jansi.internal.Kernel32;
 import org.fusesource.jansi.internal.Kernel32.INPUT_RECORD;
 import org.fusesource.jansi.internal.Kernel32.KEY_EVENT_RECORD;
 import org.fusesource.jansi.internal.WindowsSupport;
+import org.jboss.aesh.parser.Parser;
 import org.jboss.aesh.terminal.Attributes;
 import org.jboss.aesh.tty.Signal;
 import org.jboss.aesh.terminal.utils.Curses;
@@ -32,6 +33,7 @@ import org.jboss.aesh.terminal.utils.ShutdownHooks;
 import org.jboss.aesh.terminal.utils.ShutdownHooks.Task;
 import org.jboss.aesh.terminal.utils.Signals;
 import org.jboss.aesh.tty.Size;
+import org.jboss.aesh.util.LoggerUtil;
 
 import java.io.FileDescriptor;
 import java.io.FileOutputStream;
@@ -43,9 +45,11 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.charset.Charset;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class WinSysTerminal extends AbstractTerminal {
 
@@ -62,6 +66,8 @@ public class WinSysTerminal extends AbstractTerminal {
     private static final int ENABLE_MOUSE_INPUT     = 0x0010;
     private static final int ENABLE_INSERT_MODE     = 0x0020;
     private static final int ENABLE_QUICK_EDIT_MODE = 0x0040;
+
+    private static final Logger LOGGER = LoggerUtil.getLogger("WinSySTerminal");
 
 
     public WinSysTerminal(String name, boolean nativeSignals) throws IOException {
@@ -201,7 +207,8 @@ public class WinSysTerminal extends AbstractTerminal {
                             escapeSequence = getSequence(Capability.key_home);
                             break;
                         case 0x25: // VK_LEFT
-                            escapeSequence = getSequence(Capability.key_left);
+                            if(ctrlState != 0)
+                                escapeSequence = getSequence(Capability.key_sleft);
                             break;
                         case 0x26: // VK_UP
                             escapeSequence = getSequence(Capability.key_up);
@@ -319,8 +326,18 @@ public class WinSysTerminal extends AbstractTerminal {
             if (c == -1) {
                 return -1;
             }
-            b[off] = (byte)c;
-            return 1;
+            if(bufIdx == buf.length) {
+                b[off] = (byte) c;
+                return 1;
+            }
+            else {
+                b[off] = (byte) c;
+                for(; bufIdx < buf.length; bufIdx++) {
+                    c = buf[bufIdx] & 0xFF;
+                    b[off+bufIdx] = (byte) c;
+                }
+                return bufIdx;
+            }
         }
     }
 }
