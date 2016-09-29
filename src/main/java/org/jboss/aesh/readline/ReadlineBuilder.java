@@ -28,6 +28,7 @@ import org.jboss.aesh.readline.history.History;
 import org.jboss.aesh.readline.history.InMemoryHistory;
 
 import java.io.File;
+import java.util.function.Consumer;
 
 /**
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
@@ -48,34 +49,33 @@ public class ReadlineBuilder {
     private ReadlineBuilder() {
     }
 
-    public ReadlineBuilder editMode(EditMode editMode) {
-        this.editMode = editMode;
+    private ReadlineBuilder apply(Consumer<ReadlineBuilder> consumer) {
+        consumer.accept(this);
         return this;
+    }
+
+    public ReadlineBuilder editMode(EditMode editMode) {
+        return apply(c -> c.editMode = editMode);
     }
 
     public ReadlineBuilder history(History history) {
-        this.history = history;
-        return this;
+        return apply(c -> c.history = history);
     }
 
-    public ReadlineBuilder enableHistory(boolean history) {
-        this.enableHistory = history;
-        return this;
+    public ReadlineBuilder enableHistory(boolean enableHistory) {
+        return apply(c -> c.enableHistory = enableHistory);
     }
 
     public ReadlineBuilder historySize(int historySize) {
-        this.historySize = historySize;
-        return this;
+        return apply(c -> c.historySize = historySize);
     }
 
      public ReadlineBuilder historyFile(String historyFile) {
-        this.historyFile = historyFile;
-        return this;
+         return apply(c -> c.historyFile = historyFile);
     }
 
     public ReadlineBuilder completionHandler(CompletionHandler completionHandler) {
-        this.completionHandler = completionHandler;
-        return this;
+        return apply(c -> c.completionHandler = completionHandler);
     }
 
     public Readline build() {

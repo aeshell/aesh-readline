@@ -60,7 +60,8 @@ public class TerminalConnection implements Connection {
     public TerminalConnection(InputStream inputStream, OutputStream outputStream) {
         try {
             init(TerminalBuilder.builder()
-                    .streams(inputStream, outputStream)
+                    .input(inputStream)
+                    .output(outputStream)
                     .nativeSignals(true)
                     .name("Aesh console")
                     .build());
@@ -196,6 +197,7 @@ public class TerminalConnection implements Connection {
 
     @Override
     public void setStdinHandler(Consumer<int[]> handler) {
+        LOGGER.info("registrering a new inputhandler: "+handler);
         inputHandler = handler;
         decoder.setConsumer(inputHandler);
     }

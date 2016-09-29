@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.Charset;
+import java.util.function.Consumer;
 
 public final class TerminalBuilder {
 
@@ -53,35 +54,37 @@ public final class TerminalBuilder {
     private TerminalBuilder() {
     }
 
-    public TerminalBuilder name(String name) {
-        this.name = name;
+    private TerminalBuilder apply(Consumer<TerminalBuilder> consumer)  {
+        consumer.accept(this);
         return this;
     }
 
-    public TerminalBuilder streams(InputStream in, OutputStream out) {
-        this.in = in;
-        this.out = out;
-        return this;
+    public TerminalBuilder name(String name) {
+        return apply(c -> c.name = name);
+    }
+
+    public TerminalBuilder input(InputStream in) {
+        return apply(c -> c.in = in);
+    }
+
+    public TerminalBuilder output(OutputStream out) {
+        return apply(c -> c.out = out);
     }
 
     public TerminalBuilder system(boolean system) {
-        this.system = system;
-        return this;
+        return apply(c -> c.system = system);
     }
 
     public TerminalBuilder nativeSignals(boolean nativeSignals) {
-        this.nativeSignals = nativeSignals;
-        return this;
+        return apply(c -> c.nativeSignals = nativeSignals);
     }
 
     public TerminalBuilder type(String type) {
-        this.type = type;
-        return this;
+        return apply(c -> c.type = type);
     }
 
     public TerminalBuilder encoding(String encoding) {
-        this.encoding = encoding;
-        return this;
+        return apply(c -> c.encoding = encoding);
     }
 
     public Terminal build() throws IOException {
