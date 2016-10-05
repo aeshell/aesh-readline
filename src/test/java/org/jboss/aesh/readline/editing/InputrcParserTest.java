@@ -19,8 +19,7 @@
  */
 package org.jboss.aesh.readline.editing;
 
-import org.jboss.aesh.readline.ActionDecoder;
-import org.jboss.aesh.readline.Variable;
+import org.jboss.aesh.readline.action.ActionDecoder;
 import org.jboss.aesh.util.Config;
 import org.junit.Test;
 

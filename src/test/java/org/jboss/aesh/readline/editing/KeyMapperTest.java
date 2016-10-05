@@ -19,14 +19,14 @@
  */
 package org.jboss.aesh.readline.editing;
 
-import org.jboss.aesh.readline.actions.BackwardChar;
-import org.jboss.aesh.readline.actions.BeginningOfLine;
-import org.jboss.aesh.readline.actions.DeletePrevChar;
-import org.jboss.aesh.readline.actions.EndOfLine;
-import org.jboss.aesh.readline.actions.ForwardChar;
-import org.jboss.aesh.readline.actions.NextHistory;
-import org.jboss.aesh.readline.actions.NoAction;
-import org.jboss.aesh.readline.actions.PrevHistory;
+import org.jboss.aesh.readline.action.mappings.BackwardChar;
+import org.jboss.aesh.readline.action.mappings.BeginningOfLine;
+import org.jboss.aesh.readline.action.mappings.DeletePrevChar;
+import org.jboss.aesh.readline.action.mappings.EndOfLine;
+import org.jboss.aesh.readline.action.mappings.ForwardChar;
+import org.jboss.aesh.readline.action.mappings.NextHistory;
+import org.jboss.aesh.readline.action.mappings.NoAction;
+import org.jboss.aesh.readline.action.mappings.PrevHistory;
 import org.jboss.aesh.terminal.Key;
 import org.jboss.aesh.util.Config;
 import org.junit.Test;

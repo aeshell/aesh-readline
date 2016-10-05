@@ -20,6 +20,9 @@
 package org.jboss.aesh.readline;
 
 import org.jboss.aesh.parser.Parser;
+import org.jboss.aesh.readline.action.Action;
+import org.jboss.aesh.readline.action.ActionDecoder;
+import org.jboss.aesh.readline.action.KeyAction;
 import org.jboss.aesh.readline.completion.Completion;
 import org.jboss.aesh.readline.completion.CompletionHandler;
 import org.jboss.aesh.readline.completion.SimpleCompletionHandler;

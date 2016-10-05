@@ -19,9 +19,9 @@
  */
 package org.jboss.aesh.terminal;
 
-import org.jboss.aesh.readline.Action;
-import org.jboss.aesh.readline.ActionDecoder;
-import org.jboss.aesh.readline.actions.ActionMapper;
+import org.jboss.aesh.readline.action.Action;
+import org.jboss.aesh.readline.action.ActionDecoder;
+import org.jboss.aesh.readline.action.mappings.ActionMapper;
 import org.jboss.aesh.readline.editing.EditMode;
 import org.jboss.aesh.readline.editing.EditModeBuilder;
 import org.jboss.aesh.util.Config;

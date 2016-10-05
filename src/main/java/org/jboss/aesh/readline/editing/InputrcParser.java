@@ -19,8 +19,6 @@
  */
 package org.jboss.aesh.readline.editing;
 
-import org.jboss.aesh.readline.Variable;
-import org.jboss.aesh.readline.VariableValues;
 import org.jboss.aesh.util.Config;
 import org.jboss.aesh.util.LoggerUtil;
 

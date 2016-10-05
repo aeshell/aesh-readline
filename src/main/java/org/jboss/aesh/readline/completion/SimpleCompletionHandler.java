@@ -22,7 +22,7 @@ package org.jboss.aesh.readline.completion;
 import org.jboss.aesh.readline.Buffer;
 import org.jboss.aesh.readline.InputProcessor;
 import org.jboss.aesh.parser.Parser;
-import org.jboss.aesh.readline.actions.ActionMapper;
+import org.jboss.aesh.readline.action.mappings.ActionMapper;
 import org.jboss.aesh.terminal.formatting.TerminalString;
 import org.jboss.aesh.util.Config;
 import org.jboss.aesh.util.LoggerUtil;

@@ -19,11 +19,10 @@
  */
 package org.jboss.aesh.readline.editing;
 
-import org.jboss.aesh.readline.Action;
-import org.jboss.aesh.readline.ActionEvent;
-import org.jboss.aesh.readline.KeyAction;
-import org.jboss.aesh.readline.Variable;
-import org.jboss.aesh.readline.actions.ActionMapper;
+import org.jboss.aesh.readline.action.Action;
+import org.jboss.aesh.readline.action.ActionEvent;
+import org.jboss.aesh.readline.action.KeyAction;
+import org.jboss.aesh.readline.action.mappings.ActionMapper;
 import org.jboss.aesh.terminal.Key;
 
 import java.util.ArrayList;
