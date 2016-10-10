@@ -106,6 +106,7 @@ public class CompleteOperationImpl implements CompleteOperation {
         this.ignoreOffset = ignoreOffset;
     }
 
+    @Override
     public boolean doIgnoreOffset() {
         return ignoreOffset;
     }

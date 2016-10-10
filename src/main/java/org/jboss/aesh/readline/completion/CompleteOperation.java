@@ -36,6 +36,8 @@ public interface CompleteOperation {
 
     void setOffset(int offset);
 
+    boolean doIgnoreOffset();
+
     /**
      * Get the separator character, by default its space
      *
