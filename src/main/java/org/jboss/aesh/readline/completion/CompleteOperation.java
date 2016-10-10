@@ -19,102 +19,29 @@
  */
 package org.jboss.aesh.readline.completion;
 
-import org.jboss.aesh.parser.Parser;
 import org.jboss.aesh.terminal.formatting.TerminalString;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
- * A payload object to store completion data
- *
- * @author Ståle W. Pedersen <stale.pedersen@jboss.org>
+ * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
  */
-public class CompleteOperation {
-    private String buffer;
-    private int cursor;
-    private int offset;
-    private List<TerminalString> completionCandidates;
-    private boolean trimmed = false;
-    private boolean ignoreStartsWith = false;
-    private String nonTrimmedBuffer;
-    private boolean ignoreNonEscapedSpace = false;
+public interface CompleteOperation {
 
-    private char separator = ' ';
-    private boolean appendSeparator = true;
-    private boolean ignoreOffset = false;
+    String getBuffer();
 
-    public CompleteOperation(String buffer, int cursor) {
-        setCursor(cursor);
-        setSeparator(' ');
-        doAppendSeparator(true);
-        completionCandidates = new ArrayList<>();
-        setBuffer(buffer);
-    }
+    int getCursor();
 
-    public String getBuffer() {
-        return buffer;
-    }
+    int getOffset();
 
-    private void setBuffer(String buffer) {
-        if(buffer != null && buffer.startsWith(" ")) {
-            trimmed = true;
-            this.buffer = Parser.trimInFront(buffer);
-            nonTrimmedBuffer = buffer;
-            setCursor(cursor - getTrimmedSize());
-        }
-        else
-            this.buffer = buffer;
-    }
-
-    public boolean isTrimmed() {
-        return trimmed;
-    }
-
-    public int getTrimmedSize() {
-        return nonTrimmedBuffer.length() - buffer.length();
-    }
-
-    public String getNonTrimmedBuffer() {
-        return nonTrimmedBuffer;
-    }
-
-    public int getCursor() {
-        return cursor;
-    }
-
-    private void setCursor(int cursor) {
-        if(cursor < 0)
-            this.cursor = 0;
-        else
-            this.cursor = cursor;
-    }
-
-    public int getOffset() {
-        return offset;
-    }
-
-    public void setOffset(int offset) {
-        this.offset = offset;
-    }
-
-    public void setIgnoreOffset(boolean ignoreOffset) {
-        this.ignoreOffset = ignoreOffset;
-    }
-
-    public boolean doIgnoreOffset() {
-        return ignoreOffset;
-    }
-
+    void setOffset(int offset);
 
     /**
      * Get the separator character, by default its space
      *
      * @return separator
      */
-    public char getSeparator() {
-        return separator;
-    }
+    char getSeparator();
 
     /**
      * By default the separator is one space char, but
@@ -122,9 +49,7 @@ public class CompleteOperation {
      *
      * @param separator separator
      */
-    public void setSeparator(char separator) {
-        this.separator = separator;
-    }
+    void setSeparator(char separator);
 
     /**
      * Do this completion allow for appending a separator
@@ -132,9 +57,7 @@ public class CompleteOperation {
      *
      * @return appendSeparator
      */
-    public boolean hasAppendSeparator() {
-        return appendSeparator;
-    }
+    boolean hasAppendSeparator();
 
     /**
      * Set if this CompletionOperation would allow an separator to
@@ -142,126 +65,27 @@ public class CompleteOperation {
      *
      * @param appendSeparator appendSeparator
      */
-    public void doAppendSeparator(boolean appendSeparator) {
-        this.appendSeparator = appendSeparator;
-    }
+    void doAppendSeparator(boolean appendSeparator);
 
-    public List<TerminalString> getCompletionCandidates() {
-        return completionCandidates;
-    }
+    List<TerminalString> getCompletionCandidates();
 
-    public void setCompletionCandidates(List<String> completionCandidates) {
-        addCompletionCandidates(completionCandidates);
-    }
+    void addCompletionCandidate(TerminalString completionCandidate);
 
-    public void setCompletionCandidatesTerminalString(List<TerminalString> completionCandidates) {
-        this.completionCandidates = completionCandidates;
-    }
+    void addCompletionCandidate(String completionCandidate);
 
-    public void addCompletionCandidate(TerminalString completionCandidate) {
-        this.completionCandidates.add(completionCandidate);
-    }
+    void addCompletionCandidates(List<String> completionCandidates);
 
-    public void addCompletionCandidate(String completionCandidate) {
-        addStringCandidate(completionCandidate);
-    }
+    void addCompletionCandidatesTerminalString(List<TerminalString> completionCandidates);
 
-    public void addCompletionCandidates(List<String> completionCandidates) {
-        addStringCandidates(completionCandidates);
-    }
+    void removeEscapedSpacesFromCompletionCandidates();
 
-    public void addCompletionCandidatesTerminalString(List<TerminalString> completionCandidates) {
-        this.completionCandidates.addAll(completionCandidates);
-    }
+    List<String> getFormattedCompletionCandidates();
 
-     public void removeEscapedSpacesFromCompletionCandidates() {
-        Parser.switchEscapedSpacesToSpacesInTerminalStringList(getCompletionCandidates());
-    }
+    List<TerminalString> getFormattedCompletionCandidatesTerminalString();
 
-    private void addStringCandidate(String completionCandidate) {
-        this.completionCandidates.add(new TerminalString(completionCandidate, true));
-    }
+    String getFormattedCompletion(String completion);
 
-    private void addStringCandidates(List<String> completionCandidates) {
-        for(String s : completionCandidates)
-            addStringCandidate(s);
-    }
+    boolean isIgnoreStartsWith();
 
-    public List<String> getFormattedCompletionCandidates() {
-        List<String> fixedCandidates = new ArrayList<String>(completionCandidates.size());
-        for(TerminalString c : completionCandidates) {
-            if(!ignoreOffset && offset < cursor) {
-                int pos = cursor - offset;
-                if(c.getCharacters().length() >= pos)
-                    fixedCandidates.add(c.getCharacters().substring(pos));
-                else
-                    fixedCandidates.add("");
-            }
-            else {
-                fixedCandidates.add(c.getCharacters());
-            }
-        }
-        return fixedCandidates;
-    }
-
-    public List<TerminalString> getFormattedCompletionCandidatesTerminalString() {
-        List<TerminalString> fixedCandidates = new ArrayList<>(completionCandidates.size());
-        for(TerminalString c : completionCandidates) {
-            if(!ignoreOffset && offset < cursor) {
-                int pos = cursor - offset;
-                if(c.getCharacters().length() >= pos) {
-                    c.setCharacters(c.getCharacters().substring(pos));
-                    fixedCandidates.add(c);
-                }
-                else
-                    fixedCandidates.add(new TerminalString("", true));
-            }
-            else {
-                fixedCandidates.add(c);
-            }
-        }
-        return fixedCandidates;
-    }
-
-    public String getFormattedCompletion(String completion) {
-        if(offset < cursor) {
-            int pos = cursor - offset;
-            if(completion.length() > pos)
-                return completion.substring(pos);
-            else
-                return "";
-        }
-        else
-            return completion;
-    }
-
-    public boolean isIgnoreStartsWith() {
-        return ignoreStartsWith;
-    }
-
-    public void setIgnoreStartsWith(boolean ignoreStartsWith) {
-        this.ignoreStartsWith = ignoreStartsWith;
-    }
-
-    public boolean doIgnoreNonEscapedSpace() {
-        return ignoreNonEscapedSpace;
-    }
-
-    public void setIgnoreNonEscapedSpace(boolean ignoreNonEscapedSpace) {
-        this.ignoreNonEscapedSpace = ignoreNonEscapedSpace;
-    }
-
-    @Override
-    public String toString() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("Buffer: ").append(buffer)
-                .append(", Cursor:").append(cursor)
-                .append(", Offset:").append(offset)
-                .append(", IgnoreOffset:").append(ignoreOffset)
-                .append(", Append separator: ").append(appendSeparator)
-                .append(", Candidates:").append(completionCandidates);
-
-        return sb.toString();
-    }
-
+    boolean doIgnoreNonEscapedSpace();
 }

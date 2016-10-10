@@ -32,7 +32,7 @@ public class CompleteOperationTest {
 
     @Test
     public void testGetFormattedCompletionCandidates() {
-        CompleteOperation co = new CompleteOperation("ls foob", 6);
+        CompleteOperation co = new CompleteOperationImpl("ls foob", 6);
         co.addCompletionCandidate("foobar");
         co.addCompletionCandidate("foobars");
         co.setOffset(3);
@@ -45,7 +45,7 @@ public class CompleteOperationTest {
 
     @Test
     public void testRemoveEscapedSpacesFromCompletionCandidates() {
-        CompleteOperation co = new CompleteOperation("ls foob", 6);
+        CompleteOperation co = new CompleteOperationImpl("ls foob", 6);
         co.addCompletionCandidate("foo\\ bar");
         co.addCompletionCandidate("foo\\ bars");
         co.setOffset(3);

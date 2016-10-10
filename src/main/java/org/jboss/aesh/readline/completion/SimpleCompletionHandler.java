@@ -119,7 +119,7 @@ public class SimpleCompletionHandler implements CompletionHandler {
 
             final CompleteOperation co;
             if(aliasHandler == null)
-            co = new CompleteOperation(buffer.asString(), buffer.getCursor());
+            co = new CompleteOperationImpl(buffer.asString(), buffer.getCursor());
             else
                 co = aliasHandler.apply(buffer);
 
