@@ -36,6 +36,8 @@ public interface CompleteOperation {
 
     void setOffset(int offset);
 
+    void setIgnoreOffset(boolean ignoreOffset);
+
     boolean doIgnoreOffset();
 
     /**
