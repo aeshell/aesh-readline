@@ -19,10 +19,10 @@
  */
 package org.jboss.aesh.terminal;
 
-import org.jboss.aesh.parser.Parser;
 import org.jboss.aesh.readline.action.KeyAction;
 import org.jboss.aesh.terminal.utils.InfoCmpHelper;
 import org.jboss.aesh.util.Config;
+import org.jboss.aesh.util.Parser;
 
 /**
  * ANSCII enum key chart

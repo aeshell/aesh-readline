@@ -19,7 +19,6 @@
  */
 package org.jboss.aesh.util;
 
-import org.jboss.aesh.parser.Parser;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;

@@ -22,6 +22,7 @@ package org.jboss.aesh.parser;
 import org.jboss.aesh.terminal.formatting.TerminalString;
 import org.jboss.aesh.util.ANSI;
 import org.jboss.aesh.util.Config;
+import org.jboss.aesh.util.Parser;
 import org.junit.Test;
 
 import java.util.ArrayList;

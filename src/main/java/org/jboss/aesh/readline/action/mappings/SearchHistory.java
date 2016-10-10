@@ -19,7 +19,6 @@
  */
 package org.jboss.aesh.readline.action.mappings;
 
-import org.jboss.aesh.parser.Parser;
 import org.jboss.aesh.readline.InputProcessor;
 import org.jboss.aesh.readline.action.Action;
 import org.jboss.aesh.readline.action.KeyAction;
@@ -29,6 +28,7 @@ import org.jboss.aesh.terminal.Key;
 import org.jboss.aesh.util.ANSI;
 import org.jboss.aesh.util.IntArrayBuilder;
 import org.jboss.aesh.util.LoggerUtil;
+import org.jboss.aesh.util.Parser;
 
 import java.util.logging.Logger;
 

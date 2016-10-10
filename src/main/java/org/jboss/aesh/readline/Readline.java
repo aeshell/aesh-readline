@@ -19,7 +19,6 @@
  */
 package org.jboss.aesh.readline;
 
-import org.jboss.aesh.parser.Parser;
 import org.jboss.aesh.readline.action.Action;
 import org.jboss.aesh.readline.action.ActionDecoder;
 import org.jboss.aesh.readline.action.KeyAction;
@@ -36,6 +35,7 @@ import org.jboss.aesh.tty.Size;
 import org.jboss.aesh.tty.Connection;
 import org.jboss.aesh.util.Config;
 import org.jboss.aesh.util.LoggerUtil;
+import org.jboss.aesh.util.Parser;
 
 import java.util.List;
 import java.util.function.Consumer;

@@ -19,8 +19,8 @@
  */
 package org.jboss.aesh.terminal.utils;
 
-import org.jboss.aesh.parser.Parser;
 import org.jboss.aesh.util.Config;
+import org.jboss.aesh.util.Parser;
 
 import java.io.StringWriter;
 import java.util.HashMap;

@@ -19,10 +19,10 @@
  */
 package org.jboss.aesh.readline.history;
 
-import org.jboss.aesh.parser.Parser;
 import org.jboss.aesh.util.Config;
 import org.jboss.aesh.util.FileAccessPermission;
 import org.jboss.aesh.util.LoggerUtil;
+import org.jboss.aesh.util.Parser;
 
 import java.io.BufferedReader;
 import java.io.File;

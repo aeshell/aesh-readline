@@ -19,13 +19,13 @@
  */
 package org.jboss.aesh.readline.history;
 
-import org.jboss.aesh.parser.Parser;
 import org.jboss.aesh.readline.editing.EditMode;
 import org.jboss.aesh.readline.editing.EditModeBuilder;
 import org.jboss.aesh.terminal.Key;
 import org.jboss.aesh.tty.TestConnection;
 import org.jboss.aesh.util.Config;
 import org.jboss.aesh.util.FileAccessPermission;
+import org.jboss.aesh.util.Parser;
 import org.junit.Test;
 
 import java.io.File;

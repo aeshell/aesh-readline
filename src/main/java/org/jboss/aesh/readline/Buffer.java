@@ -19,10 +19,10 @@
  */
 package org.jboss.aesh.readline;
 
-import org.jboss.aesh.parser.Parser;
 import org.jboss.aesh.util.ANSI;
 import org.jboss.aesh.util.IntArrayBuilder;
 import org.jboss.aesh.util.LoggerUtil;
+import org.jboss.aesh.util.Parser;
 import org.jboss.aesh.util.WcWidth;
 
 import java.util.Arrays;

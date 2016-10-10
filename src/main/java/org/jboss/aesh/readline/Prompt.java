@@ -19,9 +19,9 @@
  */
 package org.jboss.aesh.readline;
 
-import org.jboss.aesh.parser.Parser;
 import org.jboss.aesh.terminal.formatting.TerminalCharacter;
 import org.jboss.aesh.terminal.formatting.TerminalString;
+import org.jboss.aesh.util.Parser;
 
 import java.util.Arrays;
 import java.util.List;

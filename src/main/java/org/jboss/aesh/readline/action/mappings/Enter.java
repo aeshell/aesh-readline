@@ -21,9 +21,9 @@ package org.jboss.aesh.readline.action.mappings;
 
 import org.jboss.aesh.readline.ConsoleBuffer;
 import org.jboss.aesh.readline.InputProcessor;
-import org.jboss.aesh.parser.Parser;
 import org.jboss.aesh.readline.action.Action;
 import org.jboss.aesh.util.Config;
+import org.jboss.aesh.util.Parser;
 
 /**
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>

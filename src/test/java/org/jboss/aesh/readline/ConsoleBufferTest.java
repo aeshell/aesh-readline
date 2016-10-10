@@ -19,12 +19,12 @@
  */
 package org.jboss.aesh.readline;
 
-import org.jboss.aesh.parser.Parser;
 import org.jboss.aesh.readline.editing.EditModeBuilder;
 import org.jboss.aesh.readline.history.InMemoryHistory;
 import org.jboss.aesh.tty.Connection;
 import org.jboss.aesh.tty.Signal;
 import org.jboss.aesh.tty.Size;
+import org.jboss.aesh.util.Parser;
 import org.junit.Test;
 
 import java.io.IOException;

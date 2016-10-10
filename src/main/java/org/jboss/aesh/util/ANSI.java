@@ -19,7 +19,6 @@
  */
 package org.jboss.aesh.util;
 
-import org.jboss.aesh.parser.Parser;
 import org.jboss.aesh.terminal.utils.InfoCmpHelper;
 
 import java.util.Arrays;

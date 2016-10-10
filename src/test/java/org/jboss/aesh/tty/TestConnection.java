@@ -19,13 +19,13 @@
  */
 package org.jboss.aesh.tty;
 
-import org.jboss.aesh.parser.Parser;
 import org.jboss.aesh.readline.Prompt;
 import org.jboss.aesh.readline.Readline;
 import org.jboss.aesh.readline.completion.Completion;
 import org.jboss.aesh.readline.editing.EditMode;
 import org.jboss.aesh.readline.editing.EditModeBuilder;
 import org.jboss.aesh.terminal.Key;
+import org.jboss.aesh.util.Parser;
 
 import java.util.List;
 import java.util.function.Consumer;

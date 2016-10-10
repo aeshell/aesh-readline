@@ -19,7 +19,7 @@
  */
 package org.jboss.aesh.readline.history;
 
-import org.jboss.aesh.parser.Parser;
+import org.jboss.aesh.util.Parser;
 
 import java.util.ArrayList;
 import java.util.Arrays;

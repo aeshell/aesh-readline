@@ -19,8 +19,6 @@
  */
 package org.jboss.aesh.util;
 
-import org.jboss.aesh.parser.Parser;
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
