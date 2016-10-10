@@ -257,6 +257,7 @@ public class CompleteOperationImpl implements CompleteOperation {
         return ignoreStartsWith;
     }
 
+    @Override
     public void setIgnoreStartsWith(boolean ignoreStartsWith) {
         this.ignoreStartsWith = ignoreStartsWith;
     }
