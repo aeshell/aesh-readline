@@ -90,4 +90,6 @@ public interface CompleteOperation {
     void setIgnoreStartsWith(boolean ignoreStartsWith);
 
     boolean doIgnoreNonEscapedSpace();
+
+    void setIgnoreNonEscapedSpace(boolean ignoreNonEscapedSpace);
 }

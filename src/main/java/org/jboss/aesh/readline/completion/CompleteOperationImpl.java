@@ -267,6 +267,7 @@ public class CompleteOperationImpl implements CompleteOperation {
         return ignoreNonEscapedSpace;
     }
 
+    @Override
     public void setIgnoreNonEscapedSpace(boolean ignoreNonEscapedSpace) {
         this.ignoreNonEscapedSpace = ignoreNonEscapedSpace;
     }
