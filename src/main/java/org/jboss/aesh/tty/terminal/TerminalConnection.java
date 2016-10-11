@@ -33,6 +33,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
@@ -56,6 +57,8 @@ public class TerminalConnection implements Connection {
     private Consumer<Signal> eventHandler;
     private volatile boolean reading = true;
     private Consumer<Void> closeHandler;
+    private CountDownLatch latch;
+    private volatile boolean waiting = false;
 
     public TerminalConnection(InputStream inputStream, OutputStream outputStream) {
         try {
@@ -122,6 +125,14 @@ public class TerminalConnection implements Connection {
                 int read = terminal.input().read(bBuf);
                 if (read > 0) {
                     decoder.write(bBuf, 0, read);
+                    if(waiting) {
+                        try {
+                            latch.await();
+                        }
+                        catch(InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    }
                 }
                 else if (read < 0) {
                     if(getCloseHandler() != null)
@@ -154,6 +165,19 @@ public class TerminalConnection implements Connection {
         catch(IOException e) {
             e.printStackTrace();
         }
+    }
+
+    public void suspendReading() {
+        latch = new CountDownLatch(1);
+        waiting = true;
+    }
+
+    public void startReading() {
+        latch.countDown();
+    }
+
+    public boolean suspended() {
+        return waiting;
     }
 
     public Terminal getTerminal() {
@@ -221,6 +245,8 @@ public class TerminalConnection implements Connection {
     public void close() {
         try {
             stopReading();
+            if(waiting)
+                latch.countDown();
             if (attributes != null && terminal != null) {
                 terminal.setAttributes(attributes);
                 terminal.close();
