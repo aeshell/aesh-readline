@@ -37,7 +37,7 @@ import java.util.logging.Logger;
 /**
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
  */
-public class SimpleCompletionHandler implements CompletionHandler {
+public class SimpleCompletionHandler implements CompletionHandler<CompleteOperation> {
 
     private boolean askDisplayCompletion = false;
     private int displayCompletionSize = 100;
@@ -119,7 +119,7 @@ public class SimpleCompletionHandler implements CompletionHandler {
 
             final CompleteOperation co;
             if(aliasHandler == null)
-            co = new CompleteOperationImpl(buffer.asString(), buffer.getCursor());
+                co = new CompleteOperationImpl(buffer.asString(), buffer.getCursor());
             else
                 co = aliasHandler.apply(buffer);
 

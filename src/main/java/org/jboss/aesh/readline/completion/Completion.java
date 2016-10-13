@@ -24,7 +24,7 @@ package org.jboss.aesh.readline.completion;
  *
  * @author Ståle W. Pedersen <stale.pedersen@jboss.org>
  */
-public interface Completion {
+public interface Completion<C extends CompleteOperation> {
 
     /**
      * Populate the CompleteOperation object with possible
@@ -32,5 +32,5 @@ public interface Completion {
      *
      * @param completeOperation operation
      */
-    void complete(CompleteOperation completeOperation);
+    void complete(C completeOperation);
 }

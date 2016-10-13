@@ -28,7 +28,7 @@ import java.util.function.Function;
 /**
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
  */
-public interface CompletionHandler {
+public interface CompletionHandler<C extends CompleteOperation> {
 
     void addCompletion(Completion completion);
 
@@ -46,7 +46,7 @@ public interface CompletionHandler {
 
     void complete(InputProcessor inputProcessor);
 
-    void setAliasHandler(Function<Buffer, CompleteOperation> aliasHandler);
+    void setAliasHandler(Function<Buffer, C> aliasHandler);
 
     void addCompletions(List<Completion> completions);
 }

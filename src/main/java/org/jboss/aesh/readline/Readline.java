@@ -67,7 +67,10 @@ public class Readline {
     public Readline(EditMode editMode, History history, CompletionHandler completionHandler) {
         this.editMode = editMode;
         this.history = history;
-        this.completionHandler = completionHandler;
+        if(completionHandler == null)
+            this.completionHandler = new SimpleCompletionHandler();
+        else
+            this.completionHandler = completionHandler;
         this.decoder = new ActionDecoder(this.editMode);
     }
 
@@ -139,7 +142,7 @@ public class Readline {
                 Consumer<String> requestHandler,
                 List<Completion> completions) {
 
-            completionHandler = new SimpleCompletionHandler();
+            completionHandler.clear();
             completionHandler.addCompletions(completions);
             consoleBuffer =
                     new AeshConsoleBuffer(conn, prompt, editMode, history, completionHandler, size, true);

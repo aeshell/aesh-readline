@@ -173,7 +173,10 @@ public class TerminalConnection implements Connection {
     }
 
     public void startReading() {
-        latch.countDown();
+        if(waiting) {
+            waiting = false;
+            latch.countDown();
+        }
     }
 
     public boolean suspended() {
