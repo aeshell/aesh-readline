@@ -58,11 +58,11 @@ public class ShellExample {
         ShellExample shell = new ShellExample();
         shell.start(connection);
         //blocking reader
-        connection.startBlockingReader();
+        connection.open();
 
         // if we start nonBlockingReader do:
         /*
-        connection.startNonBlockingReader();
+        connection.openNonBlockingReader();
         try {
             while(connection.isReading()) {
                 Thread.sleep(500);
@@ -81,13 +81,13 @@ public class ShellExample {
     }
 
     /**
-     * Use {@link Readline} to startBlockingReader a user input and then process it
+     * Use {@link Readline} to open a user input and then process it
      *
      * @param conn the tty connection
      * @param readline the readline object
      */
     public void read(final Connection conn, final Readline readline) {
-        // Just call readline and get a callback when line is startBlockingReader
+        // Just call readline and get a callback when line is open
         Prompt prompt = new Prompt(new TerminalString("[aesh@rules]$ ",
                         new TerminalColor(Color.GREEN, Color.DEFAULT, Color.Intensity.BRIGHT)));
 

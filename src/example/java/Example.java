@@ -63,7 +63,7 @@ public class Example {
         });
 
         readInput(connection, readline, defaultPrompt);
-        connection.startBlockingReader();
+        connection.open();
     }
 
     public static void readInput(Connection connection, Readline readline, Prompt prompt) {

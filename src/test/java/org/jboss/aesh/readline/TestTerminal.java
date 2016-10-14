@@ -92,7 +92,7 @@ public class TestTerminal {
     }
 
     public void start() {
-        connection.startBlockingReader();
+        connection.open();
     }
 
     public String getLine() {

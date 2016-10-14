@@ -19,6 +19,7 @@
  */
 package org.jboss.aesh.terminal.utils;
 
+import org.jboss.aesh.tty.Capability;
 import org.jboss.aesh.util.Config;
 import org.jboss.aesh.util.Parser;
 
@@ -34,9 +35,9 @@ import java.util.Set;
 public class InfoCmpHelper {
 
     private static boolean initialized = false;
-    private static Set<InfoCmp.Capability> bools = new HashSet<>();
-    private static Map<InfoCmp.Capability, Integer> ints = new HashMap<>();
-    private static Map<InfoCmp.Capability, String> strings = new HashMap<>();
+    private static Set<Capability> bools = new HashSet<>();
+    private static Map<Capability, Integer> ints = new HashMap<>();
+    private static Map<Capability, String> strings = new HashMap<>();
 
     public static int[] getCurrentTranslatedCapabilityAsInts(String cap, int[] defaultValue) {
         if(Config.isWindows())
@@ -60,7 +61,7 @@ public class InfoCmpHelper {
                 InfoCmp.parseInfoCmp(infocmp, bools, ints, strings);
                 initialized = true;
             }
-            InfoCmp.Capability capability = InfoCmp.Capability.byName(cap);
+            Capability capability = Capability.byName(cap);
             if (capability != null) {
                 String capStr = strings.get(capability);
                 if (capStr != null) {

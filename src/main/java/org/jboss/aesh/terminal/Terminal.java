@@ -20,7 +20,7 @@
 package org.jboss.aesh.terminal;
 
 import org.jboss.aesh.terminal.impl.NativeSignalHandler;
-import org.jboss.aesh.terminal.utils.InfoCmp.Capability;
+import org.jboss.aesh.tty.Capability;
 import org.jboss.aesh.tty.Signal;
 import org.jboss.aesh.tty.Size;
 

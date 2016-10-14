@@ -21,6 +21,7 @@ package org.jboss.aesh.readline;
 
 import org.jboss.aesh.readline.editing.EditModeBuilder;
 import org.jboss.aesh.readline.history.InMemoryHistory;
+import org.jboss.aesh.tty.Capability;
 import org.jboss.aesh.tty.Connection;
 import org.jboss.aesh.tty.Signal;
 import org.jboss.aesh.tty.Size;
@@ -164,7 +165,19 @@ public class ConsoleBufferTest {
 
         @Override
         public void close() {
+        }
 
+        @Override
+        public void open() {
+        }
+
+        @Override
+        public void openNonBlockingReader() {
+        }
+
+        @Override
+        public boolean put(Capability capability, Object... params) {
+            return false;
         }
     }
 

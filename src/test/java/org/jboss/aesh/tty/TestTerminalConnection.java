@@ -52,7 +52,7 @@ public class TestTerminalConnection {
         outputStream.flush();
         outputStream.close();
         Thread.sleep(150);
-        connection.startBlockingReader();
+        connection.open();
 
         assertArrayEquals(result.get(0), new int[] {70,79,79});
 

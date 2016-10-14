@@ -27,7 +27,7 @@ import org.fusesource.jansi.internal.WindowsSupport;
 import org.jboss.aesh.terminal.Attributes;
 import org.jboss.aesh.tty.Signal;
 import org.jboss.aesh.terminal.utils.Curses;
-import org.jboss.aesh.terminal.utils.InfoCmp.Capability;
+import org.jboss.aesh.tty.Capability;
 import org.jboss.aesh.terminal.utils.ShutdownHooks;
 import org.jboss.aesh.terminal.utils.ShutdownHooks.Task;
 import org.jboss.aesh.terminal.utils.Signals;

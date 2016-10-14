@@ -186,6 +186,19 @@ public class TestConnection implements Connection {
         closeHandler.accept(null);
     }
 
+    @Override
+    public void open() {
+    }
+
+    @Override
+    public void openNonBlockingReader() {
+    }
+
+    @Override
+    public boolean put(Capability capability, Object... params) {
+        return false;
+    }
+
     public void assertBuffer(String expected) {
         assertEquals(expected, Parser.stripAwayAnsiCodes(readline.getBuffer()));
     }

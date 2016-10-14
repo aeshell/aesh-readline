@@ -24,6 +24,7 @@ import org.jboss.aesh.io.Encoder;
 import org.jboss.aesh.terminal.Attributes;
 import org.jboss.aesh.terminal.Terminal;
 import org.jboss.aesh.terminal.TerminalBuilder;
+import org.jboss.aesh.tty.Capability;
 import org.jboss.aesh.tty.Connection;
 import org.jboss.aesh.tty.Signal;
 import org.jboss.aesh.tty.Size;
@@ -105,7 +106,8 @@ public class TerminalConnection implements Connection {
         stdOut = new Encoder(StandardCharsets.UTF_8, this::write);
     }
 
-    public void startNonBlockingReader() {
+    @Override
+    public void openNonBlockingReader() {
         ExecutorService executorService = Executors.newSingleThreadExecutor(runnable -> {
             Thread inputThread = Executors.defaultThreadFactory().newThread(runnable);
             inputThread.setName("Aesh InputStream Reader");
@@ -113,10 +115,19 @@ public class TerminalConnection implements Connection {
             inputThread.setDaemon(true);
             return inputThread;
         });
-        executorService.execute(() -> startBlockingReader());
+        executorService.execute(() -> open());
     }
 
-    public void startBlockingReader() {
+    @Override
+    public boolean put(Capability capability, Object... params) {
+        return terminal.puts(capability, params);
+    }
+
+    /**
+     * Opens the Connection stream, this method will block and wait for input.
+     */
+    @Override
+    public void open() {
         try {
             reading = true;
             byte[] bBuf = new byte[1024];

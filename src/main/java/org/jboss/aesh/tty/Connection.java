@@ -50,6 +50,12 @@ public interface Connection {
 
     void close();
 
+    void open();
+
+    void openNonBlockingReader();
+
+    boolean put(Capability capability, Object... params);
+
     default Connection write(String s) {
         int[] codePoints = s.codePoints().toArray();
         stdoutHandler().accept(codePoints);

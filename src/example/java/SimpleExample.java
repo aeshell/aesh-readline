@@ -30,7 +30,7 @@ public class SimpleExample {
     public static void main(String... args) {
         TerminalConnection connection = new TerminalConnection();
         read(connection, ReadlineBuilder.builder().enableHistory(false).build(), "[aesh@rules]$ ");
-        connection.startBlockingReader();
+        connection.open();
     }
 
     private static void read(TerminalConnection connection, Readline readline, String prompt) {
