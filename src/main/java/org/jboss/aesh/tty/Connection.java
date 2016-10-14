@@ -54,6 +54,12 @@ public interface Connection {
 
     void openNonBlockingReader();
 
+    void suspend();
+
+    boolean suspended();
+
+    void awake();
+
     boolean put(Capability capability, Object... params);
 
     default Connection write(String s) {

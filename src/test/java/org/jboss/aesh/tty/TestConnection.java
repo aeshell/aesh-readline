@@ -195,6 +195,19 @@ public class TestConnection implements Connection {
     }
 
     @Override
+    public void suspend() {
+    }
+
+    @Override
+    public boolean suspended() {
+        return false;
+    }
+
+    @Override
+    public void awake() {
+    }
+
+    @Override
     public boolean put(Capability capability, Object... params) {
         return false;
     }

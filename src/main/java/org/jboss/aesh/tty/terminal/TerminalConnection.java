@@ -165,10 +165,6 @@ public class TerminalConnection implements Connection {
         return reading;
     }
 
-    public void stopReading() {
-        reading = false;
-    }
-
     private void write(byte[] data) {
         try {
             terminal.output().write(data);
@@ -178,18 +174,21 @@ public class TerminalConnection implements Connection {
         }
     }
 
-    public void suspendReading() {
+    @Override
+    public void suspend() {
         latch = new CountDownLatch(1);
         waiting = true;
     }
 
-    public void startReading() {
+    @Override
+    public void awake() {
         if(waiting) {
             waiting = false;
             latch.countDown();
         }
     }
 
+    @Override
     public boolean suspended() {
         return waiting;
     }
@@ -258,7 +257,7 @@ public class TerminalConnection implements Connection {
     @Override
     public void close() {
         try {
-            stopReading();
+            reading = false;
             if(waiting)
                 latch.countDown();
             if (attributes != null && terminal != null) {
