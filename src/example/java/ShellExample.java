@@ -29,6 +29,7 @@ import org.jboss.aesh.terminal.formatting.TerminalString;
 import org.jboss.aesh.tty.Connection;
 import org.jboss.aesh.tty.Signal;
 import org.jboss.aesh.tty.terminal.TerminalConnection;
+import org.jboss.aesh.util.Config;
 import org.jboss.aesh.util.LoggerUtil;
 
 import java.util.ArrayList;
@@ -303,10 +304,18 @@ public class ShellExample {
             @Override
             public void execute(Connection conn, List<String> args) throws Exception {
 
+
+                String line = readLine("[myprompt]", conn);
+
+                conn.write("we got: "+line+Config.getLineSeparator());
+            }
+
+            private String readLine(String prompt, Connection conn) throws InterruptedException {
                 CountDownLatch latch = new CountDownLatch(1);
                 Readline readline = new Readline();
+                String[] out = new String[1];
                 readline.readline(conn, "[myprompt]: ", event -> {
-                    conn.write("we got: "+event);
+                    out[0] = event;
                     latch.countDown();
                 });
                 try {
@@ -316,7 +325,10 @@ public class ShellExample {
                 finally {
                     conn.setStdinHandler(null);
                 }
+
+                return out[0];
             }
+
         },
 
         top() {
