@@ -387,7 +387,45 @@ public class BufferTest {
         assertEquals("foo",
                 Parser.fromCodePoints(Arrays.copyOfRange(outConsumer.get(0),
                         outConsumer.get(0).length-3, outConsumer.get(0).length )));
-
     }
 
+    @Test
+    public void masking() {
+        Buffer buffer = new Buffer(new Prompt(": ", '#'));
+        List<int[]> outConsumer = new ArrayList<>();
+        buffer.insert(outConsumer::add, "foo", 100);
+
+        assertEquals(": ###",
+                Parser.fromCodePoints(Arrays.copyOfRange(outConsumer.get(0),
+                        outConsumer.get(0).length-5, outConsumer.get(0).length )));
+
+        outConsumer.clear();
+        buffer.delete(outConsumer::add, -1, 120);
+
+        assertEquals(": ##",
+                Parser.fromCodePoints(Arrays.copyOfRange(outConsumer.get(0),
+                        outConsumer.get(0).length-4, outConsumer.get(0).length )));
+        assertEquals("fo", buffer.asString());
+
+        buffer = new Buffer(new Prompt(": ", (char) 0));
+        outConsumer.clear();
+        buffer.insert(outConsumer::add, "foo", 100);
+
+        assertEquals(": ",
+                Parser.fromCodePoints(Arrays.copyOfRange(outConsumer.get(0),
+                        outConsumer.get(0).length-2, outConsumer.get(0).length )));
+        assertEquals("foo", buffer.asString());
+        outConsumer.clear();
+        buffer.delete(outConsumer::add, -3, 120);
+        assertEquals(": ",
+                Parser.fromCodePoints(Arrays.copyOfRange(outConsumer.get(0),
+                        outConsumer.get(0).length-2, outConsumer.get(0).length )));
+
+        buffer.insert(outConsumer::add, "bar", 100);
+
+        assertEquals(": ",
+                Parser.fromCodePoints(Arrays.copyOfRange(outConsumer.get(0),
+                        outConsumer.get(0).length-2, outConsumer.get(0).length )));
+        assertEquals("bar", buffer.asString());
+     }
 }

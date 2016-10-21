@@ -143,10 +143,6 @@ public class Buffer {
     }
 
     private int promptLength() {
-        if(isMasking()) {
-            if(prompt.getMask() == 0)
-                return 0;
-        }
         return disablePrompt ? 0 : prompt.getLength();
     }
 
@@ -635,8 +631,20 @@ public class Buffer {
 
         LOGGER.info("builder after prompt: "+ Arrays.toString(builder.toArray()));
         //dont print out the line if its empty
-        if(size > 0)
-            builder.append(getLine());
+        if(size > 0) {
+            if(isMasking()) {
+                //no output
+                if(prompt.getMask() != '\u0000') {
+
+                }
+                //only output the masked char
+                int[] mask = new int[size];
+                Arrays.fill(mask, prompt.getMask());
+                builder.append(mask);
+            }
+            else
+                builder.append(getLine());
+        }
 
         LOGGER.info("builder after line: "+ Arrays.toString(builder.toArray()));
         //pad if we are at the end of the terminal
