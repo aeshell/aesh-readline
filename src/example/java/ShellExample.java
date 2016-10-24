@@ -32,6 +32,7 @@ import org.jboss.aesh.tty.terminal.TerminalConnection;
 import org.jboss.aesh.util.Config;
 import org.jboss.aesh.util.LoggerUtil;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Formatter;
 import java.util.List;
@@ -52,7 +53,7 @@ public class ShellExample {
 
     private static final Logger LOGGER = LoggerUtil.getLogger(ShellExample.class.getName());
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
         LoggerUtil.doLog();
 
         TerminalConnection connection = new TerminalConnection();
@@ -65,6 +66,7 @@ public class ShellExample {
         /*
         connection.openNonBlockingReader();
         try {
+            //either do some other logic or just do this....
             while(connection.isReading()) {
                 Thread.sleep(500);
             }

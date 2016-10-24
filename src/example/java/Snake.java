@@ -25,6 +25,7 @@ import org.jboss.aesh.tty.terminal.TerminalConnection;
 import org.jboss.aesh.util.ANSI;
 import org.jboss.aesh.util.LoggerUtil;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.Random;
@@ -47,23 +48,23 @@ public class Snake {
 
     public Snake() {
         LoggerUtil.doLog();
-        conn = new TerminalConnection();
-
-        conn.setSignalHandler( signal -> {
-            if(signal == Signal.INT) {
-            }
-        });
-
-        conn.setCloseHandler(close -> end());
-
-        conn.setSizeHandler(size -> reset(size));
-
-        setup();
-        conn.openNonBlockingReader();
         try {
+            conn = new TerminalConnection();
+
+            conn.setSignalHandler( signal -> {
+                if(signal == Signal.INT) {
+                }
+            });
+
+            conn.setCloseHandler(close -> end());
+
+            conn.setSizeHandler(size -> reset(size));
+
+            setup();
+            conn.openNonBlockingReader();
             run();
         }
-        catch (InterruptedException e) {
+        catch (InterruptedException | IOException e) {
             e.printStackTrace();
         }
     }

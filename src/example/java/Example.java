@@ -141,7 +141,7 @@ public class Example {
             else if("man".startsWith(completeOperation.getBuffer()))
                 completeOperation.addCompletionCandidate("man");
             else if("clear".startsWith(completeOperation.getBuffer()))
-                completeOperation.addCompletionCandidate("clear");
+                completeOperation.addCompletionCandidate("man");
 
         });
        return completions;

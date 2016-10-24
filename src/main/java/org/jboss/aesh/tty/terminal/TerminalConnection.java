@@ -61,21 +61,16 @@ public class TerminalConnection implements Connection {
     private CountDownLatch latch;
     private volatile boolean waiting = false;
 
-    public TerminalConnection(InputStream inputStream, OutputStream outputStream) {
-        try {
+    public TerminalConnection(InputStream inputStream, OutputStream outputStream) throws IOException {
             init(TerminalBuilder.builder()
                     .input(inputStream)
                     .output(outputStream)
                     .nativeSignals(true)
                     .name("Aesh console")
                     .build());
-        }
-        catch(IOException e) {
-            e.printStackTrace();
-        }
     }
 
-    public TerminalConnection() {
+    public TerminalConnection() throws IOException {
         this(System.in, System.out);
     }
 
