@@ -62,6 +62,7 @@ public class Readline {
 
     public Readline(EditMode editMode) {
         this(editMode, new InMemoryHistory(), null);
+        history.enable();
     }
 
     public Readline(EditMode editMode, History history, CompletionHandler completionHandler) {

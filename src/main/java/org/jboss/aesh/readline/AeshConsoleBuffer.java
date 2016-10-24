@@ -47,11 +47,13 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
         this.buffer = new Buffer(prompt);
         pasteManager = new PasteManager();
         undoManager = new UndoManager();
-        if(history == null)
+        if(history == null) {
             this.history = new InMemoryHistory();
-        else {
-            this.history = history;
             this.history.enable();
+        }
+        else {
+            //do not enable an history object if its given
+            this.history = history;
         }
 
         this.completionHandler = completionHandler;
