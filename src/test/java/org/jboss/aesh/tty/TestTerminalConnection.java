@@ -19,8 +19,11 @@
  */
 package org.jboss.aesh.tty;
 
+import org.jboss.aesh.readline.Prompt;
+import org.jboss.aesh.readline.Readline;
 import org.jboss.aesh.readline.TestTerminal;
 import org.jboss.aesh.tty.terminal.TerminalConnection;
+import org.jboss.aesh.util.Config;
 import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
@@ -79,4 +82,53 @@ public class TestTerminalConnection {
         test.read("\n");
         test.assertLine("foo");
     }
+
+    @Test
+    public void testSignal() throws IOException, InterruptedException {
+        PipedOutputStream outputStream = new PipedOutputStream();
+        PipedInputStream pipedInputStream = new PipedInputStream(outputStream);
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+        TerminalConnection connection = new TerminalConnection(pipedInputStream, out);
+
+        Readline readline = new Readline();
+        readline.readline(connection, new Prompt(""), s -> {  });
+
+        connection.openNonBlockingReader();
+        outputStream.write(("FOO").getBytes());
+        outputStream.flush();
+        Thread.sleep(100);
+        connection.getTerminal().raise(Signal.INT);
+        connection.close();
+
+        assertEquals(new String(out.toByteArray()), "FOO^C"+ Config.getLineSeparator());
+    }
+
+    @Test
+    public void testCustomSignal() throws IOException, InterruptedException {
+        PipedOutputStream outputStream = new PipedOutputStream();
+        PipedInputStream pipedInputStream = new PipedInputStream(outputStream);
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+        TerminalConnection connection = new TerminalConnection(pipedInputStream, out);
+        connection.setSignalHandler( signal -> {
+            if(signal == Signal.INT) {
+                connection.write("BAR");
+                connection.stdoutHandler().accept(Config.CR);
+                connection.close();
+            }
+        });
+
+        Readline readline = new Readline();
+        readline.readline(connection, new Prompt(""), s -> {  });
+
+        connection.openNonBlockingReader();
+        outputStream.write(("FOO").getBytes());
+        outputStream.flush();
+        Thread.sleep(100);
+        connection.getTerminal().raise(Signal.INT);
+
+        assertEquals(new String(out.toByteArray()), "FOOBAR"+ Config.getLineSeparator());
+    }
+
 }

@@ -217,18 +217,22 @@ public class Readline {
                 }
                 size = dim;
             });
-            conn.setSignalHandler( signal -> {
-                if(signal == Signal.INT) {
-                    if(editMode.isInChainedAction()) {
-                        parse(Key.CTRL_C);
+            //only set signalHandler if its null
+            if(conn.getSignalHandler() == null) {
+                conn.setSignalHandler(signal -> {
+                    if (signal == Signal.INT) {
+                        if (editMode.isInChainedAction()) {
+                            parse(Key.CTRL_C);
+                        } else {
+                            conn.stdoutHandler().accept(new int[]{'^', 'C'});
+                            conn.stdoutHandler().accept(Config.CR);
+                            this.getBuffer().getBuffer().reset();
+                            consoleBuffer.drawLine();
+                            //conn.stdoutHandler().accept(this.getBuffer().getBuffer().getPrompt().getANSI());
+                        }
                     }
-                    else {
-                        conn.stdoutHandler().accept(new int[]{'^', 'C', '\n'});
-                        conn.stdoutHandler().accept(this.getBuffer().getBuffer().getPrompt().getANSI());
-                        this.getBuffer().getBuffer().reset();
-                    }
-                }
-            });
+                });
+            }
 
             consoleBuffer.drawLine();
             //last, display prompt

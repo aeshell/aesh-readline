@@ -20,6 +20,7 @@
 package org.jboss.aesh.readline;
 
 import org.jboss.aesh.terminal.impl.LineDisciplineTerminal;
+import org.jboss.aesh.terminal.Terminal;
 import org.jboss.aesh.tty.terminal.TerminalConnection;
 
 import java.io.ByteArrayOutputStream;
@@ -113,5 +114,9 @@ public class TestTerminal {
         catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    public Terminal getTerminal() {
+        return terminal;
     }
 }
