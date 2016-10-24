@@ -27,6 +27,7 @@ import org.jboss.aesh.terminal.formatting.TerminalColor;
 import org.jboss.aesh.tty.Connection;
 import org.jboss.aesh.tty.Signal;
 import org.jboss.aesh.tty.terminal.TerminalConnection;
+import org.jboss.aesh.util.ANSI;
 import org.jboss.aesh.util.LoggerUtil;
 
 import java.io.IOException;
@@ -83,6 +84,17 @@ public class Example {
                 connection.close();
                 return;
             }
+            else if(line.equals("clear")) {
+                connection.write("lets clear the screen after two seconds");
+                try {
+                    Thread.sleep(2000);
+                }
+                catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                connection.stdoutHandler().accept(ANSI.CLEAR_SCREEN);
+                readInput(connection, readline, defaultPrompt);
+            }
             else if(line.equals("sleep")) {
                 LOGGER.info("got sleep");
                 try {
@@ -120,14 +132,16 @@ public class Example {
         completions.add( completeOperation -> {
             if("exit".startsWith(completeOperation.getBuffer()))
                 completeOperation.addCompletionCandidate("exit");
-            if("quit".startsWith(completeOperation.getBuffer()))
+            else if("quit".startsWith(completeOperation.getBuffer()))
                 completeOperation.addCompletionCandidate("quit");
-            if("sleep".startsWith(completeOperation.getBuffer()))
+            else if("sleep".startsWith(completeOperation.getBuffer()))
                 completeOperation.addCompletionCandidate("sleep");
-            if("login".startsWith(completeOperation.getBuffer()))
+            else if("login".startsWith(completeOperation.getBuffer()))
                 completeOperation.addCompletionCandidate("login");
-            if("man".startsWith(completeOperation.getBuffer()))
+            else if("man".startsWith(completeOperation.getBuffer()))
                 completeOperation.addCompletionCandidate("man");
+            else if("clear".startsWith(completeOperation.getBuffer()))
+                completeOperation.addCompletionCandidate("clear");
 
         });
        return completions;
