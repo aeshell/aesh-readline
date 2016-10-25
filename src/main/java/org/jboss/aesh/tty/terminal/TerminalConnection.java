@@ -57,6 +57,7 @@ public class TerminalConnection implements Connection {
     private Attributes attributes;
     private Consumer<Signal> eventHandler;
     private volatile boolean reading = true;
+    private volatile boolean close = false;
     private Consumer<Void> closeHandler;
     private CountDownLatch latch;
     private volatile boolean waiting = false;
@@ -102,7 +103,7 @@ public class TerminalConnection implements Connection {
     }
 
     @Override
-    public void openNonBlockingReader() {
+    public void openNonBlocking() {
         ExecutorService executorService = Executors.newSingleThreadExecutor(runnable -> {
             Thread inputThread = Executors.defaultThreadFactory().newThread(runnable);
             inputThread.setName("Aesh InputStream Reader");
@@ -110,7 +111,12 @@ public class TerminalConnection implements Connection {
             inputThread.setDaemon(true);
             return inputThread;
         });
-        executorService.execute(() -> open());
+        executorService.execute(() -> openBlocking());
+    }
+
+    @Override
+    public void stopReading() {
+        reading = false;
     }
 
     @Override
@@ -122,11 +128,12 @@ public class TerminalConnection implements Connection {
      * Opens the Connection stream, this method will block and wait for input.
      */
     @Override
-    public void open() {
+    public void openBlocking() {
         try {
             reading = true;
             byte[] bBuf = new byte[1024];
-            attributes = terminal.enterRawMode();
+            if(attributes == null)
+                attributes = terminal.enterRawMode();
             while (reading) {
                 int read = terminal.input().read(bBuf);
                 if (read > 0) {
@@ -252,12 +259,14 @@ public class TerminalConnection implements Connection {
     @Override
     public void close() {
         try {
-            reading = false;
+            close = reading = false;
             if(waiting)
                 latch.countDown();
             if (attributes != null && terminal != null) {
                 terminal.setAttributes(attributes);
                 terminal.close();
+                if(getCloseHandler() != null)
+                    getCloseHandler().accept(null);
             }
         }
         catch(IOException e) {

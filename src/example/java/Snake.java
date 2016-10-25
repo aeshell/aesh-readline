@@ -61,7 +61,7 @@ public class Snake {
             conn.setSizeHandler(size -> reset(size));
 
             setup();
-            conn.openNonBlockingReader();
+            conn.openNonBlocking();
             run();
         }
         catch (InterruptedException | IOException e) {

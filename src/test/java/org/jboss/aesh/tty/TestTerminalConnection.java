@@ -55,7 +55,7 @@ public class TestTerminalConnection {
         outputStream.flush();
         outputStream.close();
         Thread.sleep(150);
-        connection.open();
+        connection.openBlocking();
 
         assertArrayEquals(result.get(0), new int[] {70,79,79});
 
@@ -94,7 +94,7 @@ public class TestTerminalConnection {
         Readline readline = new Readline();
         readline.readline(connection, new Prompt(""), s -> {  });
 
-        connection.openNonBlockingReader();
+        connection.openNonBlocking();
         outputStream.write(("FOO").getBytes());
         outputStream.flush();
         Thread.sleep(100);
@@ -122,7 +122,7 @@ public class TestTerminalConnection {
         Readline readline = new Readline();
         readline.readline(connection, new Prompt(""), s -> {  });
 
-        connection.openNonBlockingReader();
+        connection.openNonBlocking();
         outputStream.write(("FOO").getBytes());
         outputStream.flush();
         Thread.sleep(100);

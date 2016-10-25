@@ -26,42 +26,116 @@ import java.util.function.Consumer;
  */
 public interface Connection {
 
+    /**
+     * @return type of terminal
+     */
     String terminalType();
 
+    /**
+     * @return terminal size
+     */
     Size size();
 
+    /**
+     * @return Handler that's called when the terminal changes size
+     */
     Consumer<Size> getSizeHandler();
 
+    /**
+     * Specify size handler that's called when the terminal changes size.
+     * @param handler
+     */
     void setSizeHandler(Consumer<Size> handler);
 
+    /**
+     * Get SignalHandler. A handler that's called when a Signal is sent to the terminal
+     * @return Signal handler
+     */
     Consumer<Signal> getSignalHandler();
 
+    /**
+     * Specify the signal handler.
+     * A handler that's called when a Signal is sent to the terminal
+     * @param handler signal handler
+     */
     void setSignalHandler(Consumer<Signal> handler);
 
     Consumer<int[]> getStdinHandler();
 
     void setStdinHandler(Consumer<int[]> handler);
 
+    /**
+     * Handler that's called for all output
+     * @return output handler
+     */
     Consumer<int[]> stdoutHandler();
 
+    /**
+     * Specify handler that's called when the input stream is closed.
+     * @param closeHandler handler
+     */
     void setCloseHandler(Consumer<Void> closeHandler);
 
+    /**
+     * @return handler thats called when the input stream is closed.
+     */
     Consumer<Void> getCloseHandler();
 
+    /**
+     * Stop reading from the input stream.
+     * The stream will be closed and cleanup methods will be called
+     * Eg for terminals they will be restored to their original settings.
+     *
+     * Note that if the reader thread is blocking waiting for data it will wait until either
+     * killed or if the input stream is closed.
+     */
     void close();
 
-    void open();
+    /**
+     * Start reading from the input stream using the current thread.
+     * The current thread will be blocked while reading/waiting to read from the stream
+     */
+    void openBlocking();
 
-    void openNonBlockingReader();
+    /**
+     * Start reading from the input stream in a separate thread.
+     * The current thread will continue.
+     */
+    void openNonBlocking();
 
+    /**
+     * This will stop reading from the input stream, but not close the stream
+     */
+    void stopReading();
+
+    /**
+     * This call will block the reader thread until awake() is called
+     */
     void suspend();
 
+    /**
+     * @return true if suspended. Eg the reader is blocked.
+     */
     boolean suspended();
 
+    /**
+     * If suspended this will resume reading from the input stream
+     */
     void awake();
 
+    /**
+     * Specify terminal settings
+     * @param capability capability
+     * @param params parameters
+     * @return true if the terminal accepted the settings
+     */
     boolean put(Capability capability, Object... params);
 
+    /**
+     * Write a string to the output handler
+     * @param s string
+     * @return this connection
+     */
     default Connection write(String s) {
         int[] codePoints = s.codePoints().toArray();
         stdoutHandler().accept(codePoints);

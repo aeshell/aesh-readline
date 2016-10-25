@@ -64,7 +64,7 @@ public class Example {
         });
 
         readInput(connection, readline, defaultPrompt);
-        connection.open();
+        connection.openBlocking();
     }
 
     public static void readInput(Connection connection, Readline readline, Prompt prompt) {

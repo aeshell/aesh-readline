@@ -168,11 +168,15 @@ public class ConsoleBufferTest {
         }
 
         @Override
-        public void open() {
+        public void openBlocking() {
         }
 
         @Override
-        public void openNonBlockingReader() {
+        public void openNonBlocking() {
+        }
+
+        @Override
+        public void stopReading() {
         }
 
         @Override

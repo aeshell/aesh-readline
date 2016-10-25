@@ -32,7 +32,7 @@ public class SimpleExample {
     public static void main(String... args) throws IOException {
         TerminalConnection connection = new TerminalConnection();
         read(connection, ReadlineBuilder.builder().enableHistory(false).build(), "[aesh@rules]$ ");
-        connection.open();
+        connection.openBlocking();
     }
 
     private static void read(TerminalConnection connection, Readline readline, String prompt) {

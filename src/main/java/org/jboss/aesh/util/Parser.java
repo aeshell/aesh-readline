@@ -512,10 +512,10 @@ public class Parser {
     }
 
     /**
-     * Check if a string contain open quotes. Escaped quotes does not count.
+     * Check if a string contain openBlocking quotes. Escaped quotes does not count.
      *
      * @param text text
-     * @return true if it contains open quotes, else false
+     * @return true if it contains openBlocking quotes, else false
      */
     public static boolean doesStringContainOpenQuote(String text) {
         boolean doubleQuote = false;
