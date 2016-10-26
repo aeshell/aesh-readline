@@ -263,6 +263,11 @@ public class Readline {
         public EditMode getEditMode() {
             return editMode;
         }
+
+        @Override
+        public Connection connection() {
+            return conn;
+        }
     }
 
 }

@@ -20,6 +20,7 @@
 package org.jboss.aesh.readline;
 
 import org.jboss.aesh.readline.editing.EditMode;
+import org.jboss.aesh.tty.Connection;
 
 /**
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
@@ -33,4 +34,6 @@ public interface InputProcessor {
     void setReturnValue(int[] value);
 
     EditMode getEditMode();
+
+    Connection connection();
 }

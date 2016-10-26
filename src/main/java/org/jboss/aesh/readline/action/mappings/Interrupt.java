@@ -21,6 +21,7 @@ package org.jboss.aesh.readline.action.mappings;
 
 import org.jboss.aesh.readline.InputProcessor;
 import org.jboss.aesh.readline.action.Action;
+import org.jboss.aesh.tty.Signal;
 
 /**
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
@@ -34,12 +35,9 @@ public class Interrupt implements Action {
 
     @Override
     public void apply(InputProcessor inputProcessor) {
-        /*
-        if(inputProcessor.getInterruptHook() != null) {
-            inputProcessor.getBuffer().out().print(Config.getLineSeparator());
-            inputProcessor.getInterruptHook().handleInterrupt(this);
-        }
-        */
+        //if the terminal cant raise the int signal, we'll do it manually
+        if(inputProcessor.connection().getSignalHandler() != null)
+            inputProcessor.connection().getSignalHandler().accept(Signal.INT);
     }
 
 }
