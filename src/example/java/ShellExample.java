@@ -56,7 +56,12 @@ public class ShellExample {
     public static void main(String[] args) throws IOException {
         LoggerUtil.doLog();
 
-        TerminalConnection connection = new TerminalConnection();
+        final TerminalConnection connection = new TerminalConnection();
+
+        connection.setSignalHandler( signal -> {
+            connection.write("\nlets quit\n");
+            connection.close();
+        });
         ShellExample shell = new ShellExample();
         shell.start(connection);
         //blocking reader

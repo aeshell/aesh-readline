@@ -123,12 +123,18 @@ public class TestTerminalConnection {
         readline.readline(connection, new Prompt(""), s -> {  });
 
         connection.openNonBlocking();
+        outputStream.write(("GAH"+Config.getLineSeparator()).getBytes());
+        outputStream.flush();
+        Thread.sleep(150);
+        assertEquals(new String(out.toByteArray()), "GAH"+Config.getLineSeparator());
+
+        readline.readline(connection, new Prompt(""), s -> {  });
         outputStream.write(("FOO").getBytes());
         outputStream.flush();
-        Thread.sleep(100);
+        Thread.sleep(150);
         connection.getTerminal().raise(Signal.INT);
 
-        assertEquals(new String(out.toByteArray()), "FOOBAR"+ Config.getLineSeparator());
+        assertEquals(new String(out.toByteArray()), "GAH"+Config.getLineSeparator()+"FOOBAR"+ Config.getLineSeparator());
     }
 
 }

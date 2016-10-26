@@ -55,7 +55,7 @@ public class Example {
             if(signal == Signal.INT) {
                 connection.write("we're catching ctrl-c, just continuing.\n");
                 if(sleeperThread != null)
-                sleeperThread.interrupt();
+                    sleeperThread.interrupt();
             }
         });
 
@@ -69,7 +69,7 @@ public class Example {
 
     public static void readInput(Connection connection, Readline readline, Prompt prompt) {
         readline.readline(connection, prompt, line -> {
-            connection.write("=====> "+line+"\n");
+            connection.write("=====>_"+line+"_\n");
             if(line == null) {
                 connection.write("got eof, lets quit.\n");
                 connection.close();
@@ -102,10 +102,12 @@ public class Example {
                     sleeperThread = Thread.currentThread();
                     Thread.sleep(5000);
                     connection.write("done sleeping, returning.\n");
+                    sleeperThread = null;
                     readInput(connection, readline, defaultPrompt);
                 }
                 catch (InterruptedException e) {
                     connection.write("we got interrupted, lets continue...\n");
+                    sleeperThread = null;
                     readInput(connection, readline, defaultPrompt);
                 }
             }
@@ -132,16 +134,16 @@ public class Example {
         completions.add( completeOperation -> {
             if("exit".startsWith(completeOperation.getBuffer()))
                 completeOperation.addCompletionCandidate("exit");
-            else if("quit".startsWith(completeOperation.getBuffer()))
+            if("quit".startsWith(completeOperation.getBuffer()))
                 completeOperation.addCompletionCandidate("quit");
-            else if("sleep".startsWith(completeOperation.getBuffer()))
+            if("sleep".startsWith(completeOperation.getBuffer()))
                 completeOperation.addCompletionCandidate("sleep");
-            else if("login".startsWith(completeOperation.getBuffer()))
+            if("login".startsWith(completeOperation.getBuffer()))
                 completeOperation.addCompletionCandidate("login");
-            else if("man".startsWith(completeOperation.getBuffer()))
+            if("man".startsWith(completeOperation.getBuffer()))
                 completeOperation.addCompletionCandidate("man");
-            else if("clear".startsWith(completeOperation.getBuffer()))
-                completeOperation.addCompletionCandidate("man");
+            if("clear".startsWith(completeOperation.getBuffer()))
+                completeOperation.addCompletionCandidate("clear");
 
         });
        return completions;
