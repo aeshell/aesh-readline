@@ -112,7 +112,12 @@ public final class TerminalBuilder {
                 return new PosixSysTerminal(name, type, pty, encoding, nativeSignals);
             }
             else if (OSUtils.IS_WINDOWS) {
-                return new WinSysTerminal(name, nativeSignals);
+                try {
+                    return new WinSysTerminal(name, nativeSignals);
+                }
+                catch(IOException e) {
+                    return new ExternalTerminal(name, type, in, out, encoding);
+                }
             }
             else if(OSUtils.IS_HPUX) {
                 //TODO: need to parse differently than "normal" PosixSysTerminals...
