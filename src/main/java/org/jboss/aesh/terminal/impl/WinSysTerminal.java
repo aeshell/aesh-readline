@@ -205,8 +205,7 @@ public class WinSysTerminal extends AbstractTerminal {
                             escapeSequence = getSequence(Capability.key_home);
                             break;
                         case 0x25: // VK_LEFT
-                            if(ctrlState != 0)
-                                escapeSequence = getSequence(Capability.key_sleft);
+                            escapeSequence = getSequence(Capability.key_left);
                             break;
                         case 0x26: // VK_UP
                             escapeSequence = getSequence(Capability.key_up);
