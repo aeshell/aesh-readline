@@ -172,7 +172,7 @@ public class TerminalConnection implements Connection {
             terminal.output().write(data);
         }
         catch(IOException e) {
-            e.printStackTrace();
+            LOGGER.log(Level.WARNING, "Failed to write out.",e);
         }
     }
 

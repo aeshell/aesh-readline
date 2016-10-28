@@ -512,7 +512,7 @@ public class Buffer {
         IntArrayBuilder builder = new IntArrayBuilder();
         LOGGER.info("cursor: "+cursor+", prompt.length: "+promptLength()+", width: "+width+", size: "+size);
         if(size+promptLength()+Math.abs(delta) >= width)
-            clearAllLinesAndReturnToFirstLine(builder, width, cursor+promptLength(),
+            clearAllLinesAndReturnToFirstLine(builder, width, cursor+promptLength()+Math.abs(delta),
                     size+promptLength()+Math.abs(delta));
 
         LOGGER.info("builder after clearAllExtraLines: "+Arrays.toString(builder.toArray()));
@@ -571,8 +571,9 @@ public class Buffer {
             int cursorRow = oldCursor / width;
             int totalRows = oldSize / width;
 
-            if((oldSize) % width == 1 && oldSize == oldCursor) {
+            if((oldSize) % width == 0 && oldSize == oldCursor) {
                 LOGGER.info("size and cursor is on the edge...");
+                cursorRow = (oldCursor-1) / width;
                 builder.append(ANSI.MOVE_LINE_UP);
             }
 
@@ -648,16 +649,9 @@ public class Buffer {
 
         LOGGER.info("builder after line: "+ Arrays.toString(builder.toArray()));
         //pad if we are at the end of the terminal
-        if((size + promptLength()+1) % width == 1) {
-            if(delta < 0) {
-                //move all the way to column 0
-                builder.append(moveNumberOfColumns(width, 'D'));
-                //builder.append(ANSI.CURSOR_START);
-                builder.append(ANSI.MOVE_LINE_DOWN);
-            }
-            else {
-                builder.append(new int[]{32, 13});
-            }
+        LOGGER.info("delta: "+delta+", cursor: "+cursor+", size: "+size+", promptLength: "+promptLength());
+        if((size + promptLength()) % width == 0 && cursor == size) {
+            builder.append(new int[]{32, 13});
         }
         LOGGER.info("builder after line edge: "+ Arrays.toString(builder.toArray()));
 
