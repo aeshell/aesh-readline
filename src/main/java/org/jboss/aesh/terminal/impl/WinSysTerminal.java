@@ -323,6 +323,11 @@ public class WinSysTerminal extends AbstractTerminal {
             if (c == -1) {
                 return -1;
             }
+            //manually raise a signal if we get ctrl-c
+            else if(c == 3) {
+                raise(Signal.INT);
+                return 0;
+            }
             if(bufIdx == buf.length) {
                 b[off] = (byte) c;
                 return 1;
