@@ -24,6 +24,8 @@ import org.jboss.aesh.terminal.utils.InfoCmpHelper;
 import org.jboss.aesh.util.Config;
 import org.jboss.aesh.util.Parser;
 
+import java.nio.IntBuffer;
+
 /**
  * ANSCII enum key chart
  *
@@ -213,25 +215,27 @@ public enum Key implements KeyAction {
     ENTER_2(Config.isOSPOSIXCompatible() ?
             new int[]{10} : new int[]{13,10});
 
-    private final int[] keyValues;
+    private final IntBuffer keyValues;
 
     Key(int[] keyValues) {
-        this.keyValues = keyValues;
+        this.keyValues = IntBuffer.allocate(keyValues.length);
+        this.keyValues.put(keyValues);
+
     }
 
     /**
      * is of type a-z or A-Z
      */
     public boolean isCharacter() {
-        return (keyValues.length == 1 &&
-                ((keyValues[0] > 63 && keyValues[0] < 91) || (keyValues[0] > 96 && keyValues[0] < 123)));
+        return (keyValues.limit() == 1 &&
+                ((keyValues.get(0) > 63 && keyValues.get(0) < 91) || (keyValues.get(0) > 96 && keyValues.get(0) < 123)));
     }
 
     /**
      * @return true if input is 0-9
      */
     public boolean isNumber() {
-        return (keyValues.length == 1 && ((keyValues[0] > 47) && (keyValues[0] < 58)));
+        return (keyValues.limit() == 1 && ((keyValues.get(0) > 47) && (keyValues.get(0) < 58)));
     }
 
     /**
@@ -251,20 +255,30 @@ public enum Key implements KeyAction {
                             keyValues[0] != WINDOWS_ESC_2.getFirstValue())));
     }
 
+    public static boolean isPrintable(IntBuffer keyValues) {
+        if(Config.isOSPOSIXCompatible())
+            return (keyValues.limit() == 1 && ((keyValues.get(0) > 31 && keyValues.get(0) < 127) || keyValues.get(0) > 127));
+        else
+            return (keyValues.limit() == 1 && ((keyValues.get(0) > 31 && keyValues.get(0) < 127) ||
+                    (keyValues.get(0) > 127 &&
+                            keyValues.get(0) != WINDOWS_ESC.getFirstValue() &&
+                            keyValues.get(0) != WINDOWS_ESC_2.getFirstValue())));
+    }
+
     public char getAsChar() {
-        return (char) keyValues[0];
+        return (char) keyValues.get(0);
     }
 
     public int[] getKeyValues() {
-        return keyValues;
+        return keyValues.array();
     }
 
     public String getKeyValuesAsString() {
-        return Parser.fromCodePoints(keyValues);
+        return Parser.fromCodePoints(keyValues.array());
     }
 
     public int getFirstValue() {
-        return keyValues[0];
+        return keyValues.get(0);
     }
 
     public static boolean startsWithEscape(int[] input) {
@@ -333,20 +347,20 @@ public enum Key implements KeyAction {
     }
 
     public boolean inputStartsWithKey(int[] input) {
-        if(keyValues.length > input.length)
+        if(keyValues.limit() > input.length)
             return false;
-        for(int i=0; i < keyValues.length; i++) {
-            if(keyValues[i] != input[i])
+        for(int i=0; i < keyValues.limit(); i++) {
+            if(keyValues.get(i) != input[i])
                 return false;
         }
         return true;
     }
 
     public boolean inputStartsWithKey(int[] input, int position) {
-        if(keyValues.length+position > input.length)
+        if(keyValues.limit()+position > input.length)
             return false;
-        for(int i=0; i < keyValues.length; i++) {
-            if(keyValues[i] != input[i+position])
+        for(int i=0; i < keyValues.limit(); i++) {
+            if(keyValues.get(i) != input[i+position])
                 return false;
         }
         return true;
@@ -354,12 +368,12 @@ public enum Key implements KeyAction {
 
     public boolean containKey(int[] input) {
         for(int i=0; i < input.length; i++) {
-            if(input[i] == keyValues[0]) {
-                if(keyValues.length == 1)
+            if(input[i] == keyValues.get(0)) {
+                if(keyValues.limit() == 1)
                     return true;
-                else if((i + keyValues.length) < input.length) {
+                else if((i + keyValues.limit()) < input.length) {
                     int j = i;
-                    for(int k : keyValues) {
+                    for(int k : keyValues.array()) {
                         if(input[j] != k) {
                             return false;
                         }
@@ -373,9 +387,9 @@ public enum Key implements KeyAction {
     }
 
     public boolean equalTo(int[] otherValues) {
-        if(keyValues.length == otherValues.length) {
-            for(int i=0; i < keyValues.length; i++) {
-                if(keyValues[i] != otherValues[i])
+        if(keyValues.limit() == otherValues.length) {
+            for(int i=0; i < keyValues.limit(); i++) {
+                if(keyValues.get(i) != otherValues[i])
                     return false;
             }
             return true;
@@ -384,9 +398,9 @@ public enum Key implements KeyAction {
     }
 
     public boolean equalTo(KeyAction key) {
-        if(keyValues.length == key.length()) {
-            for(int i = 0; i < keyValues.length;i++)
-                if(keyValues[i] != key.getCodePointAt(i))
+        if(keyValues.limit() == key.length()) {
+            for(int i = 0; i < keyValues.limit();i++)
+                if(keyValues.get(i) != key.getCodePointAt(i))
                     return false;
             return true;
         }
@@ -395,11 +409,16 @@ public enum Key implements KeyAction {
 
     @Override
     public int getCodePointAt(int index) {
-        return keyValues[index];
+        return keyValues.get(index);
     }
 
     @Override
     public int length() {
-        return keyValues.length;
+        return keyValues.limit();
+    }
+
+    @Override
+    public IntBuffer buffer() {
+        return keyValues;
     }
 }

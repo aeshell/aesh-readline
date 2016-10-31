@@ -53,7 +53,7 @@ abstract class SearchHistory implements SearchAction {
 
      @Override
     public void input(Action action, KeyAction key) {
-         if(action == null && Key.isPrintable(key.buffer().array())) {
+         if(action == null && Key.isPrintable(key.buffer())) {
              if(searchArgument == null)
                  searchArgument = new IntArrayBuilder(1);
              status = defaultAction;
@@ -87,7 +87,7 @@ abstract class SearchHistory implements SearchAction {
              if(key == Key.ESC) {
                  status = Status.SEARCH_EXIT;
              }
-             if(Key.isPrintable(key.buffer().array())) {
+             if(Key.isPrintable(key.buffer())) {
                  if(searchArgument == null)
                      searchArgument = new IntArrayBuilder(1);
                  status = defaultAction;

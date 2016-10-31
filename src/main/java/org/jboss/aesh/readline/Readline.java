@@ -185,7 +185,7 @@ public class Readline {
                 }
             }
             else {
-                if(Key.isPrintable(event.buffer().array()) && notInCommandNode())
+                if(Key.isPrintable(event.buffer()) && notInCommandNode())
                     this.getBuffer().writeChar((char) event.buffer().array()[0]);
             }
         }
@@ -228,15 +228,13 @@ public class Readline {
                             conn.stdoutHandler().accept(Config.CR);
                             this.getBuffer().getBuffer().reset();
                             consoleBuffer.drawLine();
-                            //conn.stdoutHandler().accept(this.getBuffer().getBuffer().getPrompt().getANSI());
                         }
                     }
                 });
             }
 
-            consoleBuffer.drawLine();
             //last, display prompt
-            //consoleBuffer.displayPrompt();
+            consoleBuffer.drawLine();
         }
 
         private void resize(Size size) {
