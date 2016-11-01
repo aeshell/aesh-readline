@@ -201,7 +201,7 @@ public class SimpleCompletionHandler implements CompletionHandler<CompleteOperat
                                    boolean appendSpace, char separator) {
         LOGGER.info("completion: "+completion.getCharacters()+" and buffer: "+buffer.asString());
         if(completion.getCharacters().startsWith(buffer.asString())) {
-            ActionMapper.mapToAction("backward-kill-word").apply(inputProcessor);
+            ActionMapper.mapToAction("backward-kill-word").accept(inputProcessor);
             //consoleBuffer.performAction(new PrevWordAction(buffer.getMultiCursor(), Action.DELETE, EditMode.Mode.EMACS));
             //buffer.write(completion.getCharacters());
             inputProcessor.getBuffer().writeString(completion.toString());

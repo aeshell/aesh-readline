@@ -35,7 +35,7 @@ public class DeletePrevChar implements Action {
     }
 
     @Override
-    public void apply(InputProcessor inputProcessor) {
+    public void accept(InputProcessor inputProcessor) {
         if(inputProcessor.getBuffer().getBuffer().isMasking()) {
             if(inputProcessor.getBuffer().getBuffer().getPrompt().getMask() == 0) {
                 deleteWithMaskEnabled(inputProcessor.getBuffer());

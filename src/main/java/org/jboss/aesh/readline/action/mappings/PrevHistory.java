@@ -32,7 +32,7 @@ public class PrevHistory implements Action {
     }
 
     @Override
-    public void apply(InputProcessor inputProcessor) {
+    public void accept(InputProcessor inputProcessor) {
         int[] history = inputProcessor.getBuffer().getHistory().getPreviousFetch();
         if(history != null) {
             inputProcessor.getBuffer().replace(history);

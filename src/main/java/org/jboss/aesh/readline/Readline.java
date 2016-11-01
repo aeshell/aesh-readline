@@ -174,7 +174,7 @@ public class Readline {
             //LOGGER.info("Found action: "+action);
             if (action != null) {
                 paused = true;
-                action.apply(this);
+                action.accept(this);
                 if(this.getReturnValue() != null) {
                     conn.stdoutHandler().accept(Config.CR);
                     finish(this.getReturnValue());

@@ -38,7 +38,7 @@ public class Enter implements Action {
     }
 
     @Override
-    public void apply(InputProcessor inputProcessor) {
+    public void accept(InputProcessor inputProcessor) {
         ConsoleBuffer consoleBuffer = inputProcessor.getBuffer();
         consoleBuffer.getUndoManager().clear();
         boolean isCurrentLineEnding = true;

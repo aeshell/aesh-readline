@@ -36,7 +36,7 @@ abstract class ForwardBigWord extends ChangeAction {
     }
 
     @Override
-    public void apply(InputProcessor inputProcessor) {
+    public void accept(InputProcessor inputProcessor) {
         int cursor = inputProcessor.getBuffer().getBuffer().getCursor();
         String buffer = inputProcessor.getBuffer().getBuffer().asString();
                //if cursor stand on a delimiter, move till its no more delimiters

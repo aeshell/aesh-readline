@@ -40,7 +40,7 @@ abstract class BackwardWord extends ChangeAction {
     }
 
     @Override
-    public void apply(InputProcessor inputProcessor) {
+    public void accept(InputProcessor inputProcessor) {
         int cursor = inputProcessor.getBuffer().getBuffer().getCursor();
         //the cursor position might be > the buffer
         if(cursor > inputProcessor.getBuffer().getBuffer().length())

@@ -21,13 +21,15 @@ package org.jboss.aesh.readline.action;
 
 import org.jboss.aesh.readline.InputProcessor;
 
+import java.util.function.Consumer;
+
 /**
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
  */
-public interface Action {
+public interface Action extends Consumer<InputProcessor> {
 
     String name();
 
-    void apply(InputProcessor inputProcessor);
+    void accept(InputProcessor inputProcessor);
 
 }

@@ -32,7 +32,7 @@ public class NoAction implements Action {
     }
 
     @Override
-    public void apply(InputProcessor inputProcessor) {
+    public void accept(InputProcessor inputProcessor) {
         //do nothing
     }
 }

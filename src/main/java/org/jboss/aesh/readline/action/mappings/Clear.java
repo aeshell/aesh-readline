@@ -33,7 +33,7 @@ public class Clear implements Action {
     }
 
     @Override
-    public void apply(InputProcessor inputProcessor) {
+    public void accept(InputProcessor inputProcessor) {
         inputProcessor.getBuffer().writeOut(ANSI.CLEAR_SCREEN);
         //move cursor to correct position
         inputProcessor.getBuffer().writeChars(ANSI.printAnsi("1;1H"));

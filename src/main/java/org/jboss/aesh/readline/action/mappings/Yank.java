@@ -37,7 +37,7 @@ public class Yank extends ChangeAction {
     }
 
     @Override
-    public void apply(InputProcessor inputProcessor) {
+    public void accept(InputProcessor inputProcessor) {
         int[] pasteBuffer = inputProcessor.getBuffer().getPasteManager().get(0);
         if(pasteBuffer != null) {
 

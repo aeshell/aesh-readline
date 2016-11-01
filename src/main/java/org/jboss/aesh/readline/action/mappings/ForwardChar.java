@@ -33,7 +33,7 @@ public class ForwardChar implements Action {
     }
 
     @Override
-    public void apply(InputProcessor inputProcessor) {
+    public void accept(InputProcessor inputProcessor) {
         inputProcessor.getBuffer().moveCursor(1);
     }
 }

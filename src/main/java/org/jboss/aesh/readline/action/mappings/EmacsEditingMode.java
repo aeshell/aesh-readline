@@ -36,7 +36,7 @@ public class EmacsEditingMode implements Action {
     }
 
     @Override
-    public void apply(InputProcessor inputProcessor) {
+    public void accept(InputProcessor inputProcessor) {
         //TODO: implementation
     }
 }

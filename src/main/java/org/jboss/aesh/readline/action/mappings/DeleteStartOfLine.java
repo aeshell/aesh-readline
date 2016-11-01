@@ -37,7 +37,7 @@ public class DeleteStartOfLine extends ChangeAction {
     }
 
     @Override
-    public void apply(InputProcessor inputProcessor) {
+    public void accept(InputProcessor inputProcessor) {
         apply(0, inputProcessor);
     }
 }

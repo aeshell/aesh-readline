@@ -202,7 +202,7 @@ public class ActionMapper {
         }
 
         @Override
-        public void apply(InputProcessor inputProcessor) {
+        public void accept(InputProcessor inputProcessor) {
         }
     }
 }

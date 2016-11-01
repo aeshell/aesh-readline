@@ -103,7 +103,7 @@ abstract class SearchHistory implements SearchAction {
     }
 
    @Override
-    public void apply(InputProcessor inputProcessor) {
+    public void accept(InputProcessor inputProcessor) {
 
        if(status == Status.SEARCH_INTERRUPT) {
            inputProcessor.getBuffer().replace(new int[]{});

@@ -32,7 +32,7 @@ public class EndOfLine implements Action {
     }
 
     @Override
-    public void apply(InputProcessor inputProcessor) {
+    public void accept(InputProcessor inputProcessor) {
         inputProcessor.getBuffer().moveCursor(inputProcessor.getBuffer().getBuffer().length());
     }
 }

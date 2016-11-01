@@ -45,7 +45,7 @@ public class Complete implements ActionEvent {
     }
 
     @Override
-    public void apply(InputProcessor inputProcessor) {
+    public void accept(InputProcessor inputProcessor) {
         if(askForCompletion) {
             askForCompletion = false;
             if(key == Key.y) {
