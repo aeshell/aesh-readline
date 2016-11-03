@@ -21,6 +21,7 @@ package org.jboss.aesh.readline.alias;
 
 import org.jboss.aesh.util.Config;
 import org.jboss.aesh.util.LoggerUtil;
+import org.jboss.aesh.util.Parser;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -53,14 +54,12 @@ public class AliasManager {
     private static final String ALIAS_SPACE = "alias ";
     private static final String UNALIAS = "unalias";
     private File aliasFile;
-    private final String name;
     private boolean persistAlias = false;
 
     private static final Logger LOGGER = LoggerUtil.getLogger(AliasManager.class.getName());
 
-    public AliasManager(File aliasFile, boolean persistAlias, String name) throws IOException {
+    public AliasManager(File aliasFile, boolean persistAlias) throws IOException {
         this.persistAlias = persistAlias;
-        this.name = name;
         aliases = new ArrayList<>();
         if(aliasFile != null) {
             this.aliasFile = aliasFile;
@@ -153,10 +152,11 @@ public class AliasManager {
                 .findFirst();
     }
 
-    public Optional<String> getAliasName(String name) {
+    public Optional<String> getAliasName(String input) {
+        String name = Parser.findFirstWord(input);
         return aliases.stream()
                 .filter(a -> a.getName().equals(name))
-                .map(Alias::getValue)
+                .map(alias -> alias.getValue() + input.substring(name.length()))
                 .findAny();
     }
 
@@ -191,7 +191,7 @@ public class AliasManager {
                     aliases.remove(a.get());
                 }
                 else
-                    return name+": unalias: "+s+": not found" +Config.getLineSeparator();
+                    return "unalias: "+s+": not found" +Config.getLineSeparator();
             }
         }
         return null;
@@ -237,7 +237,7 @@ public class AliasManager {
                         sb.append(ALIAS_SPACE).append(a.get().getName()).append("='")
                                 .append(a.get().getValue()).append("'").append(Config.getLineSeparator());
                     else
-                        sb.append(name).append(": alias: ").append(s)
+                        sb.append("alias: ").append(s)
                                 .append(" : not found").append(Config.getLineSeparator());
                 }
             }

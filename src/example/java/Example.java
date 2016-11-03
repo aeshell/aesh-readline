@@ -61,7 +61,7 @@ public class Example {
         defaultPrompt = createDefaultPrompt();
         preProcessors = new ArrayList<>();
         if(ALIAS) {
-            aliasManager = new AliasManager(null, false, "alias");
+            aliasManager = new AliasManager(null, false);
             AliasPreProcessor aliasPreProcessor = new AliasPreProcessor(aliasManager);
             preProcessors.add(aliasPreProcessor);
             aliasCompletion = new AliasCompletion(aliasManager);
