@@ -19,6 +19,9 @@
  */
 import org.jboss.aesh.readline.Prompt;
 import org.jboss.aesh.readline.Readline;
+import org.jboss.aesh.readline.alias.AliasCompletion;
+import org.jboss.aesh.readline.alias.AliasManager;
+import org.jboss.aesh.readline.alias.AliasPreProcessor;
 import org.jboss.aesh.readline.completion.Completion;
 import org.jboss.aesh.terminal.formatting.CharacterType;
 import org.jboss.aesh.terminal.formatting.Color;
@@ -28,11 +31,14 @@ import org.jboss.aesh.tty.Connection;
 import org.jboss.aesh.tty.Signal;
 import org.jboss.aesh.tty.terminal.TerminalConnection;
 import org.jboss.aesh.util.ANSI;
+import org.jboss.aesh.util.Config;
 import org.jboss.aesh.util.LoggerUtil;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.function.Function;
 import java.util.logging.Logger;
 
 /**
@@ -41,14 +47,25 @@ import java.util.logging.Logger;
 public class Example {
 
     private static final Logger LOGGER = LoggerUtil.getLogger(Example.class.getName());
+    private static final boolean ALIAS = true;
     private static boolean masking = false;
     private static Prompt defaultPrompt;
     private static Thread sleeperThread;
+    private static AliasManager aliasManager;
+    private static List<Function<String, Optional<String>>> preProcessors;
+    private static AliasCompletion aliasCompletion;
 
     public static void main(String[] args) throws IOException {
         LoggerUtil.doLog();
 
         defaultPrompt = createDefaultPrompt();
+        preProcessors = new ArrayList<>();
+        if(ALIAS) {
+            aliasManager = new AliasManager(null, false, "alias");
+            AliasPreProcessor aliasPreProcessor = new AliasPreProcessor(aliasManager);
+            preProcessors.add(aliasPreProcessor);
+            aliasCompletion = new AliasCompletion(aliasManager);
+        }
         Readline readline = new Readline();
         TerminalConnection connection = new TerminalConnection();
         connection.setSignalHandler( signal -> {
@@ -60,7 +77,7 @@ public class Example {
         });
 
         connection.setCloseHandler(close -> {
-            connection.write("we're shutting down, do something...!");
+            connection.write("we're shutting down, do something...!"+ Config.getLineSeparator());
         });
 
         readInput(connection, readline, defaultPrompt);
@@ -69,7 +86,6 @@ public class Example {
 
     public static void readInput(Connection connection, Readline readline, Prompt prompt) {
         readline.readline(connection, prompt, line -> {
-            connection.write("=====>_"+line+"_\n");
             if(line == null) {
                 connection.write("got eof, lets quit.\n");
                 connection.close();
@@ -78,6 +94,19 @@ public class Example {
                 connection.write("got password: "+line+", stopping masking\n");
                 masking = false;
                 readInput(connection, readline, defaultPrompt);
+            }
+            else if(ALIAS && line.startsWith("alias")) {
+                String out = aliasManager.parseAlias(line.trim());
+                if(out != null)
+                    connection.write(out);
+                readInput(connection, readline, defaultPrompt);
+            }
+            else if(ALIAS && line.startsWith("unalias")) {
+               String out = aliasManager.removeAlias(line.trim());
+                if(out != null)
+                    connection.write(out);
+                readInput(connection, readline, defaultPrompt);
+
             }
             else if(line.equals("quit") || line.equals("exit")) {
                 connection.write("we're quitting...\n");
@@ -124,9 +153,10 @@ public class Example {
                 });
             }
             else {
+                connection.write("=====>_"+line+"_\n");
                 readInput(connection, readline, prompt);
             }
-        }, getCompletions());
+        }, getCompletions(), preProcessors);
     }
 
     private static List<Completion> getCompletions() {
@@ -146,6 +176,7 @@ public class Example {
                 completeOperation.addCompletionCandidate("clear");
 
         });
+        completions.add(aliasCompletion);
        return completions;
     }
 

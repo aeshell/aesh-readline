@@ -38,7 +38,9 @@ import org.jboss.aesh.util.LoggerUtil;
 import org.jboss.aesh.util.Parser;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.logging.Logger;
 
 /**
@@ -105,10 +107,15 @@ public class Readline {
 
     public void readline(Connection conn, Prompt prompt, Consumer<String> requestHandler,
                          List<Completion> completions) {
-        if (inputProcessor != null) {
+        readline(conn, prompt, requestHandler, completions, null);
+    }
+    public void readline(Connection conn, Prompt prompt, Consumer<String> requestHandler,
+                         List<Completion> completions,
+                         List<Function<String,Optional<String>>> preProcessors ) {
+         if (inputProcessor != null) {
             throw new IllegalStateException("Already reading a line");
         }
-        inputProcessor = new AeshInputProcessor(conn, prompt, requestHandler, completions);
+        inputProcessor = new AeshInputProcessor(conn, prompt, requestHandler, completions, preProcessors);
         inputProcessor.start();
         processInput();
     }
@@ -136,12 +143,14 @@ public class Readline {
         private boolean paused;
         private final ConsoleBuffer consoleBuffer;
         private String returnValue;
+        private List<Function<String,Optional<String>>> preProcessors;
 
         private AeshInputProcessor(
                 Connection conn,
                 Prompt prompt,
                 Consumer<String> requestHandler,
-                List<Completion> completions) {
+                List<Completion> completions,
+                List<Function<String,Optional<String>>> preProcessors) {
 
             completionHandler.clear();
             completionHandler.addCompletions(completions);
@@ -150,6 +159,7 @@ public class Readline {
 
             this.conn = conn;
             this.requestHandler = requestHandler;
+            this.preProcessors = preProcessors;
         }
 
         private void finish(String s) {
@@ -253,8 +263,13 @@ public class Readline {
         }
 
         @Override
-        public void setReturnValue(int[] value) {
-            returnValue = Parser.fromCodePoints(value);
+        public void setReturnValue(int[] in) {
+            String input = Parser.fromCodePoints(in);
+            if(preProcessors != null && preProcessors.size() > 0) {
+                preProcessors.forEach(pre -> pre.apply(input).ifPresent(v -> returnValue = v));
+            }
+            if(returnValue == null)
+                returnValue = input;
         }
 
         @Override
