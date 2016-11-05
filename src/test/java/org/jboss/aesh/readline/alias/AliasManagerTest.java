@@ -91,7 +91,7 @@ public class AliasManagerTest {
         manager.parseAlias("alias foo3=bar --help");
 
         manager.removeAlias("unalias foo3");
-        assertEquals("aesh: unalias: foo3: not found"+Config.getLineSeparator(), manager.removeAlias("unalias foo3"));
+        assertEquals("unalias: foo3: not found"+Config.getLineSeparator(), manager.removeAlias("unalias foo3"));
 
         String out = manager.removeAlias("unalias --help");
         assertEquals("unalias: usage: unalias name [name ...]" + Config.getLineSeparator(), out);
