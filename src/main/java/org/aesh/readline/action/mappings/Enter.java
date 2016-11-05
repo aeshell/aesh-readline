@@ -30,7 +30,8 @@ import org.aesh.readline.action.Action;
  */
 public class Enter implements Action {
 
-    private static final String ENDS_WITH_BACKSLASH = " \\";
+    private static final String ENDS_WITH_BACKSLASH = "\\";
+    private static final String HASHTAG = "#";
 
     @Override
     public String name() {
@@ -44,13 +45,20 @@ public class Enter implements Action {
         boolean isCurrentLineEnding = true;
         if(!consoleBuffer.getBuffer().isMasking()) {// dont push to history if masking
             //dont push lines that end with \ to history
-            if(consoleBuffer.getBuffer().asString().endsWith(ENDS_WITH_BACKSLASH)) {
+            String buffer = consoleBuffer.getBuffer().asString().trim();
+            //lines starting with a hashtag is treated as a comment
+            if(buffer.startsWith(HASHTAG)) {
+                consoleBuffer.getBuffer().reset();
+                inputProcessor.getBuffer().writeOut(Config.CR);
+                isCurrentLineEnding = false;
+            }
+            else if(buffer.endsWith(ENDS_WITH_BACKSLASH)) {
                 consoleBuffer.getBuffer().setMultiLine(true);
                 consoleBuffer.getBuffer().updateMultiLineBuffer();
                 inputProcessor.getBuffer().writeOut(Config.CR);
                 isCurrentLineEnding = false;
             }
-            else if(Parser.doesStringContainOpenQuote(consoleBuffer.getBuffer().asString())) {
+            else if(Parser.doesStringContainOpenQuote(buffer)) {
                 consoleBuffer.getBuffer().setMultiLine(true);
                 consoleBuffer.getBuffer().updateMultiLineBuffer();
                 inputProcessor.getBuffer().writeOut(Config.CR);
