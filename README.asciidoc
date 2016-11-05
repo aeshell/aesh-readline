@@ -40,8 +40,8 @@ To get going:
 -------------
 [source,java]
 ----
-import org.jboss.aesh.readline.Readline;
-import org.jboss.aesh.tty.terminal.TerminalConnection;
+import Readline;
+import TerminalConnection;
 
 public class SimpleExample {
 

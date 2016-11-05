@@ -18,12 +18,12 @@
  * limitations under the License.
  */
 
-import org.jboss.aesh.tty.Point;
-import org.jboss.aesh.tty.Signal;
-import org.jboss.aesh.tty.Size;
-import org.jboss.aesh.tty.terminal.TerminalConnection;
-import org.jboss.aesh.util.ANSI;
-import org.jboss.aesh.util.LoggerUtil;
+import org.aesh.tty.Point;
+import org.aesh.tty.Signal;
+import org.aesh.tty.Size;
+import org.aesh.tty.terminal.TerminalConnection;
+import org.aesh.util.ANSI;
+import org.aesh.util.LoggerUtil;
 
 import java.io.IOException;
 import java.util.Arrays;

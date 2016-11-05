@@ -17,22 +17,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import org.jboss.aesh.readline.Prompt;
-import org.jboss.aesh.readline.Readline;
-import org.jboss.aesh.readline.alias.AliasCompletion;
-import org.jboss.aesh.readline.alias.AliasManager;
-import org.jboss.aesh.readline.alias.AliasPreProcessor;
-import org.jboss.aesh.readline.completion.Completion;
-import org.jboss.aesh.terminal.formatting.CharacterType;
-import org.jboss.aesh.terminal.formatting.Color;
-import org.jboss.aesh.terminal.formatting.TerminalCharacter;
-import org.jboss.aesh.terminal.formatting.TerminalColor;
-import org.jboss.aesh.tty.Connection;
-import org.jboss.aesh.tty.Signal;
-import org.jboss.aesh.tty.terminal.TerminalConnection;
-import org.jboss.aesh.util.ANSI;
-import org.jboss.aesh.util.Config;
-import org.jboss.aesh.util.LoggerUtil;
+import org.aesh.readline.Prompt;
+import org.aesh.readline.Readline;
+import org.aesh.readline.alias.AliasCompletion;
+import org.aesh.readline.alias.AliasManager;
+import org.aesh.readline.alias.AliasPreProcessor;
+import org.aesh.readline.completion.Completion;
+import org.aesh.terminal.formatting.CharacterType;
+import org.aesh.terminal.formatting.Color;
+import org.aesh.terminal.formatting.TerminalCharacter;
+import org.aesh.terminal.formatting.TerminalColor;
+import org.aesh.tty.Connection;
+import org.aesh.tty.Signal;
+import org.aesh.tty.terminal.TerminalConnection;
+import org.aesh.util.ANSI;
+import org.aesh.util.Config;
+import org.aesh.util.LoggerUtil;
 
 import java.io.IOException;
 import java.util.ArrayList;

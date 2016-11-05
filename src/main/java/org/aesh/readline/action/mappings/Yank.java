@@ -17,35 +17,36 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.aesh.readline.action.mappings;
 
-import org.aesh.readline.Readline;
-import org.aesh.readline.ReadlineBuilder;
-import org.aesh.tty.terminal.TerminalConnection;
-
-import java.io.IOException;
+import org.aesh.readline.InputProcessor;
+import org.aesh.readline.editing.EditMode;
 
 /**
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
  */
-public class SimpleExample {
+public class Yank extends ChangeAction {
 
-    public static void main(String... args) throws IOException {
-        TerminalConnection connection = new TerminalConnection();
-        read(connection, ReadlineBuilder.builder().enableHistory(false).build(), "[aesh@rules]$ ");
-        connection.openBlocking();
+    Yank() {
+        super(EditMode.Status.YANK);
     }
 
-    private static void read(TerminalConnection connection, Readline readline, String prompt) {
-        readline.readline(connection, prompt, input -> {
-            if(input != null && input.equals("exit")) {
-                connection.write("we're exiting\n");
-                connection.close();
+    @Override
+    public String name() {
+        return "yank";
+    }
+
+    @Override
+    public void accept(InputProcessor inputProcessor) {
+        int[] pasteBuffer = inputProcessor.getBuffer().getPasteManager().get(0);
+        if(pasteBuffer != null) {
+
+            if(inputProcessor.getBuffer().getBuffer().getCursor() <=
+                    inputProcessor.getBuffer().getBuffer().length()) {
+                inputProcessor.getBuffer().addActionToUndoStack();
+                inputProcessor.getBuffer().insert(pasteBuffer);
+                inputProcessor.getBuffer().moveCursor(-1);
             }
-            else {
-                connection.write("=====> "+input+"\n");
-                //lets read until we get exit
-                read(connection, readline, prompt);
-            }
-        });
+        }
     }
 }

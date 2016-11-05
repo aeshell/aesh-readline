@@ -17,35 +17,55 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-import org.aesh.readline.Readline;
-import org.aesh.readline.ReadlineBuilder;
-import org.aesh.tty.terminal.TerminalConnection;
-
-import java.io.IOException;
+package org.aesh.terminal.formatting;
 
 /**
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
  */
-public class SimpleExample {
+public enum Color {
 
-    public static void main(String... args) throws IOException {
-        TerminalConnection connection = new TerminalConnection();
-        read(connection, ReadlineBuilder.builder().enableHistory(false).build(), "[aesh@rules]$ ");
-        connection.openBlocking();
+    BLACK(0),
+    RED(1),
+    GREEN(2),
+    YELLOW(3),
+    BLUE(4),
+    MAGENTA(5),
+    CYAN(6),
+    WHITE(7),
+    DEFAULT(9);
+
+    private final int value;
+
+    Color(int value) {
+        this.value = value;
     }
 
-    private static void read(TerminalConnection connection, Readline readline, String prompt) {
-        readline.readline(connection, prompt, input -> {
-            if(input != null && input.equals("exit")) {
-                connection.write("we're exiting\n");
-                connection.close();
+    public int getValue() {
+        return value;
+    }
+
+    public enum Intensity {
+        NORMAL,
+        BRIGHT;
+
+        public int getValue(Type type) {
+            if(this == NORMAL) {
+                if(type == Type.FOREGROUND)
+                    return 3;
+                else
+                    return 4;
             }
             else {
-                connection.write("=====> "+input+"\n");
-                //lets read until we get exit
-                read(connection, readline, prompt);
+               if(type == Type.FOREGROUND)
+                   return 9;
+                else
+                   return 10;
             }
-        });
+        }
+    }
+
+    public enum Type {
+        FOREGROUND, // 3
+        BACKGROUND // 4
     }
 }

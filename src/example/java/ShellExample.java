@@ -18,19 +18,19 @@
  * limitations under the License.
  */
 
-import org.jboss.aesh.readline.Prompt;
-import org.jboss.aesh.readline.Readline;
-import org.jboss.aesh.readline.completion.Completion;
-import org.jboss.aesh.readline.editing.EditMode;
-import org.jboss.aesh.readline.editing.EditModeBuilder;
-import org.jboss.aesh.terminal.formatting.Color;
-import org.jboss.aesh.terminal.formatting.TerminalColor;
-import org.jboss.aesh.terminal.formatting.TerminalString;
-import org.jboss.aesh.tty.Connection;
-import org.jboss.aesh.tty.Signal;
-import org.jboss.aesh.tty.terminal.TerminalConnection;
-import org.jboss.aesh.util.Config;
-import org.jboss.aesh.util.LoggerUtil;
+import org.aesh.readline.Prompt;
+import org.aesh.readline.Readline;
+import org.aesh.readline.completion.Completion;
+import org.aesh.readline.editing.EditMode;
+import org.aesh.readline.editing.EditModeBuilder;
+import org.aesh.terminal.formatting.Color;
+import org.aesh.terminal.formatting.TerminalColor;
+import org.aesh.terminal.formatting.TerminalString;
+import org.aesh.tty.Connection;
+import org.aesh.tty.Signal;
+import org.aesh.tty.terminal.TerminalConnection;
+import org.aesh.util.Config;
+import org.aesh.util.LoggerUtil;
 
 import java.io.IOException;
 import java.util.ArrayList;
