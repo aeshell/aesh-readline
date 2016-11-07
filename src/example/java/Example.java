@@ -56,7 +56,7 @@ public class Example {
     private static AliasCompletion aliasCompletion;
 
     public static void main(String[] args) throws IOException {
-        LoggerUtil.doLog();
+       LoggerUtil.doLog();
 
         defaultPrompt = createDefaultPrompt();
         preProcessors = new ArrayList<>();
@@ -146,8 +146,7 @@ public class Example {
             }
             else if(line.startsWith("man")) {
                 connection.write("trying to wait for input:\n");
-                Readline inputLine = new Readline();
-                inputLine.readline(connection, "write something: ", newLine -> {
+                readline.readline(connection, "write something: ", newLine -> {
                     connection.write("we got: "+newLine+"\n");
                     readInput(connection, readline, prompt);
                 });
