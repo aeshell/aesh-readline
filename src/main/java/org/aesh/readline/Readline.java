@@ -109,18 +109,26 @@ public class Readline {
                          List<Completion> completions) {
         readline(conn, prompt, requestHandler, completions, null);
     }
+
     public void readline(Connection conn, Prompt prompt, Consumer<String> requestHandler,
                          List<Completion> completions,
                          List<Function<String,Optional<String>>> preProcessors ) {
+        readline(conn, prompt, requestHandler, completions, preProcessors, null);
+    }
+
+    public void readline(Connection conn, Prompt prompt, Consumer<String> requestHandler,
+                         List<Completion> completions,
+                         List<Function<String,Optional<String>>> preProcessors,
+                         History history) {
          if (inputProcessor != null) {
             throw new IllegalStateException("Already reading a line");
         }
-        inputProcessor = new AeshInputProcessor(conn, prompt, requestHandler, completions, preProcessors);
+        inputProcessor = new AeshInputProcessor(conn, prompt, requestHandler, completions, preProcessors, history);
         inputProcessor.start();
         processInput();
     }
 
-    public void processInput() {
+    private void processInput() {
         synchronized (this) {
             if (inputProcessor == null) {
                 throw new IllegalStateException("No inputProcessor!");
@@ -134,7 +142,7 @@ public class Readline {
         }
     }
 
-    public class AeshInputProcessor implements InputProcessor {
+    private class AeshInputProcessor implements InputProcessor {
         private final Connection conn;
         private Consumer<int[]> prevReadHandler;
         private Consumer<Size> prevSizeHandler;
@@ -150,12 +158,16 @@ public class Readline {
                 Prompt prompt,
                 Consumer<String> requestHandler,
                 List<Completion> completions,
-                List<Function<String,Optional<String>>> preProcessors) {
+                List<Function<String,Optional<String>>> preProcessors,
+                History newHistory) {
 
             completionHandler.clear();
             completionHandler.addCompletions(completions);
             consoleBuffer =
-                    new AeshConsoleBuffer(conn, prompt, editMode, history, completionHandler, size, true);
+                    new AeshConsoleBuffer(conn, prompt, editMode,
+                            //use newHistory if its not null
+                            newHistory != null ? newHistory : history,
+                            completionHandler, size, true);
 
             this.conn = conn;
             this.requestHandler = requestHandler;

@@ -19,7 +19,6 @@
  */
 package org.aesh.io;
 
-
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.CharacterCodingException;

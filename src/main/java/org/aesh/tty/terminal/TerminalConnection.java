@@ -270,7 +270,7 @@ public class TerminalConnection implements Connection {
             }
         }
         catch(IOException e) {
-            e.printStackTrace();
+            LOGGER.log(Level.WARNING, "Failed to close the terminal correctly", e);
         }
     }
 
