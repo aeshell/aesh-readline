@@ -58,23 +58,21 @@ public class ReadlineAliasTest {
 
         final String[] line = new String[1];
         readline.readline(connection, new Prompt(""), s -> {
-            line[0] = s;
+            assertEquals("ls -alF", s);
         }, null, preProcessors);
 
         connection.openNonBlocking();
         outputStream.write(("ll"+Config.getLineSeparator()).getBytes());
         outputStream.flush();
         Thread.sleep(150);
-        assertEquals("ls -alF", line[0]);
 
         readline.readline(connection, new Prompt(""), s -> {
-            line[0] = s;
+            assertEquals("grep --color=auto -l", s);
         }, null, preProcessors);
 
         connection.openNonBlocking();
         outputStream.write(("grep -l"+Config.getLineSeparator()).getBytes());
         outputStream.flush();
         Thread.sleep(150);
-        assertEquals("grep --color=auto -l", line[0]);
     }
 }
