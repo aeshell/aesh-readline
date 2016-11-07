@@ -136,9 +136,6 @@ public class Readline {
             if (decoder.hasNext()) {
                 readInput();
             }
-            else {
-                return;
-            }
         }
     }
 
@@ -215,10 +212,6 @@ public class Readline {
         private boolean notInCommandNode() {
             return !(editMode.getMode() == EditMode.Mode.VI &&
                     editMode.getStatus() == EditMode.Status.COMMAND);
-        }
-
-        public final Size size() {
-            return size;
         }
 
         private void start() {

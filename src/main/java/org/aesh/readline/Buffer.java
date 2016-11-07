@@ -152,15 +152,14 @@ public class Buffer {
     }
 
     public void updateMultiLineBuffer() {
-        LOGGER.info("updating multiline..");
         int originalSize = multiLineBuffer.length;
         if(lineEndsWithBackslash()) {
             multiLineBuffer = Arrays.copyOf(multiLineBuffer, originalSize + size-1);
             System.arraycopy(line, 0, multiLineBuffer, originalSize, size-1);
         }
         else {
-            multiLineBuffer = Arrays.copyOf(multiLineBuffer, size);
-            System.arraycopy(line, 0, multiLineBuffer, size, originalSize);
+            multiLineBuffer = Arrays.copyOf(multiLineBuffer, originalSize + size);
+            System.arraycopy(line, 0, multiLineBuffer, originalSize, size);
         }
         clear();
         prompt = new Prompt("> ");
@@ -169,7 +168,7 @@ public class Buffer {
     }
 
     private boolean lineEndsWithBackslash() {
-        return (size > 1 && line[size-1] == '\\' && line[size-2] == ' ');
+        return (size > 0 && line[size-1] == '\\');
     }
 
     /**

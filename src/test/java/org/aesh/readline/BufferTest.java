@@ -286,10 +286,10 @@ public class BufferTest {
     }
 
     @Test
-    public void multiLine() {
+    public void multiLineBackslash() {
         Buffer buffer = new Buffer(new Prompt(": "));
         List<int[]> outConsumer = new ArrayList<>();
-        buffer.insert(outConsumer::add, "foo bar \\", 100);
+        buffer.insert(outConsumer::add, "foo bar\\", 100);
         buffer.setMultiLine(true);
         buffer.updateMultiLineBuffer();
         outConsumer.clear();
@@ -298,7 +298,7 @@ public class BufferTest {
                 Parser.fromCodePoints(Arrays.copyOfRange(outConsumer.get(0),
                         outConsumer.get(0).length-7, outConsumer.get(0).length )));
 
-        assertEquals("foo bar  bar ", buffer.asString());
+        assertEquals("foo bar bar ", buffer.asString());
 
         buffer.insert(outConsumer::add, "\\", 100);
         buffer.updateMultiLineBuffer();
@@ -308,7 +308,33 @@ public class BufferTest {
                 Parser.fromCodePoints(Arrays.copyOfRange(outConsumer.get(0),
                         outConsumer.get(0).length-5, outConsumer.get(0).length )));
 
-        assertEquals("foo bar  bar gar", buffer.asString());
+        assertEquals("foo bar bar gar", buffer.asString());
+    }
+
+    @Test
+    public void multiLineQuote() {
+        Buffer buffer = new Buffer(new Prompt(": "));
+        List<int[]> outConsumer = new ArrayList<>();
+        buffer.insert(outConsumer::add, "foo \"bar", 100);
+        buffer.setMultiLine(true);
+        buffer.updateMultiLineBuffer();
+        outConsumer.clear();
+        buffer.insert(outConsumer::add, " bar ", 100);
+        assertEquals(">  bar ",
+                Parser.fromCodePoints(Arrays.copyOfRange(outConsumer.get(0),
+                        outConsumer.get(0).length-7, outConsumer.get(0).length )));
+
+        assertEquals("foo \"bar bar ", buffer.asString());
+
+        //buffer.insert(outConsumer::add, "\\", 100);
+        buffer.updateMultiLineBuffer();
+        outConsumer.clear();
+        buffer.insert(outConsumer::add, "gar\"", 100);
+        assertEquals("> gar\"",
+                Parser.fromCodePoints(Arrays.copyOfRange(outConsumer.get(0),
+                        outConsumer.get(0).length-6, outConsumer.get(0).length )));
+
+        assertEquals("foo \"bar bar gar\"", buffer.asString());
     }
 
     @Test
