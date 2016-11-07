@@ -25,7 +25,7 @@ apply plugin: 'application'
 apply plugin: 'checkstyle'
 apply plugin: 'jacoco'
 
-group = 'org.jboss.aesh'
+group = 'org.aesh'
 archivesBaseName = 'aesh-readline'
 version = '1.0-SNAPSHOT'
 
