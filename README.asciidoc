@@ -40,16 +40,19 @@ To get going:
 -------------
 [source,java]
 ----
-import Readline;
-import TerminalConnection;
+import org.aesh.readline.Readline;
+import org.aesh.readline.ReadlineBuilder;
+import org.aesh.tty.terminal.TerminalConnection;
+
+import java.io.IOException;
+
 
 public class SimpleExample {
 
     public static void main(String... args) {
         TerminalConnection connection = new TerminalConnection();
-        Readline readline = new Readline();
-        read(connection, readline, "[aesh@rules]$ ");
-        connection.startBlockingReader();
+        read(connection, ReadlineBuilder.builder().enableHistory(false).build(), "[aesh@rules]$ ");
+        connection.openBlocking();
     }
 
     private static void read(TerminalConnection connection, Readline readline, String prompt) {
