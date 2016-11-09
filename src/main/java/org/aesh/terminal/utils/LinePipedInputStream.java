@@ -37,14 +37,12 @@ public class LinePipedInputStream extends PipedInputStream {
         super(pipeSize);
     }
 
-    public synchronized int read(byte b[], int off, int len)  throws IOException {
-        if (b == null) {
-            throw new NullPointerException();
-        } else if (off < 0 || len < 0 || len > b.length - off) {
+    @Override
+    public synchronized int read(byte[] b, int off, int len)  throws IOException {
+        if (off < 0 || len < 0 || len > b.length - off)
             throw new IndexOutOfBoundsException();
-        } else if (len == 0) {
+        else if (len == 0)
             return 0;
-        }
 
         /* possibly wait on the first character */
         int c = read();

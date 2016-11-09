@@ -57,19 +57,19 @@ public class ReadlineAliasTest {
         preProcessors.add(aliasPreProcessor);
 
         readline.readline(connection, new Prompt(""),
-                s -> assertEquals("ls -alF", s), null, preProcessors);
+                s -> {
+                    //first check this
+                    assertEquals("ls -alF", s);
+                    //then call readline again, to check the next line
+                    readline.readline(connection, new Prompt(""),
+                            t -> assertEquals("grep --color=auto -l", t),
+                            null, preProcessors);
+                } , null, preProcessors);
 
-        connection.openNonBlocking();
         outputStream.write(("ll"+Config.getLineSeparator()).getBytes());
-        outputStream.flush();
-        Thread.sleep(150);
-
-        readline.readline(connection, new Prompt(""),
-                s -> assertEquals("grep --color=auto -l", s), null, preProcessors);
-
-        connection.openNonBlocking();
         outputStream.write(("grep -l"+Config.getLineSeparator()).getBytes());
         outputStream.flush();
-        Thread.sleep(150);
+        connection.openNonBlocking();
+        Thread.sleep(200);
     }
 }
