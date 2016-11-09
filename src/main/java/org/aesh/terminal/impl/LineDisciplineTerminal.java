@@ -19,6 +19,7 @@
  */
 package org.aesh.terminal.impl;
 
+import org.aesh.terminal.utils.LinePipedInputStream;
 import org.aesh.tty.Signal;
 import org.aesh.terminal.Attributes;
 import org.aesh.terminal.Terminal;
@@ -94,7 +95,7 @@ public class LineDisciplineTerminal extends AbstractTerminal {
                                   OutputStream masterOutput,
                                   String encoding) throws IOException {
         super(name, type);
-        PipedInputStream input = new PipedInputStream(PIPE_SIZE);
+        PipedInputStream input = new LinePipedInputStream(PIPE_SIZE);
         this.slaveInputPipe = new PipedOutputStream(input);
         // This is a hack to fix a problem in gogo where closure closes
         // streams for commands if they are instances of PipedInputStream.
@@ -196,6 +197,15 @@ public class LineDisciplineTerminal extends AbstractTerminal {
         }
         slaveInputPipe.write(c);
         slaveInputPipe.flush();
+    }
+
+    protected void closeSlaveInputPipe() {
+        try {
+            slaveInputPipe.close();
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     /**

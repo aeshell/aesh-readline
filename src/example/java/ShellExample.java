@@ -66,7 +66,6 @@ public class ShellExample {
         shell.start(connection);
         //blocking reader
         connection.openBlocking();
-
         // if we start nonBlockingReader do:
         /*
         connection.openNonBlocking();
@@ -99,8 +98,12 @@ public class ShellExample {
         Prompt prompt = new Prompt(new TerminalString("[aesh@rules]$ ",
                         new TerminalColor(Color.GREEN, Color.DEFAULT, Color.Intensity.BRIGHT)));
 
+        //suspend reader asap since we're creating commands in a new thread
+        //this is not needed when running single threaded, eg as Example
+        if(conn.suspended())
+            conn.awake();
         readline.readline(conn, prompt, line -> {
-
+            conn.suspend();
             // Ctrl-D
             if (line == null) {
                 //((TerminalConnection) conn).stop();
@@ -206,8 +209,6 @@ public class ShellExample {
             finally {
                 running = false;
                 conn.setSignalHandler(null);
-
-                LOGGER.info("trying to read again.");
                 // Readline again
                 read(conn, readline);
             }
@@ -290,6 +291,8 @@ public class ShellExample {
             @Override
             public void execute(Connection conn, List<String> args) throws Exception {
 
+                if(conn.suspended())
+                    conn.awake();
                 // Subscribe to key events and print them
                 conn.setStdinHandler(keys -> {
                     for (int key : keys) {
@@ -303,6 +306,7 @@ public class ShellExample {
                 }
                 finally {
                     conn.setStdinHandler(null);
+                    conn.suspend();
                 }
             }
         },
@@ -310,8 +314,6 @@ public class ShellExample {
         linescan() {
             @Override
             public void execute(Connection conn, List<String> args) throws Exception {
-
-
                 String line = readLine("[myprompt]", conn);
 
                 conn.write("we got: "+line+Config.getLineSeparator());
@@ -326,11 +328,14 @@ public class ShellExample {
                     latch.countDown();
                 });
                 try {
+                    if(conn.suspended())
+                        conn.awake();
                     // Wait until interrupted
                     latch.await();
                 }
                 finally {
                     conn.setStdinHandler(null);
+                    conn.suspend();
                 }
 
                 return out[0];
@@ -374,7 +379,6 @@ public class ShellExample {
                     }
 
                     conn.write(buf.toString());
-
                     // Sleep until we refresh the list of interrupted
                     Thread.sleep(1000);
                 }

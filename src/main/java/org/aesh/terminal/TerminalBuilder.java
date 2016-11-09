@@ -133,7 +133,7 @@ public final class TerminalBuilder {
                 try {
                     pty = ExecPty.current();
                 } catch (IOException e) {
-                    // Ignore
+                    e.printStackTrace();
                 }
                 if (pty != null) {
                     return new PosixSysTerminal(name, type, pty, encoding, nativeSignals);

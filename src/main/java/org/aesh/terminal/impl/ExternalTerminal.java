@@ -62,6 +62,10 @@ public class ExternalTerminal extends LineDisciplineTerminal {
             while (true) {
                 int c = masterInput.read();
                 if (c < 0 || closed.get()) {
+                    //make to close the slaveInputPipe()
+                    //this will prevent the
+                    //Write end dead Exception coming from PipedInputStream
+                    closeSlaveInputPipe();
                     break;
                 }
                 processInputByte((char) c);
