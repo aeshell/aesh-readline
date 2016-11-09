@@ -124,8 +124,6 @@ public class Snake {
         interrupted = true;
         conn.write(ANSI.MAIN_BUFFER);
         conn.write(ANSI.CURSOR_SHOW);
-
-        conn.close();
     }
 
     private void reset(Size size) {
