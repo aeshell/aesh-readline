@@ -26,14 +26,19 @@ import org.aesh.terminal.impl.PosixSysTerminal;
 import org.aesh.terminal.impl.Pty;
 import org.aesh.terminal.impl.WinSysTerminal;
 import org.aesh.terminal.utils.OSUtils;
+import org.aesh.util.LoggerUtil;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.Charset;
 import java.util.function.Consumer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public final class TerminalBuilder {
+
+    private static final Logger LOGGER = LoggerUtil.getLogger(TerminalBuilder.class.getName());
 
     public static Terminal console() throws IOException {
         return builder().build();
@@ -132,8 +137,9 @@ public final class TerminalBuilder {
                 Pty pty = null;
                 try {
                     pty = ExecPty.current();
-                } catch (IOException e) {
-                    e.printStackTrace();
+                }
+                catch (IOException e) {
+                    LOGGER.log(Level.WARNING, "Failed to get a local tty", e);
                 }
                 if (pty != null) {
                     return new PosixSysTerminal(name, type, pty, encoding, nativeSignals);
