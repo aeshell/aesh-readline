@@ -112,17 +112,13 @@ public class LinePipedInputStream extends PipedInputStream {
 
     private int findNewLine() {
         int limit = (in > out) ? Math.min((buffer.length - out), (in - out)) : buffer.length-out;
-        LOGGER.info("limit: "+limit);
-        for(int i = out;
-            i < limit;
-        //    i < ((in > out) ? Math.min((buffer.length - out), (in - out)) : buffer.length-out);
-            //i < in;
-            i++) {
-            LOGGER.info("checking, i: "+i+", buffer[i]: "+buffer[i]);
+        //LOGGER.info("limit: "+limit+", out: "+out+", in: "+in);
+        for(int i = out; i < limit+out; i++) {
+            //LOGGER.info("checking, i: "+i+", buffer[i]: "+buffer[i]);
             if(buffer[i] == NEW_LINE)
                 return i-out;
         }
-        LOGGER.info("not checking array!!! line is: "+buffer.length);
+        //LOGGER.info("not checking array!!! line is: "+buffer.length);
         return -1;
     }
 }
