@@ -133,6 +133,8 @@ public class Readline {
             if (inputProcessor == null) {
                 throw new IllegalStateException("No inputProcessor!");
             }
+            if(inputProcessor.connection().suspended())
+                inputProcessor.connection().awake();
             if (decoder.hasNext()) {
                 readInput();
             }

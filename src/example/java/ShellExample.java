@@ -100,9 +100,7 @@ public class ShellExample {
 
         //suspend reader asap since we're creating commands in a new thread
         //this is not needed when running single threaded, eg as Example
-        if(conn.suspended())
-            conn.awake();
-        readline.readline(conn, prompt, line -> {
+       readline.readline(conn, prompt, line -> {
             conn.suspend();
             // Ctrl-D
             if (line == null) {
@@ -111,7 +109,7 @@ public class ShellExample {
                 return;
             }
 
-            LOGGER.info("got: " + line);
+            //LOGGER.info("got: " + line);
 
             Matcher matcher = splitter.matcher(line);
             if (matcher.find()) {
@@ -201,6 +199,8 @@ public class ShellExample {
                 command.execute(conn, args);
             }
             catch (InterruptedException e) {
+                if(!conn.suspended())
+                    conn.suspend();
                 // Ctlr-C interrupt
             }
             catch (Exception e) {
@@ -290,17 +290,15 @@ public class ShellExample {
         keyscan() {
             @Override
             public void execute(Connection conn, List<String> args) throws Exception {
-
-                if(conn.suspended())
-                    conn.awake();
-                // Subscribe to key events and print them
+               // Subscribe to key events and print them
                 conn.setStdinHandler(keys -> {
                     for (int key : keys) {
                         conn.write(key + " pressed\n");
                     }
                 });
-
                 try {
+                    if(conn.suspended())
+                        conn.awake();
                     // Wait until interrupted
                     new CountDownLatch(1).await();
                 }
@@ -324,18 +322,16 @@ public class ShellExample {
                 Readline readline = new Readline();
                 String[] out = new String[1];
                 readline.readline(conn, "[myprompt]: ", event -> {
+                    conn.suspend();
                     out[0] = event;
                     latch.countDown();
                 });
                 try {
-                    if(conn.suspended())
-                        conn.awake();
                     // Wait until interrupted
                     latch.await();
                 }
                 finally {
                     conn.setStdinHandler(null);
-                    conn.suspend();
                 }
 
                 return out[0];
