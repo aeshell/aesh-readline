@@ -51,6 +51,7 @@ public class Buffer {
     private boolean multiLine = false;
     private int[] multiLineBuffer = new int[0];
     private boolean isPromptDisplayed = false;
+    private boolean deletingBackward = true;
 
 
     Buffer() {
@@ -279,7 +280,7 @@ public class Buffer {
         IntArrayBuilder builder = new IntArrayBuilder();
         if(newPos < 1)
             newPos = 1;
-        LOGGER.info("currentPos: "+currentPos+", newPos: "+newPos+", width: "+width);
+        LOGGER.info("currentPos: "+currentPos+", newPos: "+newPos+", width: "+width+", delta: "+delta);
         if(currentPos / width == newPos / width) {
             LOGGER.info("cursor and end of buffer is at the same line");
             if(currentPos > newPos)
@@ -290,7 +291,11 @@ public class Buffer {
         //if cursor and end of buffer is on different lines, we need to move the cursor
         else {
             int moveToLine = currentPos / width - newPos / width;
+//            if(delta != 0 && currentPos % width == 0)
+//                moveToLine--;
             int moveToColumn = currentPos % width - newPos % width;
+//            if(currentPos % width == 0)
+//                moveToColumn = moveToColumn + width;
             char rowDirection = 'A';
             LOGGER.info("currentPos: "+currentPos+", newPos: "+newPos+", moveToLine: "+moveToLine+
                     ", moveToColumn: "+moveToColumn);
@@ -363,8 +368,6 @@ public class Buffer {
             return out;
         }
     }
-
-
 
     /**
      * Make sure that the cursor do not move ob (out of bounds)
@@ -509,10 +512,19 @@ public class Buffer {
 
     private void printDeletedData(Consumer<int[]> out, int width) {
         IntArrayBuilder builder = new IntArrayBuilder();
-        LOGGER.info("cursor: "+cursor+", prompt.length: "+promptLength()+", width: "+width+", size: "+size);
-        if(size+promptLength()+Math.abs(delta) >= width)
-            clearAllLinesAndReturnToFirstLine(builder, width, cursor+promptLength()+Math.abs(delta),
-                    size+promptLength()+Math.abs(delta));
+        LOGGER.info("cursor: "+cursor+", prompt.length: "+promptLength()+
+                ", width: "+width+", size: "+size+", delta: "+delta+
+                ", deletingBackwards: "+deletingBackward);
+        if(size+promptLength()+Math.abs(delta) >= width) {
+            if(deletingBackward)
+            clearAllLinesAndReturnToFirstLine(builder,
+                    width, cursor + promptLength() + Math.abs(delta),
+                    size + promptLength() + Math.abs(delta));
+            else
+                clearAllLinesAndReturnToFirstLine(builder,
+                        width, cursor + promptLength(),
+                        size + promptLength() + Math.abs(delta));
+        }
 
         LOGGER.info("builder after clearAllExtraLines: "+Arrays.toString(builder.toArray()));
 
@@ -564,7 +576,8 @@ public class Buffer {
      * @param oldCursor prev position
      * @param oldSize prev terminal size
      */
-    private void clearAllLinesAndReturnToFirstLine(IntArrayBuilder builder, int width, int oldCursor, int oldSize) {
+    private void clearAllLinesAndReturnToFirstLine(IntArrayBuilder builder, int width,
+                                                   int oldCursor, int oldSize) {
         LOGGER.info("oldSize: "+oldSize+", oldCursor: "+oldCursor);
         if(oldSize >= width) {
             int cursorRow = oldCursor / width;
@@ -683,14 +696,17 @@ public class Buffer {
      * @param delta difference
      */
     public void delete(Consumer<int[]> out, int delta, int width) {
+       delete(out, delta, width, false);
+    }
+
+    public void delete(Consumer<int[]> out, int delta, int width, boolean viMode) {
         if (delta > 0) {
             delta = Math.min(delta, size - cursor);
             LOGGER.info("deleting, delta: "+delta+", cursor: "+cursor+", size: "+size);
             System.arraycopy(line, cursor + delta, line, cursor, size - cursor + delta);
             size -= delta;
             this.delta =- delta;
-            deltaChangedAtEndOfBuffer = (cursor == size);
-            print(out, width);
+            deletingBackward = false;
         }
         else if (delta < 0) {
             delta = - Math.min(- delta, cursor);
@@ -699,9 +715,15 @@ public class Buffer {
             size += delta;
             cursor += delta;
             this.delta =+ delta;
-            deltaChangedAtEndOfBuffer = (cursor == size);
-            print(out, width);
+            deletingBackward = true;
         }
+
+        if(viMode)
+            deltaChangedAtEndOfBuffer = ((cursor+1) == size);
+        else
+            deltaChangedAtEndOfBuffer = (cursor == size);
+        //finally print our changes
+        print(out, width);
     }
 
     /**

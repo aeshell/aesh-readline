@@ -67,7 +67,6 @@ abstract class ChangeAction extends MovementAction {
                 LOGGER.info("buffer before delete: "+inputProcessor.getBuffer().getBuffer().asString());
                 inputProcessor.getBuffer().delete(cursor - oldCursor);
                 LOGGER.info("buffer after delete: "+inputProcessor.getBuffer().getBuffer().asString());
-                inputProcessor.getBuffer().moveCursor(cursor-oldCursor);
             }
             else {
                 //add to pastemanager

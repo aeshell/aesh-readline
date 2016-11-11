@@ -156,7 +156,7 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
 
     @Override
     public void delete(int delta) {
-        buffer.delete(connection.stdoutHandler(), delta, getSize().getWidth());
+        buffer.delete(connection.stdoutHandler(), delta, getSize().getWidth(), isViMode());
     }
 
     @Override
