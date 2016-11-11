@@ -132,8 +132,8 @@ public class TestTerminalConnection {
         readline.readline(connection, new Prompt(""), s -> {  });
         outputStream.write(("FOO").getBytes());
         outputStream.flush();
-        Thread.sleep(150);
         connection.getTerminal().raise(Signal.INT);
+        Thread.sleep(150);
 
         assertEquals(new String(out.toByteArray()), "GAH"+Config.getLineSeparator()+"FOOBAR"+ Config.getLineSeparator());
     }
