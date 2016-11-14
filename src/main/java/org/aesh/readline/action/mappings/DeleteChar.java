@@ -31,13 +31,7 @@ import java.util.Arrays;
 
 public class DeleteChar implements Action {
 
-    private boolean viMode = false;
-
     public DeleteChar() {
-    }
-
-    public DeleteChar(boolean viMode) {
-        this.viMode = viMode;
     }
 
     @Override
@@ -57,8 +51,6 @@ public class DeleteChar implements Action {
             consoleBuffer.addActionToUndoStack();
             consoleBuffer.getPasteManager().addText(Arrays.copyOfRange(consoleBuffer.getBuffer().getMultiLine(), cursor, cursor+1));
             consoleBuffer.delete(1);
-            if(cursor == lineSize-1 && cursor > 0 && viMode)
-                consoleBuffer.moveCursor(-1);
         }
     }
 }

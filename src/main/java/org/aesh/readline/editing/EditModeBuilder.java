@@ -260,7 +260,7 @@ public class EditModeBuilder {
                 EditMode.Status.EDIT, EditMode.Status.CHANGE); //C
         vi.addAction(Key.a, "forward-char", EditMode.Status.COMMAND, EditMode.Status.EDIT);
         vi.addAction(Key.A, "end-of-line", EditMode.Status.COMMAND, EditMode.Status.EDIT); //A
-        vi.addAction(Key.x, new DeleteChar(true), EditMode.Status.COMMAND,
+        vi.addAction(Key.x, new DeleteChar(), EditMode.Status.COMMAND,
                 EditMode.Status.COMMAND, EditMode.Status.DELETE); //x
         vi.addAction(Key.X, new DeletePrevChar(), EditMode.Status.COMMAND,
                 EditMode.Status.COMMAND, EditMode.Status.DELETE); //X

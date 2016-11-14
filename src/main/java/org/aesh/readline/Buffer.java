@@ -679,7 +679,7 @@ public class Buffer {
             builder.append(syncCursor(size+getPrompt().getLength(), cursor+promptLength(), width));
         }
         //end of buffer and vi mode
-        else if(viMode) {
+        else if(viMode && cursor == size) {
             LOGGER.info("MOVING BACK BECAUSE OF VI MODE");
             builder.append(moveNumberOfColumns(1, 'D'));
             cursor--;
