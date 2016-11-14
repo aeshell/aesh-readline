@@ -453,10 +453,14 @@ public class Buffer {
      * @param width terminal size
      */
     void print(Consumer<int[]> out, int width) {
+        print(out, width, false);
+    }
+
+    private void print(Consumer<int[]> out, int width, boolean viMode) {
         if(delta >= 0)
             printInsertedData(out, width);
         else {
-            printDeletedData(out, width);
+            printDeletedData(out, width, viMode);
         }
         delta = 0;
     }
@@ -510,10 +514,12 @@ public class Buffer {
         deltaChangedAtEndOfBuffer = true;
     }
 
-    private void printDeletedData(Consumer<int[]> out, int width) {
+    private void printDeletedData(Consumer<int[]> out, int width, boolean viMode) {
         IntArrayBuilder builder = new IntArrayBuilder();
         LOGGER.info("cursor: "+cursor+", prompt.length: "+promptLength()+
                 ", width: "+width+", size: "+size+", delta: "+delta+
+                ", deltaChangedAtEndOfBuffer: "+deltaChangedAtEndOfBuffer+
+                ", viMode: "+viMode+
                 ", deletingBackwards: "+deletingBackward);
         if(size+promptLength()+Math.abs(delta) >= width) {
             if(deletingBackward)
@@ -528,7 +534,7 @@ public class Buffer {
 
         LOGGER.info("builder after clearAllExtraLines: "+Arrays.toString(builder.toArray()));
 
-        moveCursorToStartAndPrint(out, builder, width, false);
+        moveCursorToStartAndPrint(out, builder, width, false, viMode);
     }
 
     /**
@@ -564,7 +570,7 @@ public class Buffer {
         if(oldCursor >= width)
             clearAllLinesAndReturnToFirstLine(builder, width, oldCursor, oldSize);
 
-        moveCursorToStartAndPrint(out, builder, width, true);
+        moveCursorToStartAndPrint(out, builder, width, true, false);
         delta = 0;
         deltaChangedAtEndOfBuffer = true;
     }
@@ -616,7 +622,7 @@ public class Buffer {
     }
 
     private void moveCursorToStartAndPrint(Consumer<int[]> out, IntArrayBuilder builder,
-                                           int width, boolean replace) {
+                                           int width, boolean replace, boolean viMode) {
 
         if((promptLength() > 0 && cursor != 0) || delta < 0) {
             //if we replace we do a quick way of moving to the beginning
@@ -672,6 +678,12 @@ public class Buffer {
             LOGGER.info("syncing cursor...");
             builder.append(syncCursor(size+getPrompt().getLength(), cursor+promptLength(), width));
         }
+        //end of buffer and vi mode
+        else if(viMode) {
+            LOGGER.info("MOVING BACK BECAUSE OF VI MODE");
+            builder.append(moveNumberOfColumns(1, 'D'));
+            cursor--;
+        }
 
         LOGGER.info("printing: "+Arrays.toString(builder.toArray()));
 
@@ -718,12 +730,15 @@ public class Buffer {
             deletingBackward = true;
         }
 
-        if(viMode)
-            deltaChangedAtEndOfBuffer = ((cursor+1) == size);
+        if(viMode) {
+            //if(!deletingBackward)
+            //    cursor--;
+            deltaChangedAtEndOfBuffer = ((cursor ) == size);
+        }
         else
             deltaChangedAtEndOfBuffer = (cursor == size);
         //finally print our changes
-        print(out, width);
+        print(out, width, viMode);
     }
 
     /**
