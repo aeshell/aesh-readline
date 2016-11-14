@@ -126,14 +126,14 @@ public class TestTerminalConnection {
         connection.openNonBlocking();
         outputStream.write(("GAH"+Config.getLineSeparator()).getBytes());
         outputStream.flush();
-        Thread.sleep(150);
+        Thread.sleep(250);
         assertEquals(new String(out.toByteArray()), "GAH"+Config.getLineSeparator());
 
         readline.readline(connection, new Prompt(""), s -> {  });
         outputStream.write(("FOO").getBytes());
         outputStream.flush();
         connection.getTerminal().raise(Signal.INT);
-        Thread.sleep(150);
+        Thread.sleep(250);
 
         assertEquals(new String(out.toByteArray()), "GAH"+Config.getLineSeparator()+"FOOBAR"+ Config.getLineSeparator());
     }
