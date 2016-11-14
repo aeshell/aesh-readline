@@ -20,6 +20,7 @@
 package org.aesh.readline;
 
 import org.aesh.tty.Signal;
+import org.aesh.util.ANSI;
 import org.aesh.util.Parser;
 import org.aesh.readline.editing.EditModeBuilder;
 import org.aesh.readline.history.InMemoryHistory;
@@ -75,16 +76,17 @@ public class ConsoleBufferTest {
 
         consoleBuffer.writeString("foo0");
         consoleBuffer.moveCursor(-1);
-        assertEquals("foo0" + new String(BufferString.printAnsi("1D")), connection.bufferBuilder.toString());
+        assertEquals("foo0" + Parser.fromCodePoints(ANSI.printAnsi("1D")), connection.bufferBuilder.toString());
         consoleBuffer.moveCursor(-10);
-        assertEquals("foo0" + new String(BufferString.printAnsi("1D")) + new String(BufferString.printAnsi("2D")), connection.bufferBuilder.toString());
+        assertEquals("foo0" + Parser.fromCodePoints(ANSI.printAnsi("1D")) +
+                Parser.fromCodePoints(ANSI.printAnsi("2D")), connection.bufferBuilder.toString());
 
         consoleBuffer.writeString("1");
         assertEquals("1foo0", consoleBuffer.getBuffer().asString());
 
         connection.bufferBuilder.delete(0, connection.bufferBuilder.length());
         consoleBuffer.moveCursor(1);
-        assertEquals(new String(BufferString.printAnsi("1C")), connection.bufferBuilder.toString());
+        assertEquals(Parser.fromCodePoints(ANSI.printAnsi("1C")), connection.bufferBuilder.toString());
 
         consoleBuffer.writeString("2");
         assertEquals("1f2oo0", consoleBuffer.getBuffer().asString());
