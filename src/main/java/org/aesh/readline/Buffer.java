@@ -501,12 +501,16 @@ public class Buffer {
         }
 
         //pad if we are at the end of the terminal
-        if((size + promptLength()+1) % width == 1 && deltaChangedAtEndOfBuffer) {
+        if((size + promptLength()) % width == 0 && deltaChangedAtEndOfBuffer) {
             builder.append(new int[]{32, 13});
         }
         //make sure we sync the cursor back
         if(!deltaChangedAtEndOfBuffer) {
-            builder.append(syncCursor(size+getPrompt().getLength(), cursor+promptLength(), width));
+            LOGGER.info("size: "+size+", promptLength: "+promptLength()+", width: "+width+", cursor+promptL: "+(cursor+promptLength()));
+            if((size + promptLength()) % width == 0)
+                builder.append(syncCursor(size+promptLength()-1, cursor+promptLength()-1, width));
+            else
+                builder.append(syncCursor(size+promptLength(), cursor+promptLength(), width));
         }
 
         out.accept(builder.toArray());
@@ -654,12 +658,11 @@ public class Buffer {
             if(isMasking()) {
                 //no output
                 if(prompt.getMask() != '\u0000') {
-
+                    //only output the masked char
+                    int[] mask = new int[size];
+                    Arrays.fill(mask, prompt.getMask());
+                    builder.append(mask);
                 }
-                //only output the masked char
-                int[] mask = new int[size];
-                Arrays.fill(mask, prompt.getMask());
-                builder.append(mask);
             }
             else
                 builder.append(getLine());
@@ -676,8 +679,13 @@ public class Buffer {
         //make sure we sync the cursor back
         if(!deltaChangedAtEndOfBuffer) {
             LOGGER.info("syncing cursor...");
-            builder.append(syncCursor(size+getPrompt().getLength(), cursor+promptLength(), width));
-        }
+            //builder.append(syncCursor(size+promptLength(), cursor+promptLength(), width));
+            LOGGER.info("size: "+size+", promptLength: "+promptLength()+", width: "+width+", cursor+promptL: "+(cursor+promptLength()));
+            if((size + promptLength()) % width == 0)
+                builder.append(syncCursor(size+promptLength()-1, cursor+promptLength()-1, width));
+            else
+                builder.append(syncCursor(size+promptLength(), cursor+promptLength(), width));
+         }
         //end of buffer and vi mode
         else if(viMode && cursor == size) {
             LOGGER.info("MOVING BACK BECAUSE OF VI MODE");
