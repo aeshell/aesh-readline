@@ -58,7 +58,7 @@ public class LinePipedInputStream extends PipedInputStream {
         int enter = findNewLine();
         LOGGER.info("enter: "+enter+", in: "+in+", out: "+out+", buffer.length: "+buffer.length);
 
-        if(enter > 0) {
+        if(enter > 0 && in >= 0) {
             // A byte is read beforehand outside the loop
             if (enter > (len - 1)) {
                 enter = len - 1;
@@ -77,6 +77,7 @@ public class LinePipedInputStream extends PipedInputStream {
                 /* now empty */
                 in = -1;
             }
+            //LOGGER.info("RETURNING: "+new String(Arrays.copyOf(b, rlen)));
             return rlen;
         }
         else {
