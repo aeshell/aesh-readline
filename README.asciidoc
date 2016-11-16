@@ -31,6 +31,8 @@ How to build:
 ** When you start a Gradle build via the wrapper [gradlew], Gradle will be automatically downloaded and used to run the build
 *** Windows: gradlew.bat
 *** Linux: gradlew
+** Run "./gradlew build" to build the entire project (including tests)
+** To run the builtin examples, cd to build/classes/example and run: "java -cp ../main/:. example-name" (eg Example or ShellExample)
 
 Æsh Developer List:
 -------------------
