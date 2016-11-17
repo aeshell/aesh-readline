@@ -21,29 +21,43 @@ package org.aesh.io;
 
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
-import java.nio.charset.CharacterCodingException;
+import java.nio.IntBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CoderResult;
 import java.util.function.Consumer;
 
 /**
- * TODO: might not work to read the entire array in on go,
- * might go back to read one and one
+ * Had to revert back to reading char by char.
+ * Code is taken from Julien Viet's BinaryDecoder in termd.
+ *
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
  */
 public class Decoder {
 
-    private CharsetDecoder decoder;
-    private Consumer<int[]> out;
+    private static final ByteBuffer EMPTY = ByteBuffer.allocate(0);
 
-    public Decoder(Charset charset, Consumer<int[]> out) {
-        decoder = charset.newDecoder();
-        this.out = out;
+    private CharsetDecoder decoder;
+    private ByteBuffer bBuf;
+    private final CharBuffer cBuf;
+    private Consumer<int[]> onChar;
+
+    public Decoder(Charset charset, Consumer<int[]> onChar) {
+        this(2, charset, onChar);
     }
 
-    public void setConsumer(Consumer<int[]> out) {
-        this.out = out;
+    public Decoder(int initialSize, Charset charset, Consumer<int[]> onChar) {
+        if (initialSize < 2) {
+            throw new IllegalArgumentException("Initial size must be at least 2");
+        }
+        decoder = charset.newDecoder();
+        bBuf = EMPTY;
+        cBuf = CharBuffer.allocate(initialSize); // We need at least 2
+        this.onChar = onChar;
+    }
+
+    public void setCharset(Charset charset) {
+        decoder = charset.newDecoder();
     }
 
     public void write(byte[] data) {
@@ -51,49 +65,74 @@ public class Decoder {
     }
 
     public void write(byte[] data, int start, int len) {
-        decode(data, start, len);
-    }
 
-    private void decode(byte[] ba, int off, int len) {
-        int en = scale(len, decoder.maxCharsPerByte());
-        char[] ca = new char[en];
-        if (len == 0)
-            return;
-
-        decoder.reset();
-        ByteBuffer bb = ByteBuffer.wrap(ba, off, len);
-        CharBuffer cb = CharBuffer.wrap(ca);
-        try {
-            CoderResult cr = decoder.decode(bb, cb, true);
-            if (!cr.isUnderflow())
-                cr.throwException();
-            cr = decoder.flush(cb);
-            if (!cr.isUnderflow())
-                cr.throwException();
+        // Fill the byte buffer
+        int remaining = bBuf.remaining();
+        if (len > remaining) {
+            // Allocate a new buffer
+            ByteBuffer tmp = bBuf;
+            int length = tmp.position() + len;
+            bBuf = ByteBuffer.allocate(length);
+            tmp.flip();
+            bBuf.put(tmp);
         }
-        catch (CharacterCodingException x) {
-            // Substitution is always enabled,
-            // so this shouldn't happen
-            throw new Error(x);
+        bBuf.put(data, start, len);
+        bBuf.flip();
+
+        // Drain the byte buffer
+        while (true) {
+            IntBuffer iBuf = IntBuffer.allocate(bBuf.remaining());
+            CoderResult result = decoder.decode(bBuf, cBuf, false);
+            cBuf.flip();
+            while (cBuf.hasRemaining()) {
+                char c = cBuf.get();
+                if (Character.isSurrogate(c)) {
+                    if (Character.isHighSurrogate(c)) {
+                        if (cBuf.hasRemaining()) {
+                            char low = cBuf.get();
+                            if (Character.isLowSurrogate(low)) {
+                                int codePoint = Character.toCodePoint(c, low);
+                                if (Character.isValidCodePoint(codePoint)) {
+                                    iBuf.put(codePoint);
+                                } else {
+                                    throw new UnsupportedOperationException("Handle me gracefully");
+                                }
+                            } else {
+                                throw new UnsupportedOperationException("Handle me gracefully");
+                            }
+                        } else {
+                            throw new UnsupportedOperationException("Handle me gracefully");
+                        }
+                    } else {
+                        throw new UnsupportedOperationException("Handle me gracefully");
+                    }
+                } else {
+                    iBuf.put((int) c);
+                }
+            }
+            iBuf.flip();
+            int[] codePoints = new int[iBuf.limit()];
+            iBuf.get(codePoints);
+            onChar.accept(codePoints);
+            cBuf.compact();
+            if (result.isOverflow()) {
+                // We still have work to do
+            } else if (result.isUnderflow()) {
+                //TODO: need to add logic here
+                if (bBuf.hasRemaining()) {
+                    // We need more input
+                } else {
+                    // We are done
+                }
+                break;
+            } else {
+                throw new UnsupportedOperationException("Handle me gracefully");
+            }
         }
-
-        parseChars(ca);
+        bBuf.compact();
     }
 
-    private static int scale(int len, float expansionFactor) {
-        // We need to perform double, not float, arithmetic; otherwise
-        // we lose low order bits when len is larger than 2**24.
-        return (int) (len * (double) expansionFactor);
+    public void setConsumer(Consumer<int[]> inputHandler) {
+        onChar = inputHandler;
     }
-
-    private void parseChars(char[] chars) {
-        int[] ints = new int[chars.length];
-        for(int i=0; i < chars.length; i++)
-            ints[i] = chars[i];
-
-        if(out != null)
-            out.accept(ints);
-    }
-
-
 }
