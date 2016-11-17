@@ -19,11 +19,8 @@
  */
 package org.aesh.terminal.utils;
 
-import org.aesh.util.LoggerUtil;
-
 import java.io.IOException;
 import java.io.PipedInputStream;
-import java.util.logging.Logger;
 
 /**
  * @author <a href=mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
@@ -31,44 +28,45 @@ import java.util.logging.Logger;
 public class LinePipedInputStream extends PipedInputStream {
 
     private static final int NEW_LINE = 10;
-    private static final Logger LOGGER = LoggerUtil.getLogger(LinePipedInputStream.class.getName());
 
     public LinePipedInputStream(int pipeSize) {
         super(pipeSize);
     }
 
-    @Override
-    public synchronized int read(byte[] b, int off, int len)  throws IOException {
-        if (off < 0 || len < 0 || len > b.length - off)
-            throw new IndexOutOfBoundsException();
-        else if (len == 0)
-            return 0;
-
+    public synchronized int read(byte b[], int off, int len)  throws IOException {
         /* possibly wait on the first character */
         int c = read();
         if (c < 0) {
             return -1;
         }
-
         b[off] = (byte) c;
         int rlen = 1;
-        if(c == NEW_LINE)
+        if(c == NEW_LINE) {
             return rlen;
+        }
+        int enter = -1;
+        while ((in >= 0) && (len > 1)) {
 
-        int enter = findNewLine();
-        LOGGER.info("enter: "+enter+", in: "+in+", out: "+out+", buffer.length: "+buffer.length);
+            int available;
 
-        if(enter > 0 && in >= 0) {
-            // A byte is read beforehand outside the loop
-            if (enter > (len - 1)) {
-                enter = len - 1;
+            if (in > out) {
+                available = Math.min((buffer.length - out), (in - out));
+            } else {
+                available = buffer.length - out;
             }
-            //System.out.println("enter: "+enter+", in: "+in+", out: "+out+", buffer.length: "+buffer.length);
-            //System.out.println("(off+rlen): "+(off+rlen));
-            System.arraycopy(buffer, out, b, off + rlen, enter);
-            out += enter;
-            rlen += enter;
-            len -= enter;
+
+            // A byte is read beforehand outside the loop
+            if (available > (len - 1)) {
+                available = len - 1;
+            }
+            enter = findEnter(buffer, out, (out+available > len-1) ? len-1 : out+available);
+            if(enter > -1) {
+                available = enter;
+            }
+            System.arraycopy(buffer, out, b, off + rlen, available);
+            out += available;
+            rlen += available;
+            len -= available;
 
             if (out >= buffer.length) {
                 out = 0;
@@ -77,49 +75,18 @@ public class LinePipedInputStream extends PipedInputStream {
                 /* now empty */
                 in = -1;
             }
-            //LOGGER.info("RETURNING: "+new String(Arrays.copyOf(b, rlen)));
-            return rlen;
-        }
-        else {
-            while ((in >= 0) && (len > 1)) {
-                int available;
-
-                if (in > out) {
-                    available = Math.min((buffer.length - out), (in - out));
-                } else {
-                    available = buffer.length - out;
-                }
-
-                // A byte is read beforehand outside the loop
-                if (available > (len - 1)) {
-                    available = len - 1;
-                }
-                System.arraycopy(buffer, out, b, off + rlen, available);
-                out += available;
-                rlen += available;
-                len -= available;
-
-                if (out >= buffer.length) {
-                    out = 0;
-                }
-                if (in == out) {
-                /* now empty */
-                    in = -1;
-                }
+            if(enter > -1) {
+                return rlen;
             }
-            return rlen;
         }
+        return rlen;
     }
 
-    private int findNewLine() {
-        int limit = (in > out) ? Math.min((buffer.length - out), (in - out)) : buffer.length-out;
-        //LOGGER.info("limit: "+limit+", out: "+out+", in: "+in);
-        for(int i = out; i < limit+out; i++) {
-            //LOGGER.info("checking, i: "+i+", buffer[i]: "+buffer[i]);
+    private int findEnter(byte[] buffer, int start, int length) {
+            for(int i = start; i < length; i++) {
             if(buffer[i] == NEW_LINE)
-                return i-out;
+                return i-start;
         }
-        //LOGGER.info("not checking array!!! line is: "+buffer.length);
         return -1;
     }
 }
