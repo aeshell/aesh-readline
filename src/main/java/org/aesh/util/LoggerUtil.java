@@ -86,6 +86,11 @@ public class LoggerUtil {
         logHandler.setFormatter(new SimpleFormatter());
     }
 
+
+    public static synchronized Logger getLogger(Class clazz) {
+        return getLogger(clazz.getName());
+    }
+
     public static synchronized Logger getLogger(String name) {
        if(!doLog) {
            Logger log = Logger.getLogger(name);
