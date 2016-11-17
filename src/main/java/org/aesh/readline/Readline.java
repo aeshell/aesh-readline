@@ -82,12 +82,13 @@ public class Readline {
     }
 
     private void readInput() {
-        while (true) {
-            if (decoder.hasNext() && inputProcessor != null && !inputProcessor.paused) {
-                inputProcessor.parse(decoder.next());
-            }
-            else {
-                return;
+        synchronized (this) {
+            while (true) {
+                if (decoder.hasNext() && inputProcessor != null && !inputProcessor.paused) {
+                    inputProcessor.parse(decoder.next());
+                } else {
+                    return;
+                }
             }
         }
     }
@@ -120,10 +121,12 @@ public class Readline {
                          List<Completion> completions,
                          List<Function<String,Optional<String>>> preProcessors,
                          History history) {
-         if (inputProcessor != null) {
-            throw new IllegalStateException("Already reading a line");
+        synchronized(this) {
+            if (inputProcessor != null) {
+                throw new IllegalStateException("Already reading a line");
+            }
+            inputProcessor = new AeshInputProcessor(conn, prompt, requestHandler, completions, preProcessors, history);
         }
-        inputProcessor = new AeshInputProcessor(conn, prompt, requestHandler, completions, preProcessors, history);
         inputProcessor.start();
         processInput();
     }
