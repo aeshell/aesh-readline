@@ -33,7 +33,7 @@ public class LinePipedInputStream extends PipedInputStream {
         super(pipeSize);
     }
 
-    public synchronized int read(byte b[], int off, int len)  throws IOException {
+    public synchronized int read(byte[] b, int off, int len)  throws IOException {
         /* possibly wait on the first character */
         int c = read();
         if (c < 0) {

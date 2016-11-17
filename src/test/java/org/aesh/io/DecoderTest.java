@@ -52,8 +52,8 @@ public class DecoderTest {
 
     @Test
     public void testDecoder() throws Exception {
-        assertDecode(Arrays.asList("ABCDE"), 65, 66, 67, 68, 69);
-        assertDecode(Arrays.asList("\rfoo"), 13, 102, 111, 111);
+        assertDecode(Arrays.asList("AB","CD","E"), 65, 66, 67, 68, 69);
+        assertDecode(Arrays.asList("\rf","oo"), 13, 102, 111, 111);
         assertDecode(Arrays.asList("\u001B["), 27, 91);
     }
 
