@@ -43,7 +43,7 @@ public class Decoder {
     private Consumer<int[]> onChar;
 
     public Decoder(Charset charset, Consumer<int[]> onChar) {
-        this(2, charset, onChar);
+        this(4, charset, onChar);
     }
 
     public Decoder(int initialSize, Charset charset, Consumer<int[]> onChar) {

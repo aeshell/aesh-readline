@@ -58,8 +58,7 @@ public class TestTerminalConnection {
         Thread.sleep(150);
         connection.openBlocking();
 
-        assertArrayEquals(result.get(0), new int[] {70,79});
-        assertArrayEquals(result.get(1), new int[] {79});
+        assertArrayEquals(result.get(0), new int[] {70,79,79});
     }
 
     @Test

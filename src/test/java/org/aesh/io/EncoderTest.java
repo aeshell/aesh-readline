@@ -19,7 +19,6 @@
  */
 package org.aesh.io;
 
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.nio.charset.Charset;
@@ -30,10 +29,9 @@ import static org.junit.Assert.assertEquals;
 /**
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
  */
-@Ignore
 public class EncoderTest {
 
-    public void decodeEndcode(String incoming) {
+    public void decodeEndcode(String incoming, String[] expected) {
         Charset charset = Charset.forName("UTF-8");
         //ArrayList<String> decodeResult = new ArrayList<>();
         final ArrayList<int[]> result = new ArrayList<>();
@@ -41,22 +39,25 @@ public class EncoderTest {
             result.add(event);
         });
 
-        final byte[] output = new byte[incoming.getBytes().length];
+        final byte[] output = new byte[4];
         Encoder encoder = new Encoder(charset, event -> {
             for(int i=0; i < event.length; i++)
                 output[i] = event[i];
         });
 
         decoder.write(incoming.getBytes());
-        encoder.accept(result.get(0));
 
-        assertEquals(incoming, new String(output));
+        for(int i=0; i < expected.length; i++) {
+            encoder.accept(result.get(i));
+            for(int j=0; j < expected[i].length(); j++)
+                assertEquals(expected[i].getBytes()[j], output[j]);
+        }
     }
 
     @Test
     public void testInputs() {
-        decodeEndcode("foo");
-        decodeEndcode("foo bar!!??");
-        decodeEndcode("\r");
+        decodeEndcode("foo", new String[] {"foo"});
+        decodeEndcode("foo bar!!??", new String[] {"foo ","bar!","!??"});
+        decodeEndcode("\r", new String[] {"\r"});
     }
 }
