@@ -39,7 +39,7 @@ import java.util.logging.Logger;
  */
 public class SimpleCompletionHandler implements CompletionHandler<CompleteOperation> {
 
-    private boolean askDisplayCompletion = false;
+    private CompletionStatus status = CompletionStatus.COMPLETE;
     private int displayCompletionSize = 100;
     private final List<Completion> completionList;
     private Function<Buffer, CompleteOperation> aliasHandler;
@@ -66,13 +66,13 @@ public class SimpleCompletionHandler implements CompletionHandler<CompleteOperat
     }
 
     @Override
-    public boolean doAskDisplayCompletion() {
-        return askDisplayCompletion;
+    public CompletionStatus completionStatus() {
+        return status;
     }
 
     @Override
-    public void setAskDisplayCompletion(boolean askDisplayCompletion) {
-        this.askDisplayCompletion = askDisplayCompletion;
+    public void setCompletionStatus(CompletionStatus status) {
+        this.status = status;
     }
 
     @Override
@@ -137,7 +137,7 @@ public class SimpleCompletionHandler implements CompletionHandler<CompleteOperat
         // only one hit, do a completion
         else if(possibleCompletions.size() == 1 &&
                 possibleCompletions.get(0).getCompletionCandidates().size() == 1) {
-            //some formatted completions might not be valid and shouldnt be displayed
+            //some formatted completions might not be valid and should not be displayed
             displayCompletion(
                     possibleCompletions.get(0).getFormattedCompletionCandidatesTerminalString().get(0),
                     buffer, inputProcessor,
@@ -170,16 +170,14 @@ public class SimpleCompletionHandler implements CompletionHandler<CompleteOperat
                     completions.addAll(possibleCompletions.get(i).getCompletionCandidates());
 
                 if(completions.size() > 100) {
-                    //if(displayCompletion) {
-                     if(askDisplayCompletion) {
-                        displayCompletions(completions, buffer, inputProcessor);
-                        //displayCompletion = false;
-                         askDisplayCompletion = false;
+                     if(status == CompletionStatus.ASKING_FOR_COMPLETIONS) {
+                         displayCompletions(completions, buffer, inputProcessor);
+                         status = CompletionStatus.COMPLETE;
                     }
                     else {
-                        askDisplayCompletion = true;
+                         status = CompletionStatus.ASKING_FOR_COMPLETIONS;
                          inputProcessor.getBuffer().writeOut(Config.CR);
-                        inputProcessor.getBuffer().writeOut("Display all " + completions.size() + " possibilities? (y or n)");
+                         inputProcessor.getBuffer().writeOut("Display all " + completions.size() + " possibilities? (y or n)");
                     }
                 }
                 // display all
@@ -202,19 +200,13 @@ public class SimpleCompletionHandler implements CompletionHandler<CompleteOperat
         LOGGER.info("completion: "+completion.getCharacters()+" and buffer: "+buffer.asString());
         if(completion.getCharacters().startsWith(buffer.asString())) {
             ActionMapper.mapToAction("backward-kill-word").accept(inputProcessor);
-            //consoleBuffer.performAction(new PrevWordAction(buffer.getMultiCursor(), Action.DELETE, EditMode.Mode.EMACS));
-            //buffer.write(completion.getCharacters());
             inputProcessor.getBuffer().writeString(completion.toString());
-
-            //only append space if its an actual complete, not a partial
         }
         else {
             inputProcessor.getBuffer().writeString(completion.toString());
-            //buffer.insert(completion.toString());
         }
-        if(appendSpace) { // && fullCompletion.startsWith(buffer.getLine())) {
+        if(appendSpace) {
             inputProcessor.getBuffer().writeChar(separator);
-            //buffer.write(separator);
         }
     }
 
@@ -234,19 +226,4 @@ public class SimpleCompletionHandler implements CompletionHandler<CompleteOperat
         buffer.setIsPromptDisplayed(false);
         inputProcessor.getBuffer().drawLine();
     }
-
-    /*
-    private CompleteOperation findAliases(String buffer, int cursor) {
-        if(aliasManager != null) {
-            String command = Parser.findFirstWord(buffer);
-            Alias alias = aliasManager.getAlias(command);
-            if(alias != null) {
-                return new CompleteOperation(aeshContext, alias.getValue()+buffer.substring(command.length()),
-                        cursor+(alias.getValue().length()-command.length()));
-            }
-        }
-
-        return new CompleteOperation(aeshContext, buffer, cursor);
-    }
-    */
 }

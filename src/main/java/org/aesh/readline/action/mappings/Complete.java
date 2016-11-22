@@ -22,12 +22,10 @@ package org.aesh.readline.action.mappings;
 import org.aesh.readline.action.Action;
 import org.aesh.readline.action.ActionEvent;
 import org.aesh.readline.action.KeyAction;
+import org.aesh.readline.completion.CompletionHandler;
 import org.aesh.terminal.Key;
 import org.aesh.util.Config;
 import org.aesh.readline.InputProcessor;
-import org.aesh.util.LoggerUtil;
-
-import java.util.logging.Logger;
 
 /**
  * @author <a href=mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
@@ -37,8 +35,6 @@ public class Complete implements ActionEvent {
     private boolean askForCompletion = false;
     private KeyAction key;
 
-    private static Logger LOGGER = LoggerUtil.getLogger(Complete.class.getName());
-
     @Override
     public String name() {
         return "complete";
@@ -47,25 +43,25 @@ public class Complete implements ActionEvent {
     @Override
     public void accept(InputProcessor inputProcessor) {
         if(askForCompletion) {
-            askForCompletion = false;
             if(key == Key.y) {
-                //inputProcessor.getBuffer().getCompleter().setAskDisplayCompletion(false);
+                askForCompletion = false;
+                key = null;
                 inputProcessor.getBuffer().getCompleter().complete(inputProcessor);
             }
-            else {
-                inputProcessor.getBuffer().getCompleter().setAskDisplayCompletion(false);
+            else if(key == Key.n){
+                askForCompletion = false;
+                key = null;
+                inputProcessor.getBuffer().getCompleter().setCompletionStatus(CompletionHandler.CompletionStatus.COMPLETE);
                 inputProcessor.getBuffer().getUndoManager().clear();
                 inputProcessor.getBuffer().writeOut(Config.CR);
-                //clearBufferAndDisplayPrompt(inputProcessor.getBuffer());
-                inputProcessor.getBuffer().drawLine();
-                //inputProcessor.getBuffer().moveCursor(inputProcessor.getBuffer().getBuffer().getMultiCursor());
+                inputProcessor.getBuffer().drawLineForceDisplay();
             }
         }
         else {
             if(inputProcessor.getBuffer().getCompleter() != null) {
-                LOGGER.info("trying to complete...");
                 inputProcessor.getBuffer().getCompleter().complete( inputProcessor);
-                if(inputProcessor.getBuffer().getCompleter().doAskDisplayCompletion()) {
+                if(inputProcessor.getBuffer().getCompleter().completionStatus() ==
+                        CompletionHandler.CompletionStatus.ASKING_FOR_COMPLETIONS) {
                     askForCompletion = true;
                 }
             }
@@ -75,7 +71,14 @@ public class Complete implements ActionEvent {
     @Override
     public void input(Action action, KeyAction key) {
         if(askForCompletion) {
-            this.key = key;
+            if(Key.isPrintable(key.buffer())) {
+                if(Key.y.equalTo(key.buffer().array())) {
+                    this.key = Key.y;
+                }
+                if(Key.n.equalTo(key.buffer().array())) {
+                    this.key = Key.n;
+                }
+            }
         }
     }
 
@@ -84,10 +87,4 @@ public class Complete implements ActionEvent {
         return askForCompletion;
     }
 
-    /*
-    private void clearBufferAndDisplayPrompt(ConsoleBuffer consoleBuffer) {
-        consoleBuffer.getBuffer().reset();
-        consoleBuffer.getUndoManager().clear();
-    }
-    */
 }

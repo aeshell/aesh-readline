@@ -50,6 +50,8 @@ public interface ConsoleBuffer {
 
     void drawLine();
 
+    void drawLineForceDisplay();
+
     void writeChar(char input);
 
     void writeOut(String out);
@@ -77,6 +79,8 @@ public interface ConsoleBuffer {
     void replace(int[] line);
 
     void replace(String line);
+
+    void reset();
 
     /**
      * Clear an ansi terminal.

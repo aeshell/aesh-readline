@@ -36,9 +36,9 @@ public interface CompletionHandler<C extends CompleteOperation> {
 
     void clear();
 
-    void setAskDisplayCompletion(boolean askDisplayCompletion);
+    void setCompletionStatus(CompletionStatus status);
 
-    boolean doAskDisplayCompletion();
+    CompletionStatus completionStatus();
 
     void setAskCompletionSize(int size);
 
@@ -49,4 +49,8 @@ public interface CompletionHandler<C extends CompleteOperation> {
     void setAliasHandler(Function<Buffer, C> aliasHandler);
 
     void addCompletions(List<Completion> completions);
+
+    enum CompletionStatus {
+        ASKING_FOR_COMPLETIONS, COMPLETE;
+    }
 }
