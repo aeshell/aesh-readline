@@ -120,7 +120,12 @@ public final class TerminalBuilder {
                     return new WinSysTerminal(name, nativeSignals);
                 }
                 catch(IOException e) {
-                    return new ExternalTerminal(name, type, System.in, System.out, encoding);
+                    ExternalTerminal term = new ExternalTerminal(name, type, System.in, System.out, encoding);
+                    Attributes attributes = new Attributes();
+                    attributes.setInputFlag(Attributes.InputFlag.IGNCR, true);
+                    attributes.setInputFlag(Attributes.InputFlag.ICRNL, true);
+                    term.setAttributes(attributes);
+                    return term;
                 }
             }
             else if(OSUtils.IS_HPUX) {
