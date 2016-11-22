@@ -86,6 +86,17 @@ public final class Signals {
         return null;
     }
 
+    public static void invokeHandler(String name, Object handler) {
+        try {
+            Class<?> signalClass = Class.forName("sun.misc.Signal");
+            Class<?> signalHandlerClass = Class.forName("sun.misc.SignalHandler");
+            Object signal = signalClass.getConstructor(String.class).newInstance(name);
+            signalHandlerClass.getMethod("handle", signalClass).invoke(handler, signal);
+        }
+        catch (Exception e) {
+        }
+    }
+
     public static void unregister(String name, Object previous) {
         try {
             // We should make sure the current signal is the one we registered

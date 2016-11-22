@@ -1,164 +1,64 @@
 /*
- * JBoss, Home of Professional Open Source
- * Copyright 2014 Red Hat Inc. and/or its affiliates and other contributors
- * as indicated by the @authors tag. All rights reserved.
- * See the copyright.txt in the distribution for a
- * full listing of individual contributors.
+ * Copyright (c) 2002-2016, the original author or authors.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * This software is distributable under the BSD license. See the terms of the
+ * BSD license in the documentation provided with this software.
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * http://www.opensource.org/licenses/bsd-license.php
  */
 package org.aesh.terminal.impl;
 
-import org.aesh.terminal.utils.Curses;
-import org.aesh.terminal.utils.ShutdownHooks;
-import org.aesh.terminal.utils.Signals;
+import java.io.FileDescriptor;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.util.logging.Level;
+
 import org.aesh.tty.Capability;
-import org.aesh.tty.Signal;
 import org.aesh.tty.Size;
 import org.fusesource.jansi.WindowsAnsiOutputStream;
 import org.fusesource.jansi.internal.Kernel32;
 import org.fusesource.jansi.internal.Kernel32.INPUT_RECORD;
 import org.fusesource.jansi.internal.Kernel32.KEY_EVENT_RECORD;
 import org.fusesource.jansi.internal.WindowsSupport;
-import org.aesh.terminal.Attributes;
-import org.aesh.util.LoggerUtil;
 
-import java.io.FileDescriptor;
-import java.io.FileOutputStream;
-import java.io.IOError;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.nio.charset.Charset;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
-public class WinSysTerminal extends AbstractTerminal {
-
-    protected final InputStream input;
-    protected final OutputStream output;
-    protected final PrintWriter writer;
-    protected final Map<Signal, Object> nativeHandlers = new HashMap<Signal, Object>();
-    protected final ShutdownHooks.Task closer;
-
-    private static final int ENABLE_PROCESSED_INPUT = 0x0001;
-    private static final int ENABLE_LINE_INPUT      = 0x0002;
-    private static final int ENABLE_ECHO_INPUT      = 0x0004;
-    private static final int ENABLE_WINDOW_INPUT    = 0x0008;
-    private static final int ENABLE_MOUSE_INPUT     = 0x0010;
-    private static final int ENABLE_INSERT_MODE     = 0x0020;
-    private static final int ENABLE_QUICK_EDIT_MODE = 0x0040;
-
-    private static final Logger LOGGER = LoggerUtil.getLogger("WinSySTerminal");
-
+public class WinSysTerminal extends AbstractWindowsTerminal {
 
     public WinSysTerminal(String name, boolean nativeSignals) throws IOException {
-        super(name, "windows");
-        input = new DirectInputStream();
-        output = new WindowsAnsiOutputStream(new FileOutputStream(FileDescriptor.out));
-        String encoding = getConsoleEncoding();
-        if (encoding == null) {
-            encoding = Charset.defaultCharset().name();
-        }
-        this.writer = new PrintWriter(new OutputStreamWriter(output, encoding));
-        parseInfoCmp();
-        // Handle signals
-        if (nativeSignals) {
-            for (final Signal signal : Signal.values()) {
-                nativeHandlers.put(signal, Signals.register(signal.name(), () -> raise(signal)));
-            }
-        }
-        closer = this::close;
-        ShutdownHooks.add(closer);
+        this(name, nativeSignals, SignalHandler.SIG_DFL);
     }
 
-    @SuppressWarnings("InjectedReferences")
-    protected static String getConsoleEncoding() {
-        int codepage = Kernel32.GetConsoleOutputCP();
-        //http://docs.oracle.com/javase/6/docs/technotes/guides/intl/encoding.doc.html
-        String charsetMS = "ms" + codepage;
-        if (Charset.isSupported(charsetMS)) {
-            return charsetMS;
-        }
-        String charsetCP = "cp" + codepage;
-        if (Charset.isSupported(charsetCP)) {
-            return charsetCP;
-        }
-        return null;
+    public WinSysTerminal(String name, boolean nativeSignals, SignalHandler signalHandler) throws IOException {
+        super(new WindowsAnsiOutputStream(new FileOutputStream(FileDescriptor.out)),
+              name, nativeSignals, signalHandler);
     }
 
-    public PrintWriter writer() {
-        return writer;
+    protected int getConsoleOutputCP() {
+        return Kernel32.GetConsoleOutputCP();
     }
 
     @Override
-    public InputStream input() {
-        return input;
+    protected int getConsoleMode() {
+        return WindowsSupport.getConsoleMode();
     }
 
     @Override
-    public OutputStream output() {
-        return output;
-    }
-
-    public Attributes getAttributes() {
-        int mode = WindowsSupport.getConsoleMode();
-        Attributes attributes = new Attributes();
-        if ((mode & ENABLE_ECHO_INPUT) != 0) {
-            attributes.setLocalFlag(Attributes.LocalFlag.ECHO, true);
-        }
-        if ((mode & ENABLE_LINE_INPUT) != 0) {
-            attributes.setLocalFlag(Attributes.LocalFlag.ICANON, true);
-        }
-        return attributes;
-    }
-
-    public void setAttributes(Attributes attr) {
-        int mode = 0;
-        if (attr.getLocalFlag(Attributes.LocalFlag.ECHO)) {
-            mode |= ENABLE_ECHO_INPUT;
-        }
-        if (attr.getLocalFlag(Attributes.LocalFlag.ICANON)) {
-            mode |= ENABLE_LINE_INPUT;
-        }
+    protected void setConsoleMode(int mode) {
         WindowsSupport.setConsoleMode(mode);
     }
 
     public Size getSize() {
-        return new Size(WindowsSupport.getWindowsTerminalWidth(),
+        Size size = new Size(WindowsSupport.getWindowsTerminalWidth(),
                 WindowsSupport.getWindowsTerminalHeight());
+        return size;
     }
 
-    public void close() throws IOException {
-        ShutdownHooks.remove(closer);
-        for (Map.Entry<Signal, Object> entry : nativeHandlers.entrySet()) {
-            Signals.unregister(entry.getKey().name(), entry.getValue());
-        }
-        writer.close();
-    }
-
-    private byte[] readConsoleInput() {
+    protected byte[] readConsoleInput() {
         // XXX does how many events to read in one call matter?
         INPUT_RECORD[] events = null;
         try {
             events = WindowsSupport.readConsoleInput(1);
         } catch (IOException e) {
-            LOGGER.log(Level.FINE, "read Windows console input error: ", e);
+            LOGGER.log(Level.INFO, "read Windows terminal input error: ", e);
         }
         if (events == null) {
             return new byte[0];
@@ -178,88 +78,20 @@ public class WinSysTerminal extends AbstractTerminal {
             //Log.trace(keyEvent.keyDown? "KEY_DOWN" : "KEY_UP", "key code:", keyEvent.keyCode, "char:", (long)keyEvent.uchar);
             if (keyEvent.keyDown) {
                 if (keyEvent.uchar > 0) {
-                    if (isAlt) {
-                        sb.append('\033');
+                    boolean shiftPressed = (keyEvent.controlKeyState & KEY_EVENT_RECORD.SHIFT_PRESSED) != 0;
+                    if (keyEvent.uchar == '\t' && shiftPressed) {
+                        sb.append(getSequence(Capability.key_btab));
+                    } else {
+                        if (isAlt) {
+                            sb.append('\033');
+                        }
+                        sb.append(keyEvent.uchar);
                     }
-                    sb.append(keyEvent.uchar);
                 }
                 else {
                     // virtual keycodes: http://msdn.microsoft.com/en-us/library/windows/desktop/dd375731(v=vs.85).aspx
                     // TODO: numpad keys, modifiers
-                    String escapeSequence = null;
-                    switch (keyEvent.keyCode) {
-                        case 0x08: // VK_BACK BackSpace
-                            escapeSequence = getSequence(Capability.key_backspace);
-                            break;
-                        case 0x21: // VK_PRIOR PageUp
-                            escapeSequence = getSequence(Capability.key_ppage);
-                            break;
-                        case 0x22: // VK_NEXT PageDown
-                            escapeSequence = getSequence(Capability.key_npage);
-                            break;
-                        case 0x23: // VK_END
-                            escapeSequence = getSequence(Capability.key_end);
-                            break;
-                        case 0x24: // VK_HOME
-                            escapeSequence = getSequence(Capability.key_home);
-                            break;
-                        case 0x25: // VK_LEFT
-                            escapeSequence = getSequence(Capability.key_left);
-                            break;
-                        case 0x26: // VK_UP
-                            escapeSequence = getSequence(Capability.key_up);
-                            break;
-                        case 0x27: // VK_RIGHT
-                            escapeSequence = getSequence(Capability.key_right);
-                            break;
-                        case 0x28: // VK_DOWN
-                            escapeSequence = getSequence(Capability.key_down);
-                            break;
-                        case 0x2D: // VK_INSERT
-                            escapeSequence = getSequence(Capability.key_ic);
-                            break;
-                        case 0x2E: // VK_DELETE
-                            escapeSequence = getSequence(Capability.key_dc);
-                            break;
-                        case 0x70: // VK_F1
-                            escapeSequence = getSequence(Capability.key_f1);
-                            break;
-                        case 0x71: // VK_F2
-                            escapeSequence = getSequence(Capability.key_f2);
-                            break;
-                        case 0x72: // VK_F3
-                            escapeSequence = getSequence(Capability.key_f3);
-                            break;
-                        case 0x73: // VK_F4
-                            escapeSequence = getSequence(Capability.key_f4);
-                            break;
-                        case 0x74: // VK_F5
-                            escapeSequence = getSequence(Capability.key_f5);
-                            break;
-                        case 0x75: // VK_F6
-                            escapeSequence = getSequence(Capability.key_f6);
-                            break;
-                        case 0x76: // VK_F7
-                            escapeSequence = getSequence(Capability.key_f7);
-                            break;
-                        case 0x77: // VK_F8
-                            escapeSequence = getSequence(Capability.key_f8);
-                            break;
-                        case 0x78: // VK_F9
-                            escapeSequence = getSequence(Capability.key_f9);
-                            break;
-                        case 0x79: // VK_F10
-                            escapeSequence = getSequence(Capability.key_f10);
-                            break;
-                        case 0x7A: // VK_F11
-                            escapeSequence = getSequence(Capability.key_f11);
-                            break;
-                        case 0x7B: // VK_F12
-                            escapeSequence = getSequence(Capability.key_f12);
-                            break;
-                        default:
-                            break;
-                    }
+                    String escapeSequence = getEscapeSequence(keyEvent.keyCode);
                     if (escapeSequence != null) {
                         for (int k = 0; k < keyEvent.repeatCount; k++) {
                             if (isAlt) {
@@ -280,65 +112,4 @@ public class WinSysTerminal extends AbstractTerminal {
         return sb.toString().getBytes();
     }
 
-    private String getSequence(Capability cap) {
-        String str = strings.get(cap);
-        if (str != null) {
-            StringWriter sw = new StringWriter();
-            try {
-                Curses.tputs(sw, str);
-            } catch (IOException e) {
-                throw new IOError(e);
-            }
-            return sw.toString();
-        }
-        return null;
-    }
-
-    private class DirectInputStream extends InputStream {
-        private byte[] buf = null;
-        int bufIdx = 0;
-
-        @Override
-        public int read() throws IOException {
-            while (buf == null || bufIdx == buf.length) {
-                buf = readConsoleInput();
-                bufIdx = 0;
-            }
-            int c = buf[bufIdx] & 0xFF;
-            bufIdx++;
-            return c;
-        }
-
-        public int read(byte[] b, int off, int len) throws IOException {
-            if (b == null) {
-                throw new NullPointerException();
-            } else if (off < 0 || len < 0 || len > b.length - off) {
-                throw new IndexOutOfBoundsException();
-            } else if (len == 0) {
-                return 0;
-            }
-
-            int c = read();
-            if (c == -1) {
-                return -1;
-            }
-            //manually raise a signal if we get ctrl-c
-            else if(c == 3) {
-                raise(Signal.INT);
-                return 0;
-            }
-            if(bufIdx == buf.length) {
-                b[off] = (byte) c;
-                return 1;
-            }
-            else {
-                b[off] = (byte) c;
-                for(; bufIdx < buf.length; bufIdx++) {
-                    c = buf[bufIdx] & 0xFF;
-                    b[off+bufIdx] = (byte) c;
-                }
-                return bufIdx;
-            }
-        }
-    }
 }
