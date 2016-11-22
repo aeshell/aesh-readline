@@ -19,10 +19,7 @@
  */
 package org.aesh.util;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.logging.Logger;
+import org.aesh.terminal.utils.OSUtils;
 
 /**
  *
@@ -36,9 +33,7 @@ public class Config {
     private static final String tmpDir = System.getProperty("java.io.tmpdir");
     private static final boolean posixCompatible = checkPosixCompability();
     public static final int[] CR = Parser.toCodePoints(lineSeparator);
-    private static boolean cygwin = false;
-
-    private static final Logger LOGGER = LoggerUtil.getLogger(Config.class.getName());
+    private static boolean cygwin = OSUtils.IS_CYGWIN;
 
     public static boolean isOSPOSIXCompatible() {
         return posixCompatible;
@@ -74,28 +69,7 @@ public class Config {
 
     private static boolean checkPosixCompability() {
         if(isWindows()) {
-            //need to check if we're running under cygwin
-            try {
-                Process process = Runtime.getRuntime().exec(new String[]{"uname"});
-                ByteArrayOutputStream bout = new ByteArrayOutputStream();
-                int c;
-                InputStream in = process.getInputStream();
-                while ((c = in.read()) != -1) {
-                    bout.write(c);
-                }
-                process.waitFor();
-
-                String output = new String(bout.toByteArray());
-                if(output.toLowerCase().contains("cygwin")) {
-                    cygwin = true;
-                    return true;
-                }
-            }
-            catch (IOException | InterruptedException e) {
-                //silently ignore that we're not running cygwin
-            }
-
-            return false;
+            return OSUtils.IS_CYGWIN;
         }
         else
             return !System.getProperty("os.name").startsWith("OS/2");

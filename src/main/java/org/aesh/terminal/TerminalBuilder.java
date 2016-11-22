@@ -105,9 +105,8 @@ public final class TerminalBuilder {
                 || (system == null
                     && (in == null || in == System.in)
                     && (out == null || out == System.out))) {
-            //
+
             // Cygwin support
-            //
             if (OSUtils.IS_CYGWIN) {
                 String type = this.type;
                 if (type == null) {
@@ -121,7 +120,7 @@ public final class TerminalBuilder {
                     return new WinSysTerminal(name, nativeSignals);
                 }
                 catch(IOException e) {
-                    return new ExternalTerminal(name, type, in, out, encoding);
+                    return new ExternalTerminal(name, type, System.in, System.out, encoding);
                 }
             }
             else if(OSUtils.IS_HPUX) {
@@ -147,8 +146,10 @@ public final class TerminalBuilder {
                     return new ExternalTerminal(name, type, System.in, System.out, encoding);
                 }
             }
-        } else {
-            return new ExternalTerminal(name, type, in, out, encoding);
+        }
+        else {
+            return new ExternalTerminal(name, type, (in == null) ? System.in : in,
+                    (out == null) ? System.out : out, encoding);
         }
     }
 }
