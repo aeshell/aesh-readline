@@ -21,6 +21,7 @@ package org.aesh.terminal.utils;
 
 import java.io.IOException;
 import java.io.PipedInputStream;
+import java.io.PipedOutputStream;
 
 /**
  * @author <a href=mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
@@ -31,6 +32,10 @@ public class LinePipedInputStream extends PipedInputStream {
 
     public LinePipedInputStream(int pipeSize) {
         super(pipeSize);
+    }
+
+    public LinePipedInputStream(PipedOutputStream src) throws IOException {
+        super(src);
     }
 
     public synchronized int read(byte[] b, int off, int len)  throws IOException {
@@ -61,7 +66,10 @@ public class LinePipedInputStream extends PipedInputStream {
             }
             enter = findEnter(buffer, out, (out+available > len-1) ? len-1 : out+available);
             if(enter > -1) {
-                available = enter;
+                if(enter+1 <= available)
+                    available = enter+1;
+                else
+                    available = enter;
             }
             System.arraycopy(buffer, out, b, off + rlen, available);
             out += available;
