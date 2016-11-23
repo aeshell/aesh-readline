@@ -180,7 +180,9 @@ public class Readline {
             conn.setStdinHandler(prevReadHandler);
             conn.setSizeHandler(prevSizeHandler);
             conn.setSignalHandler(prevEventHandler);
-            inputProcessor = null;
+            synchronized (Readline.this) {
+                inputProcessor = null;
+            }
             requestHandler.accept(s);
         }
 
@@ -197,14 +199,18 @@ public class Readline {
             Action action = editMode.parse(event);
             //LOGGER.info("Found action: "+action);
             if (action != null) {
-                paused = true;
+                synchronized (Readline.this) {
+                    paused = true;
+                }
                 action.accept(this);
                 if(this.getReturnValue() != null) {
                     conn.stdoutHandler().accept(Config.CR);
                     finish(this.getReturnValue());
                 }
                 else {
-                    paused = false;
+                    synchronized (Readline.this) {
+                        paused = false;
+                    }
                     processInput();
                 }
             }
@@ -224,7 +230,9 @@ public class Readline {
             prevSizeHandler = conn.getSizeHandler();
             prevEventHandler = conn.getSignalHandler();
             conn.setStdinHandler(data -> {
-                decoder.add(data);
+                synchronized(Readline.this) {
+                    decoder.add(data);
+                }
                 readInput();
             });
             size = conn.size();

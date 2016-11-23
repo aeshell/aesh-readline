@@ -19,13 +19,19 @@
  */
 package org.aesh.io;
 
+import org.aesh.util.LoggerUtil;
+import org.aesh.util.Parser;
+
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.IntBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CoderResult;
+import java.util.Arrays;
 import java.util.function.Consumer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Had to revert back to reading char by char.
@@ -36,11 +42,14 @@ import java.util.function.Consumer;
 public class Decoder {
 
     private static final ByteBuffer EMPTY = ByteBuffer.allocate(0);
+    private static final Logger LOGGER = LoggerUtil.getLogger(Decoder.class);
 
     private CharsetDecoder decoder;
     private ByteBuffer bBuf;
     private final CharBuffer cBuf;
     private Consumer<int[]> onChar;
+
+    private int[] leftOverCodePoints;
 
     public Decoder(Charset charset, Consumer<int[]> onChar) {
         this(4, charset, onChar);
@@ -65,6 +74,14 @@ public class Decoder {
     }
 
     public void write(byte[] data, int start, int len) {
+
+        //if we have some leftovers, we use them first
+        if(leftOverCodePoints != null && leftOverCodePoints.length > 0 &&
+                onChar != null) {
+            onChar.accept(leftOverCodePoints);
+            LOGGER.info("we pushed: "+Parser.fromCodePoints(leftOverCodePoints)+" to: "+onChar);
+            leftOverCodePoints = null;
+        }
 
         // Fill the byte buffer
         int remaining = bBuf.remaining();
@@ -113,7 +130,12 @@ public class Decoder {
             iBuf.flip();
             int[] codePoints = new int[iBuf.limit()];
             iBuf.get(codePoints);
-            onChar.accept(codePoints);
+            if(onChar != null)
+                onChar.accept(codePoints);
+            else {
+                LOGGER.log(Level.WARNING, "InputHandler is set to null, will ignore input: " + Parser.fromCodePoints(codePoints));
+                leftOverCodePoints = Arrays.copyOf(codePoints, codePoints.length);
+            }
             cBuf.compact();
             if (result.isOverflow()) {
                 // We still have work to do
