@@ -26,7 +26,6 @@ import java.util.logging.ConsoleHandler;
 import java.util.logging.FileHandler;
 import java.util.logging.Handler;
 import java.util.logging.LogManager;
-import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
 import java.util.logging.StreamHandler;
@@ -42,19 +41,6 @@ public class LoggerUtil {
 
     private static Handler logHandler;
     private static boolean doLog = false;
-    private static final Handler dummyHandler = new Handler() {
-        @Override
-        public void publish(LogRecord record) {
-        }
-
-        @Override
-        public void flush() {
-        }
-
-        @Override
-        public void close() throws SecurityException {
-        }
-    };
 
     private static void createLogHandler(String log) {
         try {
@@ -94,9 +80,6 @@ public class LoggerUtil {
     public static synchronized Logger getLogger(String name) {
        if(!doLog) {
            Logger log = Logger.getLogger(name);
-           log.setUseParentHandlers(false);
-           log.addHandler(dummyHandler);
-
            return log;
         }
         else {

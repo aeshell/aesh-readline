@@ -42,7 +42,7 @@ import java.util.regex.Pattern;
 
 public class ExecPty implements Pty {
 
-    private static final Logger LOGGER = LoggerUtil.getLogger(CygwinPty.class.getName());
+    private static final Logger LOGGER = LoggerUtil.getLogger(ExecPty.class.getName());
 
     private final String name;
 
@@ -282,10 +282,10 @@ public class ExecPty implements Pty {
     private static String exec(final String... cmd) throws IOException {
         assert cmd != null && cmd[0].length() > 0;
         try {
-            LOGGER.log(Level.INFO, "Running: "+ Arrays.toString(cmd));
+            LOGGER.log(Level.FINE, "Running: "+ Arrays.toString(cmd));
             Process p = new ProcessBuilder(cmd).start();
             String result = ExecHelper.waitAndCapture(p);
-            LOGGER.log(Level.INFO, "Result: "+ result);
+            LOGGER.log(Level.FINE, "Result: "+ result);
             if (p.exitValue() != 0) {
                 throw new IOException("Error executing '" + String.join(" ", cmd) + "': " + result);
             }
