@@ -24,10 +24,10 @@ import org.aesh.terminal.impl.ExecPty;
 import org.aesh.terminal.impl.ExternalTerminal;
 import org.aesh.terminal.impl.PosixSysTerminal;
 import org.aesh.terminal.impl.Pty;
+import org.aesh.terminal.impl.WinExternalTerminal;
 import org.aesh.terminal.impl.WinSysTerminal;
 import org.aesh.terminal.utils.OSUtils;
 import org.aesh.util.LoggerUtil;
-import org.fusesource.jansi.AnsiOutputStream;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -122,22 +122,11 @@ public final class TerminalBuilder {
                     if(System.console() != null)
                         return new WinSysTerminal(name, nativeSignals);
                     else {
-                        ExternalTerminal term = new ExternalTerminal(name, type, System.in,
-                                new AnsiOutputStream(System.out), encoding);
-                        Attributes attributes = new Attributes();
-                        attributes.setInputFlag(Attributes.InputFlag.IGNCR, true);
-                        attributes.setInputFlag(Attributes.InputFlag.ICRNL, true);
-                        term.setAttributes(attributes);
-                        return term;
+                        return new WinExternalTerminal(name, type, System.in, System.out, encoding);
                     }
                 }
                 catch(IOException e) {
-                    ExternalTerminal term = new ExternalTerminal(name, type, System.in, System.out, encoding);
-                    Attributes attributes = new Attributes();
-                    attributes.setInputFlag(Attributes.InputFlag.IGNCR, true);
-                    attributes.setInputFlag(Attributes.InputFlag.ICRNL, true);
-                    term.setAttributes(attributes);
-                    return term;
+                    return new WinExternalTerminal(name, type, System.in, System.out, encoding);
                 }
             }
             else if(OSUtils.IS_HPUX) {
