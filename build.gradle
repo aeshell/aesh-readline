@@ -27,7 +27,7 @@ apply plugin: 'jacoco'
 
 group = 'org.aesh'
 archivesBaseName = 'aesh-readline'
-version = '1.0-SNAPSHOT'
+version = '1.0-CR1'
 
 ext.isReleaseVersion = !version.endsWith("SNAPSHOT")
 
