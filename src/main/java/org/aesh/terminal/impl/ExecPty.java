@@ -48,7 +48,7 @@ public class ExecPty implements Pty {
 
     public static Pty current() throws IOException {
         try {
-            LOGGER.info("getting pty: "+OSUtils.TTY_COMMAND);
+            LOGGER.log(Level.FINE,"getting pty: "+OSUtils.TTY_COMMAND);
             Process p = new ProcessBuilder(OSUtils.TTY_COMMAND)
                     .redirectInput(Redirect.INHERIT)
                     .start();
@@ -56,7 +56,7 @@ public class ExecPty implements Pty {
             if (p.exitValue() != 0) {
                 throw new IOException("Not a tty");
             }
-            LOGGER.info("result: "+result);
+            LOGGER.log(Level.FINE,"result: "+result);
             return new ExecPty(result);
         } catch (InterruptedException e) {
             throw (IOException) new InterruptedIOException("Command interrupted").initCause(e);

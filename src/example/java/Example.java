@@ -125,7 +125,6 @@ public class Example {
                 readInput(connection, readline, defaultPrompt);
             }
             else if(line.equals("sleep")) {
-                LOGGER.info("got sleep");
                 try {
                     connection.write("we're going to sleep for 5 seconds, you can interrupt me if you want.\n");
                     sleeperThread = Thread.currentThread();

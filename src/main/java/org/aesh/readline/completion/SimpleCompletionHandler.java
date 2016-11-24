@@ -25,14 +25,12 @@ import org.aesh.terminal.formatting.TerminalString;
 import org.aesh.util.Config;
 import org.aesh.util.Parser;
 import org.aesh.readline.InputProcessor;
-import org.aesh.util.LoggerUtil;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
-import java.util.logging.Logger;
 
 /**
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
@@ -43,8 +41,6 @@ public class SimpleCompletionHandler implements CompletionHandler<CompleteOperat
     private int displayCompletionSize = 100;
     private final List<Completion> completionList;
     private Function<Buffer, CompleteOperation> aliasHandler;
-
-    private static final Logger LOGGER = LoggerUtil.getLogger(SimpleCompletionHandler.class.getName());
 
     public SimpleCompletionHandler() {
         completionList = new ArrayList<>();
@@ -129,7 +125,7 @@ public class SimpleCompletionHandler implements CompletionHandler<CompleteOperat
                 possibleCompletions.add(co);
         }
 
-        LOGGER.info("Found completions: "+possibleCompletions);
+        //LOGGER.info("Found completions: "+possibleCompletions);
 
         if(possibleCompletions.size() == 0) {
             //do nothing
@@ -152,7 +148,6 @@ public class SimpleCompletionHandler implements CompletionHandler<CompleteOperat
             if(!possibleCompletions.get(0).isIgnoreStartsWith())
                 startsWith = Parser.findStartsWithOperation(possibleCompletions);
 
-            LOGGER.info("startsWith="+startsWith);
             if(startsWith.length() > 0 ) {
                 if(startsWith.contains(" ") && !possibleCompletions.get(0).doIgnoreNonEscapedSpace())
                     displayCompletion(new TerminalString(Parser.switchSpacesToEscapedSpacesInWord(startsWith), true),
@@ -197,7 +192,6 @@ public class SimpleCompletionHandler implements CompletionHandler<CompleteOperat
      */
     private void displayCompletion(TerminalString completion, Buffer buffer, InputProcessor inputProcessor,
                                    boolean appendSpace, char separator) {
-        LOGGER.info("completion: "+completion.getCharacters()+" and buffer: "+buffer.asString());
         if(completion.getCharacters().startsWith(buffer.asString())) {
             ActionMapper.mapToAction("backward-kill-word").accept(inputProcessor);
             inputProcessor.getBuffer().writeString(completion.toString());

@@ -102,10 +102,8 @@ public class AliasManager {
 
                 if(keepGoing) {
                     FileWriter fw = new FileWriter(aliasFile);
-                    LOGGER.info("created fileWriter");
                     Collections.sort(aliases); // not very efficient, but it'll do for now...
                     for(Alias a : aliases) {
-                        LOGGER.info("writing to file: " + ALIAS_SPACE + a.toString());
                         fw.write(ALIAS_SPACE + a.toString() + Config.getLineSeparator());
                     }
                     fw.flush();
@@ -174,7 +172,6 @@ public class AliasManager {
     }
 
     public String removeAlias(String buffer) {
-        LOGGER.info("removing alias: "+buffer);
         if(buffer.trim().equals(UNALIAS))
             return unaliasUsage();
         if (unaliasHelpPattern.matcher(buffer).matches())
@@ -182,10 +179,8 @@ public class AliasManager {
 
         buffer = buffer.substring(UNALIAS.length()).trim();
 
-        LOGGER.info("buffer: "+buffer);
         for(String s : buffer.split(" ")) {
             if(s != null) {
-                LOGGER.info("trying to get alias: "+s.trim());
                 Optional<Alias> a = getAlias(s.trim());
                 if(a.isPresent()) {
                     aliases.remove(a.get());

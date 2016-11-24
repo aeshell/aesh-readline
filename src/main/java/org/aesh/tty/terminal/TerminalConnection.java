@@ -87,7 +87,7 @@ public class TerminalConnection implements Connection {
                 getSignalHandler().accept(s);
             }
             else {
-                LOGGER.info("No signal handler is registered, lets stop");
+                LOGGER.log(Level.FINE, "No signal handler is registered, lets stop");
                 close();
             }
         });
@@ -236,7 +236,6 @@ public class TerminalConnection implements Connection {
 
     @Override
     public void setStdinHandler(Consumer<int[]> handler) {
-        LOGGER.info("registrering a new inputhandler: "+handler);
         inputHandler = handler;
         decoder.setConsumer(inputHandler);
     }

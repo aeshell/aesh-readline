@@ -22,10 +22,8 @@ package org.aesh.readline.action.mappings;
 import org.aesh.readline.InputProcessor;
 import org.aesh.readline.editing.EditMode;
 import org.aesh.util.Parser;
-import org.aesh.util.LoggerUtil;
 
 import java.util.Arrays;
-import java.util.logging.Logger;
 
 /**
  * @author <a href=mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
@@ -34,8 +32,6 @@ abstract class ChangeAction extends MovementAction {
 
     private EditMode.Status status;
     protected boolean viMode;
-
-    private static final Logger LOGGER = LoggerUtil.getLogger(ChangeAction.class.getName());
 
     ChangeAction(EditMode.Status  status) {
         this.status = status;
@@ -56,7 +52,6 @@ abstract class ChangeAction extends MovementAction {
     }
 
     protected final void apply(int cursor, int oldCursor, InputProcessor inputProcessor) {
-        LOGGER.info("applying "+status+" delta: "+cursor+", current pos: "+oldCursor);
         if(status == EditMode.Status.DELETE || status == EditMode.Status.CHANGE) {
             inputProcessor.getBuffer().addActionToUndoStack();
             if(cursor < oldCursor) {
@@ -64,9 +59,7 @@ abstract class ChangeAction extends MovementAction {
                 inputProcessor.getBuffer().getPasteManager().addText(
                         Arrays.copyOfRange(inputProcessor.getBuffer().getBuffer().getMultiLine(), cursor, oldCursor));
                 //delete buffer
-                LOGGER.info("buffer before delete: "+inputProcessor.getBuffer().getBuffer().asString());
                 inputProcessor.getBuffer().delete(cursor - oldCursor);
-                LOGGER.info("buffer after delete: "+inputProcessor.getBuffer().getBuffer().asString());
             }
             else {
                 //add to pastemanager

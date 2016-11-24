@@ -25,14 +25,12 @@ import org.aesh.readline.action.mappings.ActionMapper;
 import org.aesh.terminal.Key;
 import org.aesh.readline.action.Action;
 import org.aesh.readline.action.ActionEvent;
-import org.aesh.util.LoggerUtil;
 
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Logger;
 
 /**
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
@@ -48,8 +46,6 @@ public class Vi implements EditMode {
     private Map<KeyAction,ActionStatus> keyEventActions;
     private Map<Key, ActionStatusGroup> actionGroups;
     private Map<Variable,String> variables;
-
-    private static final Logger LOGGER = LoggerUtil.getLogger(Vi.class.getName());
 
     Vi() {
         actions = new EnumMap<>(Key.class);
@@ -166,13 +162,10 @@ public class Vi implements EditMode {
     }
 
     private Action getAction(KeyAction event) {
-        LOGGER.info("got event:"+event);
         ActionStatus newStatus = getActionStatus(event);
-        LOGGER.info("ActionStatus: "+newStatus);
         if(newStatus == null)
             return null;
         else {
-            LOGGER.info("current status: "+status);
             if(newStatus.getCurrentStatus() == status) {
                 if(newStatus.getAction() instanceof ActionEvent) {
                     currentAction = (ActionEvent) newStatus.getAction();
@@ -189,9 +182,7 @@ public class Vi implements EditMode {
                             previousAction = newStatus.getAction();
                         status = newStatus.nextStatus;
                     }
-                    LOGGER.info("new status is: "+status);
                 }
-                LOGGER.info("returning action: "+newStatus.getAction());
                 return newStatus.getAction();
             }
             else

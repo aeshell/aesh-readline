@@ -79,7 +79,6 @@ public class Decoder {
         if(leftOverCodePoints != null && leftOverCodePoints.length > 0 &&
                 onChar != null) {
             onChar.accept(leftOverCodePoints);
-            LOGGER.info("we pushed: "+Parser.fromCodePoints(leftOverCodePoints)+" to: "+onChar);
             leftOverCodePoints = null;
         }
 

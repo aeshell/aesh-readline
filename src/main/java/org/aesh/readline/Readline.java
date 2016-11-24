@@ -197,7 +197,6 @@ public class Readline {
             }
 
             Action action = editMode.parse(event);
-            //LOGGER.info("Found action: "+action);
             if (action != null) {
                 synchronized (Readline.this) {
                     paused = true;
