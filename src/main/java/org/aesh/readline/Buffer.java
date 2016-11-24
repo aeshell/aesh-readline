@@ -19,6 +19,7 @@
  */
 package org.aesh.readline;
 
+import org.aesh.util.Config;
 import org.aesh.util.IntArrayBuilder;
 import org.aesh.util.ANSI;
 import org.aesh.util.LoggerUtil;
@@ -507,7 +508,7 @@ public class Buffer {
         //make sure we sync the cursor back
         if(!deltaChangedAtEndOfBuffer) {
             LOGGER.info("size: "+size+", promptLength: "+promptLength()+", width: "+width+", cursor+promptL: "+(cursor+promptLength()));
-            if((size + promptLength()) % width == 0)
+            if((size + promptLength()) % width == 0 && Config.isOSPOSIXCompatible())
                 builder.append(syncCursor(size+promptLength()-1, cursor+promptLength()-1, width));
             else
                 builder.append(syncCursor(size+promptLength(), cursor+promptLength(), width));
@@ -681,7 +682,7 @@ public class Buffer {
             LOGGER.info("syncing cursor...");
             //builder.append(syncCursor(size+promptLength(), cursor+promptLength(), width));
             LOGGER.info("size: "+size+", promptLength: "+promptLength()+", width: "+width+", cursor+promptL: "+(cursor+promptLength()));
-            if((size + promptLength()) % width == 0)
+            if((size + promptLength()) % width == 0 && Config.isOSPOSIXCompatible())
                 builder.append(syncCursor(size+promptLength()-1, cursor+promptLength()-1, width));
             else
                 builder.append(syncCursor(size+promptLength(), cursor+promptLength(), width));
