@@ -27,6 +27,7 @@ import org.aesh.terminal.impl.Pty;
 import org.aesh.terminal.impl.WinSysTerminal;
 import org.aesh.terminal.utils.OSUtils;
 import org.aesh.util.LoggerUtil;
+import org.fusesource.jansi.AnsiOutputStream;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -117,7 +118,18 @@ public final class TerminalBuilder {
             }
             else if (OSUtils.IS_WINDOWS) {
                 try {
-                    return new WinSysTerminal(name, nativeSignals);
+                    //if console != null its a native terminal, not redirects etc
+                    if(System.console() != null)
+                        return new WinSysTerminal(name, nativeSignals);
+                    else {
+                        ExternalTerminal term = new ExternalTerminal(name, type, System.in,
+                                new AnsiOutputStream(System.out), encoding);
+                        Attributes attributes = new Attributes();
+                        attributes.setInputFlag(Attributes.InputFlag.IGNCR, true);
+                        attributes.setInputFlag(Attributes.InputFlag.ICRNL, true);
+                        term.setAttributes(attributes);
+                        return term;
+                    }
                 }
                 catch(IOException e) {
                     ExternalTerminal term = new ExternalTerminal(name, type, System.in, System.out, encoding);
