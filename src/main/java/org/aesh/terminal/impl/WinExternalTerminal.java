@@ -20,7 +20,6 @@
 package org.aesh.terminal.impl;
 
 import org.aesh.terminal.Attributes;
-import org.fusesource.jansi.AnsiOutputStream;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -32,7 +31,7 @@ import java.io.OutputStream;
 public class WinExternalTerminal extends ExternalTerminal {
 
     public WinExternalTerminal(String name, String type, InputStream masterInput, OutputStream masterOutput, String encoding) throws IOException {
-        super(name, type, masterInput, new AnsiOutputStream(masterOutput), encoding);
+        super(name, type, masterInput, masterOutput, encoding);
         Attributes attributes = new Attributes();
         attributes.setInputFlag(Attributes.InputFlag.IGNCR, true);
         attributes.setInputFlag(Attributes.InputFlag.ICRNL, true);
