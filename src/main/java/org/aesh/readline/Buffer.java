@@ -534,7 +534,7 @@ public class Buffer {
 
     public void replace(Consumer<int[]> out, int[] line, int width) {
         //quick exit
-        if(size == 0 && line.length == 0)
+        if(line == null || size == 0 && line.length == 0)
             return;
 
         int tmpDelta = line.length - size;
