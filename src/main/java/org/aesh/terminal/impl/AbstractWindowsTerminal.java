@@ -301,10 +301,12 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
                     raise(Signal.INFO);
                 }
             }
-            else if (c == '\r') {
+            if (c == '\r') {
                 if (attributes.getInputFlag(Attributes.InputFlag.ICRNL)) {
                     slaveInputPipe.write('\n');
                 }
+                else
+                    slaveInputPipe.write(c);
             }
             else if (c == '\n' && attributes.getInputFlag(Attributes.InputFlag.INLCR)) {
                 slaveInputPipe.write('\r');
