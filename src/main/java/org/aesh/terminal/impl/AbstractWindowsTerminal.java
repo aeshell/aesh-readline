@@ -275,10 +275,7 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
     protected void pump() {
         try {
             while (!closing) {
-                byte[] buf = readConsoleInput();
-                for (byte b : buf) {
-                    processInputByte(b);
-                }
+                processInputByte(readConsoleInput());
             }
         } catch (IOException e) {
             if (!closing) {
@@ -287,33 +284,35 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
         }
     }
 
-    public void processInputByte(int c) throws IOException {
-        if (attributes.getLocalFlag(Attributes.LocalFlag.ISIG)) {
-            if (c == attributes.getControlChar(Attributes.ControlChar.VINTR)) {
-                raise(Signal.INT);
-                return;
-            } else if (c == attributes.getControlChar(Attributes.ControlChar.VQUIT)) {
-                raise(Signal.QUIT);
-                return;
-            } else if (c == attributes.getControlChar(Attributes.ControlChar.VSUSP)) {
-                raise(Signal.TSTP);
-                return;
-            } else if (c == attributes.getControlChar(Attributes.ControlChar.VSTATUS)) {
-                raise(Signal.INFO);
+    private void processInputByte(byte[] buf) throws IOException {
+        for(byte b : buf) {
+            int c = b;
+            if (attributes.getLocalFlag(Attributes.LocalFlag.ISIG)) {
+                if (c == attributes.getControlChar(Attributes.ControlChar.VINTR)) {
+                    raise(Signal.INT);
+                }
+                else if (c == attributes.getControlChar(Attributes.ControlChar.VQUIT)) {
+                    raise(Signal.QUIT);
+                }
+                else if (c == attributes.getControlChar(Attributes.ControlChar.VSUSP)) {
+                    raise(Signal.TSTP);
+                }
+                else if (c == attributes.getControlChar(Attributes.ControlChar.VSTATUS)) {
+                    raise(Signal.INFO);
+                }
+            }
+            else if (c == '\r') {
+                if (attributes.getInputFlag(Attributes.InputFlag.ICRNL)) {
+                    slaveInputPipe.write('\n');
+                }
+            }
+            else if (c == '\n' && attributes.getInputFlag(Attributes.InputFlag.INLCR)) {
+                slaveInputPipe.write('\r');
+            }
+            else {
+                slaveInputPipe.write(c);
             }
         }
-        if (c == '\r') {
-            if (attributes.getInputFlag(Attributes.InputFlag.IGNCR)) {
-                return;
-            }
-            if (attributes.getInputFlag(Attributes.InputFlag.ICRNL)) {
-                c = '\n';
-            }
-        } else if (c == '\n' && attributes.getInputFlag(Attributes.InputFlag.INLCR)) {
-            c = '\r';
-        }
-
-        slaveInputPipe.write(c);
         slaveInputPipe.flush();
     }
 }
