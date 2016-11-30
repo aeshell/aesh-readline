@@ -85,7 +85,8 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
         // Handle signals
         if (nativeSignals) {
             for (final Signal signal : Signal.values()) {
-                nativeHandlers.put(signal, Signals.register(signal.name(), () -> raise(signal)));
+                nativeHandlers.put(signal,
+                        Signals.register(signal.name(), () -> raise(signal)));
             }
         }
         pump = new Thread(this::pump, "WindowsStreamPump");

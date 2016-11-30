@@ -43,8 +43,7 @@ public final class ShutdownHooks {
 
         // Install the hook thread if needed
         if (hook == null) {
-            hook = addHook(new Thread("Aesh Shutdown Hook")
-            {
+            hook = addHook(new Thread("Aesh Shutdown Hook") {
                 @Override
                 public void run() {
                     runTasks();

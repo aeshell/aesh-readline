@@ -111,7 +111,7 @@ public class TerminalConnection implements Connection {
             inputThread.setDaemon(true);
             return inputThread;
         });
-        executorService.execute(() -> openBlocking());
+        executorService.execute(this::openBlocking);
     }
 
     @Override
