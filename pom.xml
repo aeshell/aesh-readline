@@ -33,7 +33,7 @@
    <groupId>org.aesh</groupId>
    <artifactId>aesh-readline</artifactId>
    <packaging>jar</packaging>
-   <version>1.0-CR3-SNAPSHOT</version>
+   <version>1.0-CR4-SNAPSHOT</version>
    <name>Æsh Readline</name>
    <description>Æsh (Another Extendable SHell) Readline API</description>
    <scm>
