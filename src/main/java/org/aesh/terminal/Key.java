@@ -202,7 +202,7 @@ public enum Key implements KeyAction {
 
     META_CTRL_J( new int[]{ESC.getFirstValue(),10}),
     META_CTRL_D(new int[]{ESC.getFirstValue(),4}),
-    CTRL_X_CTRL_U(new int[]{ESC.getFirstValue(),21}),
+    CTRL_X_CTRL_U(new int[]{CTRL_X.getFirstValue(),CTRL_U.getFirstValue()}),
 
     CTRL_LEFT(new int[] {ESC.getFirstValue(),91,49,59,53,68}),
     CTRL_RIGHT(new int[] {ESC.getFirstValue(),91,49,59,53,67}),

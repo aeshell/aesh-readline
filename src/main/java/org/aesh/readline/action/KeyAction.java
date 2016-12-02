@@ -21,6 +21,10 @@ package org.aesh.readline.action;
 
 import java.nio.IntBuffer;
 
+/**
+ * Represents a key value.
+ *
+ */
 public interface KeyAction {
 
   default IntBuffer buffer() {
@@ -38,4 +42,16 @@ public interface KeyAction {
   int length();
 
   String name();
+
+  default boolean bufferEquals(KeyAction otherAction) {
+      if(length() == otherAction.length()) {
+          for(int i=0; i<length(); i++)
+              if(getCodePointAt(i) != otherAction.getCodePointAt(i))
+                  return false;
+
+          return true;
+      }
+      return false;
+  }
+
 }

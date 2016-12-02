@@ -46,6 +46,7 @@ public class Emacs implements EditMode {
     protected int eofCounter;
     //default value
     private int ignoreEof = 0;
+    private boolean ctrlX;
 
     Emacs() {
         actions = new EnumMap<>(Key.class);
@@ -88,6 +89,41 @@ public class Emacs implements EditMode {
                     return keyEventActions.get(key);
             }
         }
+        //if we have ctrlX from the previous input
+        if(ctrlX) {
+            if (event.length() == 1) {
+                ctrlX = false;
+                KeyAction customCtrlX = new KeyAction() {
+                    @Override
+                    public int getCodePointAt(int index) throws IndexOutOfBoundsException {
+                        if (index == 0)
+                            return Key.CTRL_X.getFirstValue();
+                        else
+                            return event.getCodePointAt(0);
+                    }
+
+                    @Override
+                    public int length() {
+                        return 2;
+                    }
+
+                    @Override
+                    public String name() {
+                        return "Ctrl-x+" + event.name();
+                    }
+                };
+                return parseKeyEventActions(customCtrlX);
+            }
+            else {
+                ctrlX = false;
+                return null;
+            }
+        }
+
+        if(event.getCodePointAt(0) == Key.CTRL_X.getFirstValue()) {
+            ctrlX = true;
+        }
+
         return null;
     }
 
