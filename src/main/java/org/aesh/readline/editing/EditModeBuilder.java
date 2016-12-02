@@ -177,6 +177,9 @@ public class EditModeBuilder {
         emacs.addAction(Key.CTRL_RIGHT, "forward-word"); //ctrl-right
         emacs.addAction(Key.PGUP, "no-action"); //page-up
         emacs.addAction(Key.PGDOWN, "no-action"); //page-down
+        emacs.addAction(Key.HOME, "beginning-of-line"); //home
+        emacs.addAction(Key.END, "end-of-line"); //end
+        emacs.addAction(Key.INSERT, "no-action"); //insert
 
         return emacs;
     }
