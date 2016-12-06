@@ -22,11 +22,13 @@ package org.aesh.readline;
 import org.aesh.util.Config;
 import org.aesh.util.IntArrayBuilder;
 import org.aesh.util.ANSI;
+import org.aesh.util.LoggerUtil;
 import org.aesh.util.Parser;
 import org.aesh.util.WcWidth;
 
 import java.util.Arrays;
 import java.util.function.Consumer;
+import java.util.logging.Logger;
 
 /**
  * Buffer to keep track of text and cursor position in the console.
@@ -35,6 +37,8 @@ import java.util.function.Consumer;
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
  */
 public class Buffer {
+
+    private static final Logger LOGGER = LoggerUtil.getLogger(Buffer.class.getName());
 
     private int[] line;
     private int cursor;
@@ -251,6 +255,8 @@ public class Buffer {
      * @param viMode edit mode (vi or emacs)
      */
     public void move(Consumer<int[]> out, int move, int termWidth, boolean viMode) {
+        LOGGER.fine("moving: "+move+", width: "+termWidth+", buffer: "
+                +Arrays.toString(getLine()));
         move = calculateActualMovement(move, viMode);
         //quick exit
         if(move == 0)
@@ -275,7 +281,9 @@ public class Buffer {
         IntArrayBuilder builder = new IntArrayBuilder();
         if(newPos < 1)
             newPos = 1;
+        LOGGER.fine("currentPos: "+currentPos+", newPos: "+newPos+", width: "+width+", delta: "+delta);
         if(currentPos / width == newPos / width) {
+            LOGGER.fine("cursor and end of buffer is at the same line");
             if(currentPos > newPos)
                 builder.append(moveNumberOfColumns(currentPos-newPos, 'D'));
             else
@@ -286,12 +294,15 @@ public class Buffer {
             int moveToLine = currentPos / width - newPos / width;
             int moveToColumn = currentPos % width - newPos % width;
             char rowDirection = 'A';
+            LOGGER.fine("currentPos: "+currentPos+", newPos: "+newPos+", moveToLine: "+moveToLine+
+                    ", moveToColumn: "+moveToColumn);
             if(moveToLine < 0) {
                 rowDirection = 'B';
                 moveToLine = Math.abs(moveToLine);
             }
             builder.append(  moveNumberOfColumnsAndRows(  moveToLine, rowDirection, moveToColumn));
         }
+        LOGGER.fine("out from syncCursor: "+Arrays.toString(builder.toArray()));
         return builder.toArray();
     }
 
@@ -491,8 +502,11 @@ public class Buffer {
         }
         //make sure we sync the cursor back
         if(!deltaChangedAtEndOfBuffer) {
-            if((size + promptLength()) % width == 0 && Config.isOSPOSIXCompatible())
-                builder.append(syncCursor(size+promptLength()-1, cursor+promptLength()-1, width));
+            LOGGER.fine("size: "+size+", promptLength: "+promptLength()+", width: "+width+", cursor+promptL: "+(cursor+promptLength()));
+            if((size + promptLength()) % width == 0 && Config.isOSPOSIXCompatible()) {
+                LOGGER.fine("calling syncCursor with -1");
+                builder.append(syncCursor(size + promptLength() - 1, cursor + promptLength()-1, width));
+            }
             else
                 builder.append(syncCursor(size+promptLength(), cursor+promptLength(), width));
         }
@@ -504,7 +518,12 @@ public class Buffer {
 
     private void printDeletedData(Consumer<int[]> out, int width, boolean viMode) {
         IntArrayBuilder builder = new IntArrayBuilder();
-        if(size+promptLength()+Math.abs(delta) >= width) {
+        LOGGER.fine("cursor: "+cursor+", prompt.length: "+promptLength()+
+                ", width: "+width+", size: "+size+", delta: "+delta+
+                ", deltaChangedAtEndOfBuffer: "+deltaChangedAtEndOfBuffer+
+                ", viMode: "+viMode+
+                ", deletingBackwards: "+deletingBackward);
+         if(size+promptLength()+Math.abs(delta) >= width) {
             if(deletingBackward)
             clearAllLinesAndReturnToFirstLine(builder,
                     width, cursor + promptLength() + Math.abs(delta),
@@ -515,6 +534,7 @@ public class Buffer {
                         size + promptLength() + Math.abs(delta));
         }
 
+        LOGGER.fine("builder after clearAllExtraLines: "+Arrays.toString(builder.toArray()));
 
         moveCursorToStartAndPrint(out, builder, width, false, viMode);
     }
@@ -533,6 +553,8 @@ public class Buffer {
     }
 
     public void replace(Consumer<int[]> out, int[] line, int width) {
+        LOGGER.fine("replacing "+Parser.fromCodePoints(getLine())+", with: "+
+                Parser.fromCodePoints(line)+", delta="+(line.length-size));
         //quick exit
         if(line == null || size == 0 && line.length == 0)
             return;
@@ -564,14 +586,19 @@ public class Buffer {
      */
     private void clearAllLinesAndReturnToFirstLine(IntArrayBuilder builder, int width,
                                                    int oldCursor, int oldSize) {
+        LOGGER.fine("oldSize: "+oldSize+", oldCursor: "+oldCursor);
         if(oldSize >= width) {
             int cursorRow = oldCursor / width;
             int totalRows = oldSize / width;
 
             if((oldSize) % width == 0 && oldSize == oldCursor) {
+                LOGGER.fine("size and cursor is on the edge...");
                 cursorRow = (oldCursor-1) / width;
                 builder.append(ANSI.MOVE_LINE_UP);
             }
+
+            LOGGER.fine("cursorRow: "+cursorRow+", totalRows: "+totalRows+", oldCursor: "
+                    +oldCursor+", oldSize: "+oldSize+", width: "+width);
 
             //if total row > cursor row it means that the cursor is not at the last line of the row
             //then we need to move down number of rows first
@@ -617,11 +644,13 @@ public class Buffer {
             }
             //TODO: could optimize this i think if delta > 0 it should not be needed
             builder.append(ANSI.ERASE_LINE_FROM_CURSOR);
+            LOGGER.fine("builder after clear: "+ Arrays.toString(builder.toArray()));
         }
 
         if(promptLength() > 0)
             builder.append(prompt.getANSI());
 
+        LOGGER.fine("builder after prompt: "+ Arrays.toString(builder.toArray()));
         //dont print out the line if its empty
         if(size > 0) {
             if(isMasking()) {
@@ -637,13 +666,19 @@ public class Buffer {
                 builder.append(getLine());
         }
 
+        LOGGER.fine("builder after line: "+ Arrays.toString(builder.toArray()));
         //pad if we are at the end of the terminal
+        LOGGER.fine("delta: "+delta+", cursor: "+cursor+", size: "+size+", promptLength: "+promptLength());
         if((size + promptLength()) % width == 0 && cursor == size) {
             builder.append(new int[]{32, 13});
         }
+        LOGGER.fine("builder after line edge: "+ Arrays.toString(builder.toArray()));
 
         //make sure we sync the cursor back
         if(!deltaChangedAtEndOfBuffer) {
+            LOGGER.fine("syncing cursor...");
+            //builder.append(syncCursor(size+promptLength(), cursor+promptLength(), width));
+            LOGGER.fine("size: "+size+", promptLength: "+promptLength()+", width: "+width+", cursor+promptL: "+(cursor+promptLength()));
             if((size + promptLength()) % width == 0 && Config.isOSPOSIXCompatible())
                 builder.append(syncCursor(size+promptLength()-1, cursor+promptLength()-1, width));
             else
@@ -651,9 +686,12 @@ public class Buffer {
          }
         //end of buffer and vi mode
         else if(viMode && cursor == size) {
+            LOGGER.fine("MOVING BACK BECAUSE OF VI MODE");
             builder.append(moveNumberOfColumns(1, 'D'));
             cursor--;
         }
+
+        LOGGER.fine("printing: "+Arrays.toString(builder.toArray()));
 
         out.accept(builder.toArray());
         isPromptDisplayed = true;
@@ -682,6 +720,7 @@ public class Buffer {
     public void delete(Consumer<int[]> out, int delta, int width, boolean viMode) {
         if (delta > 0) {
             delta = Math.min(delta, size - cursor);
+            LOGGER.fine("deleting, delta: "+delta+", cursor: "+cursor+", size: "+size);
             System.arraycopy(line, cursor + delta, line, cursor, size - cursor + delta);
             size -= delta;
             this.delta =- delta;
@@ -689,6 +728,7 @@ public class Buffer {
         }
         else if (delta < 0) {
             delta = - Math.min(- delta, cursor);
+            LOGGER.fine("deleting, delta: "+delta+", cursor: "+cursor+", size: "+size);
             System.arraycopy(line, cursor, line, cursor + delta, size - cursor);
             size += delta;
             cursor += delta;
