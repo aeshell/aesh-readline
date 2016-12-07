@@ -162,7 +162,7 @@ public abstract class AbstractTerminal implements Terminal {
         return strings.get(capability);
     }
 
-    protected void parseInfoCmp() {
+    void parseInfoCmp() {
         String capabilities = null;
         if (type != null) {
             try {
@@ -172,7 +172,7 @@ public abstract class AbstractTerminal implements Terminal {
             }
         }
         if (capabilities == null) {
-            capabilities = InfoCmp.ANSI_CAPS;
+            capabilities = InfoCmp.getDefaultInfoCmp("ansi");
         }
         InfoCmp.parseInfoCmp(capabilities, bools, ints, strings);
     }
