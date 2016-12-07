@@ -306,6 +306,46 @@ public class Buffer {
         return builder.toArray();
     }
 
+    /**
+     * This is a special case when we have a insert and the buffer is at the
+     * terminal edge.
+     * Move cursor to the correct line if its not on the same line.
+     * Move cursor to the beginning of the line, then move it to its correct position
+     *
+     * @param currentPos current position
+     * @param newPos end position
+     * @param width terminal width
+     * @return out buffer
+     */
+    private int[] syncCursorWhenBufferIsAtTerminalEdge(int currentPos, int newPos, int width) {
+        IntArrayBuilder builder = new IntArrayBuilder();
+
+        LOGGER.fine("currentPos: "+currentPos+", newPos: "+newPos+", width: "+width+", delta: "+delta);
+         if((currentPos-1) / width == newPos / width) {
+            LOGGER.fine("cursor and end of buffer is at the same line");
+             builder.append(moveNumberOfColumns(width, 'D'));
+        }
+        else {
+             //if cursor and end of buffer is on different lines, we need to move the cursor
+             int moveToLine = (currentPos - 1) / width - newPos / width;
+             int moveToColumn = -currentPos;
+             char rowDirection = 'A';
+             LOGGER.fine("currentPos: " + currentPos + ", newPos: " + newPos + ", moveToLine: " + moveToLine +
+                     ", moveToColumn: " + moveToColumn);
+             if (moveToLine < 0) {
+                 rowDirection = 'B';
+                 moveToLine = Math.abs(moveToLine);
+             }
+
+             builder.append(moveNumberOfColumnsAndRows(moveToLine, rowDirection, width));
+         }
+         //now the cursor should be on the correct line and at position 0
+        // we then need to move it to newPos
+        builder.append(moveNumberOfColumns(newPos % width, 'C'));
+        LOGGER.fine("out from syncCursorWhenBufferIsAtEnd: "+Arrays.toString(builder.toArray()));
+        return builder.toArray();
+    }
+
     private int[] moveNumberOfColumns(int column, char direction) {
         if(column < 10) {
             int[] out = new int[4];
@@ -504,13 +544,13 @@ public class Buffer {
         if(!deltaChangedAtEndOfBuffer) {
             LOGGER.fine("size: "+size+", promptLength: "+promptLength()+", width: "+width+", cursor+promptL: "+(cursor+promptLength()));
             if((size + promptLength()) % width == 0 && Config.isOSPOSIXCompatible()) {
-                LOGGER.fine("calling syncCursor with -1");
-                builder.append(syncCursor(size + promptLength() - 1, cursor + promptLength()-1, width));
+                builder.append(syncCursorWhenBufferIsAtTerminalEdge(size + promptLength(), cursor + promptLength(), width));
             }
             else
                 builder.append(syncCursor(size+promptLength(), cursor+promptLength(), width));
         }
 
+        LOGGER.fine("out from insert: "+Arrays.toString(builder.toArray()));
         out.accept(builder.toArray());
         delta = 0;
         deltaChangedAtEndOfBuffer = true;
