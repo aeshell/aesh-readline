@@ -113,21 +113,17 @@ public final class TerminalBuilder {
                 if (type == null) {
                     type = System.getenv("TERM");
                 }
-                Pty pty = CygwinPty.current();
-                return new PosixSysTerminal(name, type, pty, encoding, nativeSignals);
+                try {
+                    Pty pty = CygwinPty.current();
+                    return new PosixSysTerminal(name, type, pty, encoding, nativeSignals);
+                }
+                catch(IOException ioe) {
+                    //we might have a windows terminal created from cygwin..
+                    return createWindowsTerminal(name, encoding);
+                }
             }
             else if (OSUtils.IS_WINDOWS) {
-                try {
-                    //if console != null its a native terminal, not redirects etc
-                    if(System.console() != null)
-                        return new WinSysTerminal(name, nativeSignals);
-                    else {
-                        return new WinExternalTerminal(name, type, System.in, System.out, encoding);
-                    }
-                }
-                catch(IOException e) {
-                    return new WinExternalTerminal(name, type, System.in, System.out, encoding);
-                }
+                return createWindowsTerminal(name, encoding);
             }
             else if(OSUtils.IS_HPUX) {
                 //TODO: need to parse differently than "normal" PosixSysTerminals...
@@ -156,6 +152,20 @@ public final class TerminalBuilder {
         else {
             return new ExternalTerminal(name, type, (in == null) ? System.in : in,
                     (out == null) ? System.out : out, encoding);
+        }
+    }
+
+    private Terminal createWindowsTerminal(String name, String encoding) throws IOException {
+        try {
+            //if console != null its a native terminal, not redirects etc
+            if(System.console() != null)
+                return new WinSysTerminal(name, nativeSignals);
+            else {
+                return new WinExternalTerminal(name, type, System.in, System.out, encoding);
+            }
+        }
+        catch(IOException e) {
+            return new WinExternalTerminal(name, type, System.in, System.out, encoding);
         }
     }
 }
