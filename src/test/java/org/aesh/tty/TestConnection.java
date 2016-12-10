@@ -27,7 +27,9 @@ import org.aesh.readline.editing.EditModeBuilder;
 import org.aesh.terminal.Key;
 import org.aesh.util.Parser;
 
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Queue;
 import java.util.function.Consumer;
 
 import static org.junit.Assert.assertEquals;
@@ -44,7 +46,7 @@ public class TestConnection implements Connection {
     private Consumer<Void> closeHandler;
 
     private StringBuilder bufferBuilder;
-    private String out;
+    private Queue<String> out;
     private TestReadline readline;
     private Size size;
 
@@ -75,9 +77,8 @@ public class TestConnection implements Connection {
         if(editMode == null)
             editMode = EditModeBuilder.builder().create();
         bufferBuilder = new StringBuilder();
-        stdOutHandler = ints -> {
-           bufferBuilder.append(Parser.stripAwayAnsiCodes(Parser.fromCodePoints(ints)));
-        };
+        stdOutHandler = ints ->
+                bufferBuilder.append(Parser.stripAwayAnsiCodes(Parser.fromCodePoints(ints)));
 
         if(size == null)
             this.size = new Size(80, 20);
@@ -87,6 +88,7 @@ public class TestConnection implements Connection {
         if(prompt != null)
             this.prompt = prompt;
 
+        out = new LinkedList<>();
         readline = new TestReadline(editMode);
         if(completions != null)
             readline(completions);
@@ -96,12 +98,22 @@ public class TestConnection implements Connection {
 
     public void readline() {
         clearOutputBuffer();
-        readline.readline(this, prompt, out -> { this.out = out; } );
+        readline.readline(this, prompt, out -> this.out.add(out));
+    }
+
+    public void readline(Consumer<String> out) {
+        clearOutputBuffer();
+        readline.readline(this, prompt, out);
     }
 
     public void readline(List<Completion> completions) {
         clearOutputBuffer();
-        readline.readline(this, prompt, out -> { this.out = out; }, completions );
+        readline.readline(this, prompt, out -> this.out.add(out), completions );
+    }
+
+    public void readline(List<Completion> completions, Consumer<String> out) {
+        clearOutputBuffer();
+        readline.readline(this, prompt, out, completions );
     }
 
     public void clearOutputBuffer() {
@@ -123,7 +135,7 @@ public class TestConnection implements Connection {
     }
 
     public String getLine() {
-        return out;
+        return out.poll();
     }
 
     @Override
@@ -221,7 +233,7 @@ public class TestConnection implements Connection {
     }
 
     public void assertLine(String expected) {
-        assertEquals(expected, out);
+        assertEquals(expected, out.poll());
     }
 
     public void read(int... data) {
