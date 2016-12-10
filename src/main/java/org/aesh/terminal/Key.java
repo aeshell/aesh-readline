@@ -245,14 +245,19 @@ public enum Key implements KeyAction {
         return isPrintable(getKeyValues());
     }
 
-    public static boolean isPrintable(int[] keyValues) {
+    public static boolean isPrintable(int value) {
         if(Config.isOSPOSIXCompatible())
-            return (keyValues.length == 1 && ((keyValues[0] > 31 && keyValues[0] < 127) || keyValues[0] > 127));
+            return (((value > 31 && value < 127) || value > 127));
         else
-            return (keyValues.length == 1 && ((keyValues[0] > 31 && keyValues[0] < 127) ||
-                    (keyValues[0] > 127 &&
-                            keyValues[0] != WINDOWS_ESC.getFirstValue() &&
-                            keyValues[0] != WINDOWS_ESC_2.getFirstValue())));
+            return (((value > 31 && value < 127) ||
+                    (value > 127 &&
+                            value != WINDOWS_ESC.getFirstValue() &&
+                            value != WINDOWS_ESC_2.getFirstValue())));
+
+    }
+
+    public static boolean isPrintable(int[] keyValues) {
+        return (keyValues.length == 1 && isPrintable(keyValues[0]));
     }
 
     public static boolean isPrintable(IntBuffer keyValues) {

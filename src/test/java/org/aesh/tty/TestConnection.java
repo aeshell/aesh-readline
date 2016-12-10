@@ -19,6 +19,7 @@
  */
 package org.aesh.tty;
 
+import org.aesh.io.Decoder;
 import org.aesh.readline.Prompt;
 import org.aesh.readline.Readline;
 import org.aesh.readline.completion.Completion;
@@ -27,6 +28,7 @@ import org.aesh.readline.editing.EditModeBuilder;
 import org.aesh.terminal.Key;
 import org.aesh.util.Parser;
 
+import java.nio.charset.Charset;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
@@ -39,6 +41,7 @@ import static org.junit.Assert.assertEquals;
  */
 public class TestConnection implements Connection {
 
+    private final Decoder decoder;
     private Consumer<Size> sizeHandler;
     private Consumer<Signal> signalHandler;
     private Consumer<int[]> stdinHandler;
@@ -88,6 +91,7 @@ public class TestConnection implements Connection {
         if(prompt != null)
             this.prompt = prompt;
 
+        decoder = new Decoder(512, Charset.defaultCharset(), stdinHandler);
         out = new LinkedList<>();
         readline = new TestReadline(editMode);
         if(completions != null)
@@ -176,6 +180,7 @@ public class TestConnection implements Connection {
     @Override
     public void setStdinHandler(Consumer<int[]> handler) {
         stdinHandler = handler;
+        decoder.setConsumer(stdinHandler);
     }
 
     @Override
@@ -240,6 +245,9 @@ public class TestConnection implements Connection {
         stdinHandler.accept(data);
     }
 
+    public void read(byte[] data) {
+        decoder.write(data);
+    }
     public void read(Key key) {
         stdinHandler.accept(key.getKeyValues());
     }
