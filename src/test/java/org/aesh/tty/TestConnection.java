@@ -60,6 +60,11 @@ public class TestConnection implements Connection {
         this(EditModeBuilder.builder().create(), null);
     }
 
+    public TestConnection(Prompt prompt) {
+        //default emacs mode
+        this(EditModeBuilder.builder().create(), null, prompt);
+    }
+
     public TestConnection(EditMode editMode) {
         this(editMode, null);
     }
@@ -69,10 +74,14 @@ public class TestConnection implements Connection {
     }
 
     public TestConnection(EditMode editMode, List<Completion> completions) {
-        this(editMode, completions, null);
+        this(editMode, completions, null, null);
     }
 
-    public TestConnection(EditMode editMode, List<Completion> completions, Size size) {
+    public TestConnection(EditMode editMode, List<Completion> completions, Prompt prompt) {
+        this(editMode, completions, null, prompt);
+    }
+
+     public TestConnection(EditMode editMode, List<Completion> completions, Size size) {
         this(editMode, completions, size, null);
     }
 
@@ -231,6 +240,10 @@ public class TestConnection implements Connection {
     @Override
     public boolean put(Capability capability, Object... params) {
         return false;
+    }
+
+    public void assertOutputBuffer(String expected) {
+        assertEquals(expected, bufferBuilder.toString());
     }
 
     public void assertBuffer(String expected) {
