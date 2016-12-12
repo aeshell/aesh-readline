@@ -21,7 +21,7 @@ package org.aesh.tty;
 
 import org.aesh.io.Decoder;
 import org.aesh.readline.Prompt;
-import org.aesh.readline.Readline;
+import org.aesh.readline.TestReadline;
 import org.aesh.readline.completion.Completion;
 import org.aesh.readline.editing.EditMode;
 import org.aesh.readline.editing.EditModeBuilder;
@@ -86,6 +86,9 @@ public class TestConnection implements Connection {
     }
 
     public TestConnection(EditMode editMode, List<Completion> completions, Size size, Prompt prompt) {
+        this(null, editMode, completions, size, null);
+    }
+    public TestConnection(TestReadline readline, EditMode editMode, List<Completion> completions, Size size, Prompt prompt) {
         if(editMode == null)
             editMode = EditModeBuilder.builder().create();
         bufferBuilder = new StringBuilder();
@@ -102,12 +105,16 @@ public class TestConnection implements Connection {
 
         decoder = new Decoder(512, Charset.defaultCharset(), stdinHandler);
         out = new LinkedList<>();
-        readline = new TestReadline(editMode);
-        if(completions != null)
-            readline(completions);
+        if(readline == null) {
+            this.readline = new TestReadline(editMode);
+            if(completions != null)
+                readline(completions);
+            else
+                readline();
+        }
         else
-            readline();
-    }
+            this.readline = readline;
+   }
 
     public void readline() {
         clearOutputBuffer();
@@ -269,19 +276,4 @@ public class TestConnection implements Connection {
         stdinHandler.accept(Parser.toCodePoints(data));
     }
 
-    class TestReadline extends Readline {
-
-        TestReadline() {
-            super();
-        }
-
-        TestReadline(EditMode editMode) {
-            super(editMode);
-        }
-
-        public String getBuffer() {
-            return getInputProcessor().getBuffer().getBuffer().asString();
-        }
-
-    }
 }
