@@ -86,7 +86,7 @@ public class TestConnection implements Connection {
     }
 
     public TestConnection(EditMode editMode, List<Completion> completions, Size size, Prompt prompt) {
-        this(null, editMode, completions, size, null);
+        this(null, editMode, completions, size, prompt);
     }
     public TestConnection(TestReadline readline, EditMode editMode, List<Completion> completions, Size size, Prompt prompt) {
         if(editMode == null)
