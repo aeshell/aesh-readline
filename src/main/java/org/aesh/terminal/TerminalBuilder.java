@@ -128,7 +128,8 @@ public final class TerminalBuilder {
             else if(OSUtils.IS_HPUX) {
                 //TODO: need to parse differently than "normal" PosixSysTerminals...
                 // just fallback to ExternalTerminal for now
-                return new ExternalTerminal(name, type, System.in, System.out, encoding);
+                return new ExternalTerminal(name, type, (in == null) ? System.in : in,
+                        (out == null) ? System.out : out, encoding);
             }
             else {
                 String type = this.type;
@@ -145,7 +146,7 @@ public final class TerminalBuilder {
                 if (pty != null) {
                     return new PosixSysTerminal(name, type, pty, encoding, nativeSignals);
                 } else {
-                    return new ExternalTerminal(name, type, System.in, System.out, encoding);
+                    return new ExternalTerminal(name, type, (in == null) ? System.in : in, (out == null) ? System.out : out, encoding);
                 }
             }
         }
@@ -161,11 +162,13 @@ public final class TerminalBuilder {
             if(System.console() != null)
                 return new WinSysTerminal(name, nativeSignals);
             else {
-                return new WinExternalTerminal(name, type, System.in, System.out, encoding);
+                return new WinExternalTerminal(name, type, (in == null) ? System.in : in,
+                        (out == null) ? System.out : out, encoding);
             }
         }
         catch(IOException e) {
-            return new WinExternalTerminal(name, type, System.in, System.out, encoding);
+            return new WinExternalTerminal(name, type, (in == null) ? System.in : in,
+                    (out == null) ? System.out : out, encoding);
         }
     }
 }
