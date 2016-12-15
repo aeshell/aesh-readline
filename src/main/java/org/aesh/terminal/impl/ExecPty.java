@@ -97,13 +97,22 @@ public class ExecPty implements Pty {
 
     @Override
     public Attributes getAttr() throws IOException {
-        String cfg = doGetConfig();
-        if(OSUtils.IS_HPUX) {
-            //TODO: need to parse output from ttytype -s
-            return null;
+        try {
+            String cfg = doGetConfig();
+            if (OSUtils.IS_HPUX) {
+                //TODO: need to parse output from ttytype -s
+                return null;
+            } else
+                return doGetAttr(cfg);
         }
-        else
-            return doGetAttr(cfg);
+        catch(IOException ioe) {
+            //if we get permission denied on stty -F tty -a we can try without -F tty
+            if(ioe.getMessage().contains("Permission denied")) {
+               return doGetAttr(doGetFailSafeConfig());
+            }
+            else
+                throw ioe;
+        }
     }
 
     @Override
@@ -176,6 +185,11 @@ public class ExecPty implements Pty {
         else
             return exec(OSUtils.STTY_COMMAND, OSUtils.STTY_F_OPTION, getName(), "-a");
     }
+
+    private String doGetFailSafeConfig() throws IOException {
+        return exec(OSUtils.STTY_COMMAND, "-a");
+    }
+
 
     static Attributes doGetAttr(String cfg) throws IOException {
         Attributes attributes = new Attributes();
