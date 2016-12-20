@@ -70,6 +70,7 @@ repositories {
 dependencies {
     compile group: 'org.fusesource.jansi', name: 'jansi', version: '1.13'
     testCompile 'junit:junit:4.12'
+    testCompile 'org.jboss.shrinkwrap.resolver:shrinkwrap-resolver-depchain:2.2.4'
 
     exampleCompile sourceSets.main.output
     exampleRuntime group: 'org.fusesource.jansi', name: 'jansi', version: '1.13'
