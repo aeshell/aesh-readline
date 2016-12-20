@@ -44,6 +44,9 @@ public class Parser {
     private static final Pattern spaceEscapedPattern = Pattern.compile("\\\\ ");
     private static final Pattern spacePattern = Pattern.compile("(?<!\\\\)\\s");
     private static final Pattern ansiPattern = Pattern.compile("\\u001B\\[[\\?]?[0-9;]*[a-zA-Z]?");
+    // command text which starts with '#' is a comment
+    private static final Pattern commentPattern = Pattern.compile("^(\\s*)(#)(.*)");
+
     private static final char NULL_CHAR = '\u0000';
 
     /**
@@ -520,15 +523,22 @@ public class Parser {
     public static boolean doesStringContainOpenQuote(String text) {
         boolean doubleQuote = false;
         boolean singleQuote = false;
+        boolean escapedByBackSlash = false;
+        // do not parse comment
+        if (commentPattern.matcher(text).find())
+            return false;
+
         for (int i = 0; i < text.length(); i++) {
+             if (text.charAt(i) == BACK_SLASH || escapedByBackSlash) {
+                 escapedByBackSlash = !escapedByBackSlash;
+                 continue;
+             }
             if (text.charAt(i) == SINGLE_QUOTE) {
-                if (!doubleQuote &&
-                        (i == 0 || (i > 0 && !(text.charAt(i - 1) == BACK_SLASH))))
+                if (!doubleQuote)
                     singleQuote = !singleQuote;
             }
             else if (text.charAt(i) == DOUBLE_QUOTE) {
-                if (!singleQuote &&
-                        (i == 0 || (i > 0 && !(text.charAt(i - 1) == BACK_SLASH))))
+                if (!singleQuote)
                     doubleQuote = !doubleQuote;
             }
         }
@@ -541,6 +551,111 @@ public class Parser {
 
     public static boolean doWordContainEscapedSpace(String word) {
         return spaceEscapedPattern.matcher(word).find();
+    }
+
+    /**
+     * Split up the text into words, escaped spaces and quotes are handled
+     *
+     * @param text test
+     * @return aeshline with all the words
+     */
+    public static ParsedLine findAllWords(String text) {
+        List<String> textList = new ArrayList<>();
+        boolean haveEscape = false;
+        boolean haveSingleQuote = false;
+        boolean haveDoubleQuote = false;
+        boolean ternaryQuote = false;
+        StringBuilder builder = new StringBuilder();
+        char prev = NULL_CHAR;
+
+        for (char c : text.toCharArray()) {
+            if (c == SPACE_CHAR) {
+                if (haveEscape) {
+                    builder.append(c);
+                    haveEscape = false;
+                }
+                else if (haveSingleQuote || haveDoubleQuote) {
+                    builder.append(c);
+                }
+                else if (builder.length() > 0) {
+                    textList.add(builder.toString());
+                    builder = new StringBuilder();
+                }
+            }
+            else if (c == BACK_SLASH) {
+                if (haveEscape || ternaryQuote) {
+                    builder.append(c);
+                    haveEscape = false;
+                }
+                else
+                    haveEscape = true;
+            }
+            else if (c == SINGLE_QUOTE) {
+                if (haveEscape || ternaryQuote) {
+                    builder.append(c);
+                    haveEscape = false;
+                }
+                else if (haveSingleQuote) {
+                    if (builder.length() > 0) {
+                        textList.add(builder.toString());
+                        builder = new StringBuilder();
+                    }
+                    haveSingleQuote = false;
+                }
+                else
+                    haveSingleQuote = true;
+            }
+            else if (c == DOUBLE_QUOTE) {
+                if (haveEscape || (ternaryQuote && prev != DOUBLE_QUOTE)) {
+                    builder.append(c);
+                    haveEscape = false;
+                }
+                else if (haveDoubleQuote) {
+                    if (!ternaryQuote && prev == DOUBLE_QUOTE)
+                        ternaryQuote = true;
+                    else if (ternaryQuote && prev == DOUBLE_QUOTE) {
+                        if (builder.length() > 0) {
+                            builder.deleteCharAt(builder.length() - 1);
+                            textList.add(builder.toString());
+                            builder = new StringBuilder();
+                        }
+                        haveDoubleQuote = false;
+                        ternaryQuote = false;
+                    }
+                    else {
+                        if (builder.length() > 0) {
+                            textList.add(builder.toString());
+                            builder = new StringBuilder();
+                        }
+                        haveDoubleQuote = false;
+                    }
+                }
+                else
+                    haveDoubleQuote = true;
+            }
+            else if (haveEscape) {
+                builder.append(BACK_SLASH);
+                builder.append(c);
+                haveEscape = false;
+            }
+            else
+                builder.append(c);
+            prev = c;
+        }
+        // if the escape was the last char, add it to the builder
+        if (haveEscape)
+            builder.append(BACK_SLASH);
+
+        if (builder.length() > 0)
+            textList.add(builder.toString());
+
+        ParserStatus status = ParserStatus.OK;
+        if (haveSingleQuote && haveDoubleQuote)
+            status = ParserStatus.DOUBLE_UNCLOSED_QUOTE;
+        else if (haveSingleQuote || haveDoubleQuote)
+            status = ParserStatus.UNCLOSED_QUOTE;
+
+        return new ParsedLine(text, textList, status, "");
     }
 
     /**
