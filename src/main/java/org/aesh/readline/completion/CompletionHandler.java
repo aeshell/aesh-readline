@@ -21,36 +21,196 @@ package org.aesh.readline.completion;
 
 import org.aesh.readline.Buffer;
 import org.aesh.readline.InputProcessor;
+import org.aesh.readline.action.mappings.ActionMapper;
+import org.aesh.terminal.formatting.TerminalString;
+import org.aesh.util.Config;
+import org.aesh.util.Parser;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
 
 /**
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
  */
-public interface CompletionHandler<C extends CompleteOperation> {
+public abstract class CompletionHandler<C extends CompleteOperation> {
 
-    void addCompletion(Completion completion);
+    private CompletionStatus status = CompletionStatus.COMPLETE;
+    private int displayCompletionSize = 100;
+    private final List<Completion> completionList;
+    private Function<Buffer, C> aliasHandler;
 
-    void removeCompletion(Completion completion);
+    public CompletionHandler() {
+        completionList = new ArrayList<>();
+    }
 
-    void clear();
+    public void addCompletion(Completion completion) {
+        completionList.add(completion);
+    }
 
-    void setCompletionStatus(CompletionStatus status);
+    public void removeCompletion(Completion completion) {
+        completionList.remove(completion);
+    }
 
-    CompletionStatus completionStatus();
+    public void clear() {
+        completionList.clear();
+    }
 
-    void setAskCompletionSize(int size);
+    public CompletionStatus completionStatus() {
+        return status;
+    }
 
-    int getAskCompletionSize();
+    public void setCompletionStatus(CompletionStatus status) {
+        this.status = status;
+    }
 
-    void complete(InputProcessor inputProcessor);
+    public void setAskCompletionSize(int size) {
+        displayCompletionSize = size;
+    }
 
-    void setAliasHandler(Function<Buffer, C> aliasHandler);
+    public int getAskCompletionSize() {
+        return displayCompletionSize;
+    }
 
-    void addCompletions(List<Completion> completions);
+    public void setAliasHandler(Function<Buffer, C> aliasHandler) {
+        this.aliasHandler = aliasHandler;
+    }
 
-    enum CompletionStatus {
+    public void addCompletions(List<Completion> completions) {
+        if(completions != null && completions.size() > 0)
+            this.completionList.addAll(completions);
+    }
+
+    abstract C createCompleteOperation(String buffer, int cursor);
+
+    /**
+     * Display possible completions.
+     * 1. Find all possible completions
+     * 2. If we find only one, display it.
+     * 3. If we find more than one, display them,
+     *    but not more than 100 at once
+     */
+    public void complete(InputProcessor inputProcessor) {
+        if(completionList.size() == 0)
+            return;
+        Buffer buffer = inputProcessor.getBuffer().getBuffer();
+
+        if(completionList.size() < 1)
+            return;
+
+        List<C> possibleCompletions = new ArrayList<>();
+        for(int i=0; i < completionList.size(); i++) {
+
+            final C co;
+            if(aliasHandler == null)
+                co = createCompleteOperation(buffer.asString(), buffer.getCursor());
+            else
+                co = aliasHandler.apply(buffer);
+
+            completionList.get(i).complete(co);
+
+            if(co.getCompletionCandidates() != null && co.getCompletionCandidates().size() > 0)
+                possibleCompletions.add(co);
+        }
+
+        //LOGGER.info("Found completions: "+possibleCompletions);
+
+        if(possibleCompletions.size() == 0) {
+            //do nothing
+        }
+        // only one hit, do a completion
+        else if(possibleCompletions.size() == 1 &&
+                possibleCompletions.get(0).getCompletionCandidates().size() == 1) {
+            //some formatted completions might not be valid and should not be displayed
+            displayCompletion(
+                    possibleCompletions.get(0).getFormattedCompletionCandidatesTerminalString().get(0),
+                    buffer, inputProcessor,
+                    possibleCompletions.get(0).hasAppendSeparator(),
+                    possibleCompletions.get(0).getSeparator());
+        }
+        // more than one hit...
+        else {
+
+            String startsWith = "";
+
+            if(!possibleCompletions.get(0).isIgnoreStartsWith())
+                startsWith = Parser.findStartsWithOperation(possibleCompletions);
+
+            if(startsWith.length() > 0 ) {
+                if(startsWith.contains(" ") && !possibleCompletions.get(0).doIgnoreNonEscapedSpace())
+                    displayCompletion(new TerminalString(Parser.switchSpacesToEscapedSpacesInWord(startsWith), true),
+                            buffer, inputProcessor,
+                            false, possibleCompletions.get(0).getSeparator());
+                else
+                    displayCompletion(new TerminalString(startsWith, true), buffer, inputProcessor,
+                            false, possibleCompletions.get(0).getSeparator());
+            }
+                // display all
+                // check size
+            else {
+                List<TerminalString> completions = new ArrayList<>();
+                for(int i=0; i < possibleCompletions.size(); i++)
+                    completions.addAll(possibleCompletions.get(i).getCompletionCandidates());
+
+                if(completions.size() > 100) {
+                     if(status == CompletionStatus.ASKING_FOR_COMPLETIONS) {
+                         displayCompletions(completions, buffer, inputProcessor);
+                         status = CompletionStatus.COMPLETE;
+                    }
+                    else {
+                         status = CompletionStatus.ASKING_FOR_COMPLETIONS;
+                         inputProcessor.getBuffer().writeOut(Config.CR);
+                         inputProcessor.getBuffer().writeOut("Display all " + completions.size() + " possibilities? (y or n)");
+                    }
+                }
+                // display all
+                else {
+                    displayCompletions(completions, buffer, inputProcessor);
+                }
+            }
+        }
+    }
+    /**
+     * Display the completion string in the terminal.
+     * If !completion.startsWith(buffer.getLine()) the completion will be added to the line,
+     * else it will replace whats at the buffer line.
+     *
+     * @param completion partial completion
+     * @param appendSpace if its an actual complete
+     */
+    private void displayCompletion(TerminalString completion, Buffer buffer, InputProcessor inputProcessor,
+                                   boolean appendSpace, char separator) {
+        if(completion.getCharacters().startsWith(buffer.asString())) {
+            ActionMapper.mapToAction("backward-kill-word").accept(inputProcessor);
+            inputProcessor.getBuffer().writeString(completion.toString());
+        }
+        else {
+            inputProcessor.getBuffer().writeString(completion.toString());
+        }
+        if(appendSpace) {
+            inputProcessor.getBuffer().writeChar(separator);
+        }
+    }
+
+    /**
+     * Display all possible completions
+     *
+     * @param completions all completion items
+     */
+    private void displayCompletions(List<TerminalString> completions, Buffer buffer,
+                                    InputProcessor inputProcessor) {
+        Collections.sort(completions);
+
+        inputProcessor.getBuffer().writeOut(Config.CR);
+        inputProcessor.getBuffer().writeOut(Parser.formatDisplayListTerminalString(completions,
+                inputProcessor.getBuffer().getSize().getHeight(), inputProcessor.getBuffer().getSize().getWidth()));
+
+        buffer.setIsPromptDisplayed(false);
+        inputProcessor.getBuffer().drawLine();
+    }
+
+    public enum CompletionStatus {
         ASKING_FOR_COMPLETIONS, COMPLETE;
     }
 }

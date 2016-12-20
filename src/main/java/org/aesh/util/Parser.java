@@ -312,7 +312,7 @@ public class Parser {
      * @param coList completion list
      * @return common start string
      */
-    public static String findStartsWithOperation(List<CompleteOperation> coList) {
+    public static String findStartsWithOperation(List<? extends CompleteOperation> coList) {
         List<String> tmpList = new ArrayList<>();
         for (CompleteOperation co : coList) {
             String s = findStartsWith(co.getFormattedCompletionCandidates());
