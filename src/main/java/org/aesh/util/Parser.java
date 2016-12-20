@@ -560,6 +560,10 @@ public class Parser {
      * @return aeshline with all the words
      */
     public static ParsedLine findAllWords(String text) {
+        return findAllWords(text, -1);
+    }
+
+    public static ParsedLine findAllWords(String text, int cursor) {
         List<String> textList = new ArrayList<>();
         boolean haveEscape = false;
         boolean haveSingleQuote = false;
@@ -567,8 +571,15 @@ public class Parser {
         boolean ternaryQuote = false;
         StringBuilder builder = new StringBuilder();
         char prev = NULL_CHAR;
+        int index = 0;
+        int cursorWord = -1;
+        int wordCursor = -1;
 
         for (char c : text.toCharArray()) {
+            if(cursor == index) {
+                cursorWord = textList.size();
+                wordCursor = builder.length();
+            }
             if (c == SPACE_CHAR) {
                 if (haveEscape) {
                     builder.append(c);
@@ -602,6 +613,9 @@ public class Parser {
                     }
                     haveSingleQuote = false;
                 }
+                else if(haveDoubleQuote) {
+                    builder.append(c);
+                }
                 else
                     haveSingleQuote = true;
             }
@@ -630,6 +644,8 @@ public class Parser {
                         haveDoubleQuote = false;
                     }
                 }
+                else if(haveSingleQuote)
+                    builder.append(c);
                 else
                     haveDoubleQuote = true;
             }
@@ -641,6 +657,7 @@ public class Parser {
             else
                 builder.append(c);
             prev = c;
+            index++;
         }
         // if the escape was the last char, add it to the builder
         if (haveEscape)
@@ -649,13 +666,18 @@ public class Parser {
         if (builder.length() > 0)
             textList.add(builder.toString());
 
+        if (cursor == text.length()) {
+            cursorWord = textList.size() - 1;
+            wordCursor = textList.get(textList.size() - 1).length();
+        }
+
         ParserStatus status = ParserStatus.OK;
         if (haveSingleQuote && haveDoubleQuote)
             status = ParserStatus.DOUBLE_UNCLOSED_QUOTE;
         else if (haveSingleQuote || haveDoubleQuote)
             status = ParserStatus.UNCLOSED_QUOTE;
 
-        return new ParsedLine(text, textList, status, "");
+        return new ParsedLine(text, textList, cursor, cursorWord, wordCursor, status, "");
     }
 
     /**

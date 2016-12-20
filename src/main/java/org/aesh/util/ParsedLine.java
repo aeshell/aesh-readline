@@ -31,9 +31,18 @@ public class ParsedLine {
     private final String errorMessage;
     private final List<String> words;
     private final ParserStatus status;
+    private final int cursor;
+    private final int cursorWord;
+    private final int wordCursor;
 
-    public ParsedLine(String originalInput, List<String> words, ParserStatus status, String errorMessage) {
+
+    public ParsedLine(String originalInput, List<String> words,
+                      int cursor, int cursorWord, int wordCursor,
+                      ParserStatus status, String errorMessage) {
         this.originalInput = originalInput;
+        this.cursor = cursor;
+        this.cursorWord = cursorWord;
+        this.wordCursor = wordCursor;
         this.status = status;
         this.errorMessage = errorMessage;
 
@@ -45,19 +54,38 @@ public class ParsedLine {
         this.words = words;
     }
 
-    public String getOriginalInput() {
+    public int cursor() {
+        return cursor;
+    }
+
+    public int selectedIndex() {
+        return cursorWord;
+    }
+
+    public String selectedWord() {
+        if(cursorWord > -1 && cursorWord < words.size())
+            return words.get(cursorWord);
+        else
+            return "";
+    }
+
+    public int wordCursor() {
+        return wordCursor;
+    }
+
+    public String line() {
         return originalInput;
     }
 
-    public String getErrorMessage() {
+    public String errorMessage() {
         return errorMessage;
     }
 
-    public List<String> getWords() {
+    public List<String> words() {
         return words;
     }
 
-    public ParserStatus getStatus() {
+    public ParserStatus status() {
         return status;
     }
 
