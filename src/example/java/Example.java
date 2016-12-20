@@ -77,7 +77,7 @@ public class Example {
         });
 
         connection.setCloseHandler(close -> {
-            connection.write("we're shutting down, do something...!"+ Config.getLineSeparator());
+            connection.write("connection closed, we're shutting down, do something...!"+ Config.getLineSeparator());
         });
 
         readInput(connection, readline, defaultPrompt);
@@ -109,7 +109,7 @@ public class Example {
 
             }
             else if(line.equals("quit") || line.equals("exit")) {
-                connection.write("we're quitting...\n");
+                connection.write("quitting...\n");
                 connection.close();
                 return;
             }
