@@ -22,6 +22,11 @@ package org.aesh.readline;
 import org.aesh.readline.example.SimpleTestExample;
 import org.aesh.util.Config;
 import org.aesh.util.LoggerUtil;
+import org.jboss.shrinkwrap.api.ShrinkWrap;
+import org.jboss.shrinkwrap.api.asset.StringAsset;
+import org.jboss.shrinkwrap.api.exporter.ZipExporter;
+import org.jboss.shrinkwrap.api.spec.JavaArchive;
+import org.jboss.shrinkwrap.resolver.api.maven.archive.importer.MavenImporter;
 import org.junit.Test;
 
 import java.io.BufferedWriter;
@@ -49,11 +54,6 @@ public class TestReadlineInSeparateProcess {
             + "=====> embed-server" + Config.getLineSeparator();
     private CharPumper outPump;
     private BufferedWriter writer;
-
-    @Test
-    public void testSeparateProcess() throws Exception {
-        startProcess();
-    }
 
     /**
      * Send a line to the process input. Use null for empty line.
@@ -119,7 +119,8 @@ public class TestReadlineInSeparateProcess {
     /**
      * Start the cli process
      */
-    private void startProcess() throws Exception {
+    @Test
+    public void startProcessClassPath() throws Exception {
         String java = System.getProperty("java.home") + Config.getPathSeparator() + "bin" + Config.getPathSeparator() + "java";
         String classpath = Arrays.stream(((URLClassLoader) Thread.currentThread().getContextClassLoader()).getURLs())
                 .map(URL::getFile)
@@ -133,6 +134,33 @@ public class TestReadlineInSeparateProcess {
 
         //LOGGER.info("using classpath: "+classpath);
 
+        testReadlineByProcessBuilder(pb);
+    }
+
+
+    /**
+     * Start the cli process
+     */
+    @Test
+    public void startProcessJar() throws Exception {
+        String jarName = String.format("target%stest.jar", File.separator);
+        String java = System.getProperty("java.home") + Config.getPathSeparator() + "bin" + Config.getPathSeparator() + "java";
+
+        JavaArchive archive = ShrinkWrap.create(MavenImporter.class).loadPomFromFile("pom.xml").importBuildOutput().importBuildOutput().as(JavaArchive.class);
+        archive.addAsManifestResource(new StringAsset(String.format("Manifest-Version: 1.0\n" + "Main-Class: %s\n", SimpleTestExample.class.getCanonicalName())), "MANIFEST.MF");
+        archive.addClass(SimpleTestExample.class);
+        File fileArchive = new File(jarName);
+        archive.as(ZipExporter.class).exportTo(fileArchive, true);
+
+
+        ProcessBuilder pb = new ProcessBuilder(
+                java,
+                "-jar",
+                jarName);
+        testReadlineByProcessBuilder(pb);
+    }
+
+    private void testReadlineByProcessBuilder(ProcessBuilder pb) throws Exception {
         pb.redirectErrorStream(true);
         Process process = pb.start();
 
@@ -148,7 +176,6 @@ public class TestReadlineInSeparateProcess {
         waitFor(EMBED_SERVER_PROMPT, "Failed to start the embedded EAP instance.");
         sendLine("exit");
     }
-
     /**
      * Help class for consumption of process output streams.
      */
