@@ -21,6 +21,7 @@ package org.aesh.readline;
 
 import org.aesh.terminal.Key;
 import org.aesh.tty.TestConnection;
+import org.aesh.util.Parser;
 import org.junit.Test;
 
 /**
@@ -35,6 +36,15 @@ public class MaskingReadlineTest {
         term.read("MMyPassword");
         term.assertOutputBuffer("");
         term.read(Key.BACKSPACE);
+        term.read(Key.ENTER);
+        term.assertLine("MMyPasswor");
+
+        term = new TestConnection(new Prompt(Parser.toCodePoints("[foo] "), '%'));
+        term.read("MMyPassword");
+        term.assertOutputBuffer("[foo] %%%%%%%%%%%");
+        term.clearOutputBuffer();
+        term.read(Key.BACKSPACE);
+        term.assertOutputBuffer("[foo] %%%%%%%%%%");
         term.read(Key.ENTER);
         term.assertLine("MMyPasswor");
     }
