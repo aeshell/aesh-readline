@@ -82,7 +82,7 @@ public abstract class CompletionHandler<C extends CompleteOperation> {
             this.completionList.addAll(completions);
     }
 
-    abstract C createCompleteOperation(String buffer, int cursor);
+    public abstract C createCompleteOperation(String buffer, int cursor);
 
     /**
      * Display possible completions.

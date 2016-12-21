@@ -25,7 +25,7 @@ package org.aesh.readline.completion;
 public class SimpleCompletionHandler extends CompletionHandler<CompleteOperation> {
 
     @Override
-    CompleteOperation createCompleteOperation(String buffer, int cursor) {
+    public CompleteOperation createCompleteOperation(String buffer, int cursor) {
         return new CompleteOperationImpl(buffer, cursor);
     }
 }
