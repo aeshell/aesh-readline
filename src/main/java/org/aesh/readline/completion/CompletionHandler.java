@@ -104,7 +104,7 @@ public abstract class CompletionHandler<C extends CompleteOperation> {
 
             final C co;
             if(aliasHandler == null)
-                co = createCompleteOperation(buffer.asString(), buffer.getCursor());
+                co = createCompleteOperation(buffer.asString(), buffer.getCursor() + buffer.getMultiCursor());
             else
                 co = aliasHandler.apply(buffer);
 

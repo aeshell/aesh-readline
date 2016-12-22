@@ -86,6 +86,13 @@ public class Buffer {
         return cursor;
     }
 
+    public int getMultiCursor() {
+        if (multiLine) {
+            return multiLineBuffer.length;
+        }
+        return 0;
+    }
+
     public boolean isMasking() {
         return prompt.isMasking();
     }
