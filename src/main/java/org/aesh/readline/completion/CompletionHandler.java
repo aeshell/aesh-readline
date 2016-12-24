@@ -94,7 +94,7 @@ public abstract class CompletionHandler<C extends CompleteOperation> {
     public void complete(InputProcessor inputProcessor) {
         if(completionList.size() == 0)
             return;
-        Buffer buffer = inputProcessor.getBuffer().getBuffer();
+        Buffer buffer = inputProcessor.getBuffer().buffer();
 
         if(completionList.size() < 1)
             return;
@@ -104,7 +104,7 @@ public abstract class CompletionHandler<C extends CompleteOperation> {
 
             final C co;
             if(aliasHandler == null)
-                co = createCompleteOperation(buffer.asString(), buffer.getCursor() + buffer.getMultiCursor());
+                co = createCompleteOperation(buffer.asString(), buffer.multiCursor());
             else
                 co = aliasHandler.apply(buffer);
 
@@ -204,7 +204,7 @@ public abstract class CompletionHandler<C extends CompleteOperation> {
 
         inputProcessor.getBuffer().writeOut(Config.CR);
         inputProcessor.getBuffer().writeOut(Parser.formatDisplayListTerminalString(completions,
-                inputProcessor.getBuffer().getSize().getHeight(), inputProcessor.getBuffer().getSize().getWidth()));
+                inputProcessor.getBuffer().size().getHeight(), inputProcessor.getBuffer().size().getWidth()));
 
         buffer.setIsPromptDisplayed(false);
         inputProcessor.getBuffer().drawLine();

@@ -30,21 +30,21 @@ import org.aesh.readline.history.History;
  */
 public interface ConsoleBuffer {
 
-    History getHistory();
+    History history();
 
-    CompletionHandler getCompleter();
+    CompletionHandler completer();
 
     void setSize(Size size);
 
-    Size getSize();
+    Size size();
 
-    Buffer getBuffer();
+    Buffer buffer();
 
-    UndoManager getUndoManager();
+    UndoManager undoManager();
 
     void addActionToUndoStack();
 
-    PasteManager getPasteManager();
+    PasteManager pasteManager();
 
     void moveCursor(final int where);
 

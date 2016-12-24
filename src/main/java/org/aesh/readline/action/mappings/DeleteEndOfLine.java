@@ -42,7 +42,7 @@ public class DeleteEndOfLine extends ChangeAction {
 
     @Override
     public void accept(InputProcessor inputProcessor) {
-        int cursor = inputProcessor.getBuffer().getBuffer().length();
+        int cursor = inputProcessor.getBuffer().buffer().length();
         apply(cursor, inputProcessor);
     }
 }

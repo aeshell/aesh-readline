@@ -82,15 +82,15 @@ public class Buffer {
             throw new IndexOutOfBoundsException();
     }
 
-    public int getCursor() {
+    public int cursor() {
         return cursor;
     }
 
-    public int getMultiCursor() {
+    public int multiCursor() {
         if (multiLine) {
-            return multiLineBuffer.length;
+            return multiLineBuffer.length + cursor;
         }
-        return 0;
+        return cursor;
     }
 
     public boolean isMasking() {
@@ -102,7 +102,7 @@ public class Buffer {
     }
 
     public String asString() {
-        return Parser.fromCodePoints(getMultiLine());
+        return Parser.fromCodePoints(multiLine());
     }
 
     public void reset() {
@@ -140,7 +140,7 @@ public class Buffer {
         }
     }
 
-    public Prompt getPrompt() {
+    public Prompt prompt() {
         return prompt;
     }
 
@@ -410,29 +410,29 @@ public class Buffer {
      */
     private int calculateActualMovement(final int move, boolean viMode) {
         // cant move to a negative value
-        if(getCursor() == 0 && move <=0 )
+        if(cursor() == 0 && move <=0 )
             return 0;
         // cant move longer than the length of the line
         if(viMode) {
-            if(getCursor() == length()-1 && (move > 0))
+            if(cursor() == length()-1 && (move > 0))
                 return 0;
         }
         else {
-            if(getCursor() == length() && (move > 0))
+            if(cursor() == length() && (move > 0))
                 return 0;
         }
 
         // dont move out of bounds
-        if(getCursor() + move <= 0)
-            return -getCursor();
+        if(cursor() + move <= 0)
+            return -cursor();
 
         if(viMode) {
-            if(getCursor() + move > length()-1)
-                return (length()-1-getCursor());
+            if(cursor() + move > length()-1)
+                return (length()-1- cursor());
         }
         else {
-            if(getCursor() + move > length())
-                return (length()-getCursor());
+            if(cursor() + move > length())
+                return (length()- cursor());
         }
 
         return move;
@@ -703,7 +703,7 @@ public class Buffer {
         isPromptDisplayed = true;
     }
 
-    public int[] getMultiLine() {
+    public int[] multiLine() {
         if (multiLine) {
             int[] tmpLine = Arrays.copyOf(multiLineBuffer, multiLineBuffer.length + size);
             System.arraycopy(line, 0, tmpLine, multiLineBuffer.length, size);
@@ -799,7 +799,7 @@ public class Buffer {
      * Replace the current character
      */
     public void replace(Consumer<int[]> out, char rChar) {
-        doReplace(out, getCursor(), rChar);
+        doReplace(out, cursor(), rChar);
     }
 
     private void doReplace(Consumer<int[]> out, int pos, int rChar) {

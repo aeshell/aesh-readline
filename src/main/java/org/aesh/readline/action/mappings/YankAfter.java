@@ -38,17 +38,17 @@ public class YankAfter extends ChangeAction {
 
     @Override
     public void accept(InputProcessor inputProcessor) {
-        int[] pasteBuffer = inputProcessor.getBuffer().getPasteManager().get(0);
+        int[] pasteBuffer = inputProcessor.getBuffer().pasteManager().get(0);
         if(pasteBuffer != null) {
 
-            if(inputProcessor.getBuffer().getBuffer().getCursor() <=
-                    inputProcessor.getBuffer().getBuffer().length()) {
+            if(inputProcessor.getBuffer().buffer().cursor() <=
+                    inputProcessor.getBuffer().buffer().length()) {
                 inputProcessor.getBuffer().addActionToUndoStack();
                 //if we're at the end, we need to do some magic in vi-mode
                 if(inputProcessor.getEditMode().getMode() == EditMode.Mode.VI &&
                         inputProcessor.getEditMode().getStatus() == EditMode.Status.COMMAND &&
-                        inputProcessor.getBuffer().getBuffer().getCursor() ==
-                        inputProcessor.getBuffer().getBuffer().length()-1) {
+                        inputProcessor.getBuffer().buffer().cursor() ==
+                        inputProcessor.getBuffer().buffer().length()-1) {
                     inputProcessor.getEditMode().setStatus(EditMode.Status.EDIT);
                     inputProcessor.getBuffer().moveCursor(1);
                     inputProcessor.getBuffer().insert(pasteBuffer);

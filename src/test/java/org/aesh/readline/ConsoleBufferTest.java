@@ -82,14 +82,14 @@ public class ConsoleBufferTest {
                 Parser.fromCodePoints(ANSI.printAnsi("2D")), connection.bufferBuilder.toString());
 
         consoleBuffer.writeString("1");
-        assertEquals("1foo0", consoleBuffer.getBuffer().asString());
+        assertEquals("1foo0", consoleBuffer.buffer().asString());
 
         connection.bufferBuilder.delete(0, connection.bufferBuilder.length());
         consoleBuffer.moveCursor(1);
         assertEquals(Parser.fromCodePoints(ANSI.printAnsi("1C")), connection.bufferBuilder.toString());
 
         consoleBuffer.writeString("2");
-        assertEquals("1f2oo0", consoleBuffer.getBuffer().asString());
+        assertEquals("1f2oo0", consoleBuffer.buffer().asString());
     }
 
     class SimpleConnection implements Connection {

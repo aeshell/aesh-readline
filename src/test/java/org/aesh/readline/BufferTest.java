@@ -164,15 +164,15 @@ public class BufferTest {
         Buffer buffer = new Buffer(new Prompt(": "));
         List<int[]> outConsumer = new ArrayList<>();
         buffer.insert(outConsumer::add, "foo bar", 100);
-        assertEquals(7, buffer.getCursor());
+        assertEquals(7, buffer.cursor());
         buffer.move(outConsumer::add, 1, 120);
-        assertEquals(7, buffer.getCursor());
+        assertEquals(7, buffer.cursor());
         buffer.move(outConsumer::add, -1, 120);
-        assertEquals(6, buffer.getCursor());
+        assertEquals(6, buffer.cursor());
         buffer.move(outConsumer::add, -100, 120);
-        assertEquals(0, buffer.getCursor());
+        assertEquals(0, buffer.cursor());
         buffer.move(outConsumer::add, 100, 120);
-        assertEquals(7, buffer.getCursor());
+        assertEquals(7, buffer.cursor());
     }
 
     @Test

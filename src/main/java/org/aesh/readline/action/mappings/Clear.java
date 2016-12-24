@@ -38,7 +38,7 @@ public class Clear implements Action {
         //move cursor to correct position
         inputProcessor.getBuffer().writeChars(ANSI.printAnsi("1;1H"));
         //then write prompt
-        inputProcessor.getBuffer().getBuffer().reset();
-        inputProcessor.getBuffer().getUndoManager().clear();
+        inputProcessor.getBuffer().buffer().reset();
+        inputProcessor.getBuffer().undoManager().clear();
     }
 }

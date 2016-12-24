@@ -46,21 +46,21 @@ public class Complete implements ActionEvent {
             if(key == Key.y) {
                 askForCompletion = false;
                 key = null;
-                inputProcessor.getBuffer().getCompleter().complete(inputProcessor);
+                inputProcessor.getBuffer().completer().complete(inputProcessor);
             }
             else if(key == Key.n){
                 askForCompletion = false;
                 key = null;
-                inputProcessor.getBuffer().getCompleter().setCompletionStatus(CompletionHandler.CompletionStatus.COMPLETE);
-                inputProcessor.getBuffer().getUndoManager().clear();
+                inputProcessor.getBuffer().completer().setCompletionStatus(CompletionHandler.CompletionStatus.COMPLETE);
+                inputProcessor.getBuffer().undoManager().clear();
                 inputProcessor.getBuffer().writeOut(Config.CR);
                 inputProcessor.getBuffer().drawLineForceDisplay();
             }
         }
         else {
-            if(inputProcessor.getBuffer().getCompleter() != null) {
-                inputProcessor.getBuffer().getCompleter().complete( inputProcessor);
-                if(inputProcessor.getBuffer().getCompleter().completionStatus() ==
+            if(inputProcessor.getBuffer().completer() != null) {
+                inputProcessor.getBuffer().completer().complete( inputProcessor);
+                if(inputProcessor.getBuffer().completer().completionStatus() ==
                         CompletionHandler.CompletionStatus.ASKING_FOR_COMPLETIONS) {
                     askForCompletion = true;
                 }

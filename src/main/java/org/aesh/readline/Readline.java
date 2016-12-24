@@ -190,7 +190,7 @@ public class Readline {
             //TODO: the editModes need to parse/handle this, ref ignoreeof
             //ctrl-d
             if (event.length() == 1) {
-                if (event.getCodePointAt(0) == 4 && getBuffer().getBuffer().length() == 0) {
+                if (event.getCodePointAt(0) == 4 && getBuffer().buffer().length() == 0) {
                     finish(null);
                     return;
                 }
@@ -253,7 +253,7 @@ public class Readline {
                         } else {
                             conn.stdoutHandler().accept(new int[]{'^', 'C'});
                             conn.stdoutHandler().accept(Config.CR);
-                            this.getBuffer().getBuffer().reset();
+                            this.getBuffer().buffer().reset();
                             consoleBuffer.drawLine();
                         }
                     }

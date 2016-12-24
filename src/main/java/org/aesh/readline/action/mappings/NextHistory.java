@@ -33,7 +33,7 @@ public class NextHistory implements Action {
 
     @Override
     public void accept(InputProcessor inputProcessor) {
-        int[] history = inputProcessor.getBuffer().getHistory().getNextFetch();
+        int[] history = inputProcessor.getBuffer().history().getNextFetch();
         if(history != null) {
             inputProcessor.getBuffer().replace(history);
         }

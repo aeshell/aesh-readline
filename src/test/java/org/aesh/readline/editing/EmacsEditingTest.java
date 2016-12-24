@@ -38,7 +38,7 @@ public class EmacsEditingTest extends BaseConsoleTest {
             out.write(new byte[]{1});
             out.write(("12"+Config.getLineSeparator()).getBytes());
         }, (console, op) -> {
-            assertEquals("1234", op.getBuffer());
+            assertEquals("1234", op.buffer());
             return 0;
         });
     }
@@ -146,7 +146,7 @@ public class EmacsEditingTest extends BaseConsoleTest {
         inputProcessor.parseOperation(Key.a);
         inputProcessor.parseOperation(Key.RIGHT);
 
-        assertEquals("asdf jkl", consoleBuffer.getBuffer().getLine());
+        assertEquals("asdf jkl", consoleBuffer.buffer().getLine());
     }
 
     @Test
@@ -183,7 +183,7 @@ public class EmacsEditingTest extends BaseConsoleTest {
         inputProcessor.parseOperation(Key.a);
         inputProcessor.parseOperation(Key.LEFT);
 
-        assertEquals("asdf jkl", consoleBuffer.getBuffer().getLine());
+        assertEquals("asdf jkl", consoleBuffer.buffer().getLine());
     }
 
     @Test
@@ -220,7 +220,7 @@ public class EmacsEditingTest extends BaseConsoleTest {
         inputProcessor.parseOperation(Key.f);
         inputProcessor.parseOperation(Key.UP);
 
-        assertEquals("asdf", consoleBuffer.getBuffer().getLine());
+        assertEquals("asdf", consoleBuffer.buffer().getLine());
 
     }
 
@@ -258,7 +258,7 @@ public class EmacsEditingTest extends BaseConsoleTest {
         inputProcessor.parseOperation(Key.a);
         inputProcessor.parseOperation(Key.DOWN);
 
-        assertEquals("footing", consoleBuffer.getBuffer().getLine());
+        assertEquals("footing", consoleBuffer.buffer().getLine());
     }
 
 }

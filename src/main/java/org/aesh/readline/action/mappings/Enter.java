@@ -41,43 +41,43 @@ public class Enter implements Action {
     @Override
     public void accept(InputProcessor inputProcessor) {
         ConsoleBuffer consoleBuffer = inputProcessor.getBuffer();
-        consoleBuffer.getUndoManager().clear();
+        consoleBuffer.undoManager().clear();
         boolean isCurrentLineEnding = true;
-        if(!consoleBuffer.getBuffer().isMasking()) {// dont push to history if masking
+        if(!consoleBuffer.buffer().isMasking()) {// dont push to history if masking
             //dont push lines that end with \ to history
-            String buffer = consoleBuffer.getBuffer().asString().trim();
+            String buffer = consoleBuffer.buffer().asString().trim();
             //lines starting with a hashtag is treated as a comment
             if(buffer.startsWith(HASHTAG)) {
-                consoleBuffer.getBuffer().reset();
+                consoleBuffer.buffer().reset();
                 inputProcessor.getBuffer().writeOut(Config.CR);
                 isCurrentLineEnding = false;
             }
             else if(buffer.endsWith(ENDS_WITH_BACKSLASH)) {
-                consoleBuffer.getBuffer().setMultiLine(true);
-                consoleBuffer.getBuffer().updateMultiLineBuffer();
+                consoleBuffer.buffer().setMultiLine(true);
+                consoleBuffer.buffer().updateMultiLineBuffer();
                 inputProcessor.getBuffer().writeOut(Config.CR);
                 isCurrentLineEnding = false;
             }
             else if(Parser.doesStringContainOpenQuote(buffer)) {
-                consoleBuffer.getBuffer().setMultiLine(true);
-                consoleBuffer.getBuffer().updateMultiLineBuffer();
+                consoleBuffer.buffer().setMultiLine(true);
+                consoleBuffer.buffer().updateMultiLineBuffer();
                 inputProcessor.getBuffer().writeOut(Config.CR);
                 isCurrentLineEnding = false;
             }
-            else if( inputProcessor.getBuffer().getHistory().isEnabled()) {
-                if(consoleBuffer.getBuffer().isMultiLine())
-                   inputProcessor.getBuffer().getHistory().push(consoleBuffer.getBuffer().getMultiLine());
+            else if( inputProcessor.getBuffer().history().isEnabled()) {
+                if(consoleBuffer.buffer().isMultiLine())
+                   inputProcessor.getBuffer().history().push(consoleBuffer.buffer().multiLine());
                 else
-                    inputProcessor.getBuffer().getHistory().push(consoleBuffer.getBuffer().getMultiLine());
+                    inputProcessor.getBuffer().history().push(consoleBuffer.buffer().multiLine());
             }
         }
 
         if(isCurrentLineEnding)
-            consoleBuffer.moveCursor(consoleBuffer.getBuffer().length());
+            consoleBuffer.moveCursor(consoleBuffer.buffer().length());
 
         if(isCurrentLineEnding) {
-            inputProcessor.setReturnValue(consoleBuffer.getBuffer().getMultiLine());
-            consoleBuffer.getBuffer().reset();
+            inputProcessor.setReturnValue(consoleBuffer.buffer().multiLine());
+            consoleBuffer.buffer().reset();
         }
         else
             consoleBuffer.drawLine();

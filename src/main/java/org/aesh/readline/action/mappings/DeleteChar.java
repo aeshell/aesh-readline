@@ -45,11 +45,11 @@ public class DeleteChar implements Action {
     }
 
     private void deleteNoMasking(ConsoleBuffer consoleBuffer) {
-        int cursor = consoleBuffer.getBuffer().getCursor();
-        int lineSize = consoleBuffer.getBuffer().length();
+        int cursor = consoleBuffer.buffer().cursor();
+        int lineSize = consoleBuffer.buffer().length();
         if(cursor < lineSize) {
             consoleBuffer.addActionToUndoStack();
-            consoleBuffer.getPasteManager().addText(Arrays.copyOfRange(consoleBuffer.getBuffer().getMultiLine(), cursor, cursor+1));
+            consoleBuffer.pasteManager().addText(Arrays.copyOfRange(consoleBuffer.buffer().multiLine(), cursor, cursor+1));
             consoleBuffer.delete(1);
         }
     }

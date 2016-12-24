@@ -48,7 +48,7 @@ abstract class ChangeAction extends MovementAction {
     }
 
     protected final void apply(int cursor, InputProcessor inputProcessor) {
-        apply(cursor, inputProcessor.getBuffer().getBuffer().getCursor(), inputProcessor);
+        apply(cursor, inputProcessor.getBuffer().buffer().cursor(), inputProcessor);
     }
 
     protected final void apply(int cursor, int oldCursor, InputProcessor inputProcessor) {
@@ -56,22 +56,22 @@ abstract class ChangeAction extends MovementAction {
             inputProcessor.getBuffer().addActionToUndoStack();
             if(cursor < oldCursor) {
                 //add to pastemanager
-                inputProcessor.getBuffer().getPasteManager().addText(
-                        Arrays.copyOfRange(inputProcessor.getBuffer().getBuffer().getMultiLine(), cursor, oldCursor));
+                inputProcessor.getBuffer().pasteManager().addText(
+                        Arrays.copyOfRange(inputProcessor.getBuffer().buffer().multiLine(), cursor, oldCursor));
                 //delete buffer
                 inputProcessor.getBuffer().delete(cursor - oldCursor);
             }
             else {
                 //add to pastemanager
-                inputProcessor.getBuffer().getPasteManager().addText(
-                        Arrays.copyOfRange(inputProcessor.getBuffer().getBuffer().getMultiLine(), oldCursor, cursor));
+                inputProcessor.getBuffer().pasteManager().addText(
+                        Arrays.copyOfRange(inputProcessor.getBuffer().buffer().multiLine(), oldCursor, cursor));
                 //delete buffer
                 inputProcessor.getBuffer().delete(cursor - oldCursor);
             }
 
             //TODO: must check if we're in edit mode
             if(viMode && status == EditMode.Status.DELETE &&
-                    oldCursor == inputProcessor.getBuffer().getBuffer().length())
+                    oldCursor == inputProcessor.getBuffer().buffer().length())
                 inputProcessor.getBuffer().moveCursor(-1);
 
         }
@@ -80,11 +80,11 @@ abstract class ChangeAction extends MovementAction {
         }
         else if(status == EditMode.Status.YANK) {
             if(cursor < oldCursor)
-                inputProcessor.getBuffer().getPasteManager().addText(
-                        Arrays.copyOfRange(inputProcessor.getBuffer().getBuffer().getMultiLine(), cursor, oldCursor));
+                inputProcessor.getBuffer().pasteManager().addText(
+                        Arrays.copyOfRange(inputProcessor.getBuffer().buffer().multiLine(), cursor, oldCursor));
             else if(cursor > oldCursor)
-                inputProcessor.getBuffer().getPasteManager().addText(
-                        Arrays.copyOfRange(inputProcessor.getBuffer().getBuffer().getMultiLine(), oldCursor, cursor));
+                inputProcessor.getBuffer().pasteManager().addText(
+                        Arrays.copyOfRange(inputProcessor.getBuffer().buffer().multiLine(), oldCursor, cursor));
         }
 
         else if(status == EditMode.Status.UP_CASE) {
@@ -118,11 +118,11 @@ abstract class ChangeAction extends MovementAction {
             inputProcessor.getBuffer().moveCursor(cursor - oldCursor);
         }
         else if(status == EditMode.Status.CAPITALIZE) {
-            String word = Parser.findWordClosestToCursor(inputProcessor.getBuffer().getBuffer().asString(),
+            String word = Parser.findWordClosestToCursor(inputProcessor.getBuffer().buffer().asString(),
                     oldCursor);
             if(word.length() > 0) {
                 inputProcessor.getBuffer().addActionToUndoStack();
-                int pos = inputProcessor.getBuffer().getBuffer().asString().indexOf(word,
+                int pos = inputProcessor.getBuffer().buffer().asString().indexOf(word,
                         oldCursor-word.length());
                 if(pos < 0)
                     pos = 0;

@@ -33,6 +33,6 @@ public class EndOfLine implements Action {
 
     @Override
     public void accept(InputProcessor inputProcessor) {
-        inputProcessor.getBuffer().moveCursor(inputProcessor.getBuffer().getBuffer().length());
+        inputProcessor.getBuffer().moveCursor(inputProcessor.getBuffer().buffer().length());
     }
 }

@@ -38,11 +38,11 @@ public class Yank extends ChangeAction {
 
     @Override
     public void accept(InputProcessor inputProcessor) {
-        int[] pasteBuffer = inputProcessor.getBuffer().getPasteManager().get(0);
+        int[] pasteBuffer = inputProcessor.getBuffer().pasteManager().get(0);
         if(pasteBuffer != null) {
 
-            if(inputProcessor.getBuffer().getBuffer().getCursor() <=
-                    inputProcessor.getBuffer().getBuffer().length()) {
+            if(inputProcessor.getBuffer().buffer().cursor() <=
+                    inputProcessor.getBuffer().buffer().length()) {
                 inputProcessor.getBuffer().addActionToUndoStack();
                 inputProcessor.getBuffer().insert(pasteBuffer);
                 inputProcessor.getBuffer().moveCursor(-1);

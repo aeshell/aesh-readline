@@ -62,12 +62,12 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
         this.editMode = editMode;
     }
       @Override
-    public History getHistory() {
+    public History history() {
         return history;
     }
 
     @Override
-    public CompletionHandler getCompleter() {
+    public CompletionHandler completer() {
         return completionHandler;
     }
 
@@ -77,51 +77,51 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
     }
 
     @Override
-    public Size getSize() {
+    public Size size() {
         return size;
     }
 
     @Override
-    public Buffer getBuffer() {
+    public Buffer buffer() {
         return this.buffer;
     }
 
     @Override
-    public UndoManager getUndoManager() {
+    public UndoManager undoManager() {
         return undoManager;
     }
 
     @Override
     public void addActionToUndoStack() {
         undoManager.addUndo(new UndoAction(
-                getBuffer().getCursor(), getBuffer().getMultiLine()));
+                buffer().cursor(), buffer().multiLine()));
     }
 
     @Override
-    public PasteManager getPasteManager() {
+    public PasteManager pasteManager() {
         return pasteManager;
     }
 
     @Override
     public void moveCursor(int where) {
         buffer.move(connection.stdoutHandler(), where,
-                getSize().getWidth(), isViMode());
+                size().getWidth(), isViMode());
     }
 
     @Override
     public void drawLine() {
-        buffer.print(connection.stdoutHandler(), getSize().getWidth());
+        buffer.print(connection.stdoutHandler(), size().getWidth());
     }
 
     @Override
     public void drawLineForceDisplay() {
         buffer.setIsPromptDisplayed(false);
-        buffer.print(connection.stdoutHandler(), getSize().getWidth());
+        buffer.print(connection.stdoutHandler(), size().getWidth());
     }
 
     @Override
     public void writeChar(char input) {
-        buffer.insert(connection.stdoutHandler(), input, getSize().getWidth());
+        buffer.insert(connection.stdoutHandler(), input, size().getWidth());
     }
 
     @Override
@@ -136,33 +136,33 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
 
     @Override
     public void writeChars(int[] input) {
-        buffer.insert(connection.stdoutHandler(), input, getSize().getWidth());
+        buffer.insert(connection.stdoutHandler(), input, size().getWidth());
     }
 
     @Override
     public void writeString(String input) {
         if(input != null && input.length() > 0)
-            buffer.insert(connection.stdoutHandler(), input, getSize().getWidth());
+            buffer.insert(connection.stdoutHandler(), input, size().getWidth());
     }
 
     @Override
     public void setPrompt(Prompt prompt) {
-        buffer.setPrompt(prompt, connection.stdoutHandler(), getSize().getWidth());
+        buffer.setPrompt(prompt, connection.stdoutHandler(), size().getWidth());
     }
 
     @Override
     public void insert(String insert, int position) {
-        buffer.insert(connection.stdoutHandler(), insert, getSize().getWidth());
+        buffer.insert(connection.stdoutHandler(), insert, size().getWidth());
     }
 
     @Override
     public void insert(int[] insert) {
-        buffer.insert(connection.stdoutHandler(), insert, getSize().getWidth());
+        buffer.insert(connection.stdoutHandler(), insert, size().getWidth());
     }
 
     @Override
     public void delete(int delta) {
-        buffer.delete(connection.stdoutHandler(), delta, getSize().getWidth(), isViMode());
+        buffer.delete(connection.stdoutHandler(), delta, size().getWidth(), isViMode());
     }
 
     @Override
@@ -182,12 +182,12 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
 
     @Override
     public void replace(int[] line) {
-        buffer.replace(connection.stdoutHandler(), line, getSize().getWidth());
+        buffer.replace(connection.stdoutHandler(), line, size().getWidth());
     }
 
     @Override
     public void replace(String line) {
-        buffer.replace(connection.stdoutHandler(), line, getSize().getWidth());
+        buffer.replace(connection.stdoutHandler(), line, size().getWidth());
     }
 
     @Override
@@ -207,7 +207,7 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
         connection.stdoutHandler().accept(new int[] {27, '[', '1', ';', '1', 'H'});
         //then write prompt
         if(includeBuffer) {
-            buffer.print(connection.stdoutHandler(), getSize().getWidth());
+            buffer.print(connection.stdoutHandler(), size().getWidth());
             //connection.write(buffer.getLine());
         }
 
