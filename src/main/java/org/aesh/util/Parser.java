@@ -668,7 +668,8 @@ public class Parser {
 
         if (cursor == text.length()) {
             cursorWord = textList.size() - 1;
-            wordCursor = textList.get(textList.size() - 1).length();
+            if(textList.size() > 0)
+                wordCursor = textList.get(textList.size() - 1).length();
         }
 
         ParserStatus status = ParserStatus.OK;

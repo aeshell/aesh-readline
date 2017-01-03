@@ -234,7 +234,12 @@ public class ParserTest {
 
     @Test
     public void testFindAllWords() {
-        ParsedLine line = Parser.findAllWords("   foo bar\\ baz 12345 ", 5);
+        ParsedLine line = Parser.findAllWords("", 0);
+        assertEquals(-1, line.wordCursor());
+        assertEquals(0, line.cursor());
+        assertEquals("", line.selectedWord());
+
+        line = Parser.findAllWords("   foo bar\\ baz 12345 ", 5);
         assertEquals("foo", line.words().get(0));
         assertEquals("bar baz", line.words().get(1));
         assertEquals("12345", line.words().get(2));
