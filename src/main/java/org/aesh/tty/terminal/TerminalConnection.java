@@ -56,7 +56,7 @@ public class TerminalConnection implements Connection {
     private Consumer<int[]> inputHandler;
     private Attributes attributes;
     private Consumer<Signal> eventHandler;
-    private volatile boolean reading = true;
+    private volatile boolean reading = false;
     private volatile boolean close = false;
     private Consumer<Void> closeHandler;
     private CountDownLatch latch;

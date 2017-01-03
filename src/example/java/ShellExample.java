@@ -32,6 +32,7 @@ import org.aesh.util.Config;
 import org.aesh.util.LoggerUtil;
 
 import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.util.ArrayList;
 import java.util.Formatter;
 import java.util.List;
@@ -197,7 +198,7 @@ public class ShellExample {
             try {
                 command.execute(conn, args);
             }
-            catch (InterruptedException e) {
+            catch (InterruptedException | InterruptedIOException e) {
                 if(!conn.suspended())
                     conn.suspend();
                 // Ctlr-C interrupt
