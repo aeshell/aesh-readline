@@ -99,20 +99,7 @@ public abstract class CompletionHandler<C extends CompleteOperation> {
         if(completionList.size() < 1)
             return;
 
-        List<C> possibleCompletions = new ArrayList<>();
-        for(int i=0; i < completionList.size(); i++) {
-
-            final C co;
-            if(aliasHandler == null)
-                co = createCompleteOperation(buffer.asString(), buffer.multiCursor());
-            else
-                co = aliasHandler.apply(buffer);
-
-            completionList.get(i).complete(co);
-
-            if(co.getCompletionCandidates() != null && co.getCompletionCandidates().size() > 0)
-                possibleCompletions.add(co);
-        }
+        List<C> possibleCompletions = createCompletionList(buffer);
 
         //LOGGER.info("Found completions: "+possibleCompletions);
 
@@ -131,46 +118,67 @@ public abstract class CompletionHandler<C extends CompleteOperation> {
         }
         // more than one hit...
         else {
+            processMultipleCompletions(possibleCompletions, buffer, inputProcessor);
+        }
+    }
 
-            String startsWith = "";
+    private List<C> createCompletionList(Buffer buffer) {
+        List<C> possibleCompletions = new ArrayList<>();
+        for(int i=0; i < completionList.size(); i++) {
+            final C co;
+            if(aliasHandler == null)
+                co = createCompleteOperation(buffer.asString(), buffer.multiCursor());
+            else
+                co = aliasHandler.apply(buffer);
 
-            if(!possibleCompletions.get(0).isIgnoreStartsWith())
-                startsWith = Parser.findStartsWithOperation(possibleCompletions);
+            completionList.get(i).complete(co);
 
-            if(startsWith.length() > 0 ) {
-                if(startsWith.contains(" ") && !possibleCompletions.get(0).doIgnoreNonEscapedSpace())
-                    displayCompletion(new TerminalString(Parser.switchSpacesToEscapedSpacesInWord(startsWith), true),
-                            buffer, inputProcessor,
-                            false, possibleCompletions.get(0).getSeparator());
-                else
-                    displayCompletion(new TerminalString(startsWith, true), buffer, inputProcessor,
-                            false, possibleCompletions.get(0).getSeparator());
-            }
-                // display all
-                // check size
-            else {
-                List<TerminalString> completions = new ArrayList<>();
-                for(int i=0; i < possibleCompletions.size(); i++)
-                    completions.addAll(possibleCompletions.get(i).getCompletionCandidates());
+            if(co.getCompletionCandidates() != null && co.getCompletionCandidates().size() > 0)
+                possibleCompletions.add(co);
+        }
+        return possibleCompletions;
+    }
 
-                if(completions.size() > 100) {
-                     if(status == CompletionStatus.ASKING_FOR_COMPLETIONS) {
-                         displayCompletions(completions, buffer, inputProcessor);
-                         status = CompletionStatus.COMPLETE;
-                    }
-                    else {
-                         status = CompletionStatus.ASKING_FOR_COMPLETIONS;
-                         inputProcessor.getBuffer().writeOut(Config.CR);
-                         inputProcessor.getBuffer().writeOut("Display all " + completions.size() + " possibilities? (y or n)");
-                    }
-                }
-                // display all
-                else {
+    private void processMultipleCompletions(List<C> possibleCompletions, Buffer buffer, InputProcessor inputProcessor) {
+        String startsWith = "";
+
+        if(!possibleCompletions.get(0).isIgnoreStartsWith())
+            startsWith = Parser.findStartsWithOperation(possibleCompletions);
+
+        if(startsWith.length() > 0 ) {
+            if(startsWith.contains(" ") && !possibleCompletions.get(0).doIgnoreNonEscapedSpace())
+                displayCompletion(new TerminalString(Parser.switchSpacesToEscapedSpacesInWord(startsWith), true),
+                        buffer, inputProcessor,
+                        false, possibleCompletions.get(0).getSeparator());
+            else
+                displayCompletion(new TerminalString(startsWith, true), buffer, inputProcessor,
+                        false, possibleCompletions.get(0).getSeparator());
+        }
+        // display all
+        // check size
+        else {
+            List<TerminalString> completions = new ArrayList<>();
+            for(int i=0; i < possibleCompletions.size(); i++)
+                completions.addAll(possibleCompletions.get(i).getCompletionCandidates());
+
+            if(completions.size() > 100) {
+                if(status == CompletionStatus.ASKING_FOR_COMPLETIONS) {
                     displayCompletions(completions, buffer, inputProcessor);
+                    status = CompletionStatus.COMPLETE;
                 }
+                else {
+                    status = CompletionStatus.ASKING_FOR_COMPLETIONS;
+                    inputProcessor.getBuffer().writeOut(Config.CR);
+                    inputProcessor.getBuffer().writeOut("Display all " + completions.size() + " possibilities? (y or n)");
+                }
+            }
+            // display all
+            else {
+                displayCompletions(completions, buffer, inputProcessor);
             }
         }
     }
+
     /**
      * Display the completion string in the terminal.
      * If !completion.startsWith(buffer.getLine()) the completion will be added to the line,
