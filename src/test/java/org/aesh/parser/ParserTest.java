@@ -58,49 +58,50 @@ public class ParserTest {
 
     @Test
     public void testfindCurrentWordFromCursor() {
-        assertEquals("", Parser.findCurrentWordFromCursor(" ", 1));
-        assertEquals("foo", Parser.findCurrentWordFromCursor("foo bar", 3));
-        assertEquals("bar", Parser.findCurrentWordFromCursor("foo bar", 6));
-        assertEquals("foobar", Parser.findCurrentWordFromCursor("foobar", 6));
-        assertEquals("foo", Parser.findCurrentWordFromCursor("foobar", 2));
-        assertEquals("", Parser.findCurrentWordFromCursor("ls  ", 3));
-        assertEquals("foo", Parser.findCurrentWordFromCursor("ls  foo", 6));
-        assertEquals("foo", Parser.findCurrentWordFromCursor("ls  foo bar", 6));
-        assertEquals("bar", Parser.findCurrentWordFromCursor("ls  foo bar", 10));
-        assertEquals("ba", Parser.findCurrentWordFromCursor("ls  foo bar", 9));
-        assertEquals("foo", Parser.findCurrentWordFromCursor("ls foo ", 6));
-        assertEquals("o", Parser.findCurrentWordFromCursor("ls o org/jboss/aeshell/Shell.class", 4));
-        assertEquals("", Parser.findCurrentWordFromCursor("ls  org/jboss/aeshell/Shell.class", 3));
+        assertEquals("", LineParser.parseLine(" ", 1).selectedWord().word());
+        assertEquals("foo", LineParser.parseLine("foo bar", 3).selectedWord().word());
+        assertEquals("bar", LineParser.parseLine("foo bar", 6).selectedWord().word());
+        assertEquals("foobar", LineParser.parseLine("foobar", 6).selectedWord().word());
+        assertEquals("fo", LineParser.parseLine("foobar", 2).selectedWordToCursor().word());
+        assertEquals("", LineParser.parseLine("ls  ", 3).selectedWord().word());
+        assertEquals("foo", LineParser.parseLine("ls  foo", 6).selectedWord().word());
+        assertEquals("foo", LineParser.parseLine("ls  foo bar", 6).selectedWord().word());
+        assertEquals("bar", LineParser.parseLine("ls  foo bar", 11).selectedWordToCursor().word());
+        assertEquals("ba", LineParser.parseLine("ls  foo bar", 10).selectedWordToCursor().word());
+        assertEquals("b", LineParser.parseLine("ls  foo bar", 9).selectedWordToCursor().word());
+        assertEquals("foo", LineParser.parseLine("ls foo ", 6).selectedWordToCursor().word());
+        assertEquals("o", LineParser.parseLine("ls o org/jboss/aeshell/Shell.class", 4).selectedWord().word());
+        assertEquals("", LineParser.parseLine("ls  org/jboss/aeshell/Shell.class", 3).selectedWord().word());
     }
 
     @Test
     public void testFindCurrentWordWithEscapedSpaceToCursor() {
-        assertEquals("foo bar", Parser.findCurrentWordFromCursor("foo\\ bar", 7));
-        assertEquals("foo ba", Parser.findCurrentWordFromCursor("foo\\ bar", 6));
-        assertEquals("foo bar", Parser.findCurrentWordFromCursor("ls  foo\\ bar", 11));
+        assertEquals("foo bar", LineParser.parseLine("foo\\ bar", 8).selectedWordToCursor().word());
+        assertEquals("foo ba", LineParser.parseLine("foo\\ bar", 7).selectedWordToCursor().word());
+        assertEquals("foo bar", LineParser.parseLine("ls  foo\\ bar", 12).selectedWordToCursor().word());
     }
 
     @Test
     public void testFindClosestWholeWordToCursor() {
-        assertEquals("foo", Parser.findWordClosestToCursor("ls  foo bar", 6));
+        assertEquals("foo", LineParser.parseLine("ls  foo bar", 6).selectedWord().word());
 
-        assertEquals("", Parser.findWordClosestToCursor(" ", 1));
-        assertEquals("foo", Parser.findWordClosestToCursor("foo bar", 1));
-        assertEquals("foo", Parser.findWordClosestToCursor("foo bar", 3));
-        assertEquals("foobar", Parser.findWordClosestToCursor("foobar", 6));
-        assertEquals("foobar", Parser.findWordClosestToCursor("foobar", 2));
-        assertEquals("", Parser.findWordClosestToCursor("ls  ", 3));
+        assertEquals("", LineParser.parseLine(" ", 1).selectedWord().word());
+        assertEquals("foo", LineParser.parseLine("foo bar", 1).selectedWord().word());
+        assertEquals("foo", LineParser.parseLine("foo bar", 3).selectedWord().word());
+        assertEquals("foobar", LineParser.parseLine("foobar", 6).selectedWord().word());
+        assertEquals("foobar", LineParser.parseLine("foobar", 2).selectedWord().word());
+        assertEquals("", LineParser.parseLine("ls  ", 3).selectedWord().word());
 
-        assertEquals("o", Parser.findWordClosestToCursor("ls o org/jboss/aeshell/Shell.class", 4));
-        assertEquals("", Parser.findWordClosestToCursor("ls  org/jboss/aeshell/Shell.class", 3));
+        assertEquals("o", LineParser.parseLine("ls o org/jboss/aeshell/Shell.class", 4).selectedWord().word());
+        assertEquals("", LineParser.parseLine("ls  org/jboss/aeshell/Shell.class", 3).selectedWord().word());
 
-        assertEquals("foo", Parser.findWordClosestToCursor("foo bar foo", 3));
+        assertEquals("foo", LineParser.parseLine("foo bar foo", 3).selectedWord().word());
     }
 
     @Test
     public void testFindClosestWholeWordToCursorEscapedSpace() {
-        assertEquals("foo bar", Parser.findWordClosestToCursor("foo\\ bar", 7));
-        assertEquals("foo bar", Parser.findWordClosestToCursor("ls  foo\\ bar", 11));
+        assertEquals("foo bar", LineParser.parseLine("foo\\ bar", 7).selectedWord().word());
+        assertEquals("foo bar", LineParser.parseLine("ls  foo\\ bar", 11).selectedWord().word());
     }
 
     @Test

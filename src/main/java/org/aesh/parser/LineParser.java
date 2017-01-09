@@ -19,8 +19,6 @@
  */
 package org.aesh.parser;
 
-import org.aesh.util.Parser;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -30,6 +28,10 @@ import java.util.List;
 public class LineParser {
 
     private static final char NULL_CHAR = '\u0000';
+    private static final char SPACE_CHAR = ' ';
+    private static final char BACK_SLASH = '\\';
+    private static final char SINGLE_QUOTE = '\'';
+    private static final char DOUBLE_QUOTE = '\"';
 
     /**
      * Split up the text into words, escaped spaces and quotes are handled
@@ -54,11 +56,12 @@ public class LineParser {
         int wordCursor = -1;
 
         for (char c : text.toCharArray()) {
-            if(cursor == index) {
+            //if the previous char was a space, there is no word "connected" to cursor
+            if(cursor == index && (prev != SPACE_CHAR || haveEscape)) {
                 cursorWord = textList.size();
                 wordCursor = builder.length();
             }
-            if (c == Parser.SPACE_CHAR) {
+            if (c == SPACE_CHAR) {
                 if (haveEscape) {
                     builder.append(c);
                     haveEscape = false;
@@ -71,7 +74,7 @@ public class LineParser {
                     builder = new StringBuilder();
                 }
             }
-            else if (c == Parser.BACK_SLASH) {
+            else if (c == BACK_SLASH) {
                 if (haveEscape || ternaryQuote) {
                     builder.append(c);
                     haveEscape = false;
@@ -79,7 +82,7 @@ public class LineParser {
                 else
                     haveEscape = true;
             }
-            else if (c == Parser.SINGLE_QUOTE) {
+            else if (c == SINGLE_QUOTE) {
                 if (haveEscape || ternaryQuote) {
                     builder.append(c);
                     haveEscape = false;
@@ -97,15 +100,15 @@ public class LineParser {
                 else
                     haveSingleQuote = true;
             }
-            else if (c == Parser.DOUBLE_QUOTE) {
-                if (haveEscape || (ternaryQuote && prev != Parser.DOUBLE_QUOTE)) {
+            else if (c == DOUBLE_QUOTE) {
+                if (haveEscape || (ternaryQuote && prev != DOUBLE_QUOTE)) {
                     builder.append(c);
                     haveEscape = false;
                 }
                 else if (haveDoubleQuote) {
-                    if (!ternaryQuote && prev == Parser.DOUBLE_QUOTE)
+                    if (!ternaryQuote && prev == DOUBLE_QUOTE)
                         ternaryQuote = true;
-                    else if (ternaryQuote && prev == Parser.DOUBLE_QUOTE) {
+                    else if (ternaryQuote && prev == DOUBLE_QUOTE) {
                         if (builder.length() > 0) {
                             builder.deleteCharAt(builder.length() - 1);
                             textList.add(new ParsedWord(builder.toString(), index-builder.length()));
@@ -128,7 +131,7 @@ public class LineParser {
                     haveDoubleQuote = true;
             }
             else if (haveEscape) {
-                builder.append(Parser.BACK_SLASH);
+                builder.append(BACK_SLASH);
                 builder.append(c);
                 haveEscape = false;
             }
@@ -139,7 +142,7 @@ public class LineParser {
         }
         // if the escape was the last char, add it to the builder
         if (haveEscape)
-            builder.append(Parser.BACK_SLASH);
+            builder.append(BACK_SLASH);
 
         if (builder.length() > 0)
             textList.add(new ParsedWord(builder.toString(), index-builder.length()));

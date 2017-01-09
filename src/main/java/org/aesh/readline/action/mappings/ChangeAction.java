@@ -19,9 +19,9 @@
  */
 package org.aesh.readline.action.mappings;
 
+import org.aesh.parser.LineParser;
 import org.aesh.readline.InputProcessor;
 import org.aesh.readline.editing.EditMode;
-import org.aesh.util.Parser;
 
 import java.util.Arrays;
 
@@ -118,8 +118,9 @@ abstract class ChangeAction extends MovementAction {
             inputProcessor.getBuffer().moveCursor(cursor - oldCursor);
         }
         else if(status == EditMode.Status.CAPITALIZE) {
-            String word = Parser.findWordClosestToCursor(inputProcessor.getBuffer().buffer().asString(),
-                    oldCursor);
+            String word = LineParser.parseLine(
+                    inputProcessor.getBuffer().buffer().asString(),
+                    oldCursor).selectedWord().word();
             if(word.length() > 0) {
                 inputProcessor.getBuffer().addActionToUndoStack();
                 int pos = inputProcessor.getBuffer().buffer().asString().indexOf(word,

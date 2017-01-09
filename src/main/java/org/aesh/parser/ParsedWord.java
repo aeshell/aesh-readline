@@ -20,6 +20,11 @@
 package org.aesh.parser;
 
 /**
+ * Representing a "word" parsed by LineParser and used in ParsedLine.
+ * A word is a collection of letters separated by space.
+ * A word can contain spaces if they are escaped or if the word is wrapped in
+ * a single or double quote.
+ *
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
  */
 public class ParsedWord {

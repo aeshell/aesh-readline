@@ -69,6 +69,15 @@ public class ParsedLine {
             return new ParsedWord("", 0);
     }
 
+    public ParsedWord selectedWordToCursor() {
+        if(cursorWord > -1 && cursorWord < words.size())
+            return new ParsedWord(
+                    words.get(cursorWord).word().substring(0, wordCursor),
+                    words.get(cursorWord).lineIndex());
+        else
+            return new ParsedWord("", 0);
+    }
+
     public int wordCursor() {
         return wordCursor;
     }
