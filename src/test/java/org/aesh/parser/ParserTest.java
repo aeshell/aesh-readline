@@ -22,9 +22,7 @@ package org.aesh.parser;
 import org.aesh.terminal.formatting.TerminalString;
 import org.aesh.util.ANSI;
 import org.aesh.util.Config;
-import org.aesh.util.ParsedLine;
 import org.aesh.util.Parser;
-import org.aesh.util.ParserStatus;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -228,113 +226,116 @@ public class ParserTest {
     @Test
     public void testOriginalInput() {
         String input = "echo foo -i bar";
-        ParsedLine line = Parser.findAllWords(input);
+        ParsedLine line = LineParser.parseLine(input);
         assertEquals(input, line.line());
     }
 
     @Test
     public void testFindAllWords() {
-        ParsedLine line = Parser.findAllWords("", 0);
+        ParsedLine line = LineParser.parseLine("", 0);
         assertEquals(-1, line.wordCursor());
         assertEquals(0, line.cursor());
-        assertEquals("", line.selectedWord());
+        assertEquals("", line.selectedWord().word());
 
-        line = Parser.findAllWords("   foo bar\\ baz 12345 ", 5);
-        assertEquals("foo", line.words().get(0));
-        assertEquals("bar baz", line.words().get(1));
-        assertEquals("12345", line.words().get(2));
-        assertEquals("foo", line.selectedWord());
+        line = LineParser.parseLine("   foo bar\\ baz 12345 ", 5);
+        assertEquals("foo", line.words().get(0).word());
+        assertEquals("bar baz", line.words().get(1).word());
+        assertEquals("12345", line.words().get(2).word());
+        assertEquals("foo", line.selectedWord().word());
         assertEquals(2, line.wordCursor());
 
-        line = Parser.findAllWords("man < foo\\ bar ", 14);
-        assertEquals("man", line.words().get(0));
-        assertEquals("<", line.words().get(1));
-        assertEquals("foo bar", line.words().get(2));
-        assertEquals("foo bar", line.selectedWord());
+        line = LineParser.parseLine("man < foo\\ bar ", 14);
+        assertEquals("man", line.words().get(0).word());
+        assertEquals("<", line.words().get(1).word());
+        assertEquals("foo bar", line.words().get(2).word());
+        assertEquals("foo bar", line.selectedWord().word());
         assertEquals(7, line.wordCursor());
 
-        line = Parser.findAllWords("cd A\\ Directory\\ With\\ Spaces", 2);
-        assertEquals("cd", line.words().get(0));
-        assertEquals("A Directory With Spaces", line.words().get(1));
-        assertEquals("cd", line.selectedWord());
+        line = LineParser.parseLine("cd A\\ Directory\\ With\\ Spaces", 2);
+        assertEquals("cd", line.words().get(0).word());
+        assertEquals("A Directory With Spaces", line.words().get(1).word());
+        assertEquals("cd", line.selectedWord().word());
         assertEquals(2, line.wordCursor());
 
-        line = Parser.findAllWords("cd A\\ ",5);
-        assertEquals("cd", line.words().get(0));
-        assertEquals("A ", line.words().get(1));
-        assertEquals("A ", line.selectedWord());
+        line = LineParser.parseLine("cd A\\ ",5);
+        assertEquals("cd", line.words().get(0).word());
+        assertEquals("A ", line.words().get(1).word());
+        assertEquals("A ", line.selectedWord().word());
         assertEquals(1, line.wordCursor());
 
-        line = Parser.findAllWords("cd A\\", 4);
-        assertEquals("cd", line.words().get(0));
-        assertEquals("A\\", line.words().get(1));
-        assertEquals("A\\", line.selectedWord());
+        line = LineParser.parseLine("cd A\\", 4);
+        assertEquals("cd", line.words().get(0).word());
+        assertEquals("A\\", line.words().get(1).word());
+        assertEquals("A\\", line.selectedWord().word());
         assertEquals(1, line.wordCursor());
 
-        line = Parser.findAllWords("ls --files /tmp/A\\ ");
-        assertEquals("ls", line.words().get(0));
-        assertEquals("--files", line.words().get(1));
-        assertEquals("/tmp/A ", line.words().get(2));
+        line = LineParser.parseLine("ls --files /tmp/A\\ ");
+        assertEquals("ls", line.words().get(0).word());
+        assertEquals("--files", line.words().get(1).word());
+        assertEquals("/tmp/A ", line.words().get(2).word());
 
-        line = Parser.findAllWords("..\\..\\..\\..\\..\\..\\..\\temp\\foo.txt");
-        assertEquals("..\\..\\..\\..\\..\\..\\..\\temp\\foo.txt", line.words().get(0));
+        line = LineParser.parseLine("..\\..\\..\\..\\..\\..\\..\\temp\\foo.txt");
+        assertEquals("..\\..\\..\\..\\..\\..\\..\\temp\\foo.txt", line.words().get(0).word());
     }
 
     @Test
     public void testFindAllQuotedWords() {
-        ParsedLine line = Parser.findAllWords("foo bar \"baz 12345\" ", 19);
-        assertEquals("foo", line.words().get(0));
-        assertEquals("bar", line.words().get(1));
-        assertEquals("baz 12345", line.words().get(2));
-        assertEquals("", line.selectedWord());
+        ParsedLine line = LineParser.parseLine("foo bar \"baz 12345\" ", 19);
+        assertEquals("foo", line.words().get(0).word());
+        assertEquals(0, line.words().get(0).lineIndex());
+        assertEquals("bar", line.words().get(1).word());
+        assertEquals(4, line.words().get(1).lineIndex());
+        assertEquals("baz 12345", line.words().get(2).word());
+        assertEquals(9, line.words().get(2).lineIndex());
+        assertEquals("", line.selectedWord().word());
         assertEquals(0, line.wordCursor());
 
-        line = Parser.findAllWords("java -cp \"foo/bar\" \"Example\"");
-        assertEquals("foo/bar", line.words().get(2));
-        assertEquals("Example", line.words().get(3));
+        line = LineParser.parseLine("java -cp \"foo/bar\" \"Example\"");
+        assertEquals("foo/bar", line.words().get(2).word());
+        assertEquals("Example", line.words().get(3).word());
 
-        line = Parser.findAllWords("'foo/bar/' Example\\ 1");
-        assertEquals("foo/bar/", line.words().get(0));
-        assertEquals("Example 1", line.words().get(1));
+        line = LineParser.parseLine("'foo/bar/' Example\\ 1");
+        assertEquals("foo/bar/", line.words().get(0).word());
+        assertEquals("Example 1", line.words().get(1).word());
 
-        line = Parser.findAllWords("man -f='foo bar/' Example\\ 1 foo");
-        assertEquals("man", line.words().get(0));
-        assertEquals("-f=foo bar/", line.words().get(1));
-        assertEquals("Example 1", line.words().get(2));
-        assertEquals("foo", line.words().get(3));
+        line = LineParser.parseLine("man -f='foo bar/' Example\\ 1 foo");
+        assertEquals("man", line.words().get(0).word());
+        assertEquals("-f=foo bar/", line.words().get(1).word());
+        assertEquals("Example 1", line.words().get(2).word());
+        assertEquals("foo", line.words().get(3).word());
 
-        line = Parser.findAllWords("man -f='foo/bar/ Example\\ 1");
+        line = LineParser.parseLine("man -f='foo/bar/ Example\\ 1");
         assertEquals(ParserStatus.UNCLOSED_QUOTE, line.status());
 
-        line = Parser.findAllWords("man -f='foo/bar/' Example\\ 1\"");
+        line = LineParser.parseLine("man -f='foo/bar/' Example\\ 1\"");
         assertEquals(ParserStatus.UNCLOSED_QUOTE, line.status());
 
-        line = Parser.findAllWords("-s \'redirectUris=[\"http://localhost:8080/blah/*\"]\'");
-        assertEquals("-s", line.words().get(0));
-        assertEquals("redirectUris=[\"http://localhost:8080/blah/*\"]", line.words().get(1));
+        line = LineParser.parseLine("-s \'redirectUris=[\"http://localhost:8080/blah/*\"]\'");
+        assertEquals("-s", line.words().get(0).word());
+        assertEquals("redirectUris=[\"http://localhost:8080/blah/*\"]", line.words().get(1).word());
     }
 
     @Test
     public void testFindAllTernaryQuotedWords() {
-        ParsedLine line = Parser.findAllWords("\"\"  \"\"");
-        assertEquals("  ", line.words().get(0));
-        line = Parser.findAllWords("\"\"  foo bar \"\"");
-        assertEquals("  foo bar ", line.words().get(0));
+        ParsedLine line = LineParser.parseLine("\"\"  \"\"");
+        assertEquals("  ", line.words().get(0).word());
+        line = LineParser.parseLine("\"\"  foo bar \"\"");
+        assertEquals("  foo bar ", line.words().get(0).word());
 
-        line = Parser.findAllWords("\"\"  \"foo bar\" \"\"");
-        assertEquals("  \"foo bar\" ", line.words().get(0));
+        line = LineParser.parseLine("\"\"  \"foo bar\" \"\"");
+        assertEquals("  \"foo bar\" ", line.words().get(0).word());
 
-        line = Parser.findAllWords("gah bah-bah  \"\"  \"foo bar\" \"\" boo");
-        assertEquals("gah", line.words().get(0));
-        assertEquals("bah-bah", line.words().get(1));
-        assertEquals("  \"foo bar\" ", line.words().get(2));
-        assertEquals("boo", line.words().get(3));
+        line = LineParser.parseLine("gah bah-bah  \"\"  \"foo bar\" \"\" boo");
+        assertEquals("gah", line.words().get(0).word());
+        assertEquals("bah-bah", line.words().get(1).word());
+        assertEquals("  \"foo bar\" ", line.words().get(2).word());
+        assertEquals("boo", line.words().get(3).word());
 
-        line = Parser.findAllWords(" \"\"/s-ramp/wsdl/Operation[xp2:matches(@name, 'submit.*')]\"\"");
-        assertEquals("/s-ramp/wsdl/Operation[xp2:matches(@name, 'submit.*')]", line.words().get(0));
+        line = LineParser.parseLine(" \"\"/s-ramp/wsdl/Operation[xp2:matches(@name, 'submit.*')]\"\"");
+        assertEquals("/s-ramp/wsdl/Operation[xp2:matches(@name, 'submit.*')]", line.words().get(0).word());
 
-        line = Parser.findAllWords(" \"\"/s-ramp/ext/${type} \\ \"\"");
-        assertEquals("/s-ramp/ext/${type} \\ ", line.words().get(0));
+        line = LineParser.parseLine(" \"\"/s-ramp/ext/${type} \\ \"\"");
+        assertEquals("/s-ramp/ext/${type} \\ ", line.words().get(0).word());
     }
 
     @Test

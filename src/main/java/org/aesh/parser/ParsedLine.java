@@ -17,7 +17,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.aesh.util;
+package org.aesh.parser;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,14 +29,14 @@ public class ParsedLine {
 
     private final String originalInput;
     private final String errorMessage;
-    private final List<String> words;
+    private final List<ParsedWord> words;
     private final ParserStatus status;
     private final int cursor;
     private final int cursorWord;
     private final int wordCursor;
 
 
-    public ParsedLine(String originalInput, List<String> words,
+    public ParsedLine(String originalInput, List<ParsedWord> words,
                       int cursor, int cursorWord, int wordCursor,
                       ParserStatus status, String errorMessage) {
         this.originalInput = originalInput;
@@ -62,11 +62,11 @@ public class ParsedLine {
         return cursorWord;
     }
 
-    public String selectedWord() {
+    public ParsedWord selectedWord() {
         if(cursorWord > -1 && cursorWord < words.size())
             return words.get(cursorWord);
         else
-            return "";
+            return new ParsedWord("", 0);
     }
 
     public int wordCursor() {
@@ -81,7 +81,7 @@ public class ParsedLine {
         return errorMessage;
     }
 
-    public List<String> words() {
+    public List<ParsedWord> words() {
         return words;
     }
 
