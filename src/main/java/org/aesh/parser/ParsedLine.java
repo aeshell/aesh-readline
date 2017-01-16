@@ -98,6 +98,10 @@ public class ParsedLine {
         return status;
     }
 
+    public ParsedLineIterator iterator() {
+        return new ParsedLineIterator(this);
+    }
+
     @Override
     public String toString() {
         return "errorMessage='" + errorMessage +

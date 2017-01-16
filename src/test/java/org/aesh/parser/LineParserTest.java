@@ -22,6 +22,8 @@ package org.aesh.parser;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 
 /**
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
@@ -191,5 +193,43 @@ public class LineParserTest {
         assertEquals("/s-ramp/ext/${type} \\ ", line.words().get(0).word());
     }
 
+    @Test
+    public void testParsedLineIterator() {
+        ParsedLine line = LineParser.parseLine("foo bar");
+        ParsedLineIterator iterator = line.iterator();
+        int counter = 0;
+        while(iterator.hasNextWord()) {
+            if(counter == 0)
+                assertEquals("foo", iterator.nextWord());
+            else if(counter == 1)
+                assertEquals("bar", iterator.nextWord());
+
+            counter++;
+        }
+
+        line = LineParser.parseLine("");
+        iterator = line.iterator();
+        assertFalse(iterator.hasNextWord());
+        assertNull(iterator.nextWord());
+
+        line = LineParser.parseLine("\\ foo ba bar");
+        iterator = line.iterator();
+
+        assertEquals(" foo", iterator.nextWord());
+        assertEquals('b', iterator.nextChar());
+        assertEquals('a', iterator.nextChar());
+        assertEquals("bar", iterator.nextWord());
+
+        line = LineParser.parseLine("\\ foo ba bar");
+        iterator = line.iterator();
+        assertEquals('\\', iterator.nextChar());
+        assertEquals('f', iterator.nextChar());
+        assertEquals(" foo", iterator.nextWord());
+        assertEquals("ba", iterator.nextWord());
+        assertEquals('b', iterator.nextChar());
+        assertEquals('a', iterator.nextChar());
+        assertEquals('r', iterator.nextChar());
+
+    }
 
 }
