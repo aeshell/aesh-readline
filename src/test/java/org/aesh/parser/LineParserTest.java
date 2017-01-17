@@ -223,6 +223,7 @@ public class LineParserTest {
         line = LineParser.parseLine("\\ foo ba bar");
         iterator = line.iterator();
         assertEquals('\\', iterator.nextChar());
+        assertEquals(' ', iterator.nextChar());
         assertEquals('f', iterator.nextChar());
         assertEquals(" foo", iterator.nextWord());
         assertEquals("ba", iterator.nextWord());
