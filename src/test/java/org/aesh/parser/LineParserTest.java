@@ -216,8 +216,11 @@ public class LineParserTest {
         iterator = line.iterator();
 
         assertEquals(" foo", iterator.nextWord());
+        assertEquals(" foo", iterator.prevWord());
         assertEquals('b', iterator.nextChar());
         assertEquals('a', iterator.nextChar());
+        assertEquals(' ', iterator.nextChar());
+        assertEquals("ba", iterator.prevWord());
         assertEquals("bar", iterator.nextWord());
 
         line = LineParser.parseLine("\\ foo ba bar");
