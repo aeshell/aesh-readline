@@ -79,4 +79,8 @@ public class ParsedLineIterator {
         return '\u0000';
     }
 
+    public boolean finished() {
+        return parsedLine.words().size() == word || parsedLine.line().length() == character;
+    }
+
 }

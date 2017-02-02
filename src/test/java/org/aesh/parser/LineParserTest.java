@@ -24,6 +24,7 @@ import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 /**
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
@@ -216,12 +217,15 @@ public class LineParserTest {
         iterator = line.iterator();
 
         assertEquals(" foo", iterator.nextWord());
+        assertFalse(iterator.finished());
         assertEquals(" foo", iterator.prevWord());
         assertEquals('b', iterator.nextChar());
         assertEquals('a', iterator.nextChar());
         assertEquals(' ', iterator.nextChar());
+        assertFalse(iterator.finished());
         assertEquals("ba", iterator.prevWord());
         assertEquals("bar", iterator.nextWord());
+        assertTrue(iterator.finished());
 
         line = LineParser.parseLine("\\ foo ba bar");
         iterator = line.iterator();
@@ -233,6 +237,7 @@ public class LineParserTest {
         assertEquals('b', iterator.nextChar());
         assertEquals('a', iterator.nextChar());
         assertEquals('r', iterator.nextChar());
+        assertTrue(iterator.finished());
 
         line = LineParser.parseLine("\\ foo ba bar");
         iterator = line.iterator();
