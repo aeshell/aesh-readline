@@ -201,9 +201,9 @@ public class LineParserTest {
         int counter = 0;
         while(iterator.hasNextWord()) {
             if(counter == 0)
-                assertEquals("foo", iterator.nextWord());
+                assertEquals("foo", iterator.pollWord());
             else if(counter == 1)
-                assertEquals("bar", iterator.nextWord());
+                assertEquals("bar", iterator.pollWord());
 
             counter++;
         }
@@ -211,37 +211,37 @@ public class LineParserTest {
         line = LineParser.parseLine("");
         iterator = line.iterator();
         assertFalse(iterator.hasNextWord());
-        assertNull(iterator.nextWord());
+        assertNull(iterator.pollWord());
 
         line = LineParser.parseLine("\\ foo ba bar");
         iterator = line.iterator();
 
-        assertEquals(" foo", iterator.nextWord());
+        assertEquals(" foo", iterator.peekWord());
+        assertEquals(" foo", iterator.pollWord());
         assertFalse(iterator.finished());
-        assertEquals(" foo", iterator.prevWord());
-        assertEquals('b', iterator.nextChar());
-        assertEquals('a', iterator.nextChar());
-        assertEquals(' ', iterator.nextChar());
+        assertEquals('b', iterator.pollChar());
+        assertEquals('a', iterator.pollChar());
+        assertEquals(' ', iterator.pollChar());
         assertFalse(iterator.finished());
-        assertEquals("ba", iterator.prevWord());
-        assertEquals("bar", iterator.nextWord());
+        assertEquals("bar", iterator.peekWord());
+        assertEquals("bar", iterator.pollWord());
         assertTrue(iterator.finished());
 
         line = LineParser.parseLine("\\ foo ba bar");
         iterator = line.iterator();
-        assertEquals('\\', iterator.nextChar());
-        assertEquals(' ', iterator.nextChar());
-        assertEquals('f', iterator.nextChar());
-        assertEquals(" foo", iterator.nextWord());
-        assertEquals("ba", iterator.nextWord());
-        assertEquals('b', iterator.nextChar());
-        assertEquals('a', iterator.nextChar());
-        assertEquals('r', iterator.nextChar());
+        assertEquals('\\', iterator.pollChar());
+        assertEquals(' ', iterator.pollChar());
+        assertEquals('f', iterator.pollChar());
+        assertEquals(" foo", iterator.pollWord());
+        assertEquals("ba", iterator.pollWord());
+        assertEquals('b', iterator.pollChar());
+        assertEquals('a', iterator.pollChar());
+        assertEquals('r', iterator.pollChar());
         assertTrue(iterator.finished());
 
         line = LineParser.parseLine("\\ foo ba bar");
         iterator = line.iterator();
-        assertEquals(" foo", iterator.nextWord());
+        assertEquals(" foo", iterator.pollWord());
 
 
     }

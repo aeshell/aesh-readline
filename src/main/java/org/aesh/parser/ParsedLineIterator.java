@@ -40,7 +40,7 @@ public class ParsedLineIterator {
         return parsedLine.line().length() > character;
     }
 
-    public ParsedWord nextParsedWord() {
+    public ParsedWord pollParsedWord() {
         if(hasNextWord()) {
             //set correct next char
             if(parsedLine.words().size() > (word+1))
@@ -53,22 +53,11 @@ public class ParsedLineIterator {
             return new ParsedWord(null, -1);
     }
 
-    public ParsedWord prevParsedWord() {
-        if(word > 0)
-            return parsedLine.words().get(word-1);
-        else
-            return new ParsedWord(null, -1);
+    public String pollWord() {
+        return pollParsedWord().word();
     }
 
-    public String prevWord() {
-        return prevParsedWord().word();
-    }
-
-    public String nextWord() {
-        return nextParsedWord().word();
-    }
-
-    public char nextChar() {
+    public char pollChar() {
         if(hasNextChar()) {
             if(hasNextWord() &&
                     character+1 >= parsedLine.words().get(word).lineIndex()+
@@ -77,6 +66,17 @@ public class ParsedLineIterator {
             return parsedLine.line().charAt(character++);
         }
         return '\u0000';
+    }
+
+    public ParsedWord peekParsedWord() {
+        if(hasNextWord())
+            return parsedLine.words().get(word);
+        else
+            return new ParsedWord(null, -1);
+    }
+
+    public String peekWord() {
+        return peekParsedWord().word();
     }
 
     public boolean finished() {
