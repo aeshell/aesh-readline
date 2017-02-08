@@ -83,4 +83,8 @@ public class ParsedLineIterator {
         return parsedLine.words().size() == word || parsedLine.line().length() == character;
     }
 
+    public String parserError() {
+        return parsedLine.errorMessage();
+    }
+
 }
