@@ -20,6 +20,11 @@
 package org.aesh.parser;
 
 /**
+ * A specialized iterator that makes it easier to parse the input.
+ *
+ * Polling either words or chars from the stack will update the respective
+ * other values correctly as well.
+ *
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
  */
 public class ParsedLineIterator {
@@ -32,14 +37,25 @@ public class ParsedLineIterator {
         this.parsedLine = parsedLine;
     }
 
+    /**
+     * @return true if there is a next word
+     */
     public boolean hasNextWord() {
         return parsedLine.words().size() > word;
     }
 
+    /**
+     * @return true if there is a next char
+     */
     public boolean hasNextChar() {
         return parsedLine.line().length() > character;
     }
 
+    /**
+     * Polls the next ParsedWord from the stack.
+     *
+     * @return next ParsedWord
+     */
     public ParsedWord pollParsedWord() {
         if(hasNextWord()) {
             //set correct next char
@@ -53,10 +69,41 @@ public class ParsedLineIterator {
             return new ParsedWord(null, -1);
     }
 
+    /**
+     * Peeks at the next ParsedWord from the stack
+     *
+     * @return next ParsedWord
+     */
+    public ParsedWord peekParsedWord() {
+        if(hasNextWord())
+            return parsedLine.words().get(word);
+        else
+            return new ParsedWord(null, -1);
+    }
+
+    /**
+     * Polls the next word as String from the stack.
+     *
+     * @return next word
+     */
     public String pollWord() {
         return pollParsedWord().word();
     }
 
+    /**
+     * Peeks the next word as String from the stack.
+     *
+     * @return next word
+     */
+    public String peekWord() {
+        return peekParsedWord().word();
+    }
+
+    /**
+     * Polls the next char from the stack
+     *
+     * @return next char
+     */
     public char pollChar() {
         if(hasNextChar()) {
             if(hasNextWord() &&
@@ -68,23 +115,56 @@ public class ParsedLineIterator {
         return '\u0000';
     }
 
-    public ParsedWord peekParsedWord() {
-        if(hasNextWord())
-            return parsedLine.words().get(word);
-        else
-            return new ParsedWord(null, -1);
+    /**
+     * Peeks at the next char from the stack
+     *
+     * @return next char
+     */
+    public char peekChar() {
+        if(hasNextChar())
+            return parsedLine.line().charAt(character);
+        return '\u0000';
     }
 
-    public String peekWord() {
-        return peekParsedWord().word();
-    }
-
+    /**
+     * @return true if there are no more words/chars on the stack
+     */
     public boolean finished() {
         return parsedLine.words().size() == word || parsedLine.line().length() == character;
     }
 
+    /**
+     * @return any parsing errors made when creating the ParsedLine
+     */
     public String parserError() {
         return parsedLine.errorMessage();
+    }
+
+    /**
+     * Return a substring of the base input from where the current position is.
+     *
+     * @return substring from current position till the end.
+     */
+    public String stringFromCurrentPosition() {
+        return parsedLine.line().substring(character);
+    }
+
+    /**
+     * Update the current position with specified length.
+     * The input will append to the current position of the iterator.
+     *
+     * @param length update length
+     */
+    public void updateIteratorPosition(int length) {
+        if(length > 0 && (length + character) < parsedLine.line().length()) {
+            //move word counter to the correct word
+            while(hasNextWord() &&
+                    (length+character) >= parsedLine.words().get(word).lineIndex()+
+                            parsedLine.words().get(word).word().length())
+                word++;
+
+            character = length + character;
+        }
     }
 
 }

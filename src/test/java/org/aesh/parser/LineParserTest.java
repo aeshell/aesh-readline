@@ -243,7 +243,27 @@ public class LineParserTest {
         iterator = line.iterator();
         assertEquals(" foo", iterator.pollWord());
 
+    }
 
+    @Test
+    public void testParsedLineIterator2() {
+        ParsedLine line = LineParser.parseLine("foo bar");
+        ParsedLineIterator iterator = line.iterator();
+
+        assertEquals("foo bar", iterator.stringFromCurrentPosition());
+        iterator.updateIteratorPosition(3);
+        assertEquals(' ', iterator.pollChar());
+        assertEquals("bar", iterator.stringFromCurrentPosition());
+        assertEquals("bar", iterator.pollWord());
+
+        line = LineParser.parseLine("command --opt1={ myProp1=99, myProp2=100} --opt2");
+        iterator = line.iterator();
+        assertEquals("command", iterator.pollWord());
+        assertEquals('-', iterator.peekChar());
+        assertEquals("--opt1={", iterator.peekWord());
+        iterator.updateIteratorPosition(33);
+        assertEquals("--opt2", iterator.peekWord());
+        assertEquals(' ', iterator.peekChar());
     }
 
 }

@@ -23,6 +23,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
+ * A input line that is parsed into chunks of words.
+ *
+ * The input are split into words usually based on whitespaces.
+ * The exceptions are made for escaped whitespaces and whitespaces that are
+ * enclosed within quotes.
+ * Single and double quotes is accepted, but only as pairs.
+ *
+ * If the cursor position is given, ParsedLine will be able to return the word
+ * "connected" to the cursor.
+ * If no cursor position is given the cursor value is -1 and cursorWord is an empty string.
+ *
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
  */
 public class ParsedLine {
@@ -54,14 +65,24 @@ public class ParsedLine {
         this.words = words;
     }
 
+    /**
+     * @return cursor
+     */
     public int cursor() {
         return cursor;
     }
 
+    /**
+     * @return the word index connected to the cursor
+     */
     public int selectedIndex() {
         return cursorWord;
     }
 
+    /**
+     * @return the word connected to the cursor.
+     * If not cursor was given it will return an empty ParsedWord object.
+     */
     public ParsedWord selectedWord() {
         if(cursorWord > -1 && cursorWord < words.size())
             return words.get(cursorWord);
@@ -69,6 +90,11 @@ public class ParsedLine {
             return new ParsedWord("", 0);
     }
 
+    /**
+     * @return the word connected to the cursor.
+     * If the cursor is not at the end of the word,
+     * it will only return part of the word up to the cursor position.
+     */
     public ParsedWord selectedWordToCursor() {
         if(cursorWord > -1 && cursorWord < words.size())
             return new ParsedWord(
@@ -78,26 +104,44 @@ public class ParsedLine {
             return new ParsedWord("", 0);
     }
 
+    /**
+     * @return index inside the word where the cursor is positioned.
+     */
     public int wordCursor() {
         return wordCursor;
     }
 
+    /**
+     * @return original input
+     */
     public String line() {
         return originalInput;
     }
 
+    /**
+     * @return any errors that was found during parsing
+     */
     public String errorMessage() {
         return errorMessage;
     }
 
+    /**
+     * @return the list of words
+     */
     public List<ParsedWord> words() {
         return words;
     }
 
+    /**
+     * @return status of the parser. Useful if there have been any errors.
+     */
     public ParserStatus status() {
         return status;
     }
 
+    /**
+     * @return a highly specialized iterator to make it easier to parse the input
+     */
     public ParsedLineIterator iterator() {
         return new ParsedLineIterator(this);
     }
