@@ -44,7 +44,11 @@ import java.util.function.Function;
 import java.util.logging.Logger;
 
 /**
+ * Readline is a simple way to read a single input line from the terminal/shell/console.
+ * Readline reads/writes from/to a {@link org.aesh.tty.Connection}.
  *
+ * Readline is thread safe and will not accept new {@link org.aesh.readline.Readline#readline} calls
+ * while currently reading input.
  */
 public class Readline {
 
@@ -144,6 +148,11 @@ public class Readline {
         }
     }
 
+    /**
+     * AeshInputProcessor, default InputProcessor impl.
+     * Used to parse the incoming input from the Connection until a value is returned.
+     * A new instance of AeshInputProcessor is created for each readline.
+     */
     private class AeshInputProcessor implements InputProcessor {
         private final Connection conn;
         private Consumer<int[]> prevReadHandler;
@@ -186,6 +195,10 @@ public class Readline {
             requestHandler.accept(s);
         }
 
+        /**
+         * Parse the event given
+         * @param event event
+         */
         private void parse(KeyAction event) {
             //TODO: the editModes need to parse/handle this, ref ignoreeof
             //ctrl-d
@@ -224,6 +237,9 @@ public class Readline {
                     editMode.getStatus() == EditMode.Status.COMMAND);
         }
 
+        /**
+         * Make a copy of Connection's current handlers and then use our own.
+         */
         private void start() {
             prevReadHandler = conn.getStdinHandler();
             prevSizeHandler = conn.getSizeHandler();

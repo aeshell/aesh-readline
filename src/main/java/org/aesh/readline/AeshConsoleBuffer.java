@@ -33,8 +33,6 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
 
     private final boolean ansiMode;
 
-    private final boolean isLogging = true;
-
     private static final Logger LOGGER = LoggerUtil.getLogger(AeshConsoleBuffer.class.getName());
 
     public AeshConsoleBuffer(Connection connection, Prompt prompt,

@@ -22,6 +22,8 @@ package org.aesh.tty;
 import java.util.function.Consumer;
 
 /**
+ * Represent a connection to either a local/direct/remote Terminal.
+ *
  * @author <a href=mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
  */
 public interface Connection {

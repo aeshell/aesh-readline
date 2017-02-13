@@ -23,17 +23,40 @@ import org.aesh.readline.editing.EditMode;
 import org.aesh.tty.Connection;
 
 /**
+ * InputProcessor is used by {@link org.aesh.readline.Readline} to process the input.
+ * InputProcessor is using an instance of {@link org.aesh.readline.ConsoleBuffer} to do
+ * provide easy access to writing/reading from the stream, and access to history/undo/etc.
+ *
+ * It is also used by many of the different action classes that react to specific user input.
+ *
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
  */
 public interface InputProcessor {
 
+    /**
+     * The value thats returned after a readline
+     * @return value
+     */
     String getReturnValue();
 
+    /**
+     * @return current console buffer
+     */
     ConsoleBuffer getBuffer();
 
+    /**
+     * Specify the return value
+     * @param value return value
+     */
     void setReturnValue(int[] value);
 
+    /**
+     * @return the current edit mode
+     */
     EditMode getEditMode();
 
+    /**
+     * @return the Connection
+     */
     Connection connection();
 }

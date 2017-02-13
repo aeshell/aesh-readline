@@ -25,18 +25,26 @@ import org.aesh.tty.terminal.TerminalConnection;
 import java.io.IOException;
 
 /**
+ * A very simple example where we use the default values and create a simple
+ * terminal application that reads the input and returns it.
+ * Typing "exit" or ctrl-c/ctrl-d will exit the program.
+ *
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
  */
 public class SimpleExample {
 
     public static void main(String... args) throws IOException {
         TerminalConnection connection = new TerminalConnection();
+        //we're setting up readline to read when connection receives any input
+        //note that this needs to be done after every time Readline.readline returns
         read(connection, ReadlineBuilder.builder().enableHistory(false).build(), "[aesh@rules]$ ");
+        //lets open the connection to the terminal using this thread
         connection.openBlocking();
     }
 
     private static void read(TerminalConnection connection, Readline readline, String prompt) {
         readline.readline(connection, prompt, input -> {
+            //we specify a simple lambda consumer to read the input thats returned
             if(input != null && input.equals("exit")) {
                 connection.write("we're exiting\n");
                 connection.close();

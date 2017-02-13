@@ -42,6 +42,8 @@ import java.util.function.Function;
 import java.util.logging.Logger;
 
 /**
+ * A more extensive example compared to {@link SimpleExample}
+ *
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
  */
 public class Example {
