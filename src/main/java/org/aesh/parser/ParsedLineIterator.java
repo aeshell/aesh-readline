@@ -165,6 +165,8 @@ public class ParsedLineIterator {
 
             character = length + character;
         }
+        else
+            throw new IllegalArgumentException("The length given must be > 0 and not exceed the boundary of the line (including the current position)");
     }
 
 }
