@@ -156,10 +156,14 @@ public class ParsedLineIterator {
      * @param length update length
      */
     public void updateIteratorPosition(int length) {
-        if(length > 0 && (length + character) < parsedLine.line().length()) {
+        if(length > 0) {
+            //make sure we dont go OB
+            if((length + character) > parsedLine.line().length())
+                length = parsedLine.line().length() - character;
+
             //move word counter to the correct word
             while(hasNextWord() &&
-                    (length+character) >= parsedLine.words().get(word).lineIndex()+
+                    (length + character) >= parsedLine.words().get(word).lineIndex() +
                             parsedLine.words().get(word).word().length())
                 word++;
 

@@ -264,6 +264,30 @@ public class LineParserTest {
         iterator.updateIteratorPosition(33);
         assertEquals("--opt2", iterator.peekWord());
         assertEquals(' ', iterator.peekChar());
+
+        line = LineParser.parseLine("--headers={t=x; t=y}");
+        iterator = line.iterator();
+        assertEquals("--headers={t=x;", iterator.pollWord());
+        iterator.updateIteratorPosition(3);
+        assertEquals('}', iterator.peekChar());
+        assertEquals("t=y}", iterator.pollWord());
+        assertFalse(iterator.hasNextWord());
+        assertNull("", iterator.pollWord());
+
+        line = LineParser.parseLine("--headers={t=x; t=y}");
+        iterator = line.iterator();
+        iterator.pollParsedWord();
+        iterator.updateIteratorPosition(4);
+        assertEquals('\u0000', iterator.pollChar());
+        assertNull("", iterator.pollWord());
+
+        line = LineParser.parseLine("--headers={t=x; t=y}");
+        iterator = line.iterator();
+        iterator.pollParsedWord();
+        iterator.updateIteratorPosition(40);
+        assertFalse(iterator.hasNextChar());
+        assertEquals('\u0000', iterator.pollChar());
+        assertNull("", iterator.pollWord());
     }
 
 }
