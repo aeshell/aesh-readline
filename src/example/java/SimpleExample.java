@@ -23,6 +23,7 @@ import org.aesh.readline.ReadlineBuilder;
 import org.aesh.tty.terminal.TerminalConnection;
 
 import java.io.IOException;
+import java.util.concurrent.CountDownLatch;
 
 /**
  * A very simple example where we use the default values and create a simple
@@ -40,6 +41,40 @@ public class SimpleExample {
         read(connection, ReadlineBuilder.builder().enableHistory(false).build(), "[aesh@rules]$ ");
         //lets open the connection to the terminal using this thread
         connection.openBlocking();
+
+        /* nonBlocking
+        connection.openNonBlocking();
+        Readline readline = ReadlineBuilder.builder().enableHistory(false).build();
+        String prompt = "[aesh@rules]$ ";
+        while(true) {
+            String input = reading(connection, readline, prompt);
+            if(input != null && input.equals("exit")) {
+                connection.write("we're exiting\n");
+                connection.close();
+                return;
+            }
+            else {
+                connection.write("=====> "+input+"\n");
+            }
+        }
+        */
+    }
+
+     private static String reading(TerminalConnection connection, Readline readline, String prompt) {
+        final String[] in = new String[1];
+         CountDownLatch latch = new CountDownLatch(1);
+        readline.readline(connection, prompt, input -> {
+            in[0] = input;
+            latch.countDown();
+        });
+        try {
+            latch.await();
+        }
+        catch(InterruptedException e) {
+            e.printStackTrace();
+        }
+
+         return in[0];
     }
 
     private static void read(TerminalConnection connection, Readline readline, String prompt) {
