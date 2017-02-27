@@ -173,4 +173,11 @@ public class ParsedLineIterator {
             throw new IllegalArgumentException("The length given must be > 0 and not exceed the boundary of the line (including the current position)");
     }
 
+    /**
+     * @return true if next word is connected to the cursor
+     */
+    public boolean isNextWordCursorWord() {
+        return word == parsedLine.selectedIndex();
+    }
+
 }
