@@ -148,9 +148,14 @@ public class ParsedLine {
 
     @Override
     public String toString() {
-        return "errorMessage='" + errorMessage +
-            ", words=" + words +
-            ", status=" + status +
-            ", originalInput=" + originalInput;
+        return "ParsedLine{" +
+                "originalInput='" + originalInput + '\'' +
+                ", errorMessage='" + errorMessage + '\'' +
+                ", words=" + words +
+                ", status=" + status +
+                ", cursor=" + cursor +
+                ", cursorWord=" + cursorWord +
+                ", wordCursor=" + wordCursor +
+                '}';
     }
 }
