@@ -39,8 +39,7 @@
    <scm>
       <connection>scm:git:git://github.com/aeshell/aesh-readline.git</connection>
       <developerConnection>scm:git:ssh://git@github.com/aeshell/aesh-readline.git</developerConnection>
-      <url>http://aeshell.github.io/</url>
-      <tag>HEAD</tag>
+      <url>https://github.com/aeshell/aesh-readline/tree/master</url>
    </scm>
 
    <!-- Licenses -->
@@ -50,6 +49,21 @@
          <url>http://www.apache.org/licenses/LICENSE-2.0</url>
       </license>
    </licenses>
+   
+   <developers>
+    <developer>
+      <name>Jean-Francois Denise</name>
+      <email>jdenise@redhat.com</email>
+      <organization>Red Hat</organization>
+      <organizationUrl>http://www.redhat.com</organizationUrl>
+    </developer>
+    <developer>
+      <name>Ståle Pedersen</name>
+      <email>spederse@redhat.com</email>
+      <organization>Red Hat</organization>
+      <organizationUrl>http://www.redhat.com</organizationUrl>
+    </developer>
+  </developers>
 
    <dependencies>
       <dependency>
