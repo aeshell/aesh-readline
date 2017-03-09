@@ -25,6 +25,7 @@ import org.aesh.terminal.Terminal;
 import org.aesh.terminal.utils.Curses;
 import org.aesh.terminal.utils.InfoCmp;
 import org.aesh.tty.Capability;
+import org.aesh.util.Config;
 import org.aesh.util.LoggerUtil;
 
 import java.io.IOError;
@@ -164,7 +165,7 @@ public abstract class AbstractTerminal implements Terminal {
 
     void parseInfoCmp() {
         String capabilities = null;
-        if (type != null) {
+        if (type != null && Config.isOSPOSIXCompatible()) {
             try {
                 capabilities = InfoCmp.getInfoCmp(type);
             } catch (Exception e) {
@@ -172,7 +173,10 @@ public abstract class AbstractTerminal implements Terminal {
             }
         }
         if (capabilities == null) {
-            capabilities = InfoCmp.getDefaultInfoCmp("ansi");
+            if(Config.isOSPOSIXCompatible())
+                capabilities = InfoCmp.getDefaultInfoCmp("ansi");
+            else
+                capabilities = InfoCmp.getDefaultInfoCmp("windows");
         }
         InfoCmp.parseInfoCmp(capabilities, bools, ints, strings);
     }
