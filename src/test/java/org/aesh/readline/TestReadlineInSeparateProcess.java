@@ -27,6 +27,7 @@ import org.jboss.shrinkwrap.api.asset.StringAsset;
 import org.jboss.shrinkwrap.api.exporter.ZipExporter;
 import org.jboss.shrinkwrap.api.spec.JavaArchive;
 import org.jboss.shrinkwrap.resolver.api.maven.archive.importer.MavenImporter;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.BufferedWriter;
@@ -41,6 +42,7 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assume.assumeTrue;
 
 
 public class TestReadlineInSeparateProcess {
@@ -54,6 +56,11 @@ public class TestReadlineInSeparateProcess {
             + "=====> embed-server" + Config.getLineSeparator();
     private CharPumper outPump;
     private BufferedWriter writer;
+
+    @Before
+    public void posixOnly() {
+        assumeTrue(Config.isOSPOSIXCompatible());
+    }
 
     /**
      * Send a line to the process input. Use null for empty line.
