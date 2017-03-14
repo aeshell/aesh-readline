@@ -19,9 +19,9 @@
  */
 package org.aesh.readline.alias;
 
-import org.aesh.parser.LineParser;
 import org.aesh.readline.completion.CompleteOperation;
 import org.aesh.readline.completion.Completion;
+import org.aesh.util.Parser;
 
 /**
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
@@ -59,8 +59,8 @@ public class AliasCompletion implements Completion {
         }
         else if(completeOperation.getBuffer().startsWith(ALIAS_SPACE) ||
                 completeOperation.getBuffer().startsWith(UNALIAS_SPACE)) {
-            String word = LineParser.parseLine(completeOperation.getBuffer(),
-                    completeOperation.getCursor()).selectedWordToCursor().word();
+            String word = Parser.findWordClosestToCursor(
+                    completeOperation.getBuffer(), completeOperation.getCursor());
             completeOperation.addCompletionCandidates(manager.findAllMatchingNames(word));
             if (!word.isEmpty() && HELP.startsWith(word)) {
                 completeOperation.addCompletionCandidate(HELP);
