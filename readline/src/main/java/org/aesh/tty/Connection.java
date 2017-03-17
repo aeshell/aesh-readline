@@ -19,7 +19,10 @@
  */
 package org.aesh.tty;
 
+import org.aesh.terminal.tty.Size;
+import org.aesh.terminal.tty.Capability;
 import java.util.function.Consumer;
+import org.aesh.terminal.tty.Signal;
 
 /**
  * Represent a connection to either a local/direct/remote Terminal.

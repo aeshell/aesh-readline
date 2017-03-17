@@ -24,10 +24,8 @@ import org.aesh.io.Encoder;
 import org.aesh.terminal.Attributes;
 import org.aesh.terminal.Terminal;
 import org.aesh.terminal.TerminalBuilder;
-import org.aesh.tty.Capability;
+import org.aesh.terminal.tty.Capability;
 import org.aesh.tty.Connection;
-import org.aesh.tty.Signal;
-import org.aesh.tty.Size;
 import org.aesh.util.LoggerUtil;
 
 import java.io.IOException;
@@ -40,6 +38,8 @@ import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.aesh.terminal.tty.Signal;
+import org.aesh.terminal.tty.Size;
 
 /**
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>

@@ -20,7 +20,6 @@
 package org.aesh.terminal.impl;
 
 import org.aesh.terminal.utils.ShutdownHooks;
-import org.aesh.tty.Signal;
 import org.aesh.terminal.utils.Signals;
 
 import java.io.IOException;
@@ -30,6 +29,7 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.util.HashMap;
 import java.util.Map;
+import org.aesh.terminal.tty.Signal;
 
 public class PosixSysTerminal extends AbstractPosixTerminal {
 

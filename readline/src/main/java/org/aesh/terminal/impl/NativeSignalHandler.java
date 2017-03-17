@@ -19,8 +19,8 @@
  */
 package org.aesh.terminal.impl;
 
-import org.aesh.tty.Signal;
 import org.aesh.terminal.Terminal;
+import org.aesh.terminal.tty.Signal;
 
 public final class NativeSignalHandler implements Terminal.SignalHandler {
 

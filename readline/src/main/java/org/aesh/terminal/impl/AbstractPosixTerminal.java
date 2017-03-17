@@ -20,10 +20,10 @@
 package org.aesh.terminal.impl;
 
 import org.aesh.terminal.Attributes;
-import org.aesh.tty.Size;
 
 import java.io.IOError;
 import java.io.IOException;
+import org.aesh.terminal.tty.Size;
 
 public abstract class AbstractPosixTerminal extends AbstractTerminal {
 

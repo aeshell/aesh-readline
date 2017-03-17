@@ -4,7 +4,6 @@ import org.aesh.readline.history.InMemoryHistory;
 import org.aesh.readline.paste.PasteManager;
 import org.aesh.readline.undo.UndoAction;
 import org.aesh.readline.undo.UndoManager;
-import org.aesh.tty.Size;
 import org.aesh.util.ANSI;
 import org.aesh.util.Config;
 import org.aesh.readline.completion.CompletionHandler;
@@ -14,6 +13,7 @@ import org.aesh.tty.Connection;
 import org.aesh.util.LoggerUtil;
 
 import java.util.logging.Logger;
+import org.aesh.terminal.tty.Size;
 
 /**
  * @author Ståle W. Pedersen <stale.pedersen@jboss.org>

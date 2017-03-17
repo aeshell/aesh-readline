@@ -23,9 +23,7 @@ import org.aesh.terminal.Attributes;
 import org.aesh.terminal.utils.Curses;
 import org.aesh.terminal.utils.ShutdownHooks;
 import org.aesh.terminal.utils.Signals;
-import org.aesh.tty.Capability;
-import org.aesh.tty.Signal;
-import org.aesh.tty.Size;
+import org.aesh.terminal.tty.Capability;
 
 import java.io.FilterInputStream;
 import java.io.InputStream;
@@ -41,6 +39,8 @@ import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
+import org.aesh.terminal.tty.Signal;
+import org.aesh.terminal.tty.Size;
 
 abstract class AbstractWindowsTerminal extends AbstractTerminal {
 

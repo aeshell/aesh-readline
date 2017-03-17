@@ -30,8 +30,6 @@ import org.aesh.readline.editing.EditModeBuilder;
 import org.aesh.readline.history.History;
 import org.aesh.readline.history.InMemoryHistory;
 import org.aesh.terminal.Key;
-import org.aesh.tty.Signal;
-import org.aesh.tty.Size;
 import org.aesh.util.Config;
 import org.aesh.util.Parser;
 import org.aesh.tty.Connection;
@@ -42,6 +40,8 @@ import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.logging.Logger;
+import org.aesh.terminal.tty.Signal;
+import org.aesh.terminal.tty.Size;
 
 /**
  * Readline is a simple way to read a single input line from the terminal/shell/console.

@@ -19,16 +19,15 @@
  */
 package org.aesh.terminal;
 
-import org.aesh.terminal.impl.NativeSignalHandler;
-import org.aesh.tty.Signal;
-import org.aesh.tty.Size;
-import org.aesh.tty.Capability;
+import org.aesh.terminal.tty.Capability;
 
 import java.io.Closeable;
 import java.io.Flushable;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintWriter;
+import org.aesh.terminal.tty.Signal;
+import org.aesh.terminal.tty.Size;
 
 
 public interface Terminal extends Closeable, Flushable {
@@ -39,10 +38,6 @@ public interface Terminal extends Closeable, Flushable {
     // Signal support
     //
     interface SignalHandler {
-
-        SignalHandler SIG_DFL = NativeSignalHandler.SIG_DFL;
-        SignalHandler SIG_IGN = NativeSignalHandler.SIG_IGN;
-
         void handle(Signal signal);
     }
 

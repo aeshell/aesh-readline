@@ -19,7 +19,7 @@
  */
 package org.aesh.terminal.utils;
 
-import org.aesh.tty.Capability;
+import org.aesh.terminal.tty.Capability;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;

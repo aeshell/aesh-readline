@@ -22,13 +22,13 @@ package org.aesh.readline;
 import org.aesh.readline.completion.Completion;
 import org.aesh.readline.editing.EditModeBuilder;
 import org.aesh.terminal.Key;
-import org.aesh.tty.Size;
 import org.aesh.tty.TestConnection;
 import org.aesh.util.Config;
 import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.aesh.terminal.tty.Size;
 
 import static org.junit.Assert.assertEquals;
 

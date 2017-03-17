@@ -24,8 +24,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.logging.Level;
 
-import org.aesh.tty.Capability;
-import org.aesh.tty.Size;
+import org.aesh.terminal.tty.Capability;
+import org.aesh.terminal.tty.Size;
 import org.fusesource.jansi.WindowsAnsiOutputStream;
 import org.fusesource.jansi.internal.Kernel32;
 import org.fusesource.jansi.internal.Kernel32.INPUT_RECORD;
@@ -35,7 +35,7 @@ import org.fusesource.jansi.internal.WindowsSupport;
 public class WinSysTerminal extends AbstractWindowsTerminal {
 
     public WinSysTerminal(String name, boolean nativeSignals) throws IOException {
-        this(name, nativeSignals, SignalHandler.SIG_DFL);
+        this(name, nativeSignals, SignalHandlers.SIG_DFL);
     }
 
     public WinSysTerminal(String name, boolean nativeSignals, SignalHandler signalHandler) throws IOException {

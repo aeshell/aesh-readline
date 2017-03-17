@@ -21,9 +21,9 @@ package org.aesh.readline;
 
 import org.aesh.readline.paste.PasteManager;
 import org.aesh.readline.undo.UndoManager;
-import org.aesh.tty.Size;
 import org.aesh.readline.completion.CompletionHandler;
 import org.aesh.readline.history.History;
+import org.aesh.terminal.tty.Size;
 
 /**
  * Internal class for actions to get access to the buffer, history, connection, ++

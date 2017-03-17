@@ -25,11 +25,11 @@ import org.aesh.terminal.Attributes.ControlFlag;
 import org.aesh.terminal.Attributes.InputFlag;
 import org.aesh.terminal.Attributes.LocalFlag;
 import org.aesh.terminal.Attributes.OutputFlag;
-import org.aesh.tty.Size;
 import org.junit.Test;
 
 import java.io.IOException;
 import java.util.EnumSet;
+import org.aesh.terminal.tty.Size;
 
 import static org.junit.Assert.assertEquals;
 

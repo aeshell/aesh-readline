@@ -22,7 +22,6 @@ package org.aesh.terminal.impl;
 import org.aesh.terminal.Attributes;
 import org.aesh.terminal.utils.ExecHelper;
 import org.aesh.terminal.utils.OSUtils;
-import org.aesh.tty.Size;
 import org.aesh.util.LoggerUtil;
 
 import java.io.FileInputStream;
@@ -39,6 +38,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.aesh.terminal.tty.Size;
 
 public class ExecPty implements Pty {
 

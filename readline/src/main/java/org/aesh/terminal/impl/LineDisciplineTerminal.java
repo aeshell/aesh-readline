@@ -20,10 +20,8 @@
 package org.aesh.terminal.impl;
 
 import org.aesh.terminal.utils.LinePipedInputStream;
-import org.aesh.tty.Signal;
 import org.aesh.terminal.Attributes;
 import org.aesh.terminal.Terminal;
-import org.aesh.tty.Size;
 
 import java.io.FilterInputStream;
 import java.io.IOException;
@@ -37,6 +35,8 @@ import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.CharsetDecoder;
 import java.util.function.IntConsumer;
+import org.aesh.terminal.tty.Signal;
+import org.aesh.terminal.tty.Size;
 
 /**
  * Abstract console with support for line discipline.

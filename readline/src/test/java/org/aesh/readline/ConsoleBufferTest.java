@@ -19,18 +19,18 @@
  */
 package org.aesh.readline;
 
-import org.aesh.tty.Signal;
 import org.aesh.util.ANSI;
 import org.aesh.util.Parser;
 import org.aesh.readline.editing.EditModeBuilder;
 import org.aesh.readline.history.InMemoryHistory;
-import org.aesh.tty.Capability;
+import org.aesh.terminal.tty.Capability;
 import org.aesh.tty.Connection;
-import org.aesh.tty.Size;
 import org.junit.Test;
 
 import java.io.IOException;
 import java.util.function.Consumer;
+import org.aesh.terminal.tty.Signal;
+import org.aesh.terminal.tty.Size;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;

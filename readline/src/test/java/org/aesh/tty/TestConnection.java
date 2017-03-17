@@ -19,6 +19,8 @@
  */
 package org.aesh.tty;
 
+import org.aesh.terminal.tty.Size;
+import org.aesh.terminal.tty.Capability;
 import org.aesh.io.Decoder;
 import org.aesh.readline.Prompt;
 import org.aesh.readline.TestReadline;
@@ -33,6 +35,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
 import java.util.function.Consumer;
+import org.aesh.terminal.tty.Signal;
 
 import static org.junit.Assert.assertEquals;
 

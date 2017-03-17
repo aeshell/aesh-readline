@@ -19,12 +19,11 @@
  */
 package org.aesh.terminal.impl;
 
-import org.aesh.tty.Signal;
 import org.aesh.terminal.Attributes;
 import org.aesh.terminal.Terminal;
 import org.aesh.terminal.utils.Curses;
 import org.aesh.terminal.utils.InfoCmp;
-import org.aesh.tty.Capability;
+import org.aesh.terminal.tty.Capability;
 import org.aesh.util.Config;
 import org.aesh.util.LoggerUtil;
 
@@ -37,6 +36,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.aesh.terminal.tty.Signal;
+import static org.aesh.terminal.tty.Signal.INT;
+import static org.aesh.terminal.tty.Signal.QUIT;
+import static org.aesh.terminal.tty.Signal.TSTP;
 
 public abstract class AbstractTerminal implements Terminal {
 
@@ -50,7 +53,7 @@ public abstract class AbstractTerminal implements Terminal {
     protected final Map<Capability, String> strings = new HashMap<>();
 
     public AbstractTerminal(String name, String type) throws IOException {
-        this(name, type, SignalHandler.SIG_DFL);
+        this(name, type, SignalHandlers.SIG_DFL);
     }
 
     public AbstractTerminal(String name, String type, SignalHandler signalHandler) throws IOException {
@@ -70,9 +73,9 @@ public abstract class AbstractTerminal implements Terminal {
     public void raise(Signal signal) {
         assert signal != null;
         SignalHandler handler = handlers.get(signal);
-        if (handler == SignalHandler.SIG_DFL) {
+        if (handler == SignalHandlers.SIG_DFL) {
             handleDefaultSignal(signal);
-        } else if (handler != SignalHandler.SIG_IGN) {
+        } else if (handler != SignalHandlers.SIG_IGN) {
             handler.handle(signal);
         }
     }
