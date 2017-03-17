@@ -19,8 +19,8 @@
  */
 package org.aesh.readline.history;
 
-import org.aesh.terminal.Key;
-import org.aesh.tty.TestConnection;
+import org.aesh.readline.terminal.Key;
+import org.aesh.readline.tty.TestConnection;
 import org.aesh.util.Config;
 import org.aesh.util.FileAccessPermission;
 import org.aesh.util.Parser;

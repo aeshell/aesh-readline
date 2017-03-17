@@ -22,7 +22,7 @@ package org.aesh.readline.alias;
 import org.aesh.util.Config;
 import org.aesh.readline.Prompt;
 import org.aesh.readline.Readline;
-import org.aesh.tty.terminal.TerminalConnection;
+import org.aesh.readline.tty.terminal.TerminalConnection;
 import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;

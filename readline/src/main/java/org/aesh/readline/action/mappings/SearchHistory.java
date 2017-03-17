@@ -20,7 +20,7 @@
 package org.aesh.readline.action.mappings;
 
 import org.aesh.readline.action.KeyAction;
-import org.aesh.terminal.Key;
+import org.aesh.readline.terminal.Key;
 import org.aesh.util.IntArrayBuilder;
 import org.aesh.util.Parser;
 import org.aesh.readline.InputProcessor;

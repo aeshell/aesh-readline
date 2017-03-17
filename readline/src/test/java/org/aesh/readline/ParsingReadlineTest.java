@@ -19,7 +19,7 @@
  */
 package org.aesh.readline;
 
-import org.aesh.tty.TestConnection;
+import org.aesh.readline.tty.TestConnection;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;

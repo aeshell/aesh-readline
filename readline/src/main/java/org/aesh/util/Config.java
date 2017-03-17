@@ -19,7 +19,7 @@
  */
 package org.aesh.util;
 
-import org.aesh.terminal.utils.OSUtils;
+import org.aesh.readline.terminal.utils.OSUtils;
 
 /**
  *

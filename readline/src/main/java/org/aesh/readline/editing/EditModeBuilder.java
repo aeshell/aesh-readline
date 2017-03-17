@@ -42,7 +42,7 @@ import org.aesh.readline.action.mappings.NextHistory;
 import org.aesh.readline.action.mappings.NoAction;
 import org.aesh.readline.action.mappings.PrevHistory;
 import org.aesh.readline.action.mappings.Undo;
-import org.aesh.terminal.Key;
+import org.aesh.readline.terminal.Key;
 import org.aesh.readline.action.mappings.DeleteBackwardWord;
 import org.aesh.readline.action.mappings.DeleteForwardWord;
 import org.aesh.readline.action.mappings.ForwardChar;

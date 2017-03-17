@@ -19,7 +19,7 @@
  */
 package org.aesh.util;
 
-import org.aesh.terminal.utils.InfoCmpHelper;
+import org.aesh.readline.terminal.utils.InfoCmpHelper;
 
 import java.util.Arrays;
 

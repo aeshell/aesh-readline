@@ -22,7 +22,7 @@ package org.aesh.readline.completion;
 import org.aesh.readline.Buffer;
 import org.aesh.readline.InputProcessor;
 import org.aesh.readline.action.mappings.ActionMapper;
-import org.aesh.terminal.formatting.TerminalString;
+import org.aesh.readline.terminal.formatting.TerminalString;
 import org.aesh.util.Config;
 import org.aesh.util.Parser;
 

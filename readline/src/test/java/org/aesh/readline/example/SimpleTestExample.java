@@ -21,7 +21,7 @@ package org.aesh.readline.example;
 
 import org.aesh.readline.Readline;
 import org.aesh.readline.ReadlineBuilder;
-import org.aesh.tty.terminal.TerminalConnection;
+import org.aesh.readline.tty.terminal.TerminalConnection;
 
 import java.io.IOException;
 

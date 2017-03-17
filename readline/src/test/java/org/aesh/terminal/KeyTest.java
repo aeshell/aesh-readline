@@ -19,6 +19,7 @@
  */
 package org.aesh.terminal;
 
+import org.aesh.readline.terminal.Key;
 import org.aesh.readline.action.mappings.ActionMapper;
 import org.aesh.util.Config;
 import org.aesh.readline.action.Action;

@@ -24,7 +24,7 @@ import org.aesh.util.Parser;
 import org.aesh.readline.editing.EditModeBuilder;
 import org.aesh.readline.history.InMemoryHistory;
 import org.aesh.terminal.tty.Capability;
-import org.aesh.tty.Connection;
+import org.aesh.readline.tty.Connection;
 import org.junit.Test;
 
 import java.io.IOException;

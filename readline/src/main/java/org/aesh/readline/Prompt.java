@@ -19,9 +19,9 @@
  */
 package org.aesh.readline;
 
-import org.aesh.terminal.formatting.TerminalString;
+import org.aesh.readline.terminal.formatting.TerminalString;
 import org.aesh.util.Parser;
-import org.aesh.terminal.formatting.TerminalCharacter;
+import org.aesh.readline.terminal.formatting.TerminalCharacter;
 
 import java.util.Arrays;
 import java.util.List;

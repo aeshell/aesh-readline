@@ -9,7 +9,7 @@ import org.aesh.util.Config;
 import org.aesh.readline.completion.CompletionHandler;
 import org.aesh.readline.editing.EditMode;
 import org.aesh.readline.history.History;
-import org.aesh.tty.Connection;
+import org.aesh.readline.tty.Connection;
 import org.aesh.util.LoggerUtil;
 
 import java.util.logging.Logger;

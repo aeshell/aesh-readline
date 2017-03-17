@@ -20,7 +20,7 @@
 package org.aesh.readline.completion;
 
 import org.aesh.util.Parser;
-import org.aesh.terminal.formatting.TerminalString;
+import org.aesh.readline.terminal.formatting.TerminalString;
 
 import java.util.ArrayList;
 import java.util.List;

@@ -23,7 +23,7 @@ import org.aesh.readline.action.Action;
 import org.aesh.readline.action.ActionEvent;
 import org.aesh.readline.action.KeyAction;
 import org.aesh.readline.completion.CompletionHandler;
-import org.aesh.terminal.Key;
+import org.aesh.readline.terminal.Key;
 import org.aesh.util.Config;
 import org.aesh.readline.InputProcessor;
 

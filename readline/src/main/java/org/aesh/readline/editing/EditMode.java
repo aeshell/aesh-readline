@@ -20,7 +20,7 @@
 package org.aesh.readline.editing;
 
 import org.aesh.readline.action.KeyAction;
-import org.aesh.terminal.Key;
+import org.aesh.readline.terminal.Key;
 import org.aesh.readline.action.Action;
 
 import java.util.Arrays;

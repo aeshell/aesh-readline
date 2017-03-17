@@ -19,7 +19,7 @@
  */
 package org.aesh.parser;
 
-import org.aesh.terminal.formatting.TerminalString;
+import org.aesh.readline.terminal.formatting.TerminalString;
 import org.aesh.util.ANSI;
 import org.aesh.util.Config;
 import org.aesh.util.Parser;

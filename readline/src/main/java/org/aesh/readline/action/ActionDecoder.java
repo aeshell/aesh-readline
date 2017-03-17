@@ -19,7 +19,7 @@
  */
 package org.aesh.readline.action;
 
-import org.aesh.terminal.Key;
+import org.aesh.readline.terminal.Key;
 import org.aesh.readline.editing.EditMode;
 
 import java.util.Arrays;
