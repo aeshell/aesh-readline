@@ -19,7 +19,7 @@
  */
 package org.aesh.readline;
 
-import org.aesh.readline.tty.TestConnection;
+import org.aesh.readline.tty.terminal.TestConnection;
 import org.aesh.util.Config;
 import org.junit.Test;
 

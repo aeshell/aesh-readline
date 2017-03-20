@@ -20,7 +20,7 @@
 package org.aesh.readline.editing;
 
 import org.aesh.readline.terminal.Key;
-import org.aesh.readline.tty.TestConnection;
+import org.aesh.readline.tty.terminal.TestConnection;
 import org.junit.Test;
 
 /**

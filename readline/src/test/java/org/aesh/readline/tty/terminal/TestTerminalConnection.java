@@ -17,13 +17,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.aesh.readline.tty;
+package org.aesh.readline.tty.terminal;
 
 import org.aesh.util.Config;
 import org.aesh.readline.Prompt;
 import org.aesh.readline.Readline;
 import org.aesh.readline.TestTerminal;
-import org.aesh.readline.tty.terminal.TerminalConnection;
 import org.junit.Assert;
 import org.junit.Test;
 
