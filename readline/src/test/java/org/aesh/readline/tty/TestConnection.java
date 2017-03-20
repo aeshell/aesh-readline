@@ -19,6 +19,7 @@
  */
 package org.aesh.readline.tty;
 
+import org.aesh.terminal.Connection;
 import org.aesh.terminal.tty.Size;
 import org.aesh.terminal.tty.Capability;
 import org.aesh.io.Decoder;

@@ -20,7 +20,7 @@
 package org.aesh.readline;
 
 import org.aesh.readline.editing.EditMode;
-import org.aesh.readline.tty.Connection;
+import org.aesh.terminal.Connection;
 
 /**
  * InputProcessor is used by {@link org.aesh.readline.Readline} to process the input.
