@@ -45,6 +45,7 @@
     <modules>
         <module>terminal-api</module>
         <module>readline</module>
+        <module>examples</module>
     </modules>
     
     <!-- Licenses -->
