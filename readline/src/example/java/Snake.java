@@ -18,10 +18,10 @@
  * limitations under the License.
  */
 
-import org.aesh.tty.Point;
-import org.aesh.tty.Signal;
-import org.aesh.tty.Size;
-import org.aesh.tty.terminal.TerminalConnection;
+import org.aesh.readline.tty.terminal.TerminalConnection;
+import org.aesh.terminal.tty.Point;
+import org.aesh.terminal.tty.Signal;
+import org.aesh.terminal.tty.Size;
 import org.aesh.util.ANSI;
 import org.aesh.util.LoggerUtil;
 

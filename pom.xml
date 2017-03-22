@@ -33,7 +33,7 @@
     <groupId>org.aesh</groupId>
     <artifactId>aesh-readline-all</artifactId>
     <packaging>pom</packaging>
-    <version>1.0-CR12-SNAPSHOT</version>
+    <version>1.0-CR13-SNAPSHOT</version>
     <name>Æsh Readline and terminal</name>
     <description>Æsh (Another Extendable SHell) Readline and Terminal API</description>
     <scm>

@@ -20,7 +20,7 @@
 
 import org.aesh.readline.Readline;
 import org.aesh.readline.ReadlineBuilder;
-import org.aesh.tty.terminal.TerminalConnection;
+import org.aesh.readline.tty.terminal.TerminalConnection;
 
 import java.io.IOException;
 import java.util.concurrent.CountDownLatch;

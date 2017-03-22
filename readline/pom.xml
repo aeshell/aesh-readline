@@ -24,8 +24,8 @@
     <parent>
         <groupId>org.aesh</groupId>
         <artifactId>aesh-readline-all</artifactId>
-        <relativePath />
-        <version>1.0-CR12-SNAPSHOT</version>
+        <version>1.0-CR13-SNAPSHOT</version>
+        <relativePath>../</relativePath>
     </parent>
 
     <modelVersion>4.0.0</modelVersion>
@@ -73,7 +73,8 @@
         <dependency>
             <groupId>org.aesh</groupId>
             <artifactId>aesh-terminal-api</artifactId>
-            <version>1.0-CR12-SNAPSHOT</version>
+            <version>1.0-CR13-SNAPSHOT</version>
+            <type>jar</type>
         </dependency>
 
         <dependency>
@@ -131,19 +132,46 @@
                 </configuration>
             </plugin>
             <plugin>
+              <groupId>org.apache.maven.plugins</groupId>
+              <artifactId>maven-shade-plugin</artifactId>
+              <executions>
+                <execution>
+                  <phase>package</phase>
+                  <goals>
+                    <goal>shade</goal>
+                  </goals>
+                  <configuration>
+                    <artifactSet>
+                      <excludes>
+                        <exclude>org.fusesource.jansi:jansi</exclude>
+                        <exclude>org.jboss.shrinkwrap.resolver:shrinkwrap-resolver-depchain</exclude>
+                        <exclude>junit:junit</exclude>
+                        <!--
+                        <exclude>org.apache.maven:lib:tests</exclude>
+                        <exclude>log4j:log4j:jar:</exclude>
+-->
+                      </excludes>
+                    </artifactSet>
+                  </configuration>
+                </execution>
+              </executions>
+            </plugin>
+            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-checkstyle-plugin</artifactId>
-                <version>2.16</version>
+                <version>2.17</version>
                 <executions>
                     <execution>
                         <id>validate</id>
                         <phase>validate</phase>           
                         <configuration>
-                            <configLocation>config/checkstyle/checkstyle.xml</configLocation>                   
+                          <configLocation>${project.basedir}/../config/checkstyle/checkstyle.xml</configLocation>
                             <consoleOutput>true</consoleOutput>
                             <failsOnError>true</failsOnError>
                             <linkXRef>false</linkXRef>
+                            <!--
                             <useFile/>
+-->
                             <includeTestSourceDirectory>true</includeTestSourceDirectory>
                         </configuration>
                         <goals>

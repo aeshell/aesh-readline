@@ -22,12 +22,12 @@ import org.aesh.readline.Readline;
 import org.aesh.readline.completion.Completion;
 import org.aesh.readline.editing.EditMode;
 import org.aesh.readline.editing.EditModeBuilder;
-import org.aesh.terminal.formatting.Color;
-import org.aesh.terminal.formatting.TerminalColor;
-import org.aesh.terminal.formatting.TerminalString;
-import org.aesh.tty.Connection;
-import org.aesh.tty.Signal;
-import org.aesh.tty.terminal.TerminalConnection;
+import org.aesh.readline.terminal.formatting.Color;
+import org.aesh.readline.terminal.formatting.TerminalColor;
+import org.aesh.readline.terminal.formatting.TerminalString;
+import org.aesh.readline.tty.terminal.TerminalConnection;
+import org.aesh.terminal.Connection;
+import org.aesh.terminal.tty.Signal;
 import org.aesh.util.Config;
 import org.aesh.util.LoggerUtil;
 
