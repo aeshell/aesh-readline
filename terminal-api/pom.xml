@@ -24,7 +24,7 @@
    <parent>
       <groupId>org.aesh</groupId>
       <artifactId>aesh-readline-all</artifactId>
-      <version>1.0-CR13-SNAPSHOT</version>
+      <version>1.0-CR14</version>
       <relativePath>../</relativePath>
    </parent>
 
@@ -107,7 +107,6 @@
                  <configLocation>config/checkstyle/checkstyle.xml</configLocation>                   
                  <consoleOutput>true</consoleOutput>
                  <failsOnError>true</failsOnError>
-                 <linkXRef>false</linkXRef>
                  <useFile/>
                  <includeTestSourceDirectory>true</includeTestSourceDirectory>
                </configuration>
