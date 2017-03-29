@@ -1,5 +1,3 @@
-package org.aesh.terminal.tty;
-
 /*
  * JBoss, Home of Professional Open Source
  * Copyright 2014 Red Hat Inc. and/or its affiliates and other contributors
@@ -19,7 +17,7 @@ package org.aesh.terminal.tty;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+package org.aesh.terminal.tty;
 
 /**
  * @author <a href=mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
@@ -37,7 +35,12 @@ public enum Signal {
      * Works like INT and QUIT, caused by Ctrl-z.
      * The default action is to suspend the process.
      */
-    TSTP,
+    SUSP,
+    /**
+     * End of file, first send end-of-file, then causes the next read to send end of file.
+     * Ctrl-d by default.
+     */
+    EOF,
     /**
      * Wake up. This will un-suspend a stopped process.
      */

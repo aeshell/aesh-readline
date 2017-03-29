@@ -175,7 +175,7 @@ public class LineDisciplineTerminal extends AbstractTerminal {
                 raise(Signal.QUIT);
                 return;
             } else if (c == attributes.getControlChar(Attributes.ControlChar.VSUSP)) {
-                raise(Signal.TSTP);
+                raise(Signal.SUSP);
                 return;
             } else if (c == attributes.getControlChar(Attributes.ControlChar.VSTATUS)) {
                 raise(Signal.INFO);

@@ -37,9 +37,6 @@ import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.aesh.terminal.tty.Signal;
-import static org.aesh.terminal.tty.Signal.INT;
-import static org.aesh.terminal.tty.Signal.QUIT;
-import static org.aesh.terminal.tty.Signal.TSTP;
 
 public abstract class AbstractTerminal implements Terminal {
 
@@ -92,7 +89,7 @@ public abstract class AbstractTerminal implements Terminal {
             case QUIT:
                 cc = Attributes.ControlChar.VQUIT;
                 break;
-            case TSTP:
+            case SUSP:
                 cc = Attributes.ControlChar.VSUSP;
                 break;
         }

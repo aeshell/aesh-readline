@@ -22,6 +22,7 @@ package org.aesh.readline.tty.terminal;
 import org.aesh.io.Decoder;
 import org.aesh.io.Encoder;
 import org.aesh.terminal.Attributes;
+import org.aesh.terminal.EventDecoder;
 import org.aesh.terminal.Terminal;
 import org.aesh.readline.terminal.TerminalBuilder;
 import org.aesh.terminal.tty.Capability;
@@ -53,9 +54,8 @@ public class TerminalConnection implements Connection {
     private Consumer<Size> sizeHandler;
     private Decoder decoder;
     private Consumer<int[]> stdOut;
-    private Consumer<int[]> inputHandler;
     private Attributes attributes;
-    private Consumer<Signal> eventHandler;
+    private EventDecoder eventDecoder = new EventDecoder();
     private volatile boolean reading = false;
     private volatile boolean close = false;
     private Consumer<Void> closeHandler;
@@ -98,7 +98,7 @@ public class TerminalConnection implements Connection {
             }
         });
 
-        decoder = new Decoder(512, Charset.defaultCharset(), inputHandler);
+        decoder = new Decoder(512, Charset.defaultCharset(), eventDecoder);
         stdOut = new Encoder(Charset.defaultCharset(), this::write);
     }
 
@@ -221,23 +221,22 @@ public class TerminalConnection implements Connection {
 
     @Override
     public Consumer<Signal> getSignalHandler() {
-        return eventHandler;
+        return eventDecoder.getSignalHandler();
     }
 
     @Override
     public void setSignalHandler(Consumer<Signal> handler) {
-        eventHandler = handler;
+        eventDecoder.setSignalHandler(handler);
     }
 
     @Override
     public Consumer<int[]> getStdinHandler() {
-        return inputHandler;
+        return eventDecoder.getInputHandler();
     }
 
     @Override
     public void setStdinHandler(Consumer<int[]> handler) {
-        inputHandler = handler;
-        decoder.setConsumer(inputHandler);
+        eventDecoder.setInputHandler(handler);
     }
 
     @Override

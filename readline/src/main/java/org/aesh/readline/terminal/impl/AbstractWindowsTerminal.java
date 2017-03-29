@@ -295,7 +295,7 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
                     raise(Signal.QUIT);
                 }
                 else if (c == attributes.getControlChar(Attributes.ControlChar.VSUSP)) {
-                    raise(Signal.TSTP);
+                    raise(Signal.SUSP);
                 }
                 else if (c == attributes.getControlChar(Attributes.ControlChar.VSTATUS)) {
                     raise(Signal.INFO);
