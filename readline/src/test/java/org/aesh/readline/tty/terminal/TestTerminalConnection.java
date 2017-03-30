@@ -30,6 +30,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import org.aesh.terminal.tty.Signal;
 
@@ -47,7 +48,7 @@ public class TestTerminalConnection {
         PipedInputStream pipedInputStream = new PipedInputStream(outputStream);
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
 
-        TerminalConnection connection = new TerminalConnection(pipedInputStream, byteArrayOutputStream);
+        TerminalConnection connection = new TerminalConnection(Charset.defaultCharset(), pipedInputStream, byteArrayOutputStream);
 
         final ArrayList<int[]> result = new ArrayList<>();
         connection.setStdinHandler(result::add);
@@ -89,7 +90,7 @@ public class TestTerminalConnection {
         PipedInputStream pipedInputStream = new PipedInputStream(outputStream);
         ByteArrayOutputStream out = new ByteArrayOutputStream();
 
-        TerminalConnection connection = new TerminalConnection(pipedInputStream, out);
+        TerminalConnection connection = new TerminalConnection(Charset.defaultCharset(), pipedInputStream, out);
 
         Readline readline = new Readline();
         readline.readline(connection, new Prompt(""), s -> {  });
@@ -110,7 +111,7 @@ public class TestTerminalConnection {
         PipedInputStream pipedInputStream = new PipedInputStream(outputStream);
         ByteArrayOutputStream out = new ByteArrayOutputStream();
 
-        TerminalConnection connection = new TerminalConnection(pipedInputStream, out);
+        TerminalConnection connection = new TerminalConnection(Charset.defaultCharset(), pipedInputStream, out);
         connection.setSignalHandler( signal -> {
             if(signal == Signal.INT) {
                 connection.write("BAR");

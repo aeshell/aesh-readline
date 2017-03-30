@@ -22,6 +22,7 @@ package org.aesh.readline.terminal.impl;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.charset.Charset;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -43,8 +44,8 @@ public class ExternalTerminal extends LineDisciplineTerminal {
 
     public ExternalTerminal(String name, String type,
                             InputStream masterInput, OutputStream masterOutput,
-                            String encoding) throws IOException {
-        super(name, type, masterOutput, encoding);
+                            Charset charset) throws IOException {
+        super(name, type, masterOutput, charset);
         this.masterInput = masterInput;
         this.pumpThread = new Thread(this::pump, toString() + " input pump thread");
         this.pumpThread.start();

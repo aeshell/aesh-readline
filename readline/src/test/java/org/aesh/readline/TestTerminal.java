@@ -25,6 +25,7 @@ import org.aesh.readline.tty.terminal.TerminalConnection;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
@@ -46,7 +47,7 @@ public class TestTerminal {
             byteArrayOutputStream = new ByteArrayOutputStream();
 
             terminal = new LineDisciplineTerminal("aesh-test", "term",
-                    byteArrayOutputStream, "UTF-8");
+                    byteArrayOutputStream, Charset.defaultCharset());
 
             connection = new TerminalConnection(terminal);
             output = new ArrayList<>();

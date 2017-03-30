@@ -27,6 +27,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
+import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.Map;
 import org.aesh.terminal.tty.Signal;
@@ -39,12 +40,12 @@ public class PosixSysTerminal extends AbstractPosixTerminal {
     protected final Map<Signal, Object> nativeHandlers = new HashMap<>();
     protected final ShutdownHooks.Task closer;
 
-    public PosixSysTerminal(String name, String type, Pty pty, String encoding, boolean nativeSignals) throws IOException {
+    public PosixSysTerminal(String name, String type, Pty pty, Charset charset, boolean nativeSignals) throws IOException {
         super(name, type, pty);
-        assert encoding != null;
+        assert charset != null;
         this.input = pty.getSlaveInput();
         this.output = pty.getSlaveOutput();
-        this.writer = new PrintWriter(new OutputStreamWriter(output, encoding));
+        this.writer = new PrintWriter(new OutputStreamWriter(output, charset));
         parseInfoCmp();
         if (nativeSignals) {
             for (final Signal signal : Signal.values()) {

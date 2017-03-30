@@ -47,13 +47,14 @@ import org.aesh.terminal.tty.Size;
  */
 public class TerminalConnection implements Connection {
 
+    private final Charset charset;
     private Terminal terminal;
 
     private static final Logger LOGGER = LoggerUtil.getLogger(TerminalConnection.class.getName());
 
     private Consumer<Size> sizeHandler;
     private Decoder decoder;
-    private Consumer<int[]> stdOut;
+    private Encoder stdOut;
     private Attributes attributes;
     private EventDecoder eventDecoder = new EventDecoder();
     private volatile boolean reading = false;
@@ -62,20 +63,23 @@ public class TerminalConnection implements Connection {
     private CountDownLatch latch;
     private volatile boolean waiting = false;
 
-    public TerminalConnection(InputStream inputStream, OutputStream outputStream) throws IOException {
+    public TerminalConnection(Charset charset, InputStream inputStream, OutputStream outputStream) throws IOException {
             init(TerminalBuilder.builder()
                     .input(inputStream)
                     .output(outputStream)
+                    .charset(charset)
                     .nativeSignals(true)
                     .name("Aesh console")
                     .build());
+            this.charset = charset;
     }
 
     public TerminalConnection() throws IOException {
-        this(System.in, System.out);
+        this(Charset.defaultCharset(), System.in, System.out);
     }
 
     public TerminalConnection(Terminal terminal) {
+        this.charset = Charset.defaultCharset();
         init(terminal);
     }
 
@@ -122,6 +126,16 @@ public class TerminalConnection implements Connection {
     @Override
     public boolean put(Capability capability, Object... params) {
         return terminal.puts(capability, params);
+    }
+
+    @Override
+    public Charset inputCharset() {
+        return charset;
+    }
+
+    @Override
+    public Charset outputCharset() {
+        return charset;
     }
 
     /**

@@ -28,6 +28,7 @@ import org.aesh.terminal.Connection;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.util.function.Consumer;
 import org.aesh.terminal.tty.Signal;
 import org.aesh.terminal.tty.Size;
@@ -94,7 +95,6 @@ public class ConsoleBufferTest {
 
     class SimpleConnection implements Connection {
 
-        private Consumer<Size>  sizeHandler;
         private Consumer<int[]> stdOutHandler;
         private StringBuilder bufferBuilder;
 
@@ -197,6 +197,16 @@ public class ConsoleBufferTest {
         @Override
         public boolean put(Capability capability, Object... params) {
             return false;
+        }
+
+        @Override
+        public Charset inputCharset() {
+            return null;
+        }
+
+        @Override
+        public Charset outputCharset() {
+            return null;
         }
     }
 

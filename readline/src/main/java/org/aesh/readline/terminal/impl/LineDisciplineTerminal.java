@@ -31,10 +31,8 @@ import java.io.OutputStreamWriter;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.io.PrintWriter;
-import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
-import java.nio.charset.CharsetDecoder;
-import java.util.function.IntConsumer;
+import java.nio.charset.Charset;
 import org.aesh.terminal.tty.Signal;
 import org.aesh.terminal.tty.Size;
 
@@ -78,22 +76,19 @@ public class LineDisciplineTerminal extends AbstractTerminal {
     /**
      * Console data
      */
-    protected final String encoding;
+    protected final Charset charset;
     protected final Attributes attributes;
     protected Size size;
 
     /**
      * Application
      */
-    protected IntConsumer application;
-    protected CharsetDecoder decoder;
-    protected ByteBuffer bytes;
     protected CharBuffer chars;
 
     public LineDisciplineTerminal(String name,
                                   String type,
                                   OutputStream masterOutput,
-                                  String encoding) throws IOException {
+                                  Charset charset) throws IOException {
         super(name, type);
         PipedInputStream input = new LinePipedInputStream(PIPE_SIZE);
         this.slaveInputPipe = new PipedOutputStream(input);
@@ -103,9 +98,9 @@ public class LineDisciplineTerminal extends AbstractTerminal {
         // that class by using a dumb FilterInputStream class to wrap it.
         this.slaveInput = new FilterInputStream(input) {};
         this.slaveOutput = new FilteringOutputStream();
-        this.slaveWriter = new PrintWriter(new OutputStreamWriter(slaveOutput, encoding));
+        this.slaveWriter = new PrintWriter(new OutputStreamWriter(slaveOutput, charset));
         this.masterOutput = masterOutput;
-        this.encoding = encoding;
+        this.charset = charset;
         this.attributes = new Attributes();
         this.size = new Size(160, 50);
         parseInfoCmp();

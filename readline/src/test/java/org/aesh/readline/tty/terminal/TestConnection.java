@@ -253,6 +253,16 @@ public class TestConnection implements Connection {
         return false;
     }
 
+    @Override
+    public Charset inputCharset() {
+        return null;
+    }
+
+    @Override
+    public Charset outputCharset() {
+        return null;
+    }
+
     public void assertOutputBuffer(String expected) {
         assertEquals(expected, bufferBuilder.toString());
     }

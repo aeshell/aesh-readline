@@ -21,6 +21,8 @@ package org.aesh.terminal;
 
 import org.aesh.terminal.tty.Size;
 import org.aesh.terminal.tty.Capability;
+
+import java.nio.charset.Charset;
 import java.util.function.Consumer;
 import org.aesh.terminal.tty.Signal;
 
@@ -135,6 +137,10 @@ public interface Connection {
      * @return true if the terminal accepted the settings
      */
     boolean put(Capability capability, Object... params);
+
+    Charset inputCharset();
+
+    Charset outputCharset();
 
     /**
      * Write a string to the output handler
