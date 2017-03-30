@@ -19,8 +19,7 @@
  */
 package org.aesh.io;
 
-import org.aesh.util.LoggerUtil;
-import org.aesh.util.Parser;
+import org.aesh.util.Utils;
 
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
@@ -42,7 +41,7 @@ import java.util.logging.Logger;
 public class Decoder {
 
     private static final ByteBuffer EMPTY = ByteBuffer.allocate(0);
-    private static final Logger LOGGER = LoggerUtil.getLogger(Decoder.class);
+    private static final Logger LOGGER = Logger.getLogger(Decoder.class.getName());
 
     private CharsetDecoder decoder;
     private ByteBuffer bBuf;
@@ -132,7 +131,7 @@ public class Decoder {
             if(onChar != null)
                 onChar.accept(codePoints);
             else {
-                LOGGER.log(Level.WARNING, "InputHandler is set to null, will ignore input: " + Parser.fromCodePoints(codePoints));
+                LOGGER.log(Level.WARNING, "InputHandler is set to null, will ignore input: " + Utils.fromCodePoints(codePoints));
                 leftOverCodePoints = Arrays.copyOf(codePoints, codePoints.length);
             }
             cBuf.compact();

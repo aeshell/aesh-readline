@@ -30,12 +30,17 @@ import java.util.function.Consumer;
  */
 public class Encoder implements Consumer<int[]> {
 
-    private final Charset charset;
+    private Charset charset;
     private final Consumer<byte[]> out;
 
     public Encoder(Charset charset, Consumer<byte[]> out) {
         this.charset = charset;
         this.out = out;
+    }
+
+    public void setCharset(Charset charset) {
+        if(charset != null)
+            this.charset = charset;
     }
 
     @Override
