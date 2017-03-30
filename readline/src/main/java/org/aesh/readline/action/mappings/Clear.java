@@ -34,11 +34,11 @@ public class Clear implements Action {
 
     @Override
     public void accept(InputProcessor inputProcessor) {
-        inputProcessor.getBuffer().writeOut(ANSI.CLEAR_SCREEN);
+        inputProcessor.buffer().writeOut(ANSI.CLEAR_SCREEN);
         //move cursor to correct position
-        inputProcessor.getBuffer().writeChars(ANSI.printAnsi("1;1H"));
+        inputProcessor.buffer().writeChars(ANSI.printAnsi("1;1H"));
         //then write prompt
-        inputProcessor.getBuffer().buffer().reset();
-        inputProcessor.getBuffer().undoManager().clear();
+        inputProcessor.buffer().buffer().reset();
+        inputProcessor.buffer().undoManager().clear();
     }
 }

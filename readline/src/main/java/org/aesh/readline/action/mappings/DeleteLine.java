@@ -43,6 +43,6 @@ public class DeleteLine extends ChangeAction {
 
     @Override
     public void accept(InputProcessor inputProcessor) {
-        apply(0, inputProcessor.getBuffer().buffer().length(), inputProcessor);
+        apply(0, inputProcessor.buffer().buffer().length(), inputProcessor);
     }
 }

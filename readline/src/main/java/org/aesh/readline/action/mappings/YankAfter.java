@@ -38,27 +38,27 @@ public class YankAfter extends ChangeAction {
 
     @Override
     public void accept(InputProcessor inputProcessor) {
-        int[] pasteBuffer = inputProcessor.getBuffer().pasteManager().get(0);
+        int[] pasteBuffer = inputProcessor.buffer().pasteManager().get(0);
         if(pasteBuffer != null) {
 
-            if(inputProcessor.getBuffer().buffer().cursor() <=
-                    inputProcessor.getBuffer().buffer().length()) {
-                inputProcessor.getBuffer().addActionToUndoStack();
+            if(inputProcessor.buffer().buffer().cursor() <=
+                    inputProcessor.buffer().buffer().length()) {
+                inputProcessor.buffer().addActionToUndoStack();
                 //if we're at the end, we need to do some magic in vi-mode
-                if(inputProcessor.getEditMode().getMode() == EditMode.Mode.VI &&
-                        inputProcessor.getEditMode().getStatus() == EditMode.Status.COMMAND &&
-                        inputProcessor.getBuffer().buffer().cursor() ==
-                        inputProcessor.getBuffer().buffer().length()-1) {
-                    inputProcessor.getEditMode().setStatus(EditMode.Status.EDIT);
-                    inputProcessor.getBuffer().moveCursor(1);
-                    inputProcessor.getBuffer().insert(pasteBuffer);
-                    inputProcessor.getBuffer().moveCursor(-1);
-                    inputProcessor.getEditMode().setStatus(EditMode.Status.COMMAND);
+                if(inputProcessor.editMode().mode() == EditMode.Mode.VI &&
+                        inputProcessor.editMode().status() == EditMode.Status.COMMAND &&
+                        inputProcessor.buffer().buffer().cursor() ==
+                        inputProcessor.buffer().buffer().length()-1) {
+                    inputProcessor.editMode().setStatus(EditMode.Status.EDIT);
+                    inputProcessor.buffer().moveCursor(1);
+                    inputProcessor.buffer().insert(pasteBuffer);
+                    inputProcessor.buffer().moveCursor(-1);
+                    inputProcessor.editMode().setStatus(EditMode.Status.COMMAND);
                 }
                 else {
-                    inputProcessor.getBuffer().moveCursor(1);
-                    inputProcessor.getBuffer().insert(pasteBuffer);
-                    inputProcessor.getBuffer().moveCursor(-1);
+                    inputProcessor.buffer().moveCursor(1);
+                    inputProcessor.buffer().insert(pasteBuffer);
+                    inputProcessor.buffer().moveCursor(-1);
                 }
             }
         }

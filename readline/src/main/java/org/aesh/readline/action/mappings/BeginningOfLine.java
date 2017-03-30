@@ -33,6 +33,6 @@ public class BeginningOfLine implements Action {
 
     @Override
     public void accept(InputProcessor inputProcessor) {
-        inputProcessor.getBuffer().moveCursor(-inputProcessor.getBuffer().buffer().length());
+        inputProcessor.buffer().moveCursor(-inputProcessor.buffer().buffer().length());
     }
 }

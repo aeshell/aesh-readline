@@ -41,7 +41,7 @@ public class DeleteChar implements Action {
 
     @Override
     public void accept(InputProcessor inputProcessor) {
-        deleteNoMasking(inputProcessor.getBuffer());
+        deleteNoMasking(inputProcessor.buffer());
     }
 
     private void deleteNoMasking(ConsoleBuffer consoleBuffer) {

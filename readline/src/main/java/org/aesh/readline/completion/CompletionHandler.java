@@ -94,7 +94,7 @@ public abstract class CompletionHandler<C extends CompleteOperation> {
     public void complete(InputProcessor inputProcessor) {
         if(completionList.size() == 0)
             return;
-        Buffer buffer = inputProcessor.getBuffer().buffer();
+        Buffer buffer = inputProcessor.buffer().buffer();
 
         if(completionList.size() < 1)
             return;
@@ -168,8 +168,8 @@ public abstract class CompletionHandler<C extends CompleteOperation> {
                 }
                 else {
                     status = CompletionStatus.ASKING_FOR_COMPLETIONS;
-                    inputProcessor.getBuffer().writeOut(Config.CR);
-                    inputProcessor.getBuffer().writeOut("Display all " + completions.size() + " possibilities? (y or n)");
+                    inputProcessor.buffer().writeOut(Config.CR);
+                    inputProcessor.buffer().writeOut("Display all " + completions.size() + " possibilities? (y or n)");
                 }
             }
             // display all
@@ -191,13 +191,13 @@ public abstract class CompletionHandler<C extends CompleteOperation> {
                                    boolean appendSpace, char separator) {
         if(completion.getCharacters().startsWith(buffer.asString())) {
             ActionMapper.mapToAction("backward-kill-word").accept(inputProcessor);
-            inputProcessor.getBuffer().writeString(completion.toString());
+            inputProcessor.buffer().writeString(completion.toString());
         }
         else {
-            inputProcessor.getBuffer().writeString(completion.toString());
+            inputProcessor.buffer().writeString(completion.toString());
         }
         if(appendSpace) {
-            inputProcessor.getBuffer().writeChar(separator);
+            inputProcessor.buffer().writeChar(separator);
         }
     }
 
@@ -210,12 +210,12 @@ public abstract class CompletionHandler<C extends CompleteOperation> {
                                     InputProcessor inputProcessor) {
         Collections.sort(completions);
 
-        inputProcessor.getBuffer().writeOut(Config.CR);
-        inputProcessor.getBuffer().writeOut(Parser.formatDisplayListTerminalString(completions,
-                inputProcessor.getBuffer().size().getHeight(), inputProcessor.getBuffer().size().getWidth()));
+        inputProcessor.buffer().writeOut(Config.CR);
+        inputProcessor.buffer().writeOut(Parser.formatDisplayListTerminalString(completions,
+                inputProcessor.buffer().size().getHeight(), inputProcessor.buffer().size().getWidth()));
 
         buffer.setIsPromptDisplayed(false);
-        inputProcessor.getBuffer().drawLine();
+        inputProcessor.buffer().drawLine();
     }
 
     public enum CompletionStatus {

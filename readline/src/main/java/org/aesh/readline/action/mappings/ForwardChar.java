@@ -34,6 +34,6 @@ public class ForwardChar implements Action {
 
     @Override
     public void accept(InputProcessor inputProcessor) {
-        inputProcessor.getBuffer().moveCursor(1);
+        inputProcessor.buffer().moveCursor(1);
     }
 }

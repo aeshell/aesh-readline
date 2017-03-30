@@ -203,7 +203,7 @@ public class Readline {
             //TODO: the editModes need to parse/handle this, ref ignoreeof
             //ctrl-d
             if (event.length() == 1) {
-                if (event.getCodePointAt(0) == 4 && getBuffer().buffer().length() == 0) {
+                if (event.getCodePointAt(0) == 4 && buffer().buffer().length() == 0) {
                     finish(null);
                     return;
                 }
@@ -215,9 +215,9 @@ public class Readline {
                     paused = true;
                 }
                 action.accept(this);
-                if(this.getReturnValue() != null) {
+                if(this.returnValue() != null) {
                     conn.stdoutHandler().accept(Config.CR);
-                    finish(this.getReturnValue());
+                    finish(this.returnValue());
                 }
                 else {
                     synchronized (Readline.this) {
@@ -228,13 +228,13 @@ public class Readline {
             }
             else {
                 if(Key.isPrintable(event.buffer()) && notInCommandNode())
-                    this.getBuffer().writeChar((char) event.buffer().array()[0]);
+                    this.buffer().writeChar((char) event.buffer().array()[0]);
             }
         }
 
         private boolean notInCommandNode() {
-            return !(editMode.getMode() == EditMode.Mode.VI &&
-                    editMode.getStatus() == EditMode.Status.COMMAND);
+            return !(editMode.mode() == EditMode.Mode.VI &&
+                    editMode.status() == EditMode.Status.COMMAND);
         }
 
         /**
@@ -269,7 +269,7 @@ public class Readline {
                         } else {
                             conn.stdoutHandler().accept(new int[]{'^', 'C'});
                             conn.stdoutHandler().accept(Config.CR);
-                            this.getBuffer().buffer().reset();
+                            this.buffer().buffer().reset();
                             consoleBuffer.drawLine();
                         }
                     }
@@ -286,12 +286,12 @@ public class Readline {
         }
 
         @Override
-        public String getReturnValue() {
+        public String returnValue() {
             return returnValue;
         }
 
         @Override
-        public ConsoleBuffer getBuffer() {
+        public ConsoleBuffer buffer() {
             return consoleBuffer;
         }
 
@@ -306,8 +306,16 @@ public class Readline {
         }
 
         @Override
-        public EditMode getEditMode() {
+        public EditMode editMode() {
             return editMode;
+        }
+
+        @Override
+        public void setEditMode(EditMode edit) {
+            if(edit != null) {
+                editMode = edit;
+                decoder.setMappings(editMode);
+            }
         }
 
         @Override

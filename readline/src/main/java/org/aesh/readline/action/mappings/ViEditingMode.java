@@ -21,6 +21,8 @@ package org.aesh.readline.action.mappings;
 
 import org.aesh.readline.action.Action;
 import org.aesh.readline.InputProcessor;
+import org.aesh.readline.editing.EditMode;
+import org.aesh.readline.editing.EditModeBuilder;
 
 /**
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
@@ -37,6 +39,7 @@ public class ViEditingMode implements Action {
 
     @Override
     public void accept(InputProcessor inputProcessor) {
-        //TODO: implementation
+        if(inputProcessor.editMode().mode() != EditMode.Mode.VI)
+            inputProcessor.setEditMode(EditModeBuilder.builder(EditMode.Mode.VI).create());
     }
 }

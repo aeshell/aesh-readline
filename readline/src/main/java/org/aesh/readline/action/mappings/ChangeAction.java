@@ -48,86 +48,86 @@ abstract class ChangeAction extends MovementAction {
     }
 
     protected final void apply(int cursor, InputProcessor inputProcessor) {
-        apply(cursor, inputProcessor.getBuffer().buffer().cursor(), inputProcessor);
+        apply(cursor, inputProcessor.buffer().buffer().cursor(), inputProcessor);
     }
 
     protected final void apply(int cursor, int oldCursor, InputProcessor inputProcessor) {
         if(status == EditMode.Status.DELETE || status == EditMode.Status.CHANGE) {
-            inputProcessor.getBuffer().addActionToUndoStack();
+            inputProcessor.buffer().addActionToUndoStack();
             if(cursor < oldCursor) {
                 //add to pastemanager
-                inputProcessor.getBuffer().pasteManager().addText(
-                        Arrays.copyOfRange(inputProcessor.getBuffer().buffer().multiLine(), cursor, oldCursor));
+                inputProcessor.buffer().pasteManager().addText(
+                        Arrays.copyOfRange(inputProcessor.buffer().buffer().multiLine(), cursor, oldCursor));
                 //delete buffer
-                inputProcessor.getBuffer().delete(cursor - oldCursor);
+                inputProcessor.buffer().delete(cursor - oldCursor);
             }
             else {
                 //add to pastemanager
-                inputProcessor.getBuffer().pasteManager().addText(
-                        Arrays.copyOfRange(inputProcessor.getBuffer().buffer().multiLine(), oldCursor, cursor));
+                inputProcessor.buffer().pasteManager().addText(
+                        Arrays.copyOfRange(inputProcessor.buffer().buffer().multiLine(), oldCursor, cursor));
                 //delete buffer
-                inputProcessor.getBuffer().delete(cursor - oldCursor);
+                inputProcessor.buffer().delete(cursor - oldCursor);
             }
 
             //TODO: must check if we're in edit mode
             if(viMode && status == EditMode.Status.DELETE &&
-                    oldCursor == inputProcessor.getBuffer().buffer().length())
-                inputProcessor.getBuffer().moveCursor(-1);
+                    oldCursor == inputProcessor.buffer().buffer().length())
+                inputProcessor.buffer().moveCursor(-1);
 
         }
         else if(status == EditMode.Status.MOVE) {
-            inputProcessor.getBuffer().moveCursor(cursor - oldCursor);
+            inputProcessor.buffer().moveCursor(cursor - oldCursor);
         }
         else if(status == EditMode.Status.YANK) {
             if(cursor < oldCursor)
-                inputProcessor.getBuffer().pasteManager().addText(
-                        Arrays.copyOfRange(inputProcessor.getBuffer().buffer().multiLine(), cursor, oldCursor));
+                inputProcessor.buffer().pasteManager().addText(
+                        Arrays.copyOfRange(inputProcessor.buffer().buffer().multiLine(), cursor, oldCursor));
             else if(cursor > oldCursor)
-                inputProcessor.getBuffer().pasteManager().addText(
-                        Arrays.copyOfRange(inputProcessor.getBuffer().buffer().multiLine(), oldCursor, cursor));
+                inputProcessor.buffer().pasteManager().addText(
+                        Arrays.copyOfRange(inputProcessor.buffer().buffer().multiLine(), oldCursor, cursor));
         }
 
         else if(status == EditMode.Status.UP_CASE) {
             if(cursor < oldCursor) {
-                inputProcessor.getBuffer().addActionToUndoStack();
+                inputProcessor.buffer().addActionToUndoStack();
                 for( int i = cursor; i < oldCursor; i++) {
-                    inputProcessor.getBuffer().upCase();
+                    inputProcessor.buffer().upCase();
                 }
             }
             else {
-                inputProcessor.getBuffer().addActionToUndoStack();
+                inputProcessor.buffer().addActionToUndoStack();
                 for( int i = oldCursor; i < cursor; i++) {
-                    inputProcessor.getBuffer().upCase();
+                    inputProcessor.buffer().upCase();
                 }
             }
-            inputProcessor.getBuffer().moveCursor(cursor - oldCursor);
+            inputProcessor.buffer().moveCursor(cursor - oldCursor);
         }
         else if(status == EditMode.Status.DOWN_CASE) {
             if(cursor < oldCursor) {
-                inputProcessor.getBuffer().addActionToUndoStack();
+                inputProcessor.buffer().addActionToUndoStack();
                 for( int i = cursor; i < oldCursor; i++) {
-                    inputProcessor.getBuffer().downCase();
+                    inputProcessor.buffer().downCase();
                 }
             }
             else {
-                inputProcessor.getBuffer().addActionToUndoStack();
+                inputProcessor.buffer().addActionToUndoStack();
                 for( int i = oldCursor; i < cursor; i++) {
-                    inputProcessor.getBuffer().downCase();
+                    inputProcessor.buffer().downCase();
                 }
             }
-            inputProcessor.getBuffer().moveCursor(cursor - oldCursor);
+            inputProcessor.buffer().moveCursor(cursor - oldCursor);
         }
         else if(status == EditMode.Status.CAPITALIZE) {
-              String word = Parser.findWordClosestToCursor(inputProcessor.getBuffer().buffer().asString(), oldCursor);
+              String word = Parser.findWordClosestToCursor(inputProcessor.buffer().buffer().asString(), oldCursor);
             if(word.length() > 0) {
-                inputProcessor.getBuffer().addActionToUndoStack();
-                int pos = inputProcessor.getBuffer().buffer().asString().indexOf(word,
+                inputProcessor.buffer().addActionToUndoStack();
+                int pos = inputProcessor.buffer().buffer().asString().indexOf(word,
                         oldCursor-word.length());
                 if(pos < 0)
                     pos = 0;
-                inputProcessor.getBuffer().upCase();
+                inputProcessor.buffer().upCase();
 
-                inputProcessor.getBuffer().moveCursor(cursor - oldCursor);
+                inputProcessor.buffer().moveCursor(cursor - oldCursor);
             }
         }
     }

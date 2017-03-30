@@ -40,7 +40,7 @@ public class Enter implements Action {
 
     @Override
     public void accept(InputProcessor inputProcessor) {
-        ConsoleBuffer consoleBuffer = inputProcessor.getBuffer();
+        ConsoleBuffer consoleBuffer = inputProcessor.buffer();
         consoleBuffer.undoManager().clear();
         boolean isCurrentLineEnding = true;
         if(!consoleBuffer.buffer().isMasking()) {// dont push to history if masking
@@ -49,26 +49,26 @@ public class Enter implements Action {
             //lines starting with a hashtag is treated as a comment
             if(buffer.startsWith(HASHTAG)) {
                 consoleBuffer.buffer().reset();
-                inputProcessor.getBuffer().writeOut(Config.CR);
+                inputProcessor.buffer().writeOut(Config.CR);
                 isCurrentLineEnding = false;
             }
             else if(buffer.endsWith(ENDS_WITH_BACKSLASH)) {
                 consoleBuffer.buffer().setMultiLine(true);
                 consoleBuffer.buffer().updateMultiLineBuffer();
-                inputProcessor.getBuffer().writeOut(Config.CR);
+                inputProcessor.buffer().writeOut(Config.CR);
                 isCurrentLineEnding = false;
             }
             else if(Parser.doesStringContainOpenQuote(buffer)) {
                 consoleBuffer.buffer().setMultiLine(true);
                 consoleBuffer.buffer().updateMultiLineBuffer();
-                inputProcessor.getBuffer().writeOut(Config.CR);
+                inputProcessor.buffer().writeOut(Config.CR);
                 isCurrentLineEnding = false;
             }
-            else if( inputProcessor.getBuffer().history().isEnabled()) {
+            else if( inputProcessor.buffer().history().isEnabled()) {
                 if(consoleBuffer.buffer().isMultiLine())
-                   inputProcessor.getBuffer().history().push(consoleBuffer.buffer().multiLine());
+                   inputProcessor.buffer().history().push(consoleBuffer.buffer().multiLine());
                 else
-                    inputProcessor.getBuffer().history().push(consoleBuffer.buffer().multiLine());
+                    inputProcessor.buffer().history().push(consoleBuffer.buffer().multiLine());
             }
         }
 

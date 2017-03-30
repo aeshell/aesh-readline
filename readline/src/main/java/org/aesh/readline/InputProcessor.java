@@ -37,12 +37,12 @@ public interface InputProcessor {
      * The value thats returned after a readline
      * @return value
      */
-    String getReturnValue();
+    String returnValue();
 
     /**
      * @return current console buffer
      */
-    ConsoleBuffer getBuffer();
+    ConsoleBuffer buffer();
 
     /**
      * Specify the return value
@@ -53,7 +53,13 @@ public interface InputProcessor {
     /**
      * @return the current edit mode
      */
-    EditMode getEditMode();
+    EditMode editMode();
+
+    /**
+     * Update the current edit mode
+     * @param mode edit mode
+     */
+    void setEditMode(EditMode mode);
 
     /**
      * @return the Connection

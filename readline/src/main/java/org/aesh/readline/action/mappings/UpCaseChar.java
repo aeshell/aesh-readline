@@ -34,10 +34,10 @@ public class UpCaseChar implements Action {
 
     @Override
     public void accept(InputProcessor inputProcessor) {
-        if(inputProcessor.getBuffer().buffer().length() >=
-                inputProcessor.getBuffer().buffer().cursor()) {
-            inputProcessor.getBuffer().addActionToUndoStack();
-            inputProcessor.getBuffer().upCase();
+        if(inputProcessor.buffer().buffer().length() >=
+                inputProcessor.buffer().buffer().cursor()) {
+            inputProcessor.buffer().addActionToUndoStack();
+            inputProcessor.buffer().upCase();
         }
 
     }

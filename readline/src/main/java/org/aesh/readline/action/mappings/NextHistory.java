@@ -33,9 +33,9 @@ public class NextHistory implements Action {
 
     @Override
     public void accept(InputProcessor inputProcessor) {
-        int[] history = inputProcessor.getBuffer().history().getNextFetch();
+        int[] history = inputProcessor.buffer().history().getNextFetch();
         if(history != null) {
-            inputProcessor.getBuffer().replace(history);
+            inputProcessor.buffer().replace(history);
         }
     }
 }

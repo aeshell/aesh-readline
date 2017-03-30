@@ -35,6 +35,6 @@ public class TestReadline extends Readline {
     }
 
     public String getBuffer() {
-        return getInputProcessor().getBuffer().buffer().asString();
+        return getInputProcessor().buffer().buffer().asString();
     }
 }

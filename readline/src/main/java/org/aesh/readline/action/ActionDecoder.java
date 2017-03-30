@@ -76,6 +76,10 @@ public class ActionDecoder {
         return actions.remove();
     }
 
+    public void setMappings(EditMode editMode) {
+        mappings = editMode.keys();
+    }
+
     private KeyAction parse(int[] buffer) {
         if (buffer.length > 0) {
             KeyAction candidate = null;

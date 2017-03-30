@@ -31,11 +31,11 @@ import java.util.Arrays;
  */
 public interface EditMode {
 
-    Mode getMode();
+    Mode mode();
 
     KeyAction[] keys();
 
-    Status getStatus();
+    Status status();
 
     void setStatus(Status status);
 
@@ -47,7 +47,7 @@ public interface EditMode {
 
     void addVariable(Variable variable, String value);
 
-    String getVariableValue(Variable variable);
+    String variableValue(Variable variable);
 
     EditMode addAction(Key key, Action action);
 

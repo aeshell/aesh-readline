@@ -36,13 +36,13 @@ public class DeletePrevChar implements Action {
 
     @Override
     public void accept(InputProcessor inputProcessor) {
-        if(inputProcessor.getBuffer().buffer().isMasking()) {
-            if(inputProcessor.getBuffer().buffer().prompt().getMask() == 0) {
-                deleteWithMaskEnabled(inputProcessor.getBuffer());
+        if(inputProcessor.buffer().buffer().isMasking()) {
+            if(inputProcessor.buffer().buffer().prompt().getMask() == 0) {
+                deleteWithMaskEnabled(inputProcessor.buffer());
                 return;
             }
         }
-        deleteNoMasking(inputProcessor.getBuffer());
+        deleteNoMasking(inputProcessor.buffer());
     }
 
     private void deleteNoMasking(ConsoleBuffer consoleBuffer) {

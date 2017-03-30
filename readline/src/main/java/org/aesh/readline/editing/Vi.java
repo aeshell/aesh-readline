@@ -70,7 +70,7 @@ public class Vi implements EditMode {
     }
 
     @Override
-    public String getVariableValue(Variable variable) {
+    public String variableValue(Variable variable) {
         return variables.get(variable);
     }
 
@@ -118,7 +118,7 @@ public class Vi implements EditMode {
     }
 
     @Override
-    public Mode getMode() {
+    public Mode mode() {
         return Mode.VI;
     }
 
@@ -132,7 +132,7 @@ public class Vi implements EditMode {
     }
 
     @Override
-    public Status getStatus() {
+    public Status status() {
         return status;
     }
 

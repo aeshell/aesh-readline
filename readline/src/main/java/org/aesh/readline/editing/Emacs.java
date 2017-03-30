@@ -146,7 +146,7 @@ public class Emacs implements EditMode {
     }
 
     @Override
-    public Mode getMode() {
+    public Mode mode() {
         return Mode.EMACS;
     }
 
@@ -159,7 +159,7 @@ public class Emacs implements EditMode {
     }
 
     @Override
-    public Status getStatus() {
+    public Status status() {
         return Status.EDIT;
     }
 
@@ -189,7 +189,7 @@ public class Emacs implements EditMode {
     }
 
     @Override
-    public String getVariableValue(Variable variable) {
+    public String variableValue(Variable variable) {
         return variables.get(variable);
     }
 

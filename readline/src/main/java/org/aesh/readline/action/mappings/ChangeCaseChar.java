@@ -34,11 +34,11 @@ public class ChangeCaseChar implements Action {
 
     @Override
     public void accept(InputProcessor inputProcessor) {
-        if(inputProcessor.getBuffer().buffer().length() >=
-                inputProcessor.getBuffer().buffer().cursor()) {
-            inputProcessor.getBuffer().addActionToUndoStack();
-            inputProcessor.getBuffer().changeCase();
-            inputProcessor.getBuffer().moveCursor(1);
+        if(inputProcessor.buffer().buffer().length() >=
+                inputProcessor.buffer().buffer().cursor()) {
+            inputProcessor.buffer().addActionToUndoStack();
+            inputProcessor.buffer().changeCase();
+            inputProcessor.buffer().moveCursor(1);
         }
 
     }

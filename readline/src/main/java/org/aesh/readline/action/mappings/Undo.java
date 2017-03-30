@@ -35,11 +35,11 @@ public class Undo implements Action {
 
     @Override
     public void accept(InputProcessor inputProcessor) {
-        UndoAction ua = inputProcessor.getBuffer().undoManager().getNext();
+        UndoAction ua = inputProcessor.buffer().undoManager().getNext();
         if(ua != null) {
-            inputProcessor.getBuffer().replace(ua.getBuffer());
-            inputProcessor.getBuffer().moveCursor(ua.getCursorPosition() -
-                    inputProcessor.getBuffer().buffer().cursor());
+            inputProcessor.buffer().replace(ua.getBuffer());
+            inputProcessor.buffer().moveCursor(ua.getCursorPosition() -
+                    inputProcessor.buffer().buffer().cursor());
         }
     }
 }

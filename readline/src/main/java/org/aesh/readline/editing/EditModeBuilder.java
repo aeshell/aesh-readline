@@ -180,6 +180,8 @@ public class EditModeBuilder {
         emacs.addAction(Key.HOME, "beginning-of-line"); //home
         emacs.addAction(Key.END, "end-of-line"); //end
         emacs.addAction(Key.INSERT, "no-action"); //insert
+        emacs.addAction(Key.META_CTRL_J, "vi-editing-mode"); //insert
+
 
         return emacs;
     }
@@ -415,6 +417,9 @@ public class EditModeBuilder {
         vi.addAction(Key.CTRL_RIGHT, new MoveForwardBigWord(), EditMode.Status.EDIT, EditMode.Status.EDIT);
 
         vi.addAction(Key.DELETE, "delete-char", EditMode.Status.EDIT, EditMode.Status.EDIT);
+
+        vi.addAction(Key.CTRL_E, "emacs-editing-mode", EditMode.Status.EDIT, EditMode.Status.EDIT);
+        vi.addAction(Key.CTRL_E, "emacs-editing-mode", EditMode.Status.COMMAND, EditMode.Status.COMMAND);
 
         return vi;
     }
