@@ -67,4 +67,27 @@ public class EmacsModeTest {
         term.read(Key.CTRL_U);
         term.assertBuffer("bar-Bar.");
     }
+
+    @Test
+    public void testSwitchingEditModes() throws Exception {
+        TestConnection term = new TestConnection();
+        term.read("foo  bar...  Foo-Bar.");
+        term.read(Key.CTRL_A);
+        term.read("A ");
+        term.assertBuffer("A foo  bar...  Foo-Bar.");
+        term.read(Key.CTRL_E);
+        term.read(".");
+        term.assertBuffer("A foo  bar...  Foo-Bar..");
+        term.read(Key.META_CTRL_J);
+        term.read(Key.ESC);
+        term.read(Key.ZERO);
+        term.read(Key.i);
+        term.read("A ");
+        term.assertBuffer("A A foo  bar...  Foo-Bar..");
+        term.read(Key.ESC);
+        term.read(Key.CTRL_E);
+        term.read(Key.CTRL_E);
+        term.read(".");
+        term.assertBuffer("A A foo  bar...  Foo-Bar...");
+     }
 }
