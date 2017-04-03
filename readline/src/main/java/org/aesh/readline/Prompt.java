@@ -69,6 +69,15 @@ public class Prompt {
         this.mask = mask;
     }
 
+    public Prompt(String prompt, String ansiString, Character mask) {
+        if(prompt != null)
+            this.prompt = Parser.toCodePoints(prompt);
+        else
+            this.prompt = new int[]{};
+        this.ansiString = Parser.toCodePoints(ansiString);
+        this.mask = mask;
+    }
+
     public Prompt(int[] prompt, Character mask) {
         if(prompt != null) {
             this.prompt = new int[prompt.length];
