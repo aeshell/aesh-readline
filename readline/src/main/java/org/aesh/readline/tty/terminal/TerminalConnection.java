@@ -143,11 +143,16 @@ public class TerminalConnection implements Connection {
      */
     @Override
     public void openBlocking() {
+        openBlocking(null);
+    }
+
+    public void openBlocking(String buffer) {
         try {
             reading = true;
             byte[] bBuf = new byte[1024];
-            if(attributes == null)
-                attributes = terminal.enterRawMode();
+            if (buffer != null) {
+                decoder.write(buffer.getBytes(charset));
+            }
             while (reading) {
                 int read = terminal.input().read(bBuf);
                 if (read > 0) {
