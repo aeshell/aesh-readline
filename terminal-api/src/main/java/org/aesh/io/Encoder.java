@@ -34,7 +34,10 @@ public class Encoder implements Consumer<int[]> {
     private final Consumer<byte[]> out;
 
     public Encoder(Charset charset, Consumer<byte[]> out) {
-        this.charset = charset;
+        if(charset != null)
+            this.charset = charset;
+        else
+            this.charset = Charset.defaultCharset();
         this.out = out;
     }
 

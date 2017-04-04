@@ -102,8 +102,8 @@ public class TerminalConnection implements Connection {
             }
         });
 
-        decoder = new Decoder(512, Charset.defaultCharset(), eventDecoder);
-        stdOut = new Encoder(Charset.defaultCharset(), this::write);
+        decoder = new Decoder(512, charset, eventDecoder);
+        stdOut = new Encoder(charset, this::write);
     }
 
     @Override

@@ -58,7 +58,10 @@ public class Decoder {
         if (initialSize < 2) {
             throw new IllegalArgumentException("Initial size must be at least 2");
         }
-        decoder = charset.newDecoder();
+        if(charset != null)
+            decoder = charset.newDecoder();
+        else
+            decoder = Charset.defaultCharset().newDecoder();
         bBuf = EMPTY;
         cBuf = CharBuffer.allocate(initialSize); // We need at least 2
         this.onChar = onChar;
