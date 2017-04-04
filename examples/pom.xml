@@ -24,8 +24,7 @@
     <parent>
         <groupId>org.aesh</groupId>
         <artifactId>aesh-readline-all</artifactId>
-        <version>1.0-CR14</version>
-        <relativePath>../</relativePath>
+        <version>1.0-CR15-SNAPSHOT</version>
     </parent>
 
     <modelVersion>4.0.0</modelVersion>
@@ -67,13 +66,13 @@
         <dependency>
             <groupId>org.aesh</groupId>
             <artifactId>aesh-readline</artifactId>
-            <version>1.0-CR14</version>
+            <version>1.0-CR15-SNAPSHOT</version>
         </dependency>
       
         <dependency>
             <groupId>org.aesh</groupId>
             <artifactId>aesh-terminal-api</artifactId>
-            <version>1.0-CR14</version>
+            <version>1.0-CR15-SNAPSHOT</version>
             <type>jar</type>
         </dependency>
     </dependencies>
