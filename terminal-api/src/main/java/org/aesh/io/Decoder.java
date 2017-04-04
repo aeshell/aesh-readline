@@ -19,8 +19,6 @@
  */
 package org.aesh.io;
 
-import org.aesh.util.Utils;
-
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.IntBuffer;
@@ -134,7 +132,7 @@ public class Decoder {
             if(onChar != null)
                 onChar.accept(codePoints);
             else {
-                LOGGER.log(Level.WARNING, "InputHandler is set to null, will ignore input: " + Utils.fromCodePoints(codePoints));
+                LOGGER.log(Level.WARNING, "InputHandler is set to null, will ignore input: " + fromCodePoints(codePoints));
                 leftOverCodePoints = Arrays.copyOf(codePoints, codePoints.length);
             }
             cBuf.compact();
@@ -158,4 +156,9 @@ public class Decoder {
     public void setConsumer(Consumer<int[]> inputHandler) {
         onChar = inputHandler;
     }
+
+    private String fromCodePoints(int[] input) {
+        return new String(input, 0, input.length);
+    }
+
 }
