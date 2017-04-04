@@ -25,9 +25,7 @@
         <groupId>org.aesh</groupId>
         <artifactId>aesh-readline-all</artifactId>
         <version>1.0-CR15-SNAPSHOT</version>
-        <relativePath>../</relativePath>
     </parent>
-
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>aesh-readline</artifactId>
