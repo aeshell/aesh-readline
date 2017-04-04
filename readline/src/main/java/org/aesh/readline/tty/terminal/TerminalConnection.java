@@ -153,6 +153,8 @@ public class TerminalConnection implements Connection {
             if (buffer != null) {
                 decoder.write(buffer.getBytes(charset));
             }
+            if(attributes == null)
+                attributes = terminal.enterRawMode();
             while (reading) {
                 int read = terminal.input().read(bBuf);
                 if (read > 0) {
