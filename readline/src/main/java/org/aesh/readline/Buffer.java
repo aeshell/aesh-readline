@@ -29,6 +29,7 @@ import org.aesh.util.WcWidth;
 import java.util.Arrays;
 import java.util.function.Consumer;
 import java.util.logging.Logger;
+import org.aesh.readline.cursor.CursorLocator;
 
 /**
  * Buffer to keep track of text and cursor position in the console.
@@ -54,10 +55,12 @@ public class Buffer {
     private boolean isPromptDisplayed = false;
     private boolean deletingBackward = true;
 
+    private final CursorLocator locator;
 
     Buffer() {
         line = new int[1024];
         prompt = new Prompt("");
+        locator = new CursorLocator(this);
     }
 
     Buffer(Prompt prompt) {
@@ -66,6 +69,7 @@ public class Buffer {
             this.prompt = prompt;
         else
             this.prompt = new Prompt("");
+        locator = new CursorLocator(this);
     }
 
     public Buffer(Buffer buf) {
@@ -73,6 +77,11 @@ public class Buffer {
         cursor = buf.cursor;
         size = buf.size;
         prompt = buf.prompt.copy();
+        locator = new CursorLocator(this);
+    }
+
+    public CursorLocator getCursorLocator() {
+        return locator;
     }
 
     public int get(int pos) {
@@ -113,6 +122,7 @@ public class Buffer {
         isPromptDisplayed = false;
         if(multiLine)
             multiLineBuffer = new int[0];
+        locator.clear();
     }
 
     public void setIsPromptDisplayed(boolean isPromptDisplayed) {
@@ -160,16 +170,31 @@ public class Buffer {
             multiLine = multi;
     }
 
+    /**
+     * Some completion occured, do not try to compute character index location.
+     * This could be revisited to implement a strategy.
+     */
+    public void invalidateCursorLocation() {
+        if (isMultiLine()) {
+            locator.invalidateCursorLocation();
+        }
+    }
+
     public void updateMultiLineBuffer() {
         int originalSize = multiLineBuffer.length;
-        if(lineEndsWithBackslash()) {
+        // Store the size of each line.
+        int cmdSize;
+        if (lineEndsWithBackslash()) {
+            cmdSize = size - 1;
             multiLineBuffer = Arrays.copyOf(multiLineBuffer, originalSize + size-1);
             System.arraycopy(line, 0, multiLineBuffer, originalSize, size-1);
         }
         else {
+            cmdSize = size;
             multiLineBuffer = Arrays.copyOf(multiLineBuffer, originalSize + size);
             System.arraycopy(line, 0, multiLineBuffer, originalSize, size);
         }
+        locator.addLine(cmdSize, prompt.getLength());
         clear();
         prompt = new Prompt("> ");
         cursor = 0;
@@ -341,7 +366,7 @@ public class Buffer {
         return builder.toArray();
     }
 
-    private int[] moveNumberOfColumns(int column, char direction) {
+    public int[] moveNumberOfColumns(int column, char direction) {
         if(column < 10) {
             int[] out = new int[4];
             out[0] = 27; // esc
@@ -732,13 +757,16 @@ public class Buffer {
             deletingBackward = false;
         }
         else if (delta < 0) {
-            delta = - Math.min(- delta, cursor);
+            delta = -Math.min(-delta, cursor);
             System.arraycopy(line, cursor, line, cursor + delta, size - cursor);
             size += delta;
             cursor += delta;
             this.delta =+ delta;
             deletingBackward = true;
         }
+
+        // Erase the remaining.
+        Arrays.fill(line, size, line.length, 0);
 
         if(viMode) {
             //if(!deletingBackward)

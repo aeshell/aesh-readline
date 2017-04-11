@@ -1,5 +1,7 @@
 package org.aesh.readline;
 
+import org.aesh.readline.cursor.Line;
+import org.aesh.readline.cursor.CursorListener;
 import org.aesh.readline.history.InMemoryHistory;
 import org.aesh.readline.paste.PasteManager;
 import org.aesh.readline.undo.UndoAction;
@@ -34,12 +36,13 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
     private final boolean ansiMode;
 
     private static final Logger LOGGER = LoggerUtil.getLogger(AeshConsoleBuffer.class.getName());
+    private final CursorListener cursorListener;
 
     public AeshConsoleBuffer(Connection connection, Prompt prompt,
                              EditMode editMode, History history,
                              CompletionHandler completionHandler,
                              Size size,
-                             boolean ansi) {
+            boolean ansi, CursorListener listener) {
         this.connection = connection;
         this.ansiMode = ansi;
         this.buffer = new Buffer(prompt);
@@ -58,6 +61,7 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
         this.size = size;
 
         this.editMode = editMode;
+        this.cursorListener = listener;
     }
       @Override
     public History history() {
@@ -104,6 +108,9 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
     public void moveCursor(int where) {
         buffer.move(connection.stdoutHandler(), where,
                 size().getWidth(), isViMode());
+        if (cursorListener != null) {
+            cursorListener.moved(new Line(buffer, connection, size.getWidth()));
+        }
     }
 
     @Override
