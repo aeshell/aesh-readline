@@ -215,6 +215,7 @@ public abstract class CompletionHandler<C extends CompleteOperation> {
                 inputProcessor.buffer().size().getHeight(), inputProcessor.buffer().size().getWidth()));
 
         buffer.setIsPromptDisplayed(false);
+        buffer.invalidateCursorLocation();
         inputProcessor.buffer().drawLine();
     }
 

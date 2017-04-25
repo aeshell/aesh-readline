@@ -19,6 +19,7 @@
  */
 package org.aesh.readline;
 
+import org.aesh.readline.cursor.CursorListener;
 import org.aesh.readline.action.Action;
 import org.aesh.readline.action.ActionDecoder;
 import org.aesh.readline.action.KeyAction;
@@ -118,18 +119,18 @@ public class Readline {
     public void readline(Connection conn, Prompt prompt, Consumer<String> requestHandler,
                          List<Completion> completions,
                          List<Function<String,Optional<String>>> preProcessors ) {
-        readline(conn, prompt, requestHandler, completions, preProcessors, null);
+        readline(conn, prompt, requestHandler, completions, preProcessors, null, null);
     }
 
     public void readline(Connection conn, Prompt prompt, Consumer<String> requestHandler,
                          List<Completion> completions,
                          List<Function<String,Optional<String>>> preProcessors,
-                         History history) {
+            History history, CursorListener listener) {
         synchronized(this) {
             if (inputProcessor != null) {
                 throw new IllegalStateException("Already reading a line");
             }
-            inputProcessor = new AeshInputProcessor(conn, prompt, requestHandler, completions, preProcessors, history);
+            inputProcessor = new AeshInputProcessor(conn, prompt, requestHandler, completions, preProcessors, history, listener);
         }
         inputProcessor.start();
         processInput();
@@ -170,7 +171,7 @@ public class Readline {
                 Consumer<String> requestHandler,
                 List<Completion> completions,
                 List<Function<String,Optional<String>>> preProcessors,
-                History newHistory) {
+                History newHistory, CursorListener listener) {
 
             completionHandler.clear();
             completionHandler.addCompletions(completions);
@@ -178,7 +179,7 @@ public class Readline {
                     new AeshConsoleBuffer(conn, prompt, editMode,
                             //use newHistory if its not null
                             newHistory != null ? newHistory : history,
-                            completionHandler, size, true);
+                            completionHandler, size, true, listener);
 
             this.conn = conn;
             this.requestHandler = requestHandler;
