@@ -120,8 +120,10 @@ public class Buffer {
             line[i] = 0;
         size = 0;
         isPromptDisplayed = false;
-        if(multiLine)
+        if(multiLine) {
             multiLineBuffer = new int[0];
+            multiLine = false;
+        }
         locator.clear();
     }
 
@@ -524,8 +526,10 @@ public class Buffer {
     private void printInsertedData(Consumer<int[]> out, int width) {
         //print out prompt first if needed
         IntArrayBuilder builder = new IntArrayBuilder();
-        if(!isPromptDisplayed && promptLength() > 0) {
-            builder.append(prompt.getANSI());
+        if(!isPromptDisplayed) {
+            //only print the prompt if its longer than 0
+            if(promptLength() > 0)
+                builder.append(prompt.getANSI());
             isPromptDisplayed = true;
             //need to print the entire buffer
             //force that by setting delta = cursor if delta is 0
