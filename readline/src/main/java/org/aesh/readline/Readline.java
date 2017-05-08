@@ -125,15 +125,17 @@ public class Readline {
     public void readline(Connection conn, Prompt prompt, Consumer<String> requestHandler,
                          List<Completion> completions,
                          List<Function<String,Optional<String>>> preProcessors,
-            History history, CursorListener listener) {
+                         History history, CursorListener listener) {
         synchronized(this) {
             if (inputProcessor != null) {
                 throw new IllegalStateException("Already reading a line");
             }
             inputProcessor = new AeshInputProcessor(conn, prompt, requestHandler, completions, preProcessors, history, listener);
+            inputProcessor.start();
         }
-        inputProcessor.start();
-        processInput();
+        //inputProcessor can be set to null from the start() method
+        if(inputProcessor != null)
+            processInput();
     }
 
     private void processInput() {
@@ -141,8 +143,6 @@ public class Readline {
             if (inputProcessor == null) {
                 throw new IllegalStateException("No inputProcessor!");
             }
-            if(inputProcessor.connection().suspended())
-                inputProcessor.connection().awake();
             if (decoder.hasNext()) {
                 readInput();
             }
@@ -245,12 +245,7 @@ public class Readline {
             prevReadHandler = conn.getStdinHandler();
             prevSizeHandler = conn.getSizeHandler();
             prevEventHandler = conn.getSignalHandler();
-            conn.setStdinHandler(data -> {
-                synchronized(Readline.this) {
-                    decoder.add(data);
-                }
-                readInput();
-            });
+
             size = conn.size();
             if(size == null)
                 throw new RuntimeException("Terminal size must not be null");
@@ -279,6 +274,14 @@ public class Readline {
 
             //last, display prompt
             consoleBuffer.drawLine();
+            //last process input, the readInput() can read/finish in one go
+            //since EventDecoder might have queued up data
+            conn.setStdinHandler(data -> {
+                synchronized(Readline.this) {
+                    decoder.add(data);
+                }
+                readInput();
+            });
         }
 
         private void resize(Size size) {

@@ -33,7 +33,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.Charset;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
@@ -58,10 +57,7 @@ public class TerminalConnection implements Connection {
     private Attributes attributes;
     private EventDecoder eventDecoder = new EventDecoder();
     private volatile boolean reading = false;
-    private volatile boolean close = false;
     private Consumer<Void> closeHandler;
-    private CountDownLatch latch;
-    private volatile boolean waiting = false;
 
     public TerminalConnection(Charset charset, InputStream inputStream, OutputStream outputStream) throws IOException {
             init(TerminalBuilder.builder()
@@ -119,11 +115,6 @@ public class TerminalConnection implements Connection {
     }
 
     @Override
-    public void stopReading() {
-        reading = false;
-    }
-
-    @Override
     public boolean put(Capability capability, Object... params) {
         return terminal.puts(capability, params);
     }
@@ -159,16 +150,19 @@ public class TerminalConnection implements Connection {
                 int read = terminal.input().read(bBuf);
                 if (read > 0) {
                     decoder.write(bBuf, 0, read);
-                    if(waiting) {
-                        try {
-                            latch.await();
-                        }
-                        catch(InterruptedException e) {
-                            e.printStackTrace();
-                        }
-                    }
                 }
                 else if (read < 0) {
+                    //simple check to make sure we read all the data
+                    //from EventDecoder
+                    while(eventDecoder.hasData()) {
+                        try {
+                            Thread.sleep(10);
+                        }
+                        catch (InterruptedException e) {
+                            LOGGER.log(Level.WARNING,
+                                    "Interrupted while waiting on EventDecoder emptying the queue", e);
+                        }
+                    }
                     if(getCloseHandler() != null)
                         getCloseHandler().accept(null);
                     close();
@@ -195,25 +189,6 @@ public class TerminalConnection implements Connection {
         catch(IOException e) {
             LOGGER.log(Level.WARNING, "Failed to write out.",e);
         }
-    }
-
-    @Override
-    public void suspend() {
-        latch = new CountDownLatch(1);
-        waiting = true;
-    }
-
-    @Override
-    public void awake() {
-        if(waiting) {
-            waiting = false;
-            latch.countDown();
-        }
-    }
-
-    @Override
-    public boolean suspended() {
-        return waiting;
     }
 
     public Terminal getTerminal() {
@@ -278,9 +253,7 @@ public class TerminalConnection implements Connection {
     @Override
     public void close() {
         try {
-            close = reading = false;
-            if(waiting)
-                latch.countDown();
+            reading = false;
             if (attributes != null && terminal != null) {
                 terminal.setAttributes(attributes);
                 terminal.close();

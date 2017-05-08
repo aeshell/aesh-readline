@@ -111,26 +111,6 @@ public interface Connection {
     void openNonBlocking();
 
     /**
-     * This will stop reading from the input stream, but not close the stream
-     */
-    void stopReading();
-
-    /**
-     * This call will block the reader thread until awake() is called
-     */
-    void suspend();
-
-    /**
-     * @return true if suspended. Eg the reader is blocked.
-     */
-    boolean suspended();
-
-    /**
-     * If suspended this will resume reading from the input stream
-     */
-    void awake();
-
-    /**
      * Specify terminal settings
      * @param capability capability
      * @param params parameters

@@ -101,7 +101,6 @@ public class ShellExample {
         //suspend reader asap since we're creating commands in a new thread
         //this is not needed when running single threaded, eg as Example
        readline.readline(conn, prompt, line -> {
-            conn.suspend();
             // Ctrl-D
             if (line == null) {
                 //((TerminalConnection) conn).stop();
@@ -199,8 +198,6 @@ public class ShellExample {
                 command.execute(conn, args);
             }
             catch (InterruptedException | InterruptedIOException e) {
-                if(!conn.suspended())
-                    conn.suspend();
                 // Ctlr-C interrupt
             }
             catch (Exception e) {
@@ -297,14 +294,11 @@ public class ShellExample {
                     }
                 });
                 try {
-                    if(conn.suspended())
-                        conn.awake();
                     // Wait until interrupted
                     new CountDownLatch(1).await();
                 }
                 finally {
                     conn.setStdinHandler(null);
-                    conn.suspend();
                 }
             }
         },
@@ -322,7 +316,6 @@ public class ShellExample {
                 Readline readline = new Readline();
                 String[] out = new String[1];
                 readline.readline(conn, "[myprompt]: ", event -> {
-                    conn.suspend();
                     out[0] = event;
                     latch.countDown();
                 });
