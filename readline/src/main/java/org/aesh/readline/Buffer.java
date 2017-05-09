@@ -581,17 +581,43 @@ public class Buffer {
     private void printDeletedData(Consumer<int[]> out, int width, boolean viMode) {
         IntArrayBuilder builder = new IntArrayBuilder();
          if(size+promptLength()+Math.abs(delta) >= width) {
-            if(deletingBackward)
-            clearAllLinesAndReturnToFirstLine(builder,
-                    width, cursor + promptLength() + Math.abs(delta),
-                    size + promptLength() + Math.abs(delta));
+            if(deletingBackward) {
+                //lets optimize deletes at the end
+                if(deltaChangedAtEndOfBuffer &&
+                        ((size+promptLength()+1) % width > Math.abs(delta))) {
+                    quickDeleteAtEnd(out, viMode);
+                    return;
+                }
+                else {
+                    clearAllLinesAndReturnToFirstLine(builder,
+                            width, cursor + promptLength() + Math.abs(delta),
+                            size + promptLength() + Math.abs(delta));
+                }
+            }
             else
                 clearAllLinesAndReturnToFirstLine(builder,
                         width, cursor + promptLength(),
                         size + promptLength() + Math.abs(delta));
         }
 
-        moveCursorToStartAndPrint(out, builder, width, false, viMode);
+        if((size+promptLength()+1) < width && deltaChangedAtEndOfBuffer)
+             quickDeleteAtEnd(out, viMode);
+        else
+            moveCursorToStartAndPrint(out, builder, width, false, viMode);
+    }
+
+    private void quickDeleteAtEnd(Consumer<int[]> out, boolean viMode) {
+        //move cursor delta then clear the rest of the line
+        IntArrayBuilder builder = new IntArrayBuilder();
+        builder.append(moveNumberOfColumns(Math.abs(delta), 'D'));
+        builder.append(ANSI.ERASE_LINE_FROM_CURSOR);
+
+        if(viMode && cursor == size) {
+            builder.append(moveNumberOfColumns(1, 'D'));
+            cursor--;
+        }
+
+        out.accept(builder.toArray());
     }
 
     /**
@@ -775,10 +801,11 @@ public class Buffer {
         if(viMode) {
             //if(!deletingBackward)
             //    cursor--;
-            deltaChangedAtEndOfBuffer = ((cursor ) == size);
-        }
-        else
             deltaChangedAtEndOfBuffer = (cursor == size);
+        }
+        else {
+            deltaChangedAtEndOfBuffer = (cursor == size);
+        }
         //finally print our changes
         print(out, width, viMode);
     }

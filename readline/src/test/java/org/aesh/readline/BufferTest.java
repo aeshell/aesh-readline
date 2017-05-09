@@ -143,17 +143,17 @@ public class BufferTest {
         buffer.insert(outConsumer::add, "foo bar", 100);
         outConsumer.clear();
         buffer.delete(outConsumer::add, -2, 120);
-        assertArrayEquals(new int[] {27,'[', '9', 'D'}, Arrays.copyOfRange(outConsumer.get(0), 0, 4 ));
+        assertArrayEquals(new int[] {27,'[', '2', 'D'}, Arrays.copyOfRange(outConsumer.get(0), 0, 4 ));
         assertArrayEquals(new int[] {27,'[','K'}, Arrays.copyOfRange(outConsumer.get(0), 4, 7 ));
         assertEquals("foo b", buffer.asString());
         outConsumer.clear();
         buffer.delete(outConsumer::add, -2, 120);
-        assertArrayEquals(new int[] {27,'[', '7', 'D'}, Arrays.copyOfRange(outConsumer.get(0), 0, 4 ));
+        assertArrayEquals(new int[] {27,'[', '2', 'D'}, Arrays.copyOfRange(outConsumer.get(0), 0, 4 ));
         assertArrayEquals(new int[] {27,'[','K'}, Arrays.copyOfRange(outConsumer.get(0), 4, 7 ));
         assertEquals("foo", buffer.asString());
         outConsumer.clear();
         buffer.delete(outConsumer::add, -4, 120);
-        assertArrayEquals(new int[] {27,'[', '5', 'D'},
+        assertArrayEquals(new int[] {27,'[', '3', 'D'},
                 Arrays.copyOfRange(outConsumer.get(0), 0, 4 ));
         assertArrayEquals(new int[] {27,'[','K'}, Arrays.copyOfRange(outConsumer.get(0), 4, 7 ));
         assertEquals("", buffer.asString());
@@ -429,9 +429,8 @@ public class BufferTest {
         outConsumer.clear();
         buffer.delete(outConsumer::add, -1, 120);
 
-        assertEquals(": ##",
-                Parser.fromCodePoints(Arrays.copyOfRange(outConsumer.get(0),
-                        outConsumer.get(0).length-4, outConsumer.get(0).length )));
+        assertArrayEquals(new int[] {27,'[', '1', 'D'}, Arrays.copyOfRange(outConsumer.get(0), 0, 4 ));
+        assertArrayEquals(new int[] {27,'[','K'}, Arrays.copyOfRange(outConsumer.get(0), 4, 7 ));
         assertEquals("fo", buffer.asString());
 
         buffer = new Buffer(new Prompt(": ", (char) 0));
@@ -444,15 +443,9 @@ public class BufferTest {
         assertEquals("foo", buffer.asString());
         outConsumer.clear();
         buffer.delete(outConsumer::add, -3, 120);
-        assertEquals(": ",
-                Parser.fromCodePoints(Arrays.copyOfRange(outConsumer.get(0),
-                        outConsumer.get(0).length-2, outConsumer.get(0).length )));
+        assertEquals("", buffer.asString());
 
         buffer.insert(outConsumer::add, "bar", 100);
-
-        assertEquals(": ",
-                Parser.fromCodePoints(Arrays.copyOfRange(outConsumer.get(0),
-                        outConsumer.get(0).length-2, outConsumer.get(0).length )));
         assertEquals("bar", buffer.asString());
      }
 }

@@ -44,7 +44,6 @@ public class MaskingReadlineTest {
         term.assertOutputBuffer("[foo] %%%%%%%%%%%");
         term.clearOutputBuffer();
         term.read(Key.BACKSPACE);
-        term.assertOutputBuffer("[foo] %%%%%%%%%%");
         term.read(Key.ENTER);
         term.assertLine("MMyPasswor");
     }

@@ -41,5 +41,9 @@ public class ViEditingMode implements Action {
     public void accept(InputProcessor inputProcessor) {
         if(inputProcessor.editMode().mode() != EditMode.Mode.VI)
             inputProcessor.setEditMode(EditModeBuilder.builder(EditMode.Mode.VI).create());
+        if(inputProcessor.buffer().buffer().cursor() ==
+                inputProcessor.buffer().buffer().length())
+            inputProcessor.buffer().moveCursor(-1);
+
     }
 }
