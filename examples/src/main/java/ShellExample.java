@@ -47,7 +47,7 @@ import java.util.regex.Pattern;
  *
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
  */
-public class ShellExample {
+public class ShellExample implements Consumer<Connection>{
 
     private static final Pattern splitter = Pattern.compile("\\w+");
 
@@ -55,36 +55,20 @@ public class ShellExample {
 
     public static void main(String[] args) throws IOException {
         LoggerUtil.doLog();
+        new TerminalConnection(new ShellExample());
+    }
 
-        final TerminalConnection connection = new TerminalConnection();
-
+    @Override
+    public void accept(Connection connection) {
+        System.out.println("starting readline..");
         connection.setSignalHandler( signal -> {
             connection.write("\nlets quit\n");
             connection.close();
         });
-        ShellExample shell = new ShellExample();
-        shell.start(connection);
-        //blocking reader
-        connection.openBlocking();
-        // if we start nonBlockingReader do:
-        /*
-        connection.openNonBlocking();
-        try {
-            //either do some other logic or just do this....
-            while(connection.isReading()) {
-                Thread.sleep(500);
-            }
-        }
-        catch(InterruptedException e) {
-            LOGGER.warning("INTERRUPTED... stopping..");
-            connection.close();
-        }
-        */
-    }
 
-    public void start(final Connection conn) {
         Readline readline = new Readline(EditModeBuilder.builder(EditMode.Mode.EMACS).create());
-        read(conn, readline);
+        read(connection, readline);
+        connection.openBlocking();
     }
 
     /**
@@ -158,6 +142,7 @@ public class ShellExample {
         });
         return completions;
     }
+
 
     /**
      * A blocking interruptable task.

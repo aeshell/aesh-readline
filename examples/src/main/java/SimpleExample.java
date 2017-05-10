@@ -21,9 +21,10 @@
 import org.aesh.readline.Readline;
 import org.aesh.readline.ReadlineBuilder;
 import org.aesh.readline.tty.terminal.TerminalConnection;
+import org.aesh.terminal.Connection;
 
 import java.io.IOException;
-import java.util.concurrent.CountDownLatch;
+import java.util.function.Consumer;
 
 /**
  * A very simple example where we use the default values and create a simple
@@ -32,52 +33,22 @@ import java.util.concurrent.CountDownLatch;
  *
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
  */
-public class SimpleExample {
+public class SimpleExample implements Consumer<Connection> {
 
     public static void main(String... args) throws IOException {
-        TerminalConnection connection = new TerminalConnection();
         //we're setting up readline to read when connection receives any input
         //note that this needs to be done after every time Readline.readline returns
+        new TerminalConnection(new SimpleExample());
+    }
+
+    @Override
+    public void accept(Connection connection) {
         read(connection, ReadlineBuilder.builder().enableHistory(false).build(), "[aesh@rules]$ ");
         //lets open the connection to the terminal using this thread
         connection.openBlocking();
-
-        /* nonBlocking
-        connection.openNonBlocking();
-        Readline readline = ReadlineBuilder.builder().enableHistory(false).build();
-        String prompt = "[aesh@rules]$ ";
-        while(true) {
-            String input = reading(connection, readline, prompt);
-            if(input != null && input.equals("exit")) {
-                connection.write("we're exiting\n");
-                connection.close();
-                return;
-            }
-            else {
-                connection.write("=====> "+input+"\n");
-            }
-        }
-        */
     }
 
-     private static String reading(TerminalConnection connection, Readline readline, String prompt) {
-        final String[] in = new String[1];
-         CountDownLatch latch = new CountDownLatch(1);
-        readline.readline(connection, prompt, input -> {
-            in[0] = input;
-            latch.countDown();
-        });
-        try {
-            latch.await();
-        }
-        catch(InterruptedException e) {
-            e.printStackTrace();
-        }
-
-         return in[0];
-    }
-
-    private static void read(TerminalConnection connection, Readline readline, String prompt) {
+    private void read(Connection connection, Readline readline, String prompt) {
         readline.readline(connection, prompt, input -> {
             //we specify a simple lambda consumer to read the input thats returned
             if(input != null && input.equals("exit")) {

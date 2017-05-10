@@ -38,6 +38,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.logging.Logger;
 
@@ -46,7 +47,7 @@ import java.util.logging.Logger;
  *
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
  */
-public class Example {
+public class Example implements Consumer<Connection> {
 
     private static final Logger LOGGER = LoggerUtil.getLogger(Example.class.getName());
     private static final boolean ALIAS = true;
@@ -59,31 +60,39 @@ public class Example {
 
     public static void main(String[] args) throws IOException {
        LoggerUtil.doLog();
+        new TerminalConnection( new Example());
+    }
 
-        defaultPrompt = createDefaultPrompt();
-        preProcessors = new ArrayList<>();
-        if(ALIAS) {
-            aliasManager = new AliasManager(null, false);
-            AliasPreProcessor aliasPreProcessor = new AliasPreProcessor(aliasManager);
-            preProcessors.add(aliasPreProcessor);
-            aliasCompletion = new AliasCompletion(aliasManager);
-        }
-        Readline readline = new Readline();
-        TerminalConnection connection = new TerminalConnection();
-        connection.setSignalHandler( signal -> {
-            if(signal == Signal.INT) {
-                connection.write("we're catching ctrl-c, just continuing.\n");
-                if(sleeperThread != null)
-                    sleeperThread.interrupt();
+    @Override
+    public void accept(Connection connection) {
+        try {
+            defaultPrompt = createDefaultPrompt();
+            preProcessors = new ArrayList<>();
+            if(ALIAS) {
+                aliasManager = new AliasManager(null, false);
+                AliasPreProcessor aliasPreProcessor = new AliasPreProcessor(aliasManager);
+                preProcessors.add(aliasPreProcessor);
+                aliasCompletion = new AliasCompletion(aliasManager);
             }
-        });
+            Readline readline = new Readline();
+            connection.setSignalHandler( signal -> {
+                if(signal == Signal.INT) {
+                    connection.write("we're catching ctrl-c, just continuing.\n");
+                    if(sleeperThread != null)
+                        sleeperThread.interrupt();
+                }
+            });
 
-        connection.setCloseHandler(close -> {
-            connection.write("connection closed, we're shutting down, do something...!"+ Config.getLineSeparator());
-        });
+            connection.setCloseHandler(close -> {
+                connection.write("connection closed, we're shutting down, do something...!"+ Config.getLineSeparator());
+            });
 
-        readInput(connection, readline, defaultPrompt);
-        connection.openBlocking();
+            readInput(connection, readline, defaultPrompt);
+            connection.openBlocking();
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     public static void readInput(Connection connection, Readline readline, Prompt prompt) {
@@ -200,5 +209,6 @@ public class Example {
         return new Prompt(chars);
 
     }
+
 
 }

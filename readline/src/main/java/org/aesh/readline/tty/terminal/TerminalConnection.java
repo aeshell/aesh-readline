@@ -58,8 +58,12 @@ public class TerminalConnection implements Connection {
     private EventDecoder eventDecoder = new EventDecoder();
     private volatile boolean reading = false;
     private Consumer<Void> closeHandler;
+    private Consumer<Connection> handler;
 
-    public TerminalConnection(Charset charset, InputStream inputStream, OutputStream outputStream) throws IOException {
+    public TerminalConnection(Charset charset, InputStream inputStream,
+                              OutputStream outputStream, Consumer<Connection> handler) throws IOException {
+        this.charset = charset;
+        this.handler = handler;
             init(TerminalBuilder.builder()
                     .input(inputStream)
                     .output(outputStream)
@@ -67,11 +71,18 @@ public class TerminalConnection implements Connection {
                     .nativeSignals(true)
                     .name("Aesh console")
                     .build());
-            this.charset = charset;
+    }
+
+    public TerminalConnection(Charset charset, InputStream inputStream, OutputStream outputStream) throws IOException {
+        this(charset, inputStream, outputStream, null);
     }
 
     public TerminalConnection() throws IOException {
         this(Charset.defaultCharset(), System.in, System.out);
+    }
+
+    public TerminalConnection(Consumer<Connection> handler) throws IOException {
+        this(Charset.defaultCharset(), System.in, System.out, handler);
     }
 
     public TerminalConnection(Terminal terminal) {
@@ -100,6 +111,9 @@ public class TerminalConnection implements Connection {
 
         decoder = new Decoder(512, charset, eventDecoder);
         stdOut = new Encoder(charset, this::write);
+
+        if(handler != null)
+            handler.accept(this);
     }
 
     @Override
