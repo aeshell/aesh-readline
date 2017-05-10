@@ -177,17 +177,12 @@ public class TerminalConnection implements Connection {
                                     "Interrupted while waiting on EventDecoder emptying the queue", e);
                         }
                     }
-                    if(getCloseHandler() != null)
-                        getCloseHandler().accept(null);
                     close();
-                    return;
                 }
             }
         }
         catch (IOException ioe) {
             LOGGER.log(Level.WARNING, "Failed while reading, exiting", ioe);
-            if(getCloseHandler() != null)
-                getCloseHandler().accept(null);
             close();
         }
     }
@@ -271,13 +266,14 @@ public class TerminalConnection implements Connection {
             if (attributes != null && terminal != null) {
                 terminal.setAttributes(attributes);
                 terminal.close();
-                if(getCloseHandler() != null)
-                    getCloseHandler().accept(null);
             }
         }
         catch(IOException e) {
             LOGGER.log(Level.WARNING, "Failed to close the terminal correctly", e);
         }
+        //finally call the closeHandler
+        if(getCloseHandler() != null)
+            getCloseHandler().accept(null);
     }
 
 }
