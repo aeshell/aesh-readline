@@ -33,6 +33,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.Charset;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
@@ -59,6 +60,8 @@ public class TerminalConnection implements Connection {
     private volatile boolean reading = false;
     private Consumer<Void> closeHandler;
     private Consumer<Connection> handler;
+    private CountDownLatch latch;
+    private volatile boolean waiting = false;
 
     public TerminalConnection(Charset charset, InputStream inputStream,
                               OutputStream outputStream, Consumer<Connection> handler) throws IOException {
@@ -164,6 +167,14 @@ public class TerminalConnection implements Connection {
                 int read = terminal.input().read(bBuf);
                 if (read > 0) {
                     decoder.write(bBuf, 0, read);
+                    if(waiting) {
+                        try {
+                            latch.await();
+                        }
+                        catch(InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    }
                 }
                 else if (read < 0) {
                     //simple check to make sure we read all the data
@@ -185,6 +196,22 @@ public class TerminalConnection implements Connection {
             LOGGER.log(Level.WARNING, "Failed while reading, exiting", ioe);
             close();
         }
+    }
+
+    public void suspend() {
+        latch = new CountDownLatch(1);
+        waiting = true;
+    }
+
+    public void awake() {
+        if(waiting) {
+            waiting = false;
+            latch.countDown();
+        }
+    }
+
+    public boolean suspended() {
+        return waiting;
     }
 
     public boolean isReading() {
@@ -263,6 +290,8 @@ public class TerminalConnection implements Connection {
     public void close() {
         try {
             reading = false;
+            if(waiting)
+                latch.countDown()
             if (attributes != null && terminal != null) {
                 terminal.setAttributes(attributes);
                 terminal.close();
