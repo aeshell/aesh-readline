@@ -291,7 +291,7 @@ public class TerminalConnection implements Connection {
         try {
             reading = false;
             if(waiting)
-                latch.countDown()
+                latch.countDown();
             if (attributes != null && terminal != null) {
                 terminal.setAttributes(attributes);
                 terminal.close();
