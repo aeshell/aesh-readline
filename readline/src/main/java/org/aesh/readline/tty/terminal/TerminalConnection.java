@@ -218,6 +218,10 @@ public class TerminalConnection implements Connection {
         return reading;
     }
 
+     public void stopReading() {
+        reading = false;
+    }
+
     private void write(byte[] data) {
         try {
             terminal.output().write(data);
@@ -292,6 +296,9 @@ public class TerminalConnection implements Connection {
             reading = false;
             if(waiting)
                 latch.countDown();
+            //call closeHandler before we close the terminal stream
+            if(getCloseHandler() != null)
+                getCloseHandler().accept(null);
             if (attributes != null && terminal != null) {
                 terminal.setAttributes(attributes);
                 terminal.close();
@@ -300,9 +307,6 @@ public class TerminalConnection implements Connection {
         catch(IOException e) {
             LOGGER.log(Level.WARNING, "Failed to close the terminal correctly", e);
         }
-        //finally call the closeHandler
-        if(getCloseHandler() != null)
-            getCloseHandler().accept(null);
     }
 
 }
