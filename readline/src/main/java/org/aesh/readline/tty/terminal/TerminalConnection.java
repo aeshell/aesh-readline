@@ -177,17 +177,6 @@ public class TerminalConnection implements Connection {
                     }
                 }
                 else if (read < 0) {
-                    //simple check to make sure we read all the data
-                    //from EventDecoder
-                    while(eventDecoder.hasData()) {
-                        try {
-                            Thread.sleep(10);
-                        }
-                        catch (InterruptedException e) {
-                            LOGGER.log(Level.WARNING,
-                                    "Interrupted while waiting on EventDecoder emptying the queue", e);
-                        }
-                    }
                     close();
                 }
             }
@@ -199,8 +188,10 @@ public class TerminalConnection implements Connection {
     }
 
     public void suspend() {
-        latch = new CountDownLatch(1);
-        waiting = true;
+        if(!waiting) {
+            latch = new CountDownLatch(1);
+            waiting = true;
+        }
     }
 
     public void awake() {
@@ -273,6 +264,10 @@ public class TerminalConnection implements Connection {
     @Override
     public void setStdinHandler(Consumer<int[]> handler) {
         eventDecoder.setInputHandler(handler);
+        if(handler == null)
+            suspend();
+        else
+            awake();
     }
 
     @Override

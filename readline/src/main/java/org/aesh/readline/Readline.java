@@ -132,18 +132,18 @@ public class Readline {
             }
             inputProcessor = new AeshInputProcessor(conn, prompt, requestHandler, completions, preProcessors, history, listener);
             inputProcessor.start();
+            //inputProcessor can be set to null from the start() method
+            if(inputProcessor != null)
+                processInput();
         }
-        //inputProcessor can be set to null from the start() method
-        if(inputProcessor != null)
-            processInput();
     }
 
     private void processInput() {
         synchronized (this) {
             if (inputProcessor == null) {
-                throw new IllegalStateException("No inputProcessor!");
+                LOGGER.warning("No inputprocessor in Readline.processInput");
             }
-            if (decoder.hasNext()) {
+            else if (decoder.hasNext()) {
                 readInput();
             }
         }
