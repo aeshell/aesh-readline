@@ -53,6 +53,8 @@ public class ShellExample implements Consumer<Connection>{
 
     private static final Logger LOGGER = LoggerUtil.getLogger(ShellExample.class.getName());
 
+    private boolean stopped = false;
+
     public static void main(String[] args) throws IOException {
         LoggerUtil.doLog();
         new TerminalConnection(new ShellExample());
@@ -64,6 +66,10 @@ public class ShellExample implements Consumer<Connection>{
         connection.setSignalHandler( signal -> {
             connection.write("\nlets quit\n");
             connection.close();
+        });
+
+        connection.setCloseHandler(close->{
+            stopped = true;
         });
 
         Readline readline = new Readline(EditModeBuilder.builder(EditMode.Mode.EMACS).create());
@@ -98,10 +104,12 @@ public class ShellExample implements Consumer<Connection>{
             if (matcher.find()) {
                 String cmd = matcher.group();
 
+                /*
                 if(cmd.equals("exit")) {
                     conn.write("exiting...\n").close();
                     return;
                 }
+                */
 
                 // Gather args
                 List<String> args = new ArrayList<>();
@@ -153,7 +161,6 @@ public class ShellExample implements Consumer<Connection>{
         final Readline readline;
         final Command command;
         final List<String> args;
-        volatile boolean running;
 
         public Task(Connection conn, Readline readline, Command command, List<String> args) {
             this.conn = conn;
@@ -166,11 +173,9 @@ public class ShellExample implements Consumer<Connection>{
         public void accept(Signal signal) {
             switch (signal) {
                 case INT:
-                    if (running) {
-                        // Ctrl-C interrupt : we use Thread interrupts to signal the command to stop
-                        LOGGER.info("got interrupted in Task");
-                        interrupt();
-                    }
+                    // Ctrl-C interrupt : we use Thread interrupts to signal the command to stop
+                    LOGGER.info("got interrupted in Task");
+                    interrupt();
             }
         }
 
@@ -178,7 +183,6 @@ public class ShellExample implements Consumer<Connection>{
         public void run() {
             // Subscribe to events, in particular Ctrl-C
             conn.setSignalHandler(this);
-            running = true;
             try {
                 command.execute(conn, args);
             }
@@ -189,10 +193,10 @@ public class ShellExample implements Consumer<Connection>{
                 e.printStackTrace();
             }
             finally {
-                running = false;
                 conn.setSignalHandler(null);
                 // Readline again
-                read(conn, readline);
+                if(!stopped)
+                    read(conn, readline);
             }
         }
     }
@@ -220,6 +224,14 @@ public class ShellExample implements Consumer<Connection>{
                 }
             }
         },
+
+       exit() {
+            @Override
+            public void execute(Connection conn, List<String> args) throws Exception {
+                conn.close();
+            }
+        },
+
 
        echo() {
             @Override
