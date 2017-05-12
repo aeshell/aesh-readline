@@ -211,6 +211,7 @@ public class TerminalConnection implements Connection {
 
      public void stopReading() {
         reading = false;
+        awake();
     }
 
     private void write(byte[] data) {
