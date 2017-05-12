@@ -173,7 +173,10 @@ public class TerminalConnection implements Connection {
                             latch.await();
                         }
                         catch(InterruptedException e) {
-                            e.printStackTrace();
+                            LOGGER.log(Level.WARNING,
+                                    "Reader thread was interrupted while waiting on the latch", e);
+                            close();
+                            Thread.currentThread().interrupt();
                         }
                     }
                 }
@@ -197,7 +200,8 @@ public class TerminalConnection implements Connection {
     public void awake() {
         if(waiting) {
             waiting = false;
-            latch.countDown();
+            if(latch != null)
+                latch.countDown();
         }
     }
 
