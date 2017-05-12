@@ -168,6 +168,7 @@ public class TerminalConnection implements Connection {
                 if (read > 0) {
                     decoder.write(bBuf, 0, read);
                     if(waiting) {
+                        latch = new CountDownLatch(1);
                         try {
                             latch.await();
                         }
@@ -189,7 +190,6 @@ public class TerminalConnection implements Connection {
 
     public void suspend() {
         if(!waiting) {
-            latch = new CountDownLatch(1);
             waiting = true;
         }
     }
