@@ -233,7 +233,7 @@ public class TerminalConnection implements Connection {
 
     @Override
     public String terminalType() {
-        return terminal.getName();
+        return terminal.getType();
     }
 
     @Override
