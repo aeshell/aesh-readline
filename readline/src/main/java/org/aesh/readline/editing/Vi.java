@@ -26,6 +26,7 @@ import org.aesh.readline.terminal.Key;
 import org.aesh.readline.action.Action;
 import org.aesh.readline.action.ActionEvent;
 import org.aesh.terminal.Device;
+import org.aesh.terminal.tty.Capability;
 
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -46,12 +47,14 @@ public class Vi implements EditMode {
     private Map<Key, ActionStatus> actions;
     private Map<KeyAction,ActionStatus> keyEventActions;
     private Map<Key, ActionStatusGroup> actionGroups;
+    private Map<KeyAction, ActionStatusGroup> keyEventActionGroups;
     private Map<Variable,String> variables;
 
     Vi() {
         actions = new EnumMap<>(Key.class);
         variables = new HashMap<>();
         keyEventActions = new HashMap<>();
+        keyEventActionGroups = new HashMap<>();
         actionGroups = new EnumMap<>(Key.class);
     }
 
@@ -67,7 +70,20 @@ public class Vi implements EditMode {
 
     @Override
     public void remapKeysFromDevice(Device device) {
+        remap(Key.UP, device.getStringCapabilityAsInts(Capability.key_up));
+        remap(Key.DOWN, device.getStringCapabilityAsInts(Capability.key_down));
+    }
 
+    private void remap(Key key, int[] newMapping) {
+        if(newMapping != null && actions.containsKey(key) && !key.equalTo(newMapping)) {
+            ActionStatus action = actions.remove(key);
+            addAction(newMapping, action);
+        }
+        else if(newMapping != null && actionGroups.containsKey(key) && !key.equalTo(newMapping)) {
+            ActionStatusGroup statusGroup = actionGroups.remove(key);
+            addActionGroup(newMapping, statusGroup);
+
+        }
     }
 
     @Override
@@ -82,6 +98,21 @@ public class Vi implements EditMode {
 
     public Vi addAction(Key key, String action) {
         return addAction(key, action, Status.EDIT);
+    }
+
+    public Vi addAction(Key key, ActionStatus status) {
+        actions.put(key, status);
+        return this;
+    }
+
+    public Vi addAction(int[] input, ActionStatus status) {
+        Key key = Key.getKey(input);
+        if(key != null)
+            actions.put(key, status);
+        else
+            keyEventActions.put(createKeyEvent(input), status);
+
+        return this;
     }
 
     public Vi addAction(Key key, String action, Status status) {
@@ -118,6 +149,15 @@ public class Vi implements EditMode {
         return this;
     }
 
+    public Vi addActionGroup(int[] input, ActionStatusGroup group) {
+        Key key = Key.getKey(input);
+        if(key != null)
+            actionGroups.put(key, group);
+        else
+            keyEventActionGroups.put(createKeyEvent(input), group);
+        return this;
+    }
+
     @Override
     public void updateIgnoreEOF(int eof) {
         //TODO
@@ -130,10 +170,12 @@ public class Vi implements EditMode {
 
     @Override
     public KeyAction[] keys() {
-        List<KeyAction> keys = new ArrayList<>(actions.size()+keyEventActions.size()+actionGroups.size());
+        List<KeyAction> keys = new ArrayList<>(actions.size()
+                +keyEventActions.size()+actionGroups.size()+keyEventActionGroups.size());
         actions.keySet().forEach( keys::add);
         actionGroups.keySet().forEach( keys::add);
         keyEventActions.keySet().forEach(keys::add);
+        keyEventActionGroups.keySet().forEach(keys::add);
         return keys.toArray(new KeyAction[keys.size()]);
     }
 
@@ -236,6 +278,10 @@ public class Vi implements EditMode {
                 return actionStatus;
             else {
                 ActionStatusGroup group = actionGroups.get(event);
+                if(group != null)
+                    return group.getByCurrentStatus(status);
+
+                group = keyEventActionGroups.get(event);
                 if(group != null)
                     return group.getByCurrentStatus(status);
             }

@@ -74,11 +74,18 @@ public class Emacs implements EditMode {
     public void remapKeysFromDevice(Device device) {
         //need to make sure we remap keys so we have the correct mapping
         remap(Key.HOME, device.getStringCapabilityAsInts(Capability.key_home));
+        remap(Key.END, device.getStringCapabilityAsInts(Capability.key_end));
+        remap(Key.UP, device.getStringCapabilityAsInts(Capability.key_up));
+        remap(Key.DOWN, device.getStringCapabilityAsInts(Capability.key_down));
+        remap(Key.LEFT, device.getStringCapabilityAsInts(Capability.key_left));
+        remap(Key.RIGHT, device.getStringCapabilityAsInts(Capability.key_right));
+        remap(Key.DELETE, device.getStringCapabilityAsInts(Capability.key_dc));
+        remap(Key.CTRL_K, device.getStringCapabilityAsInts(Capability.key_dl));
         //remap(Key.HOME_2, device.getStringCapabilityAsInts(Capability.key_home));
     }
 
     private void remap(Key key, int[] newMapping) {
-        if(actions.containsKey(key) && !key.equalTo(newMapping)) {
+        if(newMapping != null && actions.containsKey(key) && !key.equalTo(newMapping)) {
             Action homeAction = actions.remove(key);
             addAction(newMapping, homeAction.name());
         }
