@@ -42,11 +42,13 @@ import org.aesh.readline.action.mappings.NextHistory;
 import org.aesh.readline.action.mappings.NoAction;
 import org.aesh.readline.action.mappings.PrevHistory;
 import org.aesh.readline.action.mappings.Undo;
+import org.aesh.readline.terminal.DeviceBuilder;
 import org.aesh.readline.terminal.Key;
 import org.aesh.readline.action.mappings.DeleteBackwardWord;
 import org.aesh.readline.action.mappings.DeleteForwardWord;
 import org.aesh.readline.action.mappings.ForwardChar;
 import org.aesh.readline.action.mappings.MoveBackwardWord;
+import org.aesh.terminal.Device;
 
 import java.io.InputStream;
 import java.util.EnumMap;
@@ -61,6 +63,8 @@ public class EditModeBuilder {
     private Map<int[],String> actions;
 
     private Map<Variable,String> variables;
+
+    private Device device;
 
     private EditModeBuilder(EditMode.Mode mode) {
         this();
@@ -98,6 +102,11 @@ public class EditModeBuilder {
         return this;
     }
 
+    public EditModeBuilder device(Device device) {
+        this.device = device;
+        return this;
+    }
+
     public String getVariableValue(Variable variable) {
         return variables.get(variable);
     }
@@ -116,16 +125,22 @@ public class EditModeBuilder {
 
     public EditMode create() {
         String mode = variables.getOrDefault(Variable.EDITING_MODE, "emacs");
+        if(device == null)
+            device = DeviceBuilder.builder().build();
         if(mode.equals("vi")) {
             EditMode editMode = createDefaultViMode();
             actions.forEach(editMode::addAction);
             variables.forEach(editMode::addVariable);
+            if(device != null)
+                editMode.remapKeysFromDevice(device);
             return editMode;
         }
         else {
             EditMode editMode = createDefaultEmacsMode();
             actions.forEach(editMode::addAction);
             variables.forEach(editMode::addVariable);
+            if(device != null)
+                editMode.remapKeysFromDevice(device);
             return editMode;
         }
     }
@@ -181,7 +196,6 @@ public class EditModeBuilder {
         emacs.addAction(Key.END, "end-of-line"); //end
         emacs.addAction(Key.INSERT, "no-action"); //insert
         emacs.addAction(Key.META_CTRL_J, "vi-editing-mode"); //insert
-
 
         return emacs;
     }

@@ -25,6 +25,7 @@ import org.aesh.readline.action.KeyAction;
 import org.aesh.readline.action.mappings.ActionMapper;
 import org.aesh.readline.terminal.Key;
 import org.aesh.terminal.Device;
+import org.aesh.terminal.tty.Capability;
 
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -71,7 +72,16 @@ public class Emacs implements EditMode {
 
     @Override
     public void remapKeysFromDevice(Device device) {
+        //need to make sure we remap keys so we have the correct mapping
+        remap(Key.HOME, device.getStringCapabilityAsInts(Capability.key_home));
+        //remap(Key.HOME_2, device.getStringCapabilityAsInts(Capability.key_home));
+    }
 
+    private void remap(Key key, int[] newMapping) {
+        if(actions.containsKey(key) && !key.equalTo(newMapping)) {
+            Action homeAction = actions.remove(key);
+            addAction(newMapping, homeAction.name());
+        }
     }
 
     public void addAction(Key input, String action) {

@@ -1,5 +1,8 @@
 package org.aesh.readline.terminal;
 
+import org.aesh.readline.editing.EditMode;
+import org.aesh.readline.editing.EditModeBuilder;
+import org.aesh.readline.editing.Variable;
 import org.aesh.terminal.Device;
 import org.aesh.terminal.tty.Capability;
 import org.junit.Test;
@@ -40,6 +43,9 @@ public class DeviceTest {
 
         //home
         assertArrayEquals(new int[]{27,91,72}, device.getStringCapabilityAsInts(Capability.key_home));
+
+        //assertArrayEquals(Key.HOME.getKeyValues(), device.getStringCapabilityAsInts(Capability.key_home));
+
     }
 
     @Test
@@ -50,6 +56,19 @@ public class DeviceTest {
         assertEquals(64, device.getNumericCapability(Capability.max_pairs).intValue());
 
         assertArrayEquals(new int[]{10}, device.getStringCapabilityAsInts(Capability.scroll_forward));
+    }
+
+    @Test
+    public void testEmacsKeyUpdates() {
+        Device device = DeviceBuilder.builder().name("ansi").build();
+
+        EditMode emacs = EditModeBuilder.builder()
+                        .addVariable(Variable.EDITING_MODE, "emacs")
+                        .device(device).create();
+
+        //by default only Key.HOME is set to beginning-of-line, but the ansi
+        //device should remap it to Key.HOME_2
+        assertEquals("beginning-of-line", emacs.parse( Key.HOME_2).name());
     }
 
 }
