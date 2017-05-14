@@ -19,7 +19,9 @@
  */
 package org.aesh.readline.tty.terminal;
 
+import org.aesh.readline.terminal.DeviceBuilder;
 import org.aesh.terminal.Connection;
+import org.aesh.terminal.Device;
 import org.aesh.terminal.tty.Size;
 import org.aesh.terminal.tty.Capability;
 import org.aesh.io.Decoder;
@@ -56,6 +58,7 @@ public class TestConnection implements Connection {
     private Queue<String> out;
     private TestReadline readline;
     private Size size;
+    private Device device;
 
     private Prompt prompt = new Prompt(": ");
 
@@ -107,6 +110,7 @@ public class TestConnection implements Connection {
         if(prompt != null)
             this.prompt = prompt;
 
+        device = DeviceBuilder.builder().name("ansi").build();
         decoder = new Decoder(512, Charset.defaultCharset(), stdinHandler);
         out = new LinkedList<>();
         if(readline == null) {
@@ -163,8 +167,8 @@ public class TestConnection implements Connection {
     }
 
     @Override
-    public String terminalType() {
-        return "fooTerm";
+    public Device device() {
+        return device;
     }
 
     @Override

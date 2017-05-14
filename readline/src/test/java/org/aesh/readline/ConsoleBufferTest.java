@@ -19,6 +19,7 @@
  */
 package org.aesh.readline;
 
+import org.aesh.terminal.Device;
 import org.aesh.util.ANSI;
 import org.aesh.util.Parser;
 import org.aesh.readline.editing.EditModeBuilder;
@@ -111,7 +112,7 @@ public class ConsoleBufferTest {
         }
 
         @Override
-        public String terminalType() {
+        public Device device() {
             return null;
         }
 

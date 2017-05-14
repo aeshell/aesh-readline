@@ -21,6 +21,8 @@ package org.aesh.readline.tty.terminal;
 
 import org.aesh.io.Decoder;
 import org.aesh.io.Encoder;
+import org.aesh.terminal.Device;
+import org.aesh.readline.terminal.DeviceBuilder;
 import org.aesh.terminal.Attributes;
 import org.aesh.terminal.EventDecoder;
 import org.aesh.terminal.Terminal;
@@ -61,6 +63,7 @@ public class TerminalConnection implements Connection {
     private Consumer<Void> closeHandler;
     private Consumer<Connection> handler;
     private CountDownLatch latch;
+    private Device device;
     private volatile boolean waiting = false;
 
     public TerminalConnection(Charset charset, InputStream inputStream,
@@ -114,6 +117,8 @@ public class TerminalConnection implements Connection {
 
         decoder = new Decoder(512, charset, eventDecoder);
         stdOut = new Encoder(charset, this::write);
+
+        device = DeviceBuilder.builder().name(terminal.getName()).build();
 
         if(handler != null)
             handler.accept(this);
@@ -232,8 +237,8 @@ public class TerminalConnection implements Connection {
     }
 
     @Override
-    public String terminalType() {
-        return terminal.getType();
+    public Device device() {
+        return device;
     }
 
     @Override

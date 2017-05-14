@@ -36,7 +36,7 @@ public interface Connection {
     /**
      * @return type of terminal
      */
-    String terminalType();
+    Device device();
 
     /**
      * @return terminal size
