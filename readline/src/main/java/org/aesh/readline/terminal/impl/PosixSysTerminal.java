@@ -46,7 +46,6 @@ public class PosixSysTerminal extends AbstractPosixTerminal {
         this.input = pty.getSlaveInput();
         this.output = pty.getSlaveOutput();
         this.writer = new PrintWriter(new OutputStreamWriter(output, charset));
-        parseInfoCmp();
         if (nativeSignals) {
             for (final Signal signal : Signal.values()) {
                 nativeHandlers.put(signal, Signals.register(signal.name(), () -> raise(signal)));

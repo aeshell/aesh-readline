@@ -19,22 +19,16 @@
  */
 package org.aesh.readline.terminal.impl;
 
+import org.aesh.readline.terminal.DeviceBuilder;
 import org.aesh.terminal.Attributes;
+import org.aesh.terminal.Device;
 import org.aesh.terminal.Terminal;
-import org.aesh.readline.terminal.utils.Curses;
-import org.aesh.readline.terminal.utils.InfoCmp;
-import org.aesh.terminal.tty.Capability;
-import org.aesh.util.Config;
 import org.aesh.util.LoggerUtil;
 
-import java.io.IOError;
 import java.io.IOException;
 import java.util.EnumSet;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.aesh.terminal.tty.Signal;
 
@@ -45,9 +39,7 @@ public abstract class AbstractTerminal implements Terminal {
     protected final String name;
     protected final String type;
     protected final Map<Signal, SignalHandler> handlers = new HashMap<>();
-    protected final Set<Capability> bools = new HashSet<>();
-    protected final Map<Capability, Integer> ints = new HashMap<>();
-    protected final Map<Capability, String> strings = new HashMap<>();
+    protected final Device device;
 
     public AbstractTerminal(String name, String type) throws IOException {
         this(name, type, SignalHandlers.SIG_DFL);
@@ -59,6 +51,7 @@ public abstract class AbstractTerminal implements Terminal {
         for (Signal signal : Signal.values()) {
             handlers.put(signal, signalHandler);
         }
+        device = DeviceBuilder.builder().name(type).build();
     }
 
     public SignalHandler handle(Signal signal, SignalHandler handler) {
@@ -72,7 +65,8 @@ public abstract class AbstractTerminal implements Terminal {
         SignalHandler handler = handlers.get(signal);
         if (handler == SignalHandlers.SIG_DFL) {
             handleDefaultSignal(signal);
-        } else if (handler != SignalHandlers.SIG_IGN) {
+        }
+        else if (handler != SignalHandlers.SIG_IGN) {
             handler.handle(signal);
         }
     }
@@ -138,47 +132,8 @@ public abstract class AbstractTerminal implements Terminal {
         writer().flush();
     }
 
-    public boolean puts(Capability capability, Object... params) {
-        String str = getStringCapability(capability);
-        if (str == null) {
-            return false;
-        }
-        try {
-            Curses.tputs(writer(), str, params);
-        } catch (IOException e) {
-            throw new IOError(e);
-        }
-        return true;
+    public Device device() {
+        return device;
     }
-
-    public boolean getBooleanCapability(Capability capability) {
-        return bools.contains(capability);
-    }
-
-    public Integer getNumericCapability(Capability capability) {
-        return ints.get(capability);
-    }
-
-    public String getStringCapability(Capability capability) {
-        return strings.get(capability);
-    }
-
-    void parseInfoCmp() {
-        String capabilities = null;
-        if (type != null && Config.isOSPOSIXCompatible()) {
-            try {
-                capabilities = InfoCmp.getInfoCmp(type);
-            } catch (Exception e) {
-                LOGGER.log(Level.WARNING, "Unable to retrieve infocmp for type " + type, e);
-            }
-        }
-        if (capabilities == null) {
-            if(Config.isOSPOSIXCompatible())
-                capabilities = InfoCmp.getDefaultInfoCmp("ansi");
-            else
-                capabilities = InfoCmp.getDefaultInfoCmp("windows");
-        }
-        InfoCmp.parseInfoCmp(capabilities, bools, ints, strings);
-    }
-
 }
+

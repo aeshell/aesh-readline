@@ -19,8 +19,6 @@
  */
 package org.aesh.terminal;
 
-import org.aesh.terminal.tty.Capability;
-
 import java.io.Closeable;
 import java.io.Flushable;
 import java.io.InputStream;
@@ -79,15 +77,6 @@ public interface Terminal extends Closeable, Flushable {
     //
     // Infocmp capabilities
     //
-
-    String getType();
-
-    boolean puts(Capability capability, Object... params);
-
-    boolean getBooleanCapability(Capability capability);
-
-    Integer getNumericCapability(Capability capability);
-
-    String getStringCapability(Capability capability);
+    Device device();
 
 }

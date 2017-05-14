@@ -103,7 +103,6 @@ public class LineDisciplineTerminal extends AbstractTerminal {
         this.charset = charset;
         this.attributes = new Attributes();
         this.size = new Size(160, 50);
-        parseInfoCmp();
     }
 
     public PrintWriter writer() {

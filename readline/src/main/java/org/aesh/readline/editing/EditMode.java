@@ -22,6 +22,7 @@ package org.aesh.readline.editing;
 import org.aesh.readline.action.KeyAction;
 import org.aesh.readline.terminal.Key;
 import org.aesh.readline.action.Action;
+import org.aesh.terminal.Device;
 
 import java.util.Arrays;
 
@@ -52,6 +53,8 @@ public interface EditMode {
     EditMode addAction(Key key, Action action);
 
     void addAction(int[] input, String action);
+
+    void remapKeysFromDevice(Device device);
 
     default KeyAction createKeyEvent(int[] input) {
         Key key = Key.getKey(input);

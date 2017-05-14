@@ -76,7 +76,6 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
             encoding = Charset.defaultCharset().name();
         }
         this.writer = new PrintWriter(new OutputStreamWriter(output, encoding));
-        parseInfoCmp();
         // Attributes
         attributes.setLocalFlag(Attributes.LocalFlag.ISIG, true);
         attributes.setControlChar(Attributes.ControlChar.VINTR, ctrl('C'));
@@ -259,7 +258,7 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
     }
 
     protected String getSequence(Capability cap) {
-        String str = strings.get(cap);
+        String str = device.getStringCapability(cap);
         if (str != null) {
             StringWriter sw = new StringWriter();
             try {

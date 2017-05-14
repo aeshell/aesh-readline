@@ -25,6 +25,7 @@ import org.aesh.readline.action.mappings.ActionMapper;
 import org.aesh.readline.terminal.Key;
 import org.aesh.readline.action.Action;
 import org.aesh.readline.action.ActionEvent;
+import org.aesh.terminal.Device;
 
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -62,6 +63,11 @@ public class Vi implements EditMode {
         else
             keyEventActions.put(createKeyEvent(input),
                     new ActionStatus(ActionMapper.mapToAction(action), Status.EDIT, Status.EDIT));
+    }
+
+    @Override
+    public void remapKeysFromDevice(Device device) {
+
     }
 
     @Override
