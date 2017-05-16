@@ -20,6 +20,7 @@
 package org.aesh.readline.tty.terminal;
 
 import org.aesh.readline.terminal.DeviceBuilder;
+import org.aesh.terminal.Attributes;
 import org.aesh.terminal.Connection;
 import org.aesh.terminal.Device;
 import org.aesh.terminal.tty.Size;
@@ -59,6 +60,7 @@ public class TestConnection implements Connection {
     private TestReadline readline;
     private Size size;
     private Device device;
+    private Attributes attributes;
 
     private Prompt prompt = new Prompt(": ");
 
@@ -112,6 +114,9 @@ public class TestConnection implements Connection {
 
         device = DeviceBuilder.builder().name("ansi").build();
         decoder = new Decoder(512, Charset.defaultCharset(), stdinHandler);
+
+        attributes = new Attributes();
+
         out = new LinkedList<>();
         if(readline == null) {
             this.readline = new TestReadline(editMode);
@@ -238,6 +243,16 @@ public class TestConnection implements Connection {
     @Override
     public boolean put(Capability capability, Object... params) {
         return false;
+    }
+
+    @Override
+    public Attributes getAttributes() {
+        return attributes;
+    }
+
+    @Override
+    public void setAttributes(Attributes attr) {
+        this.attributes = attr;
     }
 
     @Override

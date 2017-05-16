@@ -137,6 +137,16 @@ public class TerminalConnection implements Connection {
     }
 
     @Override
+    public Attributes getAttributes() {
+        return terminal.getAttributes();
+    }
+
+    @Override
+    public void setAttributes(Attributes attr) {
+        terminal.setAttributes(attr);
+    }
+
+    @Override
     public Charset ioCharset() {
         return charset;
     }

@@ -19,6 +19,7 @@
  */
 package org.aesh.readline.tty.terminal;
 
+import org.aesh.terminal.Attributes;
 import org.aesh.util.Config;
 import org.aesh.readline.Prompt;
 import org.aesh.readline.Readline;
@@ -91,6 +92,9 @@ public class TestTerminalConnection {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
 
         TerminalConnection connection = new TerminalConnection(Charset.defaultCharset(), pipedInputStream, out);
+        Attributes attributes = new Attributes();
+        attributes.setLocalFlag(Attributes.LocalFlag.ECHOCTL, true);
+        connection.setAttributes(attributes);
 
         Readline readline = new Readline();
         readline.readline(connection, new Prompt(""), s -> {  });
@@ -102,8 +106,31 @@ public class TestTerminalConnection {
         connection.getTerminal().raise(Signal.INT);
         connection.close();
 
-        Assert.assertEquals(new String(out.toByteArray()), "FOO^C"+ Config.getLineSeparator());
+        Assert.assertEquals("FOO^C"+ Config.getLineSeparator(), new String(out.toByteArray()));
     }
+
+    @Test
+    public void testSignalEchoCtlFalse() throws IOException, InterruptedException {
+        PipedOutputStream outputStream = new PipedOutputStream();
+        PipedInputStream pipedInputStream = new PipedInputStream(outputStream);
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+        TerminalConnection connection = new TerminalConnection(Charset.defaultCharset(), pipedInputStream, out);
+
+        Readline readline = new Readline();
+        readline.readline(connection, new Prompt(""), s -> {  });
+
+        connection.openNonBlocking();
+        outputStream.write(("FOO").getBytes());
+        outputStream.flush();
+        Thread.sleep(100);
+        connection.getTerminal().raise(Signal.INT);
+        connection.close();
+
+        Assert.assertEquals(new String(out.toByteArray()), "FOO"+ Config.getLineSeparator());
+    }
+
+
 
     @Test
     public void testCustomSignal() throws IOException, InterruptedException {

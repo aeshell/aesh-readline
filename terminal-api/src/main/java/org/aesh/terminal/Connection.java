@@ -118,6 +118,10 @@ public interface Connection {
      */
     boolean put(Capability capability, Object... params);
 
+    Attributes getAttributes();
+
+    void setAttributes(Attributes attr);
+
     Charset ioCharset();
 
     /**

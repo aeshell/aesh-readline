@@ -31,6 +31,7 @@ import org.aesh.readline.editing.EditModeBuilder;
 import org.aesh.readline.history.History;
 import org.aesh.readline.history.InMemoryHistory;
 import org.aesh.readline.terminal.Key;
+import org.aesh.terminal.Attributes;
 import org.aesh.util.Config;
 import org.aesh.util.Parser;
 import org.aesh.terminal.Connection;
@@ -262,8 +263,11 @@ public class Readline {
                     if (signal == Signal.INT) {
                         if (editMode.isInChainedAction()) {
                             parse(Key.CTRL_C);
-                        } else {
-                            conn.stdoutHandler().accept(new int[]{'^', 'C'});
+                        }
+                        else {
+                            if(conn.getAttributes().getLocalFlag(Attributes.LocalFlag.ECHOCTL)) {
+                                conn.stdoutHandler().accept(new int[]{'^', 'C'});
+                            }
                             conn.stdoutHandler().accept(Config.CR);
                             this.buffer().buffer().reset();
                             consoleBuffer.drawLine();

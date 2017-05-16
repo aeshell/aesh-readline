@@ -19,6 +19,7 @@
  */
 package org.aesh.readline;
 
+import org.aesh.terminal.Attributes;
 import org.aesh.terminal.Device;
 import org.aesh.util.ANSI;
 import org.aesh.util.Parser;
@@ -181,6 +182,16 @@ public class ConsoleBufferTest {
         @Override
         public boolean put(Capability capability, Object... params) {
             return false;
+        }
+
+        @Override
+        public Attributes getAttributes() {
+            return null;
+        }
+
+        @Override
+        public void setAttributes(Attributes attr) {
+
         }
 
         @Override
