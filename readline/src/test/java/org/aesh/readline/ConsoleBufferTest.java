@@ -184,14 +184,10 @@ public class ConsoleBufferTest {
         }
 
         @Override
-        public Charset inputCharset() {
+        public Charset ioCharset() {
             return null;
         }
 
-        @Override
-        public Charset outputCharset() {
-            return null;
-        }
     }
 
 }

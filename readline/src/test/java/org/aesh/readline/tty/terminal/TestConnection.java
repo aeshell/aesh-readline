@@ -241,12 +241,7 @@ public class TestConnection implements Connection {
     }
 
     @Override
-    public Charset inputCharset() {
-        return null;
-    }
-
-    @Override
-    public Charset outputCharset() {
+    public Charset ioCharset() {
         return null;
     }
 

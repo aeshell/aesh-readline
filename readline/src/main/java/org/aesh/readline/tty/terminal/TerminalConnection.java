@@ -138,12 +138,7 @@ public class TerminalConnection implements Connection {
     }
 
     @Override
-    public Charset inputCharset() {
-        return charset;
-    }
-
-    @Override
-    public Charset outputCharset() {
+    public Charset ioCharset() {
         return charset;
     }
 

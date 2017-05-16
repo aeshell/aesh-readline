@@ -118,9 +118,7 @@ public interface Connection {
      */
     boolean put(Capability capability, Object... params);
 
-    Charset inputCharset();
-
-    Charset outputCharset();
+    Charset ioCharset();
 
     /**
      * Write a string to the output handler
