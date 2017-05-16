@@ -20,15 +20,13 @@
 package org.aesh.terminal;
 
 import java.io.Closeable;
-import java.io.Flushable;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.PrintWriter;
 import org.aesh.terminal.tty.Signal;
 import org.aesh.terminal.tty.Size;
 
 
-public interface Terminal extends Closeable, Flushable {
+public interface Terminal extends Closeable {
 
     String getName();
 
@@ -42,8 +40,6 @@ public interface Terminal extends Closeable, Flushable {
     SignalHandler handle(Signal signal, SignalHandler handler);
 
     void raise(Signal signal);
-
-    PrintWriter writer();
 
     InputStream input();
 
@@ -71,8 +67,6 @@ public interface Terminal extends Closeable, Flushable {
     default int getHeight() {
         return getSize().getHeight();
     }
-
-    void flush();
 
     //
     // Infocmp capabilities

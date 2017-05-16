@@ -25,9 +25,6 @@ import org.aesh.readline.terminal.utils.Signals;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
-import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.Map;
 import org.aesh.terminal.tty.Signal;
@@ -36,16 +33,13 @@ public class PosixSysTerminal extends AbstractPosixTerminal {
 
     protected final InputStream input;
     protected final OutputStream output;
-    protected final PrintWriter writer;
     protected final Map<Signal, Object> nativeHandlers = new HashMap<>();
     protected final ShutdownHooks.Task closer;
 
-    public PosixSysTerminal(String name, String type, Pty pty, Charset charset, boolean nativeSignals) throws IOException {
+    public PosixSysTerminal(String name, String type, Pty pty, boolean nativeSignals) throws IOException {
         super(name, type, pty);
-        assert charset != null;
         this.input = pty.getSlaveInput();
         this.output = pty.getSlaveOutput();
-        this.writer = new PrintWriter(new OutputStreamWriter(output, charset));
         if (nativeSignals) {
             for (final Signal signal : Signal.values()) {
                 nativeHandlers.put(signal, Signals.register(signal.name(), () -> raise(signal)));
@@ -53,10 +47,6 @@ public class PosixSysTerminal extends AbstractPosixTerminal {
         }
         closer = PosixSysTerminal.this::close;
         ShutdownHooks.add(closer);
-    }
-
-    public PrintWriter writer() {
-        return writer;
     }
 
     @Override

@@ -27,12 +27,9 @@ import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.OutputStreamWriter;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
-import java.io.PrintWriter;
 import java.nio.CharBuffer;
-import java.nio.charset.Charset;
 import org.aesh.terminal.tty.Signal;
 import org.aesh.terminal.tty.Size;
 
@@ -70,13 +67,11 @@ public class LineDisciplineTerminal extends AbstractTerminal {
      * Slave streams
      */
     protected final InputStream slaveInput;
-    protected final PrintWriter slaveWriter;
     protected final OutputStream slaveOutput;
 
     /**
      * Console data
      */
-    protected final Charset charset;
     protected final Attributes attributes;
     protected Size size;
 
@@ -87,8 +82,7 @@ public class LineDisciplineTerminal extends AbstractTerminal {
 
     public LineDisciplineTerminal(String name,
                                   String type,
-                                  OutputStream masterOutput,
-                                  Charset charset) throws IOException {
+                                  OutputStream masterOutput) throws IOException {
         super(name, type);
         PipedInputStream input = new LinePipedInputStream(PIPE_SIZE);
         this.slaveInputPipe = new PipedOutputStream(input);
@@ -98,15 +92,9 @@ public class LineDisciplineTerminal extends AbstractTerminal {
         // that class by using a dumb FilterInputStream class to wrap it.
         this.slaveInput = new FilterInputStream(input) {};
         this.slaveOutput = new FilteringOutputStream();
-        this.slaveWriter = new PrintWriter(new OutputStreamWriter(slaveOutput, charset));
         this.masterOutput = masterOutput;
-        this.charset = charset;
         this.attributes = new Attributes();
         this.size = new Size(160, 50);
-    }
-
-    public PrintWriter writer() {
-        return slaveWriter;
     }
 
     @Override
@@ -223,12 +211,7 @@ public class LineDisciplineTerminal extends AbstractTerminal {
     }
 
     public void close() throws IOException {
-        try {
-            slaveInputPipe.close();
-        }
-        finally {
-            slaveWriter.close();
-        }
+        slaveInputPipe.close();
     }
 
     private class FilteringOutputStream extends OutputStream {

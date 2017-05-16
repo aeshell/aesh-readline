@@ -71,7 +71,6 @@ public class TerminalConnection implements Connection {
             init(TerminalBuilder.builder()
                     .input(inputStream)
                     .output(outputStream)
-                    .charset(charset)
                     .nativeSignals(true)
                     .name("Aesh console")
                     .build());

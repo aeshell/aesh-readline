@@ -24,15 +24,14 @@ import org.aesh.terminal.Attributes;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.charset.Charset;
 
 /**
  * @author <a href=mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
  */
 public class WinExternalTerminal extends ExternalTerminal {
 
-    public WinExternalTerminal(String name, String type, InputStream masterInput, OutputStream masterOutput, Charset charset) throws IOException {
-        super(name, type, masterInput, masterOutput, charset);
+    public WinExternalTerminal(String name, String type, InputStream masterInput, OutputStream masterOutput) throws IOException {
+        super(name, type, masterInput, masterOutput);
         Attributes attributes = new Attributes();
         attributes.setInputFlag(Attributes.InputFlag.IGNCR, true);
         attributes.setInputFlag(Attributes.InputFlag.ICRNL, true);

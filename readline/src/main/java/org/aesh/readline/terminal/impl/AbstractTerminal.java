@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.aesh.terminal.tty.Signal;
 
@@ -90,7 +91,12 @@ public abstract class AbstractTerminal implements Terminal {
         if (cc != null) {
             int vcc = getAttributes().getControlChar(cc);
             if (vcc > 0 && vcc < 32) {
-                writer().write(new char[]{'^', (char) (vcc + '@')}, 0, 2);
+                try {
+                    output().write(new String(new char[]{'^', (char) (vcc + '@')}).getBytes());
+                }
+                catch (IOException e) {
+                    LOGGER.log(Level.WARNING, "Failed to write out ^(C) - or other signals", e);
+                }
             }
         }
     }
@@ -126,10 +132,6 @@ public abstract class AbstractTerminal implements Terminal {
 
     public String getType() {
         return type;
-    }
-
-    public void flush() {
-        writer().flush();
     }
 
     public Device device() {
