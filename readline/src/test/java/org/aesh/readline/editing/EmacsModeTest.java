@@ -31,6 +31,7 @@ public class EmacsModeTest {
     @Test
     public void testSimpleMovementAndEdit() {
         TestConnection term = new TestConnection();
+        term.setSignalHandler(null);
         term.read("1234");
         term.read(Key.CTRL_D);
         term.assertBuffer("1234");

@@ -52,6 +52,7 @@ public class ReadlineTest {
     public void testMasking() {
         Prompt prompt = new Prompt(": ", '#');
         TestConnection term = new TestConnection(null, null, null, prompt);
+        term.setSignalHandler(null);
         term.read("foo bar");
         assertEquals(": #######", term.getOutputBuffer());
         term.read(Key.BACKSPACE);
