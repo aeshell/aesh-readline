@@ -165,6 +165,7 @@ public class Readline {
         private final ConsoleBuffer consoleBuffer;
         private String returnValue;
         private List<Function<String,Optional<String>>> preProcessors;
+        private Attributes attributes;
 
         private AeshInputProcessor(
                 Connection conn,
@@ -185,6 +186,7 @@ public class Readline {
             this.conn = conn;
             this.requestHandler = requestHandler;
             this.preProcessors = preProcessors;
+            attributes = conn.getAttributes();
         }
 
         private void finish(String s) {
@@ -265,7 +267,7 @@ public class Readline {
                             parse(Key.CTRL_C);
                         }
                         else {
-                            if(conn.getAttributes().getLocalFlag(Attributes.LocalFlag.ECHOCTL)) {
+                            if(attributes.getLocalFlag(Attributes.LocalFlag.ECHOCTL)) {
                                 conn.stdoutHandler().accept(new int[]{'^', 'C'});
                             }
                             conn.stdoutHandler().accept(Config.CR);

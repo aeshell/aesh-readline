@@ -47,6 +47,12 @@ public class EventDecoder implements Consumer<int[]> {
         this.susp = susp;
     }
 
+    public EventDecoder(Attributes attributes) {
+        this.intr = attributes.getControlChar(Attributes.ControlChar.VINTR);
+        this.susp = attributes.getControlChar(Attributes.ControlChar.VSUSP);
+        this.eof = attributes.getControlChar(Attributes.ControlChar.VEOF);
+    }
+
     public Consumer<Signal> getSignalHandler() {
         return signalHandler;
     }

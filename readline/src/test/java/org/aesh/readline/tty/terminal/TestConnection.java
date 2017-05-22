@@ -23,6 +23,7 @@ import org.aesh.readline.terminal.DeviceBuilder;
 import org.aesh.terminal.Attributes;
 import org.aesh.terminal.Connection;
 import org.aesh.terminal.Device;
+import org.aesh.terminal.EventDecoder;
 import org.aesh.terminal.tty.Size;
 import org.aesh.terminal.tty.Capability;
 import org.aesh.io.Decoder;
@@ -40,6 +41,7 @@ import java.util.List;
 import java.util.Queue;
 import java.util.function.Consumer;
 import org.aesh.terminal.tty.Signal;
+import org.w3c.dom.Attr;
 
 import static org.junit.Assert.assertEquals;
 
@@ -50,10 +52,9 @@ public class TestConnection implements Connection {
 
     private final Decoder decoder;
     private Consumer<Size> sizeHandler;
-    private Consumer<Signal> signalHandler;
-    private Consumer<int[]> stdinHandler;
     private Consumer<int[]> stdOutHandler;
     private Consumer<Void> closeHandler;
+    private EventDecoder eventDecoder;
 
     private StringBuilder bufferBuilder;
     private Queue<String> out;
@@ -98,6 +99,11 @@ public class TestConnection implements Connection {
         this(null, editMode, completions, size, prompt);
     }
     public TestConnection(TestReadline readline, EditMode editMode, List<Completion> completions, Size size, Prompt prompt) {
+        this(null, editMode, completions, size, prompt, null);
+
+    }
+    public TestConnection(TestReadline readline, EditMode editMode, List<Completion> completions, Size size, Prompt prompt,
+                          Attributes attributes) {
         if(editMode == null)
             editMode = EditModeBuilder.builder().create();
         bufferBuilder = new StringBuilder();
@@ -112,10 +118,17 @@ public class TestConnection implements Connection {
         if(prompt != null)
             this.prompt = prompt;
 
-        device = DeviceBuilder.builder().name("ansi").build();
-        decoder = new Decoder(512, Charset.defaultCharset(), stdinHandler);
+        if(attributes != null)
+            this.attributes = attributes;
 
-        attributes = new Attributes();
+        if(this.attributes != null)
+            eventDecoder = new EventDecoder(this.attributes);
+        else
+            eventDecoder = new EventDecoder();
+
+        device = DeviceBuilder.builder().name("ansi").build();
+        decoder = new Decoder(512, Charset.defaultCharset(), eventDecoder);
+
 
         out = new LinkedList<>();
         if(readline == null) {
@@ -193,23 +206,22 @@ public class TestConnection implements Connection {
 
     @Override
     public Consumer<Signal> getSignalHandler() {
-        return signalHandler;
+        return eventDecoder.getSignalHandler();
     }
 
     @Override
     public void setSignalHandler(Consumer<Signal> handler) {
-        signalHandler = handler;
+        eventDecoder.setSignalHandler(handler);
     }
 
     @Override
     public Consumer<int[]> getStdinHandler() {
-        return stdinHandler;
+        return eventDecoder.getInputHandler();
     }
 
     @Override
     public void setStdinHandler(Consumer<int[]> handler) {
-        stdinHandler = handler;
-        decoder.setConsumer(stdinHandler);
+        eventDecoder.setInputHandler(handler);
     }
 
     @Override
@@ -273,18 +285,19 @@ public class TestConnection implements Connection {
     }
 
     public void read(int... data) {
-        stdinHandler.accept(data);
+        eventDecoder.accept(data);
     }
 
     public void read(byte[] data) {
         decoder.write(data);
     }
     public void read(Key key) {
-        stdinHandler.accept(key.getKeyValues());
+
+        eventDecoder.accept(key.getKeyValues());
     }
 
     public void read(String data) {
-        stdinHandler.accept(Parser.toCodePoints(data));
+        eventDecoder.getInputHandler().accept(Parser.toCodePoints(data));
     }
 
 }

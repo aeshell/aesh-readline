@@ -57,7 +57,7 @@ public class TerminalConnection implements Connection {
     private Decoder decoder;
     private Encoder stdOut;
     private Attributes attributes;
-    private EventDecoder eventDecoder = new EventDecoder();
+    private EventDecoder eventDecoder;
     private volatile boolean reading = false;
     private Consumer<Void> closeHandler;
     private Consumer<Connection> handler;
@@ -95,6 +95,7 @@ public class TerminalConnection implements Connection {
 
     private void init(Terminal term) {
         this.terminal = term;
+        attributes = this.terminal.getAttributes();
         //interrupt signal
         this.terminal.handle(Signal.INT, s -> {
             if(getSignalHandler() != null) {
@@ -112,6 +113,7 @@ public class TerminalConnection implements Connection {
             }
         });
 
+        eventDecoder = new EventDecoder(attributes);
         decoder = new Decoder(512, charset, eventDecoder);
         stdOut = new Encoder(charset, this::write);
 
@@ -166,8 +168,7 @@ public class TerminalConnection implements Connection {
             if (buffer != null) {
                 decoder.write(buffer.getBytes(charset));
             }
-            if(attributes == null)
-                attributes = terminal.enterRawMode();
+            attributes = terminal.enterRawMode();
             while (reading) {
                 int read = terminal.input().read(bBuf);
                 if (read > 0) {
@@ -306,7 +307,8 @@ public class TerminalConnection implements Connection {
                 terminal.setAttributes(attributes);
                 terminal.close();
             }
-            awake();
+            if(latch != null)
+                latch.countDown();
         }
         catch(IOException e) {
             LOGGER.log(Level.WARNING, "Failed to close the terminal correctly", e);
