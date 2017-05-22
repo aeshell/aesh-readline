@@ -41,7 +41,6 @@ import java.util.List;
 import java.util.Queue;
 import java.util.function.Consumer;
 import org.aesh.terminal.tty.Signal;
-import org.w3c.dom.Attr;
 
 import static org.junit.Assert.assertEquals;
 
