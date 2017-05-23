@@ -159,7 +159,7 @@ public class Readline {
         private final Connection conn;
         private Consumer<int[]> prevReadHandler;
         private Consumer<Size> prevSizeHandler;
-        private Consumer<Signal> prevEventHandler;
+        private Consumer<Signal> prevSignalHandler;
         private final Consumer<String> requestHandler;
         private boolean paused;
         private final ConsoleBuffer consoleBuffer;
@@ -192,7 +192,7 @@ public class Readline {
         private void finish(String s) {
             conn.setStdinHandler(prevReadHandler);
             conn.setSizeHandler(prevSizeHandler);
-            conn.setSignalHandler(prevEventHandler);
+            conn.setSignalHandler(prevSignalHandler);
             synchronized (Readline.this) {
                 inputProcessor = null;
             }
@@ -247,7 +247,7 @@ public class Readline {
         private void start() {
             prevReadHandler = conn.getStdinHandler();
             prevSizeHandler = conn.getSizeHandler();
-            prevEventHandler = conn.getSignalHandler();
+            prevSignalHandler = conn.getSignalHandler();
 
             size = conn.size();
             if(size == null)
@@ -259,24 +259,22 @@ public class Readline {
                 }
                 size = dim;
             });
-            //only set signalHandler if its null
-            if(conn.getSignalHandler() == null) {
-                conn.setSignalHandler(signal -> {
-                    if (signal == Signal.INT) {
-                        if (editMode.isInChainedAction()) {
-                            parse(Key.CTRL_C);
-                        }
-                        else {
-                            if(attributes.getLocalFlag(Attributes.LocalFlag.ECHOCTL)) {
-                                conn.stdoutHandler().accept(new int[]{'^', 'C'});
-                            }
-                            conn.stdoutHandler().accept(Config.CR);
-                            this.buffer().buffer().reset();
-                            consoleBuffer.drawLine();
-                        }
+            //we've made a backup of the current signal handler
+            conn.setSignalHandler(signal -> {
+                if (signal == Signal.INT) {
+                    if (editMode.isInChainedAction()) {
+                        parse(Key.CTRL_C);
                     }
-                });
-            }
+                    else {
+                        if(attributes.getLocalFlag(Attributes.LocalFlag.ECHOCTL)) {
+                            conn.stdoutHandler().accept(new int[]{'^', 'C'});
+                        }
+                        conn.stdoutHandler().accept(Config.CR);
+                        this.buffer().buffer().reset();
+                        consoleBuffer.drawLine();
+                    }
+                }
+            });
 
             //last, display prompt
             consoleBuffer.drawLine();
