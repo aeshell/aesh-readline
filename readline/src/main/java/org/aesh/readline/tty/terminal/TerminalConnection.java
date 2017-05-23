@@ -69,8 +69,14 @@ public class TerminalConnection implements Connection {
 
     public TerminalConnection(Charset inputCharset, Charset outputCharset, InputStream inputStream,
                               OutputStream outputStream, Consumer<Connection> handler) throws IOException {
-        this.inputCharset = inputCharset;
-        this.outputCharset = outputCharset;
+        if(inputCharset != null)
+            this.inputCharset = inputCharset;
+        else
+            this.inputCharset = Charset.defaultCharset();
+        if(outputCharset != null)
+            this.outputCharset = outputCharset;
+        else
+            this.outputCharset = Charset.defaultCharset();
         this.handler = handler;
             init(TerminalBuilder.builder()
                     .input(inputStream)
