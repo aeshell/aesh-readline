@@ -44,11 +44,14 @@ import org.aesh.terminal.tty.Signal;
 import org.aesh.terminal.tty.Size;
 
 /**
+ * Implementation of Connection meant for local terminal connections.
+ *
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
  */
 public class TerminalConnection implements Connection {
 
-    private final Charset charset;
+    private final Charset inputCharset;
+    private final Charset outputCharset;
     private Terminal terminal;
 
     private static final Logger LOGGER = LoggerUtil.getLogger(TerminalConnection.class.getName());
@@ -64,9 +67,10 @@ public class TerminalConnection implements Connection {
     private CountDownLatch latch;
     private volatile boolean waiting = false;
 
-    public TerminalConnection(Charset charset, InputStream inputStream,
+    public TerminalConnection(Charset inputCharset, Charset outputCharset, InputStream inputStream,
                               OutputStream outputStream, Consumer<Connection> handler) throws IOException {
-        this.charset = charset;
+        this.inputCharset = inputCharset;
+        this.outputCharset = outputCharset;
         this.handler = handler;
             init(TerminalBuilder.builder()
                     .input(inputStream)
@@ -76,8 +80,13 @@ public class TerminalConnection implements Connection {
                     .build());
     }
 
+    public TerminalConnection(Charset charset, InputStream inputStream,
+                              OutputStream outputStream, Consumer<Connection> handler) throws IOException {
+        this(charset, charset, inputStream, outputStream, handler);
+    }
+
     public TerminalConnection(Charset charset, InputStream inputStream, OutputStream outputStream) throws IOException {
-        this(charset, inputStream, outputStream, null);
+        this(charset, charset, inputStream, outputStream, null);
     }
 
     public TerminalConnection() throws IOException {
@@ -85,11 +94,12 @@ public class TerminalConnection implements Connection {
     }
 
     public TerminalConnection(Consumer<Connection> handler) throws IOException {
-        this(Charset.defaultCharset(), System.in, System.out, handler);
+        this(Charset.defaultCharset(), Charset.defaultCharset(), System.in, System.out, handler);
     }
 
     public TerminalConnection(Terminal terminal) {
-        this.charset = Charset.defaultCharset();
+        this.inputCharset = Charset.defaultCharset();
+        this.outputCharset = Charset.defaultCharset();
         init(terminal);
     }
 
@@ -114,8 +124,8 @@ public class TerminalConnection implements Connection {
         });
 
         eventDecoder = new EventDecoder(attributes);
-        decoder = new Decoder(512, charset, eventDecoder);
-        stdOut = new Encoder(charset, this::write);
+        decoder = new Decoder(512, inputEncoding(), eventDecoder);
+        stdOut = new Encoder(outputEncoding(), this::write);
 
         if(handler != null)
             handler.accept(this);
@@ -149,8 +159,13 @@ public class TerminalConnection implements Connection {
     }
 
     @Override
-    public Charset ioCharset() {
-        return charset;
+    public Charset inputEncoding() {
+        return inputCharset;
+    }
+
+    @Override
+    public Charset outputEncoding() {
+        return outputCharset;
     }
 
     /**
@@ -166,7 +181,7 @@ public class TerminalConnection implements Connection {
             reading = true;
             byte[] bBuf = new byte[1024];
             if (buffer != null) {
-                decoder.write(buffer.getBytes(charset));
+                decoder.write(buffer.getBytes(inputCharset));
             }
             attributes = terminal.enterRawMode();
             while (reading) {

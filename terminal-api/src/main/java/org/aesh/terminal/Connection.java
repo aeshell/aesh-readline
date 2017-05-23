@@ -122,7 +122,9 @@ public interface Connection {
 
     void setAttributes(Attributes attr);
 
-    Charset ioCharset();
+    Charset inputEncoding();
+
+    Charset outputEncoding();
 
     /**
      * Write a string to the output handler
