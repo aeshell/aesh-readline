@@ -85,6 +85,13 @@ public class EventDecoder implements Consumer<int[]> {
                 }
                 if (event != null) {
                     if (signalHandler != null) {
+                        if (inputHandler != null) {
+                            int[] a = new int[index];
+                            if (index > 0) {
+                                System.arraycopy(input, 0, a, 0, index);
+                                inputHandler.accept(a);
+                            }
+                        }
                         signalHandler.accept(event);
                         int[] a = new int[input.length - index - 1];
                         System.arraycopy(input, index + 1, a, 0, a.length);
