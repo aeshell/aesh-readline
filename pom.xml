@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!--
-~ JBoss, Home of Professional Open Source
+<!-- ~ JBoss, Home of Professional Open Source
 ~ Copyright 2014 Red Hat Inc. and/or its affiliates and other contributors
 ~ as indicated by the @authors tag. All rights reserved.
 ~ See the copyright.txt in the distribution for a
@@ -46,6 +45,7 @@
         <module>terminal-api</module>
         <module>readline</module>
         <module>examples</module>
+        <module>terminal-ssh</module>
     </modules>
     
     <!-- Licenses -->
