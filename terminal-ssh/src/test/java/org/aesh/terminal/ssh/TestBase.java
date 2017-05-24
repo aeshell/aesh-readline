@@ -30,7 +30,7 @@ import java.util.function.IntConsumer;
  */
 public class TestBase {
 
-    private static final int ctrl(char c) {
+    private static int ctrl(char c) {
         return c - 64;
     }
 
