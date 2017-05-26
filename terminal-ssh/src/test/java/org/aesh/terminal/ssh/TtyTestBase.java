@@ -152,7 +152,7 @@ public abstract class TtyTestBase extends TestBase {
       });
     });
     assertConnect();
-    assertWrite(3, 26,4);
+    assertWrite(3, 4, 26);
     await();
   }
 

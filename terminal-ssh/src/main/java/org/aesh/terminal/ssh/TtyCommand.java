@@ -33,6 +33,7 @@ import org.aesh.terminal.tty.TtyOutputMode;
 import org.apache.sshd.common.channel.PtyMode;
 import org.apache.sshd.common.io.IoInputStream;
 import org.apache.sshd.common.io.IoOutputStream;
+import org.apache.sshd.common.io.IoWriteFuture;
 import org.apache.sshd.common.util.buffer.ByteArrayBuffer;
 import org.apache.sshd.server.AsyncCommand;
 import org.apache.sshd.server.ChannelSessionAware;
@@ -78,6 +79,7 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
     private IoOutputStream ioOut;
     private long lastAccessedTime = System.currentTimeMillis();
     private Device device;
+    private IoWriteFuture writeFuture;
 
     public TtyCommand(Charset defaultCharset, Consumer<Connection> handler) {
         this.handler = handler;
@@ -120,7 +122,20 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
     @Override
     public void setIoOutputStream(IoOutputStream out) {
         this.ioOut = out;
-        this.out = bytes -> out.write(new ByteArrayBuffer(bytes));
+        this.out = (byte[] bytes) -> {
+            if(writeFuture == null)
+                writeFuture = out.write(new ByteArrayBuffer(bytes));
+            else if(writeFuture.isWritten())
+                writeFuture = out.write(new ByteArrayBuffer(bytes));
+            else {
+                try {
+                    writeFuture.await();
+                    writeFuture = out.write(new ByteArrayBuffer(bytes));
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        };
     }
 
     @Override
@@ -147,18 +162,16 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
 
         // Event handling
         int vintr = getControlChar(env, PtyMode.VINTR, 3);
-        int vsusp = getControlChar(env, PtyMode.VSUSP, 26);
         int veof = getControlChar(env, PtyMode.VEOF, 4);
+        int vsusp = getControlChar(env, PtyMode.VSUSP, 26);
 
-        //
-        eventDecoder = new EventDecoder(vintr, vsusp, veof);
+        eventDecoder = new EventDecoder(vintr, veof, vsusp);
         decoder = new Decoder(512, charset, eventDecoder);
         stdout = new TtyOutputMode(new Encoder(charset, out));
         term = env.getEnv().get("TERM");
         device = new SSHDevice(term);
         conn = new SSHConnection();
 
-        //
         session.setDataReceiver(this);
         handler.accept(conn);
     }
@@ -296,18 +309,6 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
         public Consumer<int[]> stdoutHandler() {
             return stdout;
         }
-
-    /*
-    @Override
-    public void execute(Runnable task) {
-      TtyCommand.this.execute(task);
-    }
-
-    @Override
-    public void schedule(Runnable task, long delay, TimeUnit unit) {
-      TtyCommand.this.schedule(task, delay, unit);
-    }
-    */
 
         @Override
         public void setCloseHandler(Consumer<Void> handler) {
