@@ -17,7 +17,7 @@ import java.util.concurrent.TimeUnit;
  */
 public class SSHShellExample {
 
-    public static void main(String[] args) throws Exception {
+    public static synchronized void main(String[] args) throws Exception {
 
          AbstractGeneratorHostKeyProvider hostKeyProvider =
             new SimpleGeneratorHostKeyProvider(     new File("hostkey.ser").toPath());
