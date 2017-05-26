@@ -62,6 +62,17 @@
         </developer>
     </developers>
 
+    <properties>
+      <version.org.slf4j>1.7.12</version.org.slf4j>
+      <netty.version>4.0.31.Final</netty.version>
+      <jackson.version>2.6.1</jackson.version>
+
+      <!-- maven-compiler-plugin -->
+      <maven.compiler.target>1.8</maven.compiler.target>
+      <maven.compiler.source>1.8</maven.compiler.source>
+    </properties>
+
+
     <dependencies>
         <dependency>
             <groupId>org.aesh</groupId>
@@ -73,8 +84,48 @@
             <groupId>org.aesh</groupId>
             <artifactId>aesh-terminal-api</artifactId>
             <version>1.0-CR16-SNAPSHOT</version>
-            <type>jar</type>
         </dependency>
+
+        <dependency>
+            <groupId>org.aesh</groupId>
+            <artifactId>aesh-terminal-ssh</artifactId>
+            <version>1.0-CR16-SNAPSHOT</version>
+        </dependency>
+
+        <dependency>
+        <groupId>org.apache.mina</groupId>
+        <artifactId>mina-core</artifactId>
+        <version>2.0.9</version>
+      </dependency>
+
+      <dependency>
+        <groupId>io.netty</groupId>
+        <artifactId>netty-common</artifactId>
+        <version>${netty.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.netty</groupId>
+        <artifactId>netty-transport</artifactId>
+        <version>${netty.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.netty</groupId>
+        <artifactId>netty-handler</artifactId>
+        <version>${netty.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>org.apache.sshd</groupId>
+        <artifactId>sshd-core</artifactId>
+        <version>1.0.0</version>
+        <optional>true</optional>
+        <exclusions>
+          <exclusion>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+          </exclusion>
+        </exclusions>
+      </dependency>
     </dependencies>
 
     <build>
