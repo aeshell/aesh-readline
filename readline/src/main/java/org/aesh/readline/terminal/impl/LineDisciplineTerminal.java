@@ -29,7 +29,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
-import java.nio.CharBuffer;
 import org.aesh.terminal.tty.Signal;
 import org.aesh.terminal.tty.Size;
 
@@ -74,11 +73,6 @@ public class LineDisciplineTerminal extends AbstractTerminal {
      */
     protected final Attributes attributes;
     protected Size size;
-
-    /**
-     * Application
-     */
-    protected CharBuffer chars;
 
     public LineDisciplineTerminal(String name,
                                   String type,
