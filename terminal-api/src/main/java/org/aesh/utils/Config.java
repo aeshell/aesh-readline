@@ -17,9 +17,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.aesh.util;
-
-import org.aesh.readline.terminal.utils.OSUtils;
+package org.aesh.utils;
 
 /**
  *
@@ -32,7 +30,7 @@ public class Config {
     private static final String pathSeparator = System.getProperty("file.separator");
     private static final String tmpDir = System.getProperty("java.io.tmpdir");
     private static final boolean posixCompatible = checkPosixCompability();
-    public static final int[] CR = Parser.toCodePoints(lineSeparator);
+    public static final int[] CR = lineSeparator.codePoints().toArray();
     private static boolean cygwin = OSUtils.IS_CYGWIN;
 
     public static boolean isOSPOSIXCompatible() {

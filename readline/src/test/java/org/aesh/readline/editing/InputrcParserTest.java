@@ -20,7 +20,7 @@
 package org.aesh.readline.editing;
 
 import org.aesh.readline.action.ActionDecoder;
-import org.aesh.util.Config;
+import org.aesh.utils.Config;
 import org.junit.Assert;
 import org.junit.Test;
 

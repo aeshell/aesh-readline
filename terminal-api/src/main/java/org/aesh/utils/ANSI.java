@@ -17,9 +17,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.aesh.util;
-
-import org.aesh.readline.terminal.utils.InfoCmpHelper;
+package org.aesh.utils;
 
 import java.util.Arrays;
 
@@ -74,8 +72,8 @@ public class ANSI {
     public static final int[] CURSOR_START = new int[]{ 27, '[', 'G'};
     public static final int[] ERASE_WHOLE_LINE = new int[]{ 27, '[', '2', 'K'};
     public static final String CURSOR_ROW = "\u001B[6n";
-    public static final int[] CLEAR_SCREEN = Parser.toCodePoints(
-            InfoCmpHelper.getCurrentTranslatedCapability("clear","\u001B[2J"));
+    public static final int[] CLEAR_SCREEN =
+            InfoCmpHelper.getCurrentTranslatedCapability("clear","\u001B[2J").codePoints().toArray();
     public static final String CURSOR_SAVE =
             InfoCmpHelper.getCurrentTranslatedCapability("sc","\u001B[s");
     public static final String CURSOR_RESTORE =

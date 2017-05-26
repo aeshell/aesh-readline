@@ -17,11 +17,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.aesh.readline.terminal.utils;
+package org.aesh.utils;
 
 import org.aesh.terminal.tty.Capability;
-import org.aesh.util.Config;
-import org.aesh.util.Parser;
 
 import java.io.StringWriter;
 import java.util.HashMap;
@@ -43,7 +41,7 @@ public class InfoCmpHelper {
         if(Config.isWindows())
             return defaultValue;
         else {
-            String s = getCurrentTranslatedCapability(cap, Parser.fromCodePoints(defaultValue));
+            String s = getCurrentTranslatedCapability(cap, new String(defaultValue, 0, defaultValue.length));
             if (s.length() == 0)
                 return defaultValue;
             return s.codePoints().toArray();

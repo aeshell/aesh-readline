@@ -19,6 +19,8 @@
  */
 package org.aesh.util;
 
+import org.aesh.utils.Config;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.Enumeration;

@@ -19,9 +19,9 @@
  */
 package org.aesh.readline.terminal;
 
-import org.aesh.readline.terminal.utils.InfoCmp;
+import org.aesh.utils.InfoCmp;
 import org.aesh.terminal.tty.Capability;
-import org.aesh.util.Config;
+import org.aesh.utils.Config;
 import org.aesh.util.LoggerUtil;
 
 import java.util.HashMap;

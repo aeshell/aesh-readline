@@ -19,7 +19,7 @@
  */
 package org.aesh.readline;
 
-import org.aesh.util.ANSI;
+import org.aesh.utils.ANSI;
 import org.aesh.util.Parser;
 import org.junit.Assert;
 import org.junit.Test;

@@ -20,7 +20,7 @@
 package org.aesh.readline.terminal.impl;
 
 import org.aesh.terminal.Attributes;
-import org.aesh.readline.terminal.utils.Curses;
+import org.aesh.utils.Curses;
 import org.aesh.readline.terminal.utils.ShutdownHooks;
 import org.aesh.readline.terminal.utils.Signals;
 import org.aesh.terminal.tty.Capability;

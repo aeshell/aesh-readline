@@ -19,7 +19,7 @@
  */
 package org.aesh.readline.alias;
 
-import org.aesh.util.Config;
+import org.aesh.utils.Config;
 import org.aesh.readline.Prompt;
 import org.aesh.readline.Readline;
 import org.aesh.readline.tty.terminal.TerminalConnection;

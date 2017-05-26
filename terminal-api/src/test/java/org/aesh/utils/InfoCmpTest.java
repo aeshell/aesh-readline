@@ -17,10 +17,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.aesh.readline.terminal.utils;
+package org.aesh.utils;
 
 import org.aesh.terminal.tty.Capability;
-import org.aesh.util.Config;
 import org.junit.Test;
 
 import java.io.IOException;

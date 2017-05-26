@@ -19,7 +19,7 @@
  */
 package org.aesh.readline.action.mappings;
 
-import org.aesh.util.ANSI;
+import org.aesh.utils.ANSI;
 import org.aesh.readline.InputProcessor;
 import org.aesh.readline.action.Action;
 

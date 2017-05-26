@@ -19,7 +19,7 @@
  */
 package org.aesh.readline.history;
 
-import org.aesh.util.Config;
+import org.aesh.utils.Config;
 import org.aesh.util.FileAccessPermission;
 import org.aesh.util.Parser;
 import org.aesh.util.LoggerUtil;

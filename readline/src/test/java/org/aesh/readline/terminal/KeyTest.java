@@ -21,7 +21,7 @@ package org.aesh.terminal;
 
 import org.aesh.readline.terminal.Key;
 import org.aesh.readline.action.mappings.ActionMapper;
-import org.aesh.util.Config;
+import org.aesh.utils.Config;
 import org.aesh.readline.action.Action;
 import org.aesh.readline.action.ActionDecoder;
 import org.aesh.readline.editing.EditMode;

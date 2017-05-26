@@ -23,7 +23,7 @@ import org.aesh.readline.completion.Completion;
 import org.aesh.readline.editing.EditModeBuilder;
 import org.aesh.readline.terminal.Key;
 import org.aesh.readline.tty.terminal.TestConnection;
-import org.aesh.util.Config;
+import org.aesh.utils.Config;
 import org.junit.Test;
 
 import java.util.ArrayList;

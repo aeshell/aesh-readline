@@ -21,6 +21,7 @@ package org.aesh.util;
 
 import org.aesh.readline.completion.CompleteOperation;
 import org.aesh.readline.terminal.formatting.TerminalString;
+import org.aesh.utils.Config;
 
 import java.util.ArrayList;
 import java.util.Arrays;
