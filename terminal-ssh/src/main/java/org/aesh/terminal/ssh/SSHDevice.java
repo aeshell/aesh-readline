@@ -21,6 +21,7 @@ package org.aesh.terminal.ssh;
 
 import org.aesh.terminal.BaseDevice;
 import org.aesh.terminal.tty.Capability;
+import org.aesh.utils.InfoCmp;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -43,14 +44,10 @@ public class SSHDevice extends BaseDevice {
         bools = new HashSet<>();
         ints = new HashMap<>();
         strings = new HashMap<>();
+        String data = InfoCmp.getDefaultInfoCmp(type);
+        InfoCmp.parseInfoCmp(data, bools, ints, strings);
     }
 
-    public SSHDevice(String type, Set<Capability> bools, Map<Capability, Integer> ints, Map<Capability, String> strings) {
-        this.type = type;
-        this.bools = bools;
-        this.ints = ints;
-        this.strings = strings;
-    }
 
     @Override
     public String type() {

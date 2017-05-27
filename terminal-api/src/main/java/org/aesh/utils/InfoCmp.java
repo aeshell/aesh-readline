@@ -62,7 +62,10 @@ public final class InfoCmp {
         else if(terminal.toLowerCase().contains("xterm")) {
             return readDefaultInfoCmp("xterm_caps.src");
         }
-        else
+        else if(terminal.toLowerCase().contains("vt100")) {
+            return readDefaultInfoCmp("vt100_caps.src");
+        }
+         else
             return readDefaultInfoCmp("ansi_caps.src");
     }
 

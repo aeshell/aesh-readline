@@ -63,14 +63,12 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
     private final Consumer<Connection> handler;
     private final Charset defaultCharset;
     private Charset charset;
-    private String term;
     private EventDecoder eventDecoder;
     private Decoder decoder;
     private Consumer<int[]> stdout;
     private Consumer<byte[]> out;
     private Size size = null;
     private Consumer<Size> sizeHandler;
-    private Consumer<String> termHandler;
     private Consumer<Void> closeHandler;
     protected ChannelSession session;
     private final AtomicBoolean closed = new AtomicBoolean();
@@ -80,6 +78,7 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
     private long lastAccessedTime = System.currentTimeMillis();
     private Device device;
     private IoWriteFuture writeFuture;
+    private Attributes attributes;
 
     public TtyCommand(Charset defaultCharset, Consumer<Connection> handler) {
         this.handler = handler;
@@ -165,11 +164,11 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
         int veof = getControlChar(env, PtyMode.VEOF, 4);
         int vsusp = getControlChar(env, PtyMode.VSUSP, 26);
 
-        eventDecoder = new EventDecoder(vintr, veof, vsusp);
+        device = new SSHDevice(env.getEnv().get("TERM"));
+        attributes = SSHAttributesBuilder.builder().environment(env).build();
+        eventDecoder = new EventDecoder(attributes);
         decoder = new Decoder(512, charset, eventDecoder);
         stdout = new TtyOutputMode(new Encoder(charset, out));
-        term = env.getEnv().get("TERM");
-        device = new SSHDevice(term);
         conn = new SSHConnection();
 
         session.setDataReceiver(this);
@@ -272,14 +271,6 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
             eventDecoder.setInputHandler(handler);
         }
 
-        public Consumer<String> getTerminalTypeHandler() {
-            return termHandler;
-        }
-
-        public void setTerminalTypeHandler(Consumer<String> handler) {
-            termHandler = handler;
-        }
-
         @Override
         public Size size() {
             return size;
@@ -345,12 +336,11 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
 
         @Override
         public Attributes getAttributes() {
-            return new Attributes();
+            return attributes;
         }
 
         @Override
         public void setAttributes(Attributes attr) {
-
         }
 
     }
