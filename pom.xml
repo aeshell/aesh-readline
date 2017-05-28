@@ -46,6 +46,7 @@
         <module>readline</module>
         <module>examples</module>
         <module>terminal-ssh</module>
+        <module>terminal-telnet</module>
     </modules>
     
     <!-- Licenses -->
@@ -55,7 +56,17 @@
             <url>http://www.apache.org/licenses/LICENSE-2.0</url>
         </license>
     </licenses>
-   
+  
+    <properties>
+      <version.org.slf4j>1.7.12</version.org.slf4j>
+      <netty.version>4.0.31.Final</netty.version>
+      <jackson.version>2.6.1</jackson.version>
+
+      <!-- maven-compiler-plugin -->
+      <maven.compiler.target>1.8</maven.compiler.target>
+      <maven.compiler.source>1.8</maven.compiler.source>
+    </properties>
+ 
     <developers>
         <developer>
             <name>Jean-Francois Denise</name>

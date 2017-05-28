@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-package org.aesh.terminal.ssh;
+package org.aesh.terminal.tty;
 
 import org.aesh.terminal.Connection;
-import org.aesh.terminal.tty.Signal;
+import org.aesh.terminal.TestBase;
 import org.junit.Test;
 
 import java.nio.charset.Charset;

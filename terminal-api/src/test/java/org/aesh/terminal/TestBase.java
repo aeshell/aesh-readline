@@ -14,7 +14,7 @@
  * under the License.
  *
  */
-package org.aesh.terminal.ssh;
+package org.aesh.terminal;
 
 import org.junit.After;
 import org.junit.Assert;

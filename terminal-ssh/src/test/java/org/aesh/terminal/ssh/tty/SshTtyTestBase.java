@@ -1,5 +1,9 @@
 /*
- * Copyright 2015 Julien Viet
+ * JBoss, Home of Professional Open Source
+ * Copyright 2017 Red Hat Inc. and/or its affiliates and other contributors
+ * as indicated by the @authors tag. All rights reserved.
+ * See the copyright.txt in the distribution for a
+ * full listing of individual contributors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,14 +17,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-package org.aesh.terminal.ssh;
+package org.aesh.terminal.ssh.tty;
 
 import com.jcraft.jsch.ChannelShell;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.Session;
 import com.jcraft.jsch.UserInfo;
 import org.aesh.terminal.Connection;
+import org.aesh.terminal.ssh.TtyCommand;
+import org.aesh.terminal.tty.TtyTestBase;
 import org.apache.sshd.server.SshServer;
 import org.apache.sshd.server.keyprovider.SimpleGeneratorHostKeyProvider;
 import org.junit.After;
@@ -96,7 +101,7 @@ public abstract class SshTtyTestBase extends TtyTestBase {
         try {
             return in != null && in.read() == -1;
         } catch (IOException e) {
-            throw TestBase.failure(e);
+            throw failure(e);
         }
     }
 

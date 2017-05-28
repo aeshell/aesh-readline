@@ -1,5 +1,9 @@
 /*
- * Copyright 2015 Julien Viet
+ * JBoss, Home of Professional Open Source
+ * Copyright 2017 Red Hat Inc. and/or its affiliates and other contributors
+ * as indicated by the @authors tag. All rights reserved.
+ * See the copyright.txt in the distribution for a
+ * full listing of individual contributors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,18 +17,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.aesh.terminal.ssh;
 
-import org.apache.sshd.server.SshServer;
+import org.apache.sshd.common.FactoryManager;
+import org.apache.sshd.common.io.IoServiceFactory;
+import org.apache.sshd.common.io.nio2.Nio2ServiceFactoryFactory;
 
 /**
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
  */
-public class DefaultSshTtyTest extends SshTtyTestBase {
+public class TestIoServiceFactoryFactory extends Nio2ServiceFactoryFactory {
 
   @Override
-  protected SshServer createServer() {
-    return SshServer.setUpDefaultServer();
+  public IoServiceFactory create(FactoryManager manager) {
+    return new TestServiceFactory(manager, getExecutorService(), isShutdownOnExit());
   }
 }
