@@ -58,7 +58,6 @@ public class Readline {
 
     private final ActionDecoder decoder;
     private AeshInputProcessor inputProcessor;
-    private Size size;
 
     private CompletionHandler completionHandler;
     private EditMode editMode;
@@ -181,7 +180,7 @@ public class Readline {
                     new AeshConsoleBuffer(conn, prompt, editMode,
                             //use newHistory if its not null
                             newHistory != null ? newHistory : history,
-                            completionHandler, size, true, listener);
+                            completionHandler, true, listener);
 
             this.conn = conn;
             this.requestHandler = requestHandler;
@@ -253,16 +252,6 @@ public class Readline {
             prevSizeHandler = conn.getSizeHandler();
             prevSignalHandler = conn.getSignalHandler();
 
-            size = conn.size();
-            if(size == null)
-                throw new RuntimeException("Terminal size must not be null");
-            consoleBuffer.setSize(size);
-            conn.setSizeHandler(dim -> {
-                if (size != null) {
-                    resize(dim);
-                }
-                size = dim;
-            });
             //we've made a backup of the current signal handler
             conn.setSignalHandler(signal -> {
                 if (signal == Signal.INT) {
@@ -278,7 +267,14 @@ public class Readline {
                         consoleBuffer.drawLine();
                     }
                 }
+                else if(signal == Signal.CONT) {
+                    conn.enterRawMode();
+                    //just call resize since it will redraw the buffer and set size
+                    resize(conn.size());
+                }
             });
+            //make sure we refresh if we get a resize
+            conn.setSizeHandler(this::resize);
 
             //setting attributes to previous values
             attributes = conn.enterRawMode();
@@ -296,8 +292,14 @@ public class Readline {
         }
 
         private void resize(Size size) {
-            consoleBuffer.setSize(size);
-            consoleBuffer.drawLine();
+            //redraw the buffer when we resize
+            if(inputProcessor.consoleBuffer.buffer().length() > 0) {
+                int[] buffer = inputProcessor.buffer().buffer().multiLine();
+                inputProcessor.consoleBuffer.setSize(size);
+                inputProcessor.consoleBuffer.replace(buffer);
+            }
+            else
+                inputProcessor.consoleBuffer.setSize(size);
         }
 
         @Override

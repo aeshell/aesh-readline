@@ -66,6 +66,9 @@ public class TerminalConnection implements Connection {
     private Consumer<Connection> handler;
     private CountDownLatch latch;
     private volatile boolean waiting = false;
+    private Terminal.SignalHandler prevIntrHandler;
+    private Terminal.SignalHandler prevWincHandler;
+    private Terminal.SignalHandler prevContHandler;
 
     public TerminalConnection(Charset inputCharset, Charset outputCharset, InputStream inputStream,
                               OutputStream outputStream, Consumer<Connection> handler) throws IOException {
@@ -113,7 +116,7 @@ public class TerminalConnection implements Connection {
         this.terminal = term;
         attributes = this.terminal.getAttributes();
         //interrupt signal
-        this.terminal.handle(Signal.INT, s -> {
+        prevIntrHandler = this.terminal.handle(Signal.INT, s -> {
             if(getSignalHandler() != null) {
                 getSignalHandler().accept(s);
             }
@@ -122,8 +125,12 @@ public class TerminalConnection implements Connection {
                 close();
             }
         });
+        prevContHandler = this.terminal.handle(Signal.CONT, s -> {
+            if(getSignalHandler() != null)
+                getSignalHandler().accept(s);
+        });
         //window resize signal
-        this.terminal.handle(Signal.WINCH, s -> {
+        prevWincHandler = this.terminal.handle(Signal.WINCH, s -> {
             if(getSizeHandler() != null) {
                 getSizeHandler().accept(size());
             }
@@ -323,6 +330,12 @@ public class TerminalConnection implements Connection {
             //call closeHandler before we close the terminal stream
             if(getCloseHandler() != null)
                 getCloseHandler().accept(null);
+            //reset signal/size handlers
+            terminal.handle(Signal.INT, prevIntrHandler);
+            terminal.handle(Signal.WINCH, prevWincHandler);
+            terminal.handle(Signal.CONT, prevContHandler);
+
+            //reset attributes
             if (attributes != null && terminal != null) {
                 terminal.setAttributes(attributes);
                 terminal.close();

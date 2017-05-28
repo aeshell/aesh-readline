@@ -41,8 +41,7 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
     public AeshConsoleBuffer(Connection connection, Prompt prompt,
                              EditMode editMode, History history,
                              CompletionHandler completionHandler,
-                             Size size,
-            boolean ansi, CursorListener listener) {
+                             boolean ansi, CursorListener listener) {
         this.connection = connection;
         this.ansiMode = ansi;
         this.buffer = new Buffer(prompt);
@@ -58,7 +57,7 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
         }
 
         this.completionHandler = completionHandler;
-        this.size = size;
+        this.size = connection.size();
 
         this.editMode = editMode;
         this.cursorListener = listener;
