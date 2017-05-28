@@ -26,6 +26,7 @@ import org.aesh.readline.terminal.formatting.Color;
 import org.aesh.readline.terminal.formatting.TerminalColor;
 import org.aesh.readline.terminal.formatting.TerminalString;
 import org.aesh.readline.tty.terminal.TerminalConnection;
+import org.aesh.terminal.Attributes;
 import org.aesh.terminal.Connection;
 import org.aesh.terminal.tty.Signal;
 import org.aesh.utils.Config;
@@ -284,7 +285,9 @@ public class ShellExample implements Consumer<Connection>{
         keyscan() {
             @Override
             public void execute(Connection conn, List<String> args) throws Exception {
-               // Subscribe to key events and print them
+                //we need to enter raw mode to get each keystroke
+                Attributes attributes = conn.enterRawMode();
+                // Subscribe to key events and print them
                 conn.setStdinHandler(keys -> {
                     for (int key : keys) {
                         conn.write(key + " pressed\n");
@@ -296,6 +299,7 @@ public class ShellExample implements Consumer<Connection>{
                 }
                 finally {
                     conn.setStdinHandler(null);
+                    conn.setAttributes(attributes);
                 }
             }
         },

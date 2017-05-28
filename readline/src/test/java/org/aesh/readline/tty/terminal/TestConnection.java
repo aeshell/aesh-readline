@@ -122,8 +122,10 @@ public class TestConnection implements Connection {
 
         if(this.attributes != null)
             eventDecoder = new EventDecoder(this.attributes);
-        else
+        else {
             eventDecoder = new EventDecoder();
+            this.attributes = new Attributes();
+        }
 
         device = DeviceBuilder.builder().name("ansi").build();
         decoder = new Decoder(512, Charset.defaultCharset(), eventDecoder);

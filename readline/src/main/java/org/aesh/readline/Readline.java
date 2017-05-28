@@ -196,6 +196,10 @@ public class Readline {
             synchronized (Readline.this) {
                 inputProcessor = null;
             }
+            //revert back to the old attributes
+            conn.setAttributes(attributes);
+
+            //call requestHandler with the output
             requestHandler.accept(s);
         }
 
@@ -275,6 +279,9 @@ public class Readline {
                     }
                 }
             });
+
+            //setting attributes to previous values
+            attributes = conn.enterRawMode();
 
             //last, display prompt
             consoleBuffer.drawLine();

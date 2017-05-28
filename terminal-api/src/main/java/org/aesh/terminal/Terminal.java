@@ -30,9 +30,7 @@ public interface Terminal extends Closeable {
 
     String getName();
 
-    //
     // Signal support
-    //
     interface SignalHandler {
         void handle(Signal signal);
     }
@@ -45,11 +43,7 @@ public interface Terminal extends Closeable {
 
     OutputStream output();
 
-    //
-    // Pty settings
-    //
-    Attributes enterRawMode();
-
+    //set echo attribute on terminal
     boolean echo();
 
     boolean echo(boolean echo);
@@ -60,17 +54,7 @@ public interface Terminal extends Closeable {
 
     Size getSize();
 
-    default int getWidth() {
-        return getSize().getWidth();
-    }
-
-    default int getHeight() {
-        return getSize().getHeight();
-    }
-
-    //
     // Infocmp capabilities
-    //
     Device device();
 
 }

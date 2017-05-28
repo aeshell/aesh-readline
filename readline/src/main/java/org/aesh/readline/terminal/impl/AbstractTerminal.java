@@ -26,7 +26,6 @@ import org.aesh.terminal.Terminal;
 import org.aesh.util.LoggerUtil;
 
 import java.io.IOException;
-import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
@@ -99,17 +98,6 @@ public abstract class AbstractTerminal implements Terminal {
                 }
             }
         }
-    }
-
-    public Attributes enterRawMode() {
-        Attributes prvAttr = getAttributes();
-        Attributes newAttr = new Attributes(prvAttr);
-        newAttr.setLocalFlags(EnumSet.of(Attributes.LocalFlag.ICANON, Attributes.LocalFlag.ECHO, Attributes.LocalFlag.IEXTEN), false);
-        newAttr.setInputFlags(EnumSet.of(Attributes.InputFlag.IXON, Attributes.InputFlag.ICRNL, Attributes.InputFlag.INLCR), false);
-        newAttr.setControlChar(Attributes.ControlChar.VMIN, 1);
-        newAttr.setControlChar(Attributes.ControlChar.VTIME, 0);
-        setAttributes(newAttr);
-        return prvAttr;
     }
 
     public boolean echo() {
