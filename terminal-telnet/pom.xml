@@ -26,13 +26,12 @@
         <artifactId>aesh-readline-all</artifactId>
         <version>1.0-CR16-SNAPSHOT</version>
     </parent>
-
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>readline-examples</artifactId>
+    <artifactId>aesh-terminal-telnet</artifactId>
     <packaging>jar</packaging>
-    <name>Æsh Readline Examples</name>
-    <description>Æsh (Another Extendable SHell) Readline Examples</description>
+    <name>Æsh Terminal Telnet</name>
+    <description>Æsh (Another Extendable SHell) Terminal Telnet</description>
     <scm>
         <connection>scm:git:git://github.com/aeshell/aesh-readline.git</connection>
         <developerConnection>scm:git:ssh://git@github.com/aeshell/aesh-readline.git</developerConnection>
@@ -62,42 +61,7 @@
         </developer>
     </developers>
 
-    <properties>
-      <version.org.slf4j>1.7.12</version.org.slf4j>
-      <netty.version>4.0.31.Final</netty.version>
-      <jackson.version>2.6.1</jackson.version>
-
-      <!-- maven-compiler-plugin -->
-      <maven.compiler.target>1.8</maven.compiler.target>
-      <maven.compiler.source>1.8</maven.compiler.source>
-    </properties>
-
-
     <dependencies>
-        <dependency>
-            <groupId>org.aesh</groupId>
-            <artifactId>aesh-readline</artifactId>
-            <version>1.0-CR16-SNAPSHOT</version>
-        </dependency>
-      
-        <dependency>
-            <groupId>org.aesh</groupId>
-            <artifactId>aesh-terminal-api</artifactId>
-            <version>1.0-CR16-SNAPSHOT</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.aesh</groupId>
-            <artifactId>aesh-terminal-ssh</artifactId>
-            <version>1.0-CR16-SNAPSHOT</version>
-        </dependency>
-
-        <dependency>
-        <groupId>org.apache.mina</groupId>
-        <artifactId>mina-core</artifactId>
-        <version>2.0.9</version>
-      </dependency>
-
       <dependency>
         <groupId>io.netty</groupId>
         <artifactId>netty-common</artifactId>
@@ -115,22 +79,41 @@
       </dependency>
 
       <dependency>
-        <groupId>org.apache.sshd</groupId>
-        <artifactId>sshd-core</artifactId>
-        <version>1.0.0</version>
+        <groupId>commons-logging</groupId>
+        <artifactId>commons-logging</artifactId>
+        <version>1.1.1</version>
         <optional>true</optional>
-        <exclusions>
-          <exclusion>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
-          </exclusion>
-        </exclusions>
       </dependency>
-        <dependency>
-            <groupId>org.aesh</groupId>
-            <artifactId>aesh-terminal-telnet</artifactId>
-            <version>1.0-CR16-SNAPSHOT</version>
-        </dependency>
+
+      <dependency>
+        <groupId>org.aesh</groupId>
+        <artifactId>aesh-terminal-api</artifactId>
+        <version>1.0-CR16-SNAPSHOT</version>
+        <type>jar</type>
+      </dependency>
+
+      <dependency>
+        <groupId>org.aesh</groupId>
+        <artifactId>aesh-terminal-api</artifactId>
+        <version>1.0-CR16-SNAPSHOT</version>
+        <type>test-jar</type>
+        <scope>test</scope>
+      </dependency>
+
+      <dependency>
+        <groupId>commons-net</groupId>
+        <artifactId>commons-net</artifactId>
+        <version>3.3</version>
+        <scope>test</scope>
+      </dependency>
+
+      <dependency>
+        <groupId>junit</groupId>
+        <artifactId>junit</artifactId>
+        <version>4.12</version>
+        <scope>test</scope>
+      </dependency>
+
     </dependencies>
 
     <build>
@@ -172,27 +155,6 @@
                 </configuration>
             </plugin>
             <plugin>
-              <groupId>org.apache.maven.plugins</groupId>
-              <artifactId>maven-shade-plugin</artifactId>
-              <executions>
-                <execution>
-                  <phase>package</phase>
-                  <goals>
-                    <goal>shade</goal>
-                  </goals>
-                  <configuration>
-                    <artifactSet>
-                      <excludes>
-                        <exclude>org.fusesource.jansi:jansi</exclude>
-                        <exclude>org.jboss.shrinkwrap.resolver:shrinkwrap-resolver-depchain</exclude>
-                        <exclude>junit:junit</exclude>
-                      </excludes>
-                    </artifactSet>
-                  </configuration>
-                </execution>
-              </executions>
-            </plugin>
-            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-checkstyle-plugin</artifactId>
                 <version>2.17</version>
@@ -205,6 +167,9 @@
                             <consoleOutput>true</consoleOutput>
                             <failsOnError>true</failsOnError>
                             <linkXRef>false</linkXRef>
+                            <!--
+                            <useFile/>
+-->
                             <includeTestSourceDirectory>true</includeTestSourceDirectory>
                         </configuration>
                         <goals>
@@ -212,13 +177,6 @@
                         </goals>
                     </execution>
                 </executions>
-            </plugin>
-            <plugin>
-              <groupId>org.apache.maven.plugins</groupId>
-              <artifactId>maven-deploy-plugin</artifactId>
-              <configuration>
-                <skip>true</skip>
-              </configuration>
             </plugin>
         </plugins>
     </build>
