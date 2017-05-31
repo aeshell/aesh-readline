@@ -131,6 +131,11 @@
             <artifactId>aesh-terminal-telnet</artifactId>
             <version>1.0-CR17-SNAPSHOT</version>
         </dependency>
+        <dependency>
+            <groupId>org.aesh</groupId>
+            <artifactId>aesh-terminal-http</artifactId>
+            <version>1.0-CR17-SNAPSHOT</version>
+        </dependency>
     </dependencies>
 
     <build>

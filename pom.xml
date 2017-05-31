@@ -47,6 +47,7 @@
         <module>examples</module>
         <module>terminal-ssh</module>
         <module>terminal-telnet</module>
+        <module>terminal-http</module>
     </modules>
     
     <!-- Licenses -->
