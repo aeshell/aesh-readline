@@ -26,7 +26,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.regex.Pattern;
 
 /**
  * Contains info regarding the current device connected to readline
@@ -39,9 +38,6 @@ public class TerminalDevice extends BaseDevice {
     private final Set<Capability> bools = new HashSet<>();
     private final Map<Capability, Integer> ints = new HashMap<>();
     private final Map<Capability, String> strings = new HashMap<>();
-
-    static final Pattern A = Pattern.compile("^\\\\([0-9]{1,3})");
-    static final Pattern B = Pattern.compile("^\\\\x([0-9,A-F,a-f]{1,2})");
 
     public TerminalDevice(String type) {
         this.type = type;

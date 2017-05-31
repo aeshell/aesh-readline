@@ -1,6 +1,6 @@
 /*
  * JBoss, Home of Professional Open Source
- * Copyright 2014 Red Hat Inc. and/or its affiliates and other contributors
+ * Copyright 2017 Red Hat Inc. and/or its affiliates and other contributors
  * as indicated by the @authors tag. All rights reserved.
  * See the copyright.txt in the distribution for a
  * full listing of individual contributors.
@@ -262,9 +262,15 @@ public class Readline {
                         if(attributes.getLocalFlag(Attributes.LocalFlag.ECHOCTL)) {
                             conn.stdoutHandler().accept(new int[]{'^', 'C'});
                         }
-                        conn.stdoutHandler().accept(Config.CR);
-                        this.buffer().buffer().reset();
-                        consoleBuffer.drawLine();
+                        if(prevSignalHandler == null) {
+                            conn.stdoutHandler().accept(Config.CR);
+                            this.buffer().buffer().reset();
+                            consoleBuffer.drawLine();
+                        }
+                        //prevSignalHandler != null, lets call it
+                        else {
+                            prevSignalHandler.accept(signal);
+                        }
                     }
                 }
                 else if(signal == Signal.CONT) {
