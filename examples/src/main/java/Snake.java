@@ -19,8 +19,9 @@
  */
 
 import org.aesh.readline.tty.terminal.TerminalConnection;
+import org.aesh.terminal.Attributes;
+import org.aesh.terminal.Connection;
 import org.aesh.terminal.tty.Point;
-import org.aesh.terminal.tty.Signal;
 import org.aesh.terminal.tty.Size;
 import org.aesh.utils.ANSI;
 import org.aesh.util.LoggerUtil;
@@ -29,13 +30,13 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.Random;
+import java.util.function.Consumer;
 
 /**
  * @author <a href=mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
  */
-public class Snake {
+public class Snake implements Consumer<Connection> {
 
-    private TerminalConnection conn;
     private boolean interrupted = false;
     private Direction direction;
     private Size size;
@@ -45,31 +46,16 @@ public class Snake {
     private int score = 0;
     private int sleepTime = 120;
     private boolean acceptingDirectionChanges = true;
+    private Attributes attributes;
 
-    public Snake() {
+    @Override
+    public void accept(Connection connection) {
         LoggerUtil.doLog();
-        try {
-            conn = new TerminalConnection();
-
-            conn.setSignalHandler( signal -> {
-                if(signal == Signal.INT) {
-                }
-            });
-
-            conn.setCloseHandler(close -> end());
-
-            conn.setSizeHandler(size -> reset(size));
-
-            setup();
-            conn.openNonBlocking();
-            run();
-        }
-        catch (InterruptedException | IOException e) {
-            e.printStackTrace();
-        }
+        connection.openNonBlocking();
+        reset(connection);
     }
 
-   private void run() throws InterruptedException {
+   private void run(Connection conn) throws InterruptedException {
         while(!interrupted) {
             StringBuilder builder = new StringBuilder();
             Point next = getNextPoint();
@@ -77,7 +63,7 @@ public class Snake {
 
             if (next.x() < 1 || next.x() >= size.getWidth()-1 || next.y() < 2 ||
                     next.y() >= size.getHeight()-1 || snake.contains(next)) {
-                displayEnd();
+                displayEnd(conn);
                 return;
             }
             else {
@@ -102,7 +88,7 @@ public class Snake {
                 builder.append("\033[").append(food.y() + 1).append(";").append(food.x() + 1).append("H").append('x');
 
                 conn.write(builder.toString());
-                printTitleAndScore(size.getWidth());
+                printTitleAndScore(conn, size.getWidth());
 
                 Thread.sleep(sleepTime);
             }
@@ -110,38 +96,39 @@ public class Snake {
 
     }
 
-    private void displayEnd() throws InterruptedException {
+    private void displayEnd(Connection conn) throws InterruptedException {
         conn.write( "\033[" + size.getHeight() / 2 + ";" + size.getWidth() / 2 + "H" + "YOU LOST!");
         Thread.sleep(3000);
-        end();
+        end(conn);
     }
 
     private Point getNewFood(int width, int height) {
         return new Point(new Random().nextInt(width-2)+1, new Random().nextInt(height-3)+2);
     }
 
-    private void end() {
+    private void end(Connection conn) {
         interrupted = true;
         conn.write(ANSI.MAIN_BUFFER);
         conn.write(ANSI.CURSOR_SHOW);
+        conn.setAttributes(attributes);
     }
 
-    private void reset(Size size) {
+    private void reset(Connection conn) {
         interrupted = true;
         sleepTime = 120;
         snake.clear();
-        setup();
+        setup(conn);
         interrupted = false;
-        setup();
+        setup(conn);
         try {
-            run();
+            run(conn);
         }
         catch (InterruptedException e) {
             e.printStackTrace();
         }
     }
 
-    private void setup() {
+    private void setup(Connection conn) {
         size = conn.size();
         if(size.getHeight() > 30)
             size = new Size(size.getWidth(), 30);
@@ -152,12 +139,13 @@ public class Snake {
         conn.setSignalHandler(event -> {
             switch (event) {
                 case INT:
-                    end();
+                    end(conn);
                     break;
             }
         });
         // Keyboard handling
         conn.setStdinHandler(keys -> {
+            System.out.println("got: "+Arrays.toString(keys));
             if (keys.length == 3) {
                 if (keys[0] == 27 && keys[1] == '[') {
                     switch (keys[2]) {
@@ -189,14 +177,20 @@ public class Snake {
                 }
             }
             else if(keys.length == 1 && keys[0] == 'q')
-                end();
+                end(conn);
         });
-        //switch to alternate buffer
+
+        conn.setCloseHandler(close -> end(conn));
+        conn.setSizeHandler(size -> reset(conn));
+
+         //switch to alternate buffer
         conn.write(ANSI.ALTERNATE_BUFFER);
         conn.write(ANSI.CURSOR_HIDE);
 
-        printTitleAndScore(size.getWidth());
-        printFrame(size.getWidth(), size.getHeight());
+        attributes = conn.enterRawMode();
+
+        printTitleAndScore(conn, size.getWidth());
+        printFrame(conn, size.getWidth(), size.getHeight());
         direction = Direction.RIGHT;
         snake.addFirst(new Point(2,2));
         snake.addFirst(new Point(3,3));
@@ -220,7 +214,7 @@ public class Snake {
             return new Point(curr.x(), curr.y() + 1);
     }
 
-    private void printTitleAndScore(int width) {
+    private void printTitleAndScore(Connection conn, int width) {
         StringBuilder builder = new StringBuilder();
         int mid = width/2-8;
         if(mid < 0)
@@ -231,7 +225,7 @@ public class Snake {
         conn.write(builder.toString());
     }
 
-    private void printFrame(int width, int height) {
+    private void printFrame(Connection conn, int width, int height) {
         StringBuilder builder = new StringBuilder();
 
         //move to 2,0
@@ -265,7 +259,7 @@ public class Snake {
       }
   }
 
-    public static void main(String[] args) {
-        new Snake();
+    public static void main(String[] args) throws IOException {
+        new TerminalConnection(new Snake());
     }
 }
