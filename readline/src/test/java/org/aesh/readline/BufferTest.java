@@ -160,6 +160,20 @@ public class BufferTest {
     }
 
     @Test
+    public void deleteForward() {
+        Buffer buffer = new Buffer(new Prompt(": "));
+        List<int[]> outConsumer = new ArrayList<>();
+        buffer.insert(outConsumer::add, "foo bar", 100);
+        buffer.move(outConsumer::add, -10, 100);
+        outConsumer.clear();
+        buffer.delete(outConsumer::add, 3, 120);
+        assertArrayEquals(new int[] {27,'[', '2', 'D'}, Arrays.copyOfRange(outConsumer.get(0), 0, 4 ));
+        assertArrayEquals(new int[] {27,'[','K'}, Arrays.copyOfRange(outConsumer.get(0), 4, 7 ));
+        assertArrayEquals(new int[] {':',' ',' ','b','a','r'}, Arrays.copyOfRange(outConsumer.get(0), 7, 13));
+        assertArrayEquals(new int[] {27,'[','4','D'}, Arrays.copyOfRange(outConsumer.get(0), 13, 17 ));
+    }
+
+    @Test
     public void move() {
         Buffer buffer = new Buffer(new Prompt(": "));
         List<int[]> outConsumer = new ArrayList<>();

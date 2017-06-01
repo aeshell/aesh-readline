@@ -710,7 +710,8 @@ public class Buffer {
                     length = width;
                 else {
                     length = length % width;
-                    if(delta < 0)
+                    //if not deleting backward the cursor should not move
+                    if(delta < 0 && deletingBackward)
                         length += Math.abs(delta);
                 }
                 builder.append(moveNumberOfColumns(length, 'D'));
@@ -798,14 +799,8 @@ public class Buffer {
         // Erase the remaining.
         Arrays.fill(line, size, line.length, 0);
 
-        if(viMode) {
-            //if(!deletingBackward)
-            //    cursor--;
-            deltaChangedAtEndOfBuffer = (cursor == size);
-        }
-        else {
-            deltaChangedAtEndOfBuffer = (cursor == size);
-        }
+        deltaChangedAtEndOfBuffer = (cursor == size);
+
         //finally print our changes
         print(out, width, viMode);
     }
