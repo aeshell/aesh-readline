@@ -19,6 +19,7 @@
  */
 package org.aesh.readline;
 
+import java.util.EnumSet;
 import org.aesh.readline.cursor.CursorListener;
 import org.aesh.readline.action.Action;
 import org.aesh.readline.action.ActionDecoder;
@@ -53,7 +54,11 @@ import org.aesh.terminal.tty.Size;
  * while currently reading input.
  */
 public class Readline {
-
+    public enum ReadlineFlag {
+        NO_PROMPT_REDRAW, /* Do not redraw prompt on Ctrl-C */
+        IGNORE_EOF,
+        /* Ignore Ctrl-D */
+    };
     private static final Logger LOGGER = LoggerUtil.getLogger(Readline.class.getName());
 
     private final ActionDecoder decoder;
@@ -119,18 +124,20 @@ public class Readline {
     public void readline(Connection conn, Prompt prompt, Consumer<String> requestHandler,
                          List<Completion> completions,
                          List<Function<String,Optional<String>>> preProcessors ) {
-        readline(conn, prompt, requestHandler, completions, preProcessors, null, null);
+        readline(conn, prompt, requestHandler, completions, preProcessors, null, null,
+                EnumSet.noneOf(ReadlineFlag.class));
     }
 
     public void readline(Connection conn, Prompt prompt, Consumer<String> requestHandler,
                          List<Completion> completions,
                          List<Function<String,Optional<String>>> preProcessors,
-                         History history, CursorListener listener) {
+                         History history, CursorListener listener, EnumSet<ReadlineFlag> flags) {
         synchronized(this) {
             if (inputProcessor != null) {
                 throw new IllegalStateException("Already reading a line");
             }
-            inputProcessor = new AeshInputProcessor(conn, prompt, requestHandler, completions, preProcessors, history, listener);
+            inputProcessor = new AeshInputProcessor(conn, prompt, requestHandler,
+                    completions, preProcessors, history, listener, flags);
             inputProcessor.start();
             //inputProcessor can be set to null from the start() method
             if(inputProcessor != null)
@@ -165,6 +172,7 @@ public class Readline {
         private String returnValue;
         private List<Function<String,Optional<String>>> preProcessors;
         private Attributes attributes;
+        private final EnumSet<ReadlineFlag> flags;
 
         private AeshInputProcessor(
                 Connection conn,
@@ -172,7 +180,7 @@ public class Readline {
                 Consumer<String> requestHandler,
                 List<Completion> completions,
                 List<Function<String,Optional<String>>> preProcessors,
-                History newHistory, CursorListener listener) {
+                History newHistory, CursorListener listener, EnumSet<ReadlineFlag> flags) {
 
             completionHandler.clear();
             completionHandler.addCompletions(completions);
@@ -186,6 +194,7 @@ public class Readline {
             this.requestHandler = requestHandler;
             this.preProcessors = preProcessors;
             attributes = conn.getAttributes();
+            this.flags = flags;
         }
 
         private void finish(String s) {
@@ -254,29 +263,52 @@ public class Readline {
 
             //we've made a backup of the current signal handler
             conn.setSignalHandler(signal -> {
-                if (signal == Signal.INT) {
-                    if (editMode.isInChainedAction()) {
-                        parse(Key.CTRL_C);
+                if (signal != null) {
+                    switch (signal) {
+                        case INT:
+                            if (editMode.isInChainedAction()) {
+                                parse(Key.CTRL_C);
+                            } else {
+                                if (attributes.getLocalFlag(Attributes.LocalFlag.ECHOCTL)) {
+                                    conn.stdoutHandler().accept(new int[]{'^', 'C'});
+                                }
+                                if (!flags.contains(ReadlineFlag.NO_PROMPT_REDRAW)) {
+                                    conn.stdoutHandler().accept(Config.CR);
+                                    this.buffer().buffer().reset();
+                                    consoleBuffer.drawLine();
+                                }
+                            }
+                            break;
+                        case CONT:
+                            conn.enterRawMode();
+                            //just call resize since it will redraw the buffer and set size
+                            resize(conn.size());
+                            break;
+                        case EOF:
+                            if (editMode.isInChainedAction()) {
+                                parse(Key.CTRL_D);
+                            } else {
+                                if (attributes.getLocalFlag(Attributes.LocalFlag.ECHOCTL)) {
+                                    conn.stdoutHandler().accept(new int[]{'^', 'D'});
+                                }
+                                if (!flags.contains(ReadlineFlag.IGNORE_EOF)) {
+                                   conn.stdoutHandler().accept(Config.CR);
+                                   conn.close();
+                                } else {
+                                    if (!flags.contains(ReadlineFlag.NO_PROMPT_REDRAW)) {
+                                        conn.stdoutHandler().accept(Config.CR);
+                                        this.buffer().buffer().reset();
+                                        consoleBuffer.drawLine();
+                                    }
+                                }
+                            }
+                            break;
+                        default:
+                            break;
                     }
-                    else {
-                        if(attributes.getLocalFlag(Attributes.LocalFlag.ECHOCTL)) {
-                            conn.stdoutHandler().accept(new int[]{'^', 'C'});
-                        }
-                        if(prevSignalHandler == null) {
-                            conn.stdoutHandler().accept(Config.CR);
-                            this.buffer().buffer().reset();
-                            consoleBuffer.drawLine();
-                        }
-                        //prevSignalHandler != null, lets call it
-                        else {
-                            prevSignalHandler.accept(signal);
-                        }
+                    if (prevSignalHandler != null) {
+                        prevSignalHandler.accept(signal);
                     }
-                }
-                else if(signal == Signal.CONT) {
-                    conn.enterRawMode();
-                    //just call resize since it will redraw the buffer and set size
-                    resize(conn.size());
                 }
             });
             //make sure we refresh if we get a resize
