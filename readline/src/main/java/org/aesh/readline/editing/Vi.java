@@ -41,6 +41,7 @@ public class Vi implements EditMode {
 
     private Status status = Status.EDIT;
     private Action previousAction;
+    private KeyAction prevKey;
 
     private ActionEvent currentAction;
 
@@ -72,6 +73,11 @@ public class Vi implements EditMode {
     public void remapKeysFromDevice(Device device) {
         remap(Key.UP, device.getStringCapabilityAsInts(Capability.key_up));
         remap(Key.DOWN, device.getStringCapabilityAsInts(Capability.key_down));
+    }
+
+    @Override
+    public KeyAction prevKey() {
+        return prevKey;
     }
 
     private void remap(Key key, int[] newMapping) {
@@ -191,6 +197,7 @@ public class Vi implements EditMode {
 
     @Override
     public Action parse(KeyAction event) {
+        prevKey = event;
         //are we already searching, it need to be processed by search action
         if(currentAction != null) {
             if(currentAction.keepFocus()) {

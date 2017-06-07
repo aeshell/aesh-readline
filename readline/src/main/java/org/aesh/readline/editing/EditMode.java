@@ -56,6 +56,8 @@ public interface EditMode {
 
     void remapKeysFromDevice(Device device);
 
+    KeyAction prevKey();
+
     default KeyAction createKeyEvent(int[] input) {
         Key key = Key.getKey(input);
         if(key != null)

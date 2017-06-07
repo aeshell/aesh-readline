@@ -22,6 +22,8 @@ package org.aesh.readline;
 import org.aesh.readline.editing.EditMode;
 import org.aesh.terminal.Connection;
 
+import java.util.EnumMap;
+
 /**
  * InputProcessor is used by {@link org.aesh.readline.Readline} to process the input.
  * InputProcessor is using an instance of {@link org.aesh.readline.ConsoleBuffer} to do
@@ -65,4 +67,9 @@ public interface InputProcessor {
      * @return the Connection
      */
     Connection connection();
+
+    /**
+     * @return current flags
+     */
+    EnumMap<ReadlineFlag, Integer> flags();
 }

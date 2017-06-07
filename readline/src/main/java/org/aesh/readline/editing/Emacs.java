@@ -45,10 +45,11 @@ public class Emacs implements EditMode {
     private Map<KeyAction,Action> keyEventActions;
 
     //counting how many times eof been pressed
-    protected int eofCounter;
+    private int eofCounter;
     //default value
-    private int ignoreEof = 0;
+    private int ignoreEOFSize = 0;
     private boolean ctrlX;
+    private KeyAction prevKey;
 
     Emacs() {
         actions = new EnumMap<>(Key.class);
@@ -82,6 +83,11 @@ public class Emacs implements EditMode {
         remap(Key.DELETE, device.getStringCapabilityAsInts(Capability.key_dc));
         remap(Key.CTRL_K, device.getStringCapabilityAsInts(Capability.key_dl));
         //remap(Key.HOME_2, device.getStringCapabilityAsInts(Capability.key_home));
+    }
+
+    @Override
+    public KeyAction prevKey() {
+        return prevKey;
     }
 
     private void remap(Key key, int[] newMapping) {
@@ -157,7 +163,7 @@ public class Emacs implements EditMode {
 
     @Override
     public void updateIgnoreEOF(int eof) {
-        ignoreEof = eof;
+        ignoreEOFSize = eof;
     }
 
     protected void resetEOF()  {
@@ -176,8 +182,8 @@ public class Emacs implements EditMode {
     @Override
     public KeyAction[] keys() {
         List<KeyAction> keys = new ArrayList<>(actions.size()+keyEventActions.size());
-        actions.keySet().forEach( keys::add);
-        keyEventActions.keySet().forEach(keys::add);
+        keys.addAll(actions.keySet());
+        keys.addAll(keyEventActions.keySet());
         return keys.toArray(new KeyAction[keys.size()]);
     }
 
@@ -193,6 +199,7 @@ public class Emacs implements EditMode {
 
     @Override
     public Action parse(KeyAction event) {
+        prevKey = event;
         //are we already searching, it need to be processed by search action
         if(currentAction != null) {
             if(currentAction.keepFocus()) {

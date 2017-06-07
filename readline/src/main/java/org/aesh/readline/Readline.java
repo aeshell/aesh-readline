@@ -19,7 +19,8 @@
  */
 package org.aesh.readline;
 
-import java.util.EnumSet;
+import java.util.EnumMap;
+
 import org.aesh.readline.cursor.CursorListener;
 import org.aesh.readline.action.Action;
 import org.aesh.readline.action.ActionDecoder;
@@ -54,11 +55,7 @@ import org.aesh.terminal.tty.Size;
  * while currently reading input.
  */
 public class Readline {
-    public enum ReadlineFlag {
-        NO_PROMPT_REDRAW, /* Do not redraw prompt on Ctrl-C */
-        IGNORE_EOF,
-        /* Ignore Ctrl-D */
-    };
+
     private static final Logger LOGGER = LoggerUtil.getLogger(Readline.class.getName());
 
     private final ActionDecoder decoder;
@@ -124,14 +121,27 @@ public class Readline {
     public void readline(Connection conn, Prompt prompt, Consumer<String> requestHandler,
                          List<Completion> completions,
                          List<Function<String,Optional<String>>> preProcessors ) {
-        readline(conn, prompt, requestHandler, completions, preProcessors, null, null,
-                EnumSet.noneOf(ReadlineFlag.class));
+        readline(conn, prompt, requestHandler, completions, preProcessors, null);
+    }
+
+    public void readline(Connection conn, Prompt prompt, Consumer<String> requestHandler,
+                         List<Completion> completions,
+                         List<Function<String,Optional<String>>> preProcessors, History history) {
+        readline(conn, prompt, requestHandler, completions, preProcessors, history, null);
     }
 
     public void readline(Connection conn, Prompt prompt, Consumer<String> requestHandler,
                          List<Completion> completions,
                          List<Function<String,Optional<String>>> preProcessors,
-                         History history, CursorListener listener, EnumSet<ReadlineFlag> flags) {
+                         History history, CursorListener listener) {
+         readline(conn, prompt, requestHandler, completions, preProcessors, history, listener,
+                new EnumMap<>(ReadlineFlag.class));
+    }
+
+    public void readline(Connection conn, Prompt prompt, Consumer<String> requestHandler,
+                         List<Completion> completions,
+                         List<Function<String,Optional<String>>> preProcessors,
+                         History history, CursorListener listener, EnumMap<ReadlineFlag, Integer> flags) {
         synchronized(this) {
             if (inputProcessor != null) {
                 throw new IllegalStateException("Already reading a line");
@@ -172,7 +182,7 @@ public class Readline {
         private String returnValue;
         private List<Function<String,Optional<String>>> preProcessors;
         private Attributes attributes;
-        private final EnumSet<ReadlineFlag> flags;
+        private final EnumMap<ReadlineFlag, Integer> flags;
 
         private AeshInputProcessor(
                 Connection conn,
@@ -180,7 +190,7 @@ public class Readline {
                 Consumer<String> requestHandler,
                 List<Completion> completions,
                 List<Function<String,Optional<String>>> preProcessors,
-                History newHistory, CursorListener listener, EnumSet<ReadlineFlag> flags) {
+                History newHistory, CursorListener listener, EnumMap<ReadlineFlag, Integer> flags) {
 
             completionHandler.clear();
             completionHandler.addCompletions(completions);
@@ -218,12 +228,14 @@ public class Readline {
         private void parse(KeyAction event) {
             //TODO: the editModes need to parse/handle this, ref ignoreeof
             //ctrl-d
+            /*
             if (event.length() == 1) {
                 if (event.getCodePointAt(0) == 4 && buffer().buffer().length() == 0) {
                     finish(null);
                     return;
                 }
             }
+            */
 
             Action action = editMode.parse(event);
             if (action != null) {
@@ -239,7 +251,9 @@ public class Readline {
                     synchronized (Readline.this) {
                         paused = false;
                     }
-                    processInput();
+                    //some actions might call finish
+                    if(inputProcessor != null)
+                        processInput();
                 }
             }
             else {
@@ -272,11 +286,14 @@ public class Readline {
                                 if (attributes.getLocalFlag(Attributes.LocalFlag.ECHOCTL)) {
                                     conn.stdoutHandler().accept(new int[]{'^', 'C'});
                                 }
-                                if (!flags.contains(ReadlineFlag.NO_PROMPT_REDRAW)) {
+                                if (!flags.containsKey(ReadlineFlag.NO_PROMPT_REDRAW_ON_INTR)) {
                                     conn.stdoutHandler().accept(Config.CR);
                                     this.buffer().buffer().reset();
                                     consoleBuffer.drawLine();
                                 }
+                            }
+                            if (prevSignalHandler != null) {
+                                prevSignalHandler.accept(signal);
                             }
                             break;
                         case CONT:
@@ -285,29 +302,16 @@ public class Readline {
                             resize(conn.size());
                             break;
                         case EOF:
-                            if (editMode.isInChainedAction()) {
-                                parse(Key.CTRL_D);
-                            } else {
-                                if (attributes.getLocalFlag(Attributes.LocalFlag.ECHOCTL)) {
-                                    conn.stdoutHandler().accept(new int[]{'^', 'D'});
-                                }
-                                if (!flags.contains(ReadlineFlag.IGNORE_EOF)) {
-                                   conn.stdoutHandler().accept(Config.CR);
-                                   conn.close();
-                                } else {
-                                    if (!flags.contains(ReadlineFlag.NO_PROMPT_REDRAW)) {
-                                        conn.stdoutHandler().accept(Config.CR);
-                                        this.buffer().buffer().reset();
-                                        consoleBuffer.drawLine();
-                                    }
-                                }
+                            parse(Key.CTRL_D);
+                            //if inputHandler is null we send a signal to the previous handler)
+                            /*
+                            if (prevSignalHandler != null) {
+                                prevSignalHandler.accept(signal);
                             }
+                            */
                             break;
                         default:
                             break;
-                    }
-                    if (prevSignalHandler != null) {
-                        prevSignalHandler.accept(signal);
                     }
                 }
             });
@@ -376,6 +380,11 @@ public class Readline {
         @Override
         public Connection connection() {
             return conn;
+        }
+
+        @Override
+        public EnumMap<ReadlineFlag, Integer> flags() {
+            return flags;
         }
     }
 

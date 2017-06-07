@@ -196,6 +196,7 @@ public class EditModeBuilder {
         emacs.addAction(Key.END, "end-of-line"); //end
         emacs.addAction(Key.INSERT, "no-action"); //insert
         emacs.addAction(Key.META_CTRL_J, "vi-editing-mode"); //insert
+        emacs.addAction(Key.CTRL_D, "eof"); //insert
 
         return emacs;
     }

@@ -190,6 +190,8 @@ public class ActionMapper {
             return new NullAction(); // TODO: need to add a proper Operation
         else if(function.equals("yank-after"))
             return new YankAfter(); // TODO: need to add a proper Operation
+        else if(function.equals("eof"))
+            return new EndOfFile();
 
         return new NullAction();
     }
