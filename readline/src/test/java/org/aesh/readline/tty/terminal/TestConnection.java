@@ -144,6 +144,8 @@ public class TestConnection implements Connection {
                 readline(completions);
             else if(flags != null)
                 readline(flags);
+            else
+                readline();
         }
         else
             this.readline = readline;
