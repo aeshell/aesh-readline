@@ -34,7 +34,7 @@ public class SignalTest {
     @Test
     public void testSignals() {
 
-        TestConnection connection = new TestConnection(null, null, null, null, null, null);
+        TestConnection connection = new TestConnection(null, null, null, null, null, null, null);
 
         connection.setSignalHandler(signal -> {
             if(signal == Signal.INT)
@@ -55,7 +55,7 @@ public class SignalTest {
         Attributes attributes = new Attributes();
         attributes.setControlChar(Attributes.ControlChar.VEOF, Key.CTRL_A.getFirstValue());
         attributes.setControlChar(Attributes.ControlChar.VINTR, Key.CTRL_B.getFirstValue());
-        TestConnection connection = new TestConnection(null, null, null, null, null, attributes);
+        TestConnection connection = new TestConnection(null, null, null, null, null, attributes, null);
 
         connection.setSignalHandler(signal -> {
             if(signal == Signal.INT)

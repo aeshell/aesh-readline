@@ -90,6 +90,11 @@ public class Emacs implements EditMode {
         return prevKey;
     }
 
+    @Override
+    public void setPrevKey(KeyAction event) {
+        prevKey = event;
+    }
+
     private void remap(Key key, int[] newMapping) {
         if(newMapping != null && actions.containsKey(key) && !key.equalTo(newMapping)) {
             Action homeAction = actions.remove(key);
@@ -199,7 +204,6 @@ public class Emacs implements EditMode {
 
     @Override
     public Action parse(KeyAction event) {
-        prevKey = event;
         //are we already searching, it need to be processed by search action
         if(currentAction != null) {
             if(currentAction.keepFocus()) {

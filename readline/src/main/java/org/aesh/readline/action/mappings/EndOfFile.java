@@ -36,8 +36,8 @@ public class EndOfFile implements Action {
         }
         else {
             //reset EOFCounter if prev key != ctrl-d
-            if(EOFCounter > 0 &&
-                    inputProcessor.editMode().prevKey().getCodePointAt(0) == Key.CTRL_D.getFirstValue())
+            if(EOFCounter > 0 && inputProcessor.editMode().prevKey() != null &&
+                    inputProcessor.editMode().prevKey().getCodePointAt(0) != Key.CTRL_D.getFirstValue())
                 EOFCounter = 0;
 
             if(ignoreEOFSize > EOFCounter)

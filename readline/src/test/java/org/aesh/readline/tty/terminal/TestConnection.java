@@ -19,6 +19,7 @@
  */
 package org.aesh.readline.tty.terminal;
 
+import org.aesh.readline.ReadlineFlag;
 import org.aesh.readline.terminal.DeviceBuilder;
 import org.aesh.terminal.Attributes;
 import org.aesh.terminal.Connection;
@@ -36,6 +37,7 @@ import org.aesh.readline.terminal.Key;
 import org.aesh.util.Parser;
 
 import java.nio.charset.Charset;
+import java.util.EnumMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
@@ -78,6 +80,10 @@ public class TestConnection implements Connection {
         this(editMode, null);
     }
 
+    public TestConnection(EnumMap<ReadlineFlag, Integer> flags) {
+        this(null, null, null, null, null, null, flags);
+    }
+
     public TestConnection(List<Completion> completions) {
         this(EditModeBuilder.builder().create(), completions);
     }
@@ -98,11 +104,11 @@ public class TestConnection implements Connection {
         this(null, editMode, completions, size, prompt);
     }
     public TestConnection(TestReadline readline, EditMode editMode, List<Completion> completions, Size size, Prompt prompt) {
-        this(null, editMode, completions, size, prompt, null);
+        this(readline, editMode, completions, size, prompt, null, new EnumMap<>(ReadlineFlag.class));
 
     }
     public TestConnection(TestReadline readline, EditMode editMode, List<Completion> completions, Size size, Prompt prompt,
-                          Attributes attributes) {
+                          Attributes attributes, EnumMap<ReadlineFlag, Integer> flags) {
         if(editMode == null)
             editMode = EditModeBuilder.builder().create();
         bufferBuilder = new StringBuilder();
@@ -136,8 +142,8 @@ public class TestConnection implements Connection {
             this.readline = new TestReadline(editMode);
             if(completions != null)
                 readline(completions);
-            else
-                readline();
+            else if(flags != null)
+                readline(flags);
         }
         else
             this.readline = readline;
@@ -161,6 +167,11 @@ public class TestConnection implements Connection {
     public void readline(List<Completion> completions, Consumer<String> out) {
         clearOutputBuffer();
         readline.readline(this, prompt, out, completions );
+    }
+
+    public void readline(EnumMap<ReadlineFlag, Integer> flags) {
+        clearOutputBuffer();
+        readline.readline(this, prompt, out -> this.out.add(out), null, null, null, null, flags );
     }
 
     public void clearOutputBuffer() {

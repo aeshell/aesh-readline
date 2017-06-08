@@ -243,6 +243,7 @@ public class Readline {
                     paused = true;
                 }
                 action.accept(this);
+                editMode.setPrevKey(event);
                 if(this.returnValue() != null) {
                     conn.stdoutHandler().accept(Config.CR);
                     finish(this.returnValue());

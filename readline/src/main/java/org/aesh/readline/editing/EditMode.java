@@ -84,6 +84,8 @@ public interface EditMode {
         }
     }
 
+    void setPrevKey(KeyAction event);
+
     enum Status {
         DELETE,
         MOVE,
