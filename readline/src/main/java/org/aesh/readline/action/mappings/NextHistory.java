@@ -21,6 +21,7 @@ package org.aesh.readline.action.mappings;
 
 import org.aesh.readline.action.Action;
 import org.aesh.readline.InputProcessor;
+import org.aesh.readline.editing.EditMode;
 
 /**
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
@@ -36,6 +37,9 @@ public class NextHistory implements Action {
         int[] history = inputProcessor.buffer().history().getNextFetch();
         if(history != null) {
             inputProcessor.buffer().replace(history);
+            if(inputProcessor.editMode().mode().equals(EditMode.Mode.VI) &&
+                inputProcessor.editMode().status().equals(EditMode.Status.COMMAND))
+                inputProcessor.buffer().moveCursor(-history.length);
         }
     }
 }
