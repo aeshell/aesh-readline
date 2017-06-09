@@ -171,6 +171,20 @@ public class BufferTest {
         assertArrayEquals(new int[] {27,'[','K'}, Arrays.copyOfRange(outConsumer.get(0), 4, 7 ));
         assertArrayEquals(new int[] {':',' ',' ','b','a','r'}, Arrays.copyOfRange(outConsumer.get(0), 7, 13));
         assertArrayEquals(new int[] {27,'[','4','D'}, Arrays.copyOfRange(outConsumer.get(0), 13, 17 ));
+        outConsumer.clear();
+        buffer.delete(outConsumer::add, 4, 120);
+        assertArrayEquals(new int[] {27,'[','K'}, Arrays.copyOfRange(outConsumer.get(0), 0,3 ));
+        buffer.insert(outConsumer::add, "ab", 100);
+        outConsumer.clear();
+        buffer.delete(outConsumer::add,1, 120);
+        assertEquals(0, outConsumer.size());
+        buffer.move(outConsumer::add, -2, 100);
+        outConsumer.clear();
+        buffer.delete(outConsumer::add,2, 120);
+        assertArrayEquals(new int[] {27,'[','K'}, Arrays.copyOfRange(outConsumer.get(0), 0,3 ));
+        outConsumer.clear();
+        buffer.delete(outConsumer::add,2, 120);
+        assertEquals(0, outConsumer.size());
     }
 
     @Test

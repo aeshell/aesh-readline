@@ -609,7 +609,9 @@ public class Buffer {
     private void quickDeleteAtEnd(Consumer<int[]> out, boolean viMode) {
         //move cursor delta then clear the rest of the line
         IntArrayBuilder builder = new IntArrayBuilder();
-        builder.append(moveNumberOfColumns(Math.abs(delta), 'D'));
+        //only have to move when deleting backwards
+        if(deletingBackward)
+            builder.append(moveNumberOfColumns(Math.abs(delta), 'D'));
         builder.append(ANSI.ERASE_LINE_FROM_CURSOR);
 
         if(viMode && cursor == size) {
@@ -782,10 +784,15 @@ public class Buffer {
     public void delete(Consumer<int[]> out, int delta, int width, boolean viMode) {
         if (delta > 0) {
             delta = Math.min(delta, size - cursor);
-            System.arraycopy(line, cursor + delta, line, cursor, size - cursor + delta);
-            size -= delta;
-            this.delta =- delta;
-            deletingBackward = false;
+            if(delta > 0) {
+                System.arraycopy(line, cursor + delta, line, cursor, size - cursor + delta);
+                size -= delta;
+                this.delta = -delta;
+                deletingBackward = false;
+            }
+            //quick return if delta is 0
+            else
+                return;
         }
         else if (delta < 0) {
             delta = -Math.min(-delta, cursor);
@@ -796,13 +803,16 @@ public class Buffer {
             deletingBackward = true;
         }
 
-        // Erase the remaining.
-        Arrays.fill(line, size, line.length, 0);
+        //only do any changes if there are any
+        if(this.delta < 0) {
+            // Erase the remaining.
+            Arrays.fill(line, size, line.length, 0);
 
-        deltaChangedAtEndOfBuffer = (cursor == size);
+            deltaChangedAtEndOfBuffer = (cursor == size);
 
-        //finally print our changes
-        print(out, width, viMode);
+            //finally print our changes
+            print(out, width, viMode);
+        }
     }
 
     /**
