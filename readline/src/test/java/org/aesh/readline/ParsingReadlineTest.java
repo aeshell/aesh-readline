@@ -35,6 +35,6 @@ public class ParsingReadlineTest {
         connection.read(new byte[] {'3', '4', 1, 27});
         assertEquals(": 34", connection.getOutputBuffer());
         connection.read(new byte[]{91, 67, '1', '2', '\r'});
-        connection.assertLine("3124");
+        connection.assertLine("[C1234");
     }
 }

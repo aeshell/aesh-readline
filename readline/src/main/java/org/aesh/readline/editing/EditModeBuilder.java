@@ -187,7 +187,7 @@ public class EditModeBuilder {
         emacs.addAction(Key.CTRL_R, "reverse-search-history");
         emacs.addAction(Key.CTRL_S, "forward-search-history");
         emacs.addAction(Key.CTRL_L, "clear-screen"); //ctrl-l
-        //emacs.addAction(Key.ESC, "no-action"); //ctrl-l
+        emacs.addAction(Key.ESC, "no-action");
         emacs.addAction(Key.CTRL_LEFT, "backward-word"); //ctrl-left
         emacs.addAction(Key.CTRL_RIGHT, "forward-word"); //ctrl-right
         emacs.addAction(Key.PGUP, "no-action"); //page-up

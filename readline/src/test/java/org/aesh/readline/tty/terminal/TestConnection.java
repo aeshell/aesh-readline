@@ -181,6 +181,11 @@ public class TestConnection implements Connection {
             bufferBuilder.delete(0, bufferBuilder.length());
     }
 
+    public void clearLineBuffer() {
+        if(out.size() > 0)
+            out.clear();
+    }
+
     public String getOutputBuffer() {
         return bufferBuilder.toString();
     }

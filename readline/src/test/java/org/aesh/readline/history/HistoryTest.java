@@ -61,6 +61,74 @@ public class HistoryTest {
     }
 
     @Test
+    public void testReverseSearch() throws Exception {
+
+        TestConnection term = new TestConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).create());
+        term.read("1234"+ Config.getLineSeparator());
+        term.readline();
+        term.read("567"+Config.getLineSeparator());
+        term.readline();
+        term.read("589"+Config.getLineSeparator());
+        term.readline();
+        term.clearOutputBuffer();
+        term.read(Key.CTRL_R);
+        term.assertBuffer("(reverse-i-search) `': ");
+        term.clearOutputBuffer();
+        term.read("5");
+        term.assertBuffer("(reverse-i-search) `5': 589");
+        term.clearLineBuffer();
+        term.read(Key.ENTER);
+        term.assertLine("589");
+    }
+
+    @Test
+    public void testForwardSearch() throws Exception {
+
+        TestConnection term = new TestConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).create());
+        term.read("1234"+ Config.getLineSeparator());
+        term.readline();
+        term.read("567"+Config.getLineSeparator());
+        term.readline();
+        term.read("589"+Config.getLineSeparator());
+        term.readline();
+        term.clearOutputBuffer();
+        term.read(Key.CTRL_S);
+        term.assertBuffer("(forward-i-search) `': ");
+        term.clearOutputBuffer();
+        term.read("5");
+        term.assertBuffer("(forward-i-search) `5': 567");
+        term.clearLineBuffer();
+        term.read(Key.ENTER);
+        term.assertLine("567");
+    }
+
+    @Test
+    public void testReverseSearchEscape() throws Exception {
+
+        TestConnection term = new TestConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).create());
+        term.read("1234"+ Config.getLineSeparator());
+        term.readline();
+        term.read("567"+Config.getLineSeparator());
+        term.readline();
+        term.read("589"+Config.getLineSeparator());
+        term.readline();
+        term.clearOutputBuffer();
+        term.read(Key.CTRL_R);
+        term.assertBuffer("(reverse-i-search) `': ");
+        term.clearOutputBuffer();
+        term.read("5");
+        term.assertBuffer("(reverse-i-search) `5': 589");
+        term.clearLineBuffer();
+        term.clearOutputBuffer();
+        term.read(Key.ESC);
+        term.assertBuffer("589");
+        term.assertLine(null);
+        term.read(Key.ENTER);
+        term.assertLine("589");
+    }
+
+
+    @Test
     public void testSearch() {
         History history = new InMemoryHistory(20);
         history.push(Parser.toCodePoints("foo1"));
