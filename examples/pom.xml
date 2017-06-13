@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.aesh</groupId>
         <artifactId>aesh-readline-all</artifactId>
-        <version>1.0</version>
+        <version>1.1-SNAPSHOT</version>
     </parent>
 
     <modelVersion>4.0.0</modelVersion>
@@ -77,19 +77,19 @@
         <dependency>
             <groupId>org.aesh</groupId>
             <artifactId>aesh-readline</artifactId>
-            <version>1.0</version>
+            <version>1.1-SNAPSHOT</version>
         </dependency>
       
         <dependency>
             <groupId>org.aesh</groupId>
             <artifactId>aesh-terminal-api</artifactId>
-            <version>1.0</version>
+            <version>1.1-SNAPSHOT</version>
         </dependency>
 
         <dependency>
             <groupId>org.aesh</groupId>
             <artifactId>aesh-terminal-ssh</artifactId>
-            <version>1.0</version>
+            <version>1.1-SNAPSHOT</version>
         </dependency>
 
         <dependency>
@@ -129,12 +129,12 @@
         <dependency>
             <groupId>org.aesh</groupId>
             <artifactId>aesh-terminal-telnet</artifactId>
-            <version>1.0</version>
+            <version>1.1-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.aesh</groupId>
             <artifactId>aesh-terminal-http</artifactId>
-            <version>1.0</version>
+            <version>1.1-SNAPSHOT</version>
         </dependency>
     </dependencies>
 
