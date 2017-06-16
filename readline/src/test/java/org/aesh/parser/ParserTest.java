@@ -166,6 +166,17 @@ public class ParserTest {
     }
 
     @Test
+    public void testContainsSpace() {
+        assertTrue(Parser.containsNonEscapedSpace("foo bar"));
+        assertFalse(Parser.containsNonEscapedSpace("foobar"));
+        assertFalse(Parser.containsNonEscapedSpace("foo\\ bar"));
+        assertFalse(Parser.containsNonEscapedSpace("foo\\ bar\\ "));
+        assertFalse(Parser.containsNonEscapedSpace("\\ foo\\ bar\\ "));
+        assertTrue(Parser.containsNonEscapedSpace(" foo\\ bar\\ "));
+        assertTrue(Parser.containsNonEscapedSpace("\\ foo\\ bar "));
+    }
+
+    @Test
     public void testDoesStringContainQuote() {
         assertFalse(Parser.doesStringContainOpenQuote("foo bar is bar"));
         assertFalse(Parser.doesStringContainOpenQuote("\"foo bar is bar is foo is bar\""));

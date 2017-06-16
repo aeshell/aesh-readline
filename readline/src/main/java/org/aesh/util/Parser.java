@@ -689,6 +689,19 @@ public class Parser {
         return false;
     }
 
+    public static boolean containsNonEscapedSpace(String buffer) {
+        int startIndex = 0;
+        while ((startIndex = buffer.indexOf(SPACE_CHAR, startIndex)) > -1) {
+            if (startIndex == 0)
+                return true;
+            else if (buffer.charAt(startIndex - 1) != BACK_SLASH)
+                return true;
+            else
+                startIndex++;
+        }
+        return false;
+    }
+
     public static String stripAwayAnsiCodes(String text) {
         return ansiPattern.matcher(text).replaceAll("");
     }
