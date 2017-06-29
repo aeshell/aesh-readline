@@ -347,6 +347,7 @@ public class EditModeBuilder {
         }));
 
         vi.addAction(Key.k, "previous-history", EditMode.Status.COMMAND, EditMode.Status.COMMAND); //h
+        vi.addAction(Key.MINUS, "previous-history", EditMode.Status.COMMAND, EditMode.Status.COMMAND); //-
         vi.addAction(Key.j, "next-history", EditMode.Status.COMMAND, EditMode.Status.COMMAND); //l
         vi.addAction(Key.SPACE, "forward-char", EditMode.Status.COMMAND, EditMode.Status.COMMAND); //space
 
