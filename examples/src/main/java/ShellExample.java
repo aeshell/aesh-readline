@@ -28,6 +28,7 @@ import org.aesh.readline.terminal.formatting.TerminalString;
 import org.aesh.readline.tty.terminal.TerminalConnection;
 import org.aesh.terminal.Attributes;
 import org.aesh.terminal.Connection;
+import org.aesh.terminal.tty.Point;
 import org.aesh.terminal.tty.Signal;
 import org.aesh.utils.Config;
 import org.aesh.util.LoggerUtil;
@@ -148,6 +149,8 @@ public class ShellExample implements Consumer<Connection>{
                 completeOperation.addCompletionCandidate("linescan");
             if("top".startsWith(completeOperation.getBuffer()))
                 completeOperation.addCompletionCandidate("top");
+            if("cursor".startsWith(completeOperation.getBuffer()))
+                completeOperation.addCompletionCandidate("cursor");
         });
         return completions;
     }
@@ -373,6 +376,16 @@ public class ShellExample implements Consumer<Connection>{
                     Thread.sleep(1000);
                 }
             }
+        },
+
+        cursor() {
+            @Override
+            public void execute(Connection conn, List<String> args) throws Exception {
+                conn.write("cursor position is: ");
+                Point p = conn.getCursorPosition();
+                conn.write(p.toString()+Config.getLineSeparator());
+            }
+
         };
 
         abstract void execute(Connection conn, List<String> args) throws Exception;

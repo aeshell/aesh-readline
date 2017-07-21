@@ -19,13 +19,16 @@
  */
 package org.aesh.terminal;
 
+import org.aesh.terminal.tty.Point;
 import org.aesh.terminal.tty.Size;
 import org.aesh.terminal.tty.Capability;
 
 import java.nio.charset.Charset;
 import java.util.EnumSet;
+import java.util.concurrent.CountDownLatch;
 import java.util.function.Consumer;
 import org.aesh.terminal.tty.Signal;
+import org.aesh.utils.ANSI;
 
 /**
  * Represent a connection to either a local/direct/remote Terminal.
@@ -147,6 +150,26 @@ public interface Connection {
         newAttr.setControlChar(Attributes.ControlChar.VTIME, 0);
         setAttributes(newAttr);
         return prvAttr;
+    }
+
+    default Point getCursorPosition() {
+        Consumer<int[]> prevInputHandler = getStdinHandler();
+        CountDownLatch latch = new CountDownLatch(1);
+        final Point[] p = {null};
+        Attributes attributes = enterRawMode();
+        setStdinHandler(ints -> {
+            p[0] = ANSI.getActualCursor(ints);
+            setStdinHandler(prevInputHandler);
+            latch.countDown();
+            setAttributes(attributes);
+        });
+        stdoutHandler().accept("\u001B[6n".codePoints().toArray());
+        try {
+            latch.await();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        return p[0];
     }
 
 }

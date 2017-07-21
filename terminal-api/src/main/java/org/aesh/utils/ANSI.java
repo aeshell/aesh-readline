@@ -19,6 +19,8 @@
  */
 package org.aesh.utils;
 
+import org.aesh.terminal.tty.Point;
+
 import java.util.Arrays;
 
 /**
@@ -121,4 +123,39 @@ public class ANSI {
         return ansi;
     }
 
+    public static Point getActualCursor(int[] input) {
+        boolean started = false;
+        boolean gotSep = false;
+        int col = 0;
+        int row = 0;
+
+        //read until we get a 'R'
+        for(int i=0; i < input.length-1; i++) {
+            if(started) {
+                if(input[i] == 82)
+                    break;
+                else if(input[i] == 59) // we got a ';' which is the separator
+                    gotSep = true;
+                else {
+                    if(gotSep) {
+                        char c = (char) input[i];
+                        col *= 10;
+                        col += ((int)c & 0xF);
+                    }
+                    else {
+                        char c = (char) input[i];
+                        row *= 10;
+                        row += ((int)c & 0xF);
+                    }
+                }
+            }
+            //search for the beginning which starts with esc,[
+            else if(input[i] == 27 && i < input.length-1 && input[i+1] == 91) {
+                started = true;
+                i++;
+            }
+        }
+
+        return new Point(col, row);
+    }
 }
