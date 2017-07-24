@@ -48,7 +48,7 @@ public abstract class BaseDevice implements Device {
         if (str == null) {
             return false;
         }
-        output.accept(parseKeySeq(str.toLowerCase()));
+        output.accept(parseKeySeq(str));
         return true;
     }
 

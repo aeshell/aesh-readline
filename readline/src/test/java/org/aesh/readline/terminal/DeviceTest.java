@@ -5,6 +5,7 @@ import org.aesh.readline.editing.EditModeBuilder;
 import org.aesh.readline.editing.Variable;
 import org.aesh.terminal.Device;
 import org.aesh.terminal.tty.Capability;
+import org.aesh.util.Parser;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -69,6 +70,13 @@ public class DeviceTest {
         //by default only Key.HOME is set to beginning-of-line, but the ansi
         //device should remap it to Key.HOME_2
         assertEquals("beginning-of-line", emacs.parse( Key.HOME_2).name());
+    }
+
+    @Test
+    public void testXTermCapabilities() throws Exception {
+        Device device = DeviceBuilder.builder().name("xterm-256color").build();
+        Consumer<int[]> output = ints -> assertEquals("\u001B[H\u001B[2J", Parser.fromCodePoints(ints));
+        device.puts(output, Capability.clear_screen);
     }
 
 }
