@@ -46,6 +46,7 @@ public class ExternalTerminal extends LineDisciplineTerminal {
         super(name, type, masterOutput);
         this.masterInput = masterInput;
         this.pumpThread = new Thread(this::pump, toString() + " input pump thread");
+        this.pumpThread.setDaemon(true);
         this.pumpThread.start();
     }
 

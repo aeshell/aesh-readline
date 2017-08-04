@@ -200,7 +200,7 @@ public class TerminalConnection implements Connection {
                 int read = terminal.input().read(bBuf);
                 if (read > 0) {
                     decoder.write(bBuf, 0, read);
-                    if(waiting) {
+                    if(waiting && reading) {
                         latch = new CountDownLatch(1);
                         try {
                             latch.await();
