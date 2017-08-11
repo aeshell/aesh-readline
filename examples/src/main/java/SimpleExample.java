@@ -22,6 +22,8 @@ import org.aesh.readline.Readline;
 import org.aesh.readline.ReadlineBuilder;
 import org.aesh.readline.tty.terminal.TerminalConnection;
 import org.aesh.terminal.Connection;
+import org.aesh.terminal.tty.Signal;
+import org.aesh.utils.Config;
 
 import java.io.IOException;
 import java.util.function.Consumer;
@@ -44,6 +46,12 @@ public class SimpleExample implements Consumer<Connection> {
     @Override
     public void accept(Connection connection) {
         read(connection, ReadlineBuilder.builder().enableHistory(false).build(), "[aesh@rules]$ ");
+        //setting our own signal handler for ctrl-c signals, lets close if we get any
+        connection.setSignalHandler( signal -> {
+            if(signal == Signal.INT)
+                connection.write(Config.getLineSeparator());
+                connection.close();
+        });
         //lets open the connection to the terminal using this thread
         connection.openBlocking();
     }
