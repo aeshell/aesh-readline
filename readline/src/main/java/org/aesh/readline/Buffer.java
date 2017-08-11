@@ -650,7 +650,7 @@ public class Buffer {
         deltaChangedAtEndOfBuffer = (cursor == size);
 
         IntArrayBuilder builder = new IntArrayBuilder();
-        if(oldCursor >= width)
+        if(oldSize >= width)
             clearAllLinesAndReturnToFirstLine(builder, width, oldCursor, oldSize);
 
         moveCursorToStartAndPrint(out, builder, width, true, false);

@@ -220,8 +220,8 @@ abstract class SearchHistory implements SearchAction {
         cursor += builder.size();
         //LOGGER.info("setting cursor to: "+cursor);
         builder.append(result);
-        inputProcessor.buffer().buffer().disablePrompt(true);
         inputProcessor.buffer().moveCursor(-inputProcessor.buffer().buffer().cursor());
+        inputProcessor.buffer().buffer().disablePrompt(true);
         inputProcessor.buffer().writeOut(ANSI.CURSOR_START);
         inputProcessor.buffer().writeOut(ANSI.ERASE_WHOLE_LINE);
         inputProcessor.buffer().replace(builder.toArray());
