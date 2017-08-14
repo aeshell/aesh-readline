@@ -19,15 +19,20 @@
  */
 package org.aesh.readline.terminal.impl;
 
+import com.sun.xml.internal.ws.policy.privateutil.PolicyUtils;
 import org.aesh.terminal.Attributes;
 import org.aesh.terminal.Attributes.ControlChar;
 import org.aesh.terminal.Attributes.ControlFlag;
 import org.aesh.terminal.Attributes.InputFlag;
 import org.aesh.terminal.Attributes.LocalFlag;
 import org.aesh.terminal.Attributes.OutputFlag;
+import org.aesh.utils.Config;
 import org.junit.Test;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.EnumSet;
 import org.aesh.terminal.tty.Size;
 
@@ -223,4 +228,18 @@ public class ExecPtyTest {
         assertEquals(4, attributes.getControlChar(ControlChar.VMIN));
         assertEquals(0, attributes.getControlChar(ControlChar.VTIME));
     }
+
+    @Test
+    public void testParseSizeHpux() throws IOException {
+        String input = new String(Files.readAllBytes(
+                        Config.isOSPOSIXCompatible() ?
+                                new File("src/test/resources/ttytype_hpux.txt").toPath() :
+                                new File("src\\test\\resources\\ttytype_hpux.txt").toPath()));
+
+        Size size = ExecPty.doGetHPUXSize(input);
+
+        assertEquals(47, size.getHeight());
+        assertEquals(112, size.getWidth());
+    }
+
 }

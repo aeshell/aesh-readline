@@ -100,8 +100,7 @@ public class ExecPty implements Pty {
         try {
             String cfg = doGetConfig();
             if (OSUtils.IS_HPUX) {
-                //TODO: need to parse output from ttytype -s
-                return null;
+                return doGetHPUXAttr(cfg);
             } else
                 return doGetAttr(cfg);
         }
@@ -190,6 +189,22 @@ public class ExecPty implements Pty {
         return exec(OSUtils.STTY_COMMAND, "-a");
     }
 
+    /**
+     * There is only a 4 line output from ttytype -s:
+     * TERM='vt200'; export TERM;
+     * LINES=47; export LINES;
+     * COLUMNS=112; export COLUMNS;
+     * ERASE='^?'; export ERASE;
+     *
+     * @param cfg ttytype -s output
+     * @return attr
+     */
+    static Attributes doGetHPUXAttr(String cfg) {
+        Attributes attributes = new Attributes();
+
+        return attributes;
+    }
+
 
     static Attributes doGetAttr(String cfg) throws IOException {
         Attributes attributes = new Attributes();
@@ -272,6 +287,22 @@ public class ExecPty implements Pty {
         } else {
             return str.charAt(0);
         }
+    }
+
+    /**
+     * There is only a 4 line output from ttytype -s:
+     * TERM='vt200'; export TERM;
+     * LINES=47; export LINES;
+     * COLUMNS=112; export COLUMNS;
+     * ERASE='^?'; export ERASE;
+
+     * @param cfg input
+     * @return size
+     */
+    static Size doGetHPUXSize(String cfg) {
+        String[] tokens = cfg.split(";");
+        return new Size(Integer.parseInt(tokens[4].substring(9)),
+                Integer.parseInt(tokens[2].substring(7)));
     }
 
     static Size doGetSize(String cfg) throws IOException {
