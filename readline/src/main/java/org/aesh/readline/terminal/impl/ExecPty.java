@@ -20,6 +20,7 @@
 package org.aesh.readline.terminal.impl;
 
 import org.aesh.terminal.Attributes;
+import org.aesh.utils.Config;
 import org.aesh.utils.ExecHelper;
 import org.aesh.utils.OSUtils;
 import org.aesh.util.LoggerUtil;
@@ -101,7 +102,11 @@ public class ExecPty implements Pty {
             String cfg = doGetConfig();
             if (OSUtils.IS_HPUX) {
                 return doGetHPUXAttr(cfg);
-            } else
+            }
+            else if(OSUtils.IS_LINUX) {
+                return doGetLinuxAttr(cfg);
+            }
+             else
                 return doGetAttr(cfg);
         }
         catch(IOException ioe) {
@@ -174,9 +179,13 @@ public class ExecPty implements Pty {
 
     @Override
     public Size getSize() throws IOException {
-        String cfg = doGetConfig();
-        return doGetSize(cfg);
+        if(OSUtils.IS_HPUX)
+            return doGetSize(exec("ttytype", "-s"));
+        else
+            return doGetOptimalSize(exec(OSUtils.STTY_COMMAND, OSUtils.STTY_F_OPTION, getName(), "size"));
+
     }
+
 
     protected String doGetConfig() throws IOException {
         if(OSUtils.IS_HPUX)
@@ -205,6 +214,75 @@ public class ExecPty implements Pty {
         return attributes;
     }
 
+    static Attributes doGetLinuxAttr(String cfg) {
+        Attributes attributes = new Attributes();
+        String[] attr = cfg.split(";");
+        //the first line of attributes we ignore (speed, rows, columns and line)
+        //the rest which are delimited with ; are control cars
+        setAttr(Attributes.ControlChar.VINTR, attr[4], attributes);
+        setAttr(Attributes.ControlChar.VQUIT, attr[5], attributes);
+        setAttr(Attributes.ControlChar.VERASE, attr[6], attributes);
+        setAttr(Attributes.ControlChar.VKILL, attr[7], attributes);
+        setAttr(Attributes.ControlChar.VEOF, attr[8], attributes);
+        setAttr(Attributes.ControlChar.VEOL, attr[9], attributes);
+        setAttr(Attributes.ControlChar.VEOL2, attr[10], attributes);
+        //setAttr(Attributes.ControlChar.VSWTC, attr[11], attributes);
+        setAttr(Attributes.ControlChar.VSTART, attr[12], attributes);
+        setAttr(Attributes.ControlChar.VSTOP, attr[13], attributes);
+        setAttr(Attributes.ControlChar.VSUSP, attr[14], attributes);
+        setAttr(Attributes.ControlChar.VREPRINT, attr[15], attributes);
+        setAttr(Attributes.ControlChar.VWERASE, attr[16], attributes);
+        setAttr(Attributes.ControlChar.VLNEXT, attr[17], attributes);
+        setAttr(Attributes.ControlChar.VDISCARD, attr[18], attributes);
+        setAttr(Attributes.ControlChar.VMIN, attr[19], attributes);
+        setAttr(Attributes.ControlChar.VTIME, attr[20], attributes);
+
+        doParseLinuxOptions(attr[21], attributes);
+
+        return attributes;
+    }
+
+    private static void doParseLinuxOptions(String options, Attributes attributes) {
+        String[] optionLines = options.split(Config.getLineSeparator());
+        for(String line : optionLines)
+            for(String option : line.trim().split(" ")) {
+                //options starting with - are ignored
+                option = option.trim();
+                if(option.length() > 0 && option.charAt(0) != '-') {
+                    Attributes.ControlFlag controlFlag = getEnumFromString(Attributes.ControlFlag.class, option);
+                    if(controlFlag != null)
+                        attributes.setControlFlag(controlFlag, true);
+                    else {
+                        Attributes.InputFlag inputFlag = getEnumFromString(Attributes.InputFlag.class, option);
+                        if(inputFlag != null)
+                            attributes.setInputFlag(inputFlag, true);
+                        else {
+                            Attributes.LocalFlag localFlag = getEnumFromString(Attributes.LocalFlag.class, option);
+                            if(localFlag != null)
+                                attributes.setLocalFlag(localFlag, true);
+                            else {
+                                Attributes.OutputFlag outputFlag = getEnumFromString(Attributes.OutputFlag.class, option);
+                                if(outputFlag != null)
+                                    attributes.setOutputFlag(outputFlag, true);
+                            }
+                        }
+                    }
+                }
+            }
+    }
+
+    private static void setAttr(Attributes.ControlChar cc, String input, Attributes attr) {
+        attr.setControlChar(cc, parseControlChar(input.substring(input.lastIndexOf(' ')+1)));
+    }
+
+    private static <T extends Enum<T>> T getEnumFromString(Class<T> c, String string) {
+        try {
+            return Enum.valueOf(c, string.trim().toUpperCase());
+        }
+        catch(IllegalArgumentException ignored) {
+            return null;
+        }
+    }
 
     static Attributes doGetAttr(String cfg) throws IOException {
         Attributes attributes = new Attributes();
@@ -305,11 +383,16 @@ public class ExecPty implements Pty {
                 Integer.parseInt(tokens[2].substring(7)));
     }
 
+    private static Size doGetOptimalSize(String cfg) throws IOException {
+        final String[] size = cfg.split(" ");
+        return new Size(Integer.parseInt(size[1].trim()), Integer.parseInt(size[0].trim()));
+    }
+
     static Size doGetSize(String cfg) throws IOException {
         return new Size(doGetInt("columns", cfg), doGetInt("rows", cfg));
     }
 
-    static int doGetInt(String name, String cfg) throws IOException {
+    private static int doGetInt(String name, String cfg) throws IOException {
         String[] patterns = new String[] {
                 "\\b([0-9]+)\\s+" + name + "\\b",
                 "\\b" + name + "\\s+([0-9]+)\\b",

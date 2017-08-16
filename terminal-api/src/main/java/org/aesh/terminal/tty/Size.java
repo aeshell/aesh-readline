@@ -56,7 +56,6 @@ public class Size {
 
         if (height != size.height) return false;
         return width == size.width;
-
     }
 
     @Override

@@ -19,7 +19,6 @@
  */
 package org.aesh.readline.terminal.impl;
 
-import com.sun.xml.internal.ws.policy.privateutil.PolicyUtils;
 import org.aesh.terminal.Attributes;
 import org.aesh.terminal.Attributes.ControlChar;
 import org.aesh.terminal.Attributes.ControlFlag;
@@ -30,7 +29,6 @@ import org.aesh.utils.Config;
 import org.junit.Test;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.EnumSet;
@@ -117,7 +115,7 @@ public class ExecPtyTest {
             "        status = ^T; stop = ^S; susp = ^Z; time = 0; werase = ^W;";
 
     private final String hpuxSttySample = "speed 38400 baud; line = 0;\n" +
-            "rows = 85; columns = 244\n" +
+            "rows = 85; columns = 244;\n" +
             "min = 4; time = 0;\n" +
             "intr = DEL; quit = ^\\; erase = #; kill = @\n" +
             "eof = ^D; eol = ^@; eol2 <undef>; swtch = ^@\n" +
@@ -145,6 +143,16 @@ public class ExecPtyTest {
     @Test
     public void testParseAttributesLinux() throws IOException {
         Attributes attributes = ExecPty.doGetAttr(linuxSttySample);
+        checkAttributestLinux(attributes);
+    }
+
+    @Test
+    public void testOptimizedParseAttributesLinux() throws IOException {
+        Attributes attributes = ExecPty.doGetLinuxAttr(linuxSttySample);
+        checkAttributestLinux(attributes);
+    }
+
+    private void checkAttributestLinux(Attributes attributes) {
         // -ignbrk brkint -ignpar -parmrk -inpck -istrip -inlcr -igncr icrnl ixon -ixoff -iuclc ixany imaxbel iutf8
         assertEquals(EnumSet.of(InputFlag.BRKINT, InputFlag.ICRNL, InputFlag.IXON, InputFlag.IXANY, InputFlag.IMAXBEL, InputFlag.IUTF8), attributes.getInputFlags());
         // opost -olcuc -ocrnl onlcr -onocr -onlret -ofill -ofdel nl0 cr0 tab0 bs0 vt0 ff0
@@ -230,7 +238,7 @@ public class ExecPtyTest {
     }
 
     @Test
-    public void testParseSizeHpux() throws IOException {
+    public void testParseSizeHPUX() throws IOException {
         String input = new String(Files.readAllBytes(
                         Config.isOSPOSIXCompatible() ?
                                 new File("src/test/resources/ttytype_hpux.txt").toPath() :

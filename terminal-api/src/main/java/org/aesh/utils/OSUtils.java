@@ -23,6 +23,8 @@ import java.io.File;
 
 public class OSUtils {
 
+    public static final boolean IS_LINUX = System.getProperty("os.name").toLowerCase().contains("linux");
+
     public static final boolean IS_WINDOWS = System.getProperty("os.name").toLowerCase().contains("win");
 
     public static final boolean IS_CYGWIN = IS_WINDOWS
