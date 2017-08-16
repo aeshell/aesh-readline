@@ -548,6 +548,12 @@ public class Buffer {
                 Arrays.fill(mask, prompt.getMask());
                 builder.append(mask);
             }
+            //a quick exit if we're masking with a no output mask
+            else {
+                out.accept(builder.toArray());
+                delta = 0;
+                deltaChangedAtEndOfBuffer = true;
+            }
         }
         else {
             if (deltaChangedAtEndOfBuffer) {
@@ -579,6 +585,9 @@ public class Buffer {
     }
 
     private void printDeletedData(Consumer<int[]> out, int width, boolean viMode) {
+        //if we're masking and the mask is no output we just return
+        if(isMasking() && prompt.getMask() == 0)
+            return;
         IntArrayBuilder builder = new IntArrayBuilder();
          if(size+promptLength()+Math.abs(delta) >= width) {
             if(deletingBackward) {
