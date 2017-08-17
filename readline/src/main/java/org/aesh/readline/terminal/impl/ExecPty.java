@@ -276,12 +276,10 @@ public class ExecPty implements Pty {
     }
 
     private static <T extends Enum<T>> T getEnumFromString(Class<T> c, String string) {
-        try {
-            return Enum.valueOf(c, string.trim().toUpperCase());
-        }
-        catch(IllegalArgumentException ignored) {
-            return null;
-        }
+        for(T flag : c.getEnumConstants())
+            if(flag.name().toLowerCase().equals(string))
+                return flag;
+        return null;
     }
 
     static Attributes doGetAttr(String cfg) throws IOException {
