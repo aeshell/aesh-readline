@@ -327,14 +327,6 @@ public class ExecPty implements Pty {
     }
 
     static int parseControlChar(String str) {
-        // undef
-        if ("<UNDEF>".equals(str)) {
-            return -1;
-        }
-        // del
-        if ("DEL".equalsIgnoreCase(str)) {
-            return 127;
-        }
         // octal
         if (str.charAt(0) == '0') {
             return Integer.parseInt(str, 8);
@@ -350,7 +342,8 @@ public class ExecPty implements Pty {
             } else {
                 return str.charAt(1) - 64;
             }
-        } else if (str.charAt(0) == 'M' && str.charAt(1) == '-') {
+        }
+        else if (str.charAt(0) == 'M' && str.charAt(1) == '-') {
             if (str.charAt(2) == '^') {
                 if (str.charAt(3) == '?') {
                     return 127 + 128;
@@ -360,7 +353,17 @@ public class ExecPty implements Pty {
             } else {
                 return str.charAt(2) + 128;
             }
-        } else {
+        }
+        // undef
+        if ("<UNDEF>".equals(str) || "<undef>".equals(str)) {
+            return -1;
+        }
+        // del
+        if ("DEL".equalsIgnoreCase(str)) {
+            return 127;
+        }
+
+        else {
             return str.charAt(0);
         }
     }

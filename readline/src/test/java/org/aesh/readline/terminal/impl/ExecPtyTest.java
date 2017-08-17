@@ -45,6 +45,14 @@ public class ExecPtyTest {
             "opost -olcuc -ocrnl onlcr -onocr -onlret -ofill -ofdel nl0 cr0 tab0 bs0 vt0 ff0\n" +
             "isig icanon iexten echo echoe echok -echonl -noflsh -xcase -tostop -echoprt echoctl echoke";
 
+    private final String ubuntuSttySample ="speed 38400 baud; rows 48; columns 160; line = 0;\n" +
+            "intr = ^C; quit = ^\\; erase = ^?; kill = ^U; eof = ^D; eol = <undef>; eol2 = <undef>; swtch = <undef>; start = ^Q; stop = ^S; susp = ^Z; rprnt = ^R; werase = ^W;\n" +
+            "lnext = ^V; discard = ^O; min = 1; time = 0;\n" +
+            "-parenb -parodd -cmspar cs8 -hupcl -cstopb cread -clocal -crtscts\n" +
+            "-ignbrk -brkint -ignpar -parmrk -inpck -istrip -inlcr -igncr icrnl ixon -ixoff -iuclc -ixany -imaxbel iutf8\n" +
+            "opost -olcuc -ocrnl onlcr -onocr -onlret -ofill -ofdel nl0 cr0 tab0 bs0 vt0 ff0\n" +
+            "isig icanon iexten echo echoe echok -echonl -noflsh -xcase -tostop -echoprt echoctl echoke -flusho -extproc";
+
     private final String solarisSttySample = "speed 38400 baud; \n" +
             "rows = 85; columns = 244; ypixels = 0; xpixels = 0;\n" +
             "csdata ?\n" +
@@ -152,6 +160,19 @@ public class ExecPtyTest {
         checkAttributestLinux(attributes);
     }
 
+    @Test
+    public void testParseAttributesUbuntu() throws IOException {
+        Attributes attributes = ExecPty.doGetAttr(ubuntuSttySample);
+        checkAttributestUbuntu(attributes);
+    }
+
+    @Test
+    public void testOptimizedParseAttributesUbuntu() throws IOException {
+        Attributes attributes = ExecPty.doGetLinuxAttr(ubuntuSttySample);
+        checkAttributestUbuntu(attributes);
+    }
+
+
     private void checkAttributestLinux(Attributes attributes) {
         // -ignbrk brkint -ignpar -parmrk -inpck -istrip -inlcr -igncr icrnl ixon -ixoff -iuclc ixany imaxbel iutf8
         assertEquals(EnumSet.of(InputFlag.BRKINT, InputFlag.ICRNL, InputFlag.IXON, InputFlag.IXANY, InputFlag.IMAXBEL, InputFlag.IUTF8), attributes.getInputFlags());
@@ -169,6 +190,33 @@ public class ExecPtyTest {
         assertEquals(ExecPty.parseControlChar("^D"), attributes.getControlChar(ControlChar.VEOF));
         assertEquals(ExecPty.parseControlChar("M-^?"), attributes.getControlChar(ControlChar.VEOL));
         assertEquals(ExecPty.parseControlChar("M-^?"), attributes.getControlChar(ControlChar.VEOL2));
+        assertEquals(ExecPty.parseControlChar("^Q"), attributes.getControlChar(ControlChar.VSTART));
+        assertEquals(ExecPty.parseControlChar("^S"), attributes.getControlChar(ControlChar.VSTOP));
+        assertEquals(ExecPty.parseControlChar("^Z"), attributes.getControlChar(ControlChar.VSUSP));
+        assertEquals(ExecPty.parseControlChar("^R"), attributes.getControlChar(ControlChar.VREPRINT));
+        assertEquals(ExecPty.parseControlChar("^W"), attributes.getControlChar(ControlChar.VWERASE));
+        assertEquals(ExecPty.parseControlChar("^V"), attributes.getControlChar(ControlChar.VLNEXT));
+        assertEquals(1, attributes.getControlChar(ControlChar.VMIN));
+        assertEquals(0, attributes.getControlChar(ControlChar.VTIME));
+    }
+
+    private void checkAttributestUbuntu(Attributes attributes) {
+        // -ignbrk -brkint -ignpar -parmrk -inpck -istrip -inlcr -igncr icrnl ixon -ixoff -iuclc -ixany -imaxbel iutf8
+        assertEquals(EnumSet.of(InputFlag.ICRNL, InputFlag.IXON, InputFlag.IUTF8), attributes.getInputFlags());
+        // opost -olcuc -ocrnl onlcr -onocr -onlret -ofill -ofdel nl0 cr0 tab0 bs0 vt0 ff0
+        assertEquals(EnumSet.of(OutputFlag.OPOST, OutputFlag.ONLCR), attributes.getOutputFlags());
+        // -parenb -parodd cs8 -hupcl -cstopb cread -clocal -crtscts
+        assertEquals(EnumSet.of(ControlFlag.CREAD, ControlFlag.CS8), attributes.getControlFlags());
+        // isig icanon iexten echo echoe echok -echonl -noflsh -xcase -tostop -echoprt echoctl echoke
+        assertEquals(EnumSet.of(LocalFlag.ISIG, LocalFlag.ICANON, LocalFlag.IEXTEN, LocalFlag.ECHO, LocalFlag.ECHOK, LocalFlag.ECHOCTL, LocalFlag.ECHOKE, LocalFlag.ECHOE), attributes.getLocalFlags());
+        // intr = ^C; quit = ^\; erase = ^?; kill = ^U; eof = ^D; eol = <undef>; eol2 = <undef>; swtch = M-^?; start = ^Q; stop = ^S; susp = ^Z; rprnt = ^R; werase = ^W; lnext = ^V; flush = ^O; min = 1; time = 0
+        assertEquals(ExecPty.parseControlChar("^C"), attributes.getControlChar(ControlChar.VINTR));
+        assertEquals(ExecPty.parseControlChar("^\\"), attributes.getControlChar(ControlChar.VQUIT));
+        assertEquals(ExecPty.parseControlChar("^?"), attributes.getControlChar(ControlChar.VERASE));
+        assertEquals(ExecPty.parseControlChar("^U"), attributes.getControlChar(ControlChar.VKILL));
+        assertEquals(ExecPty.parseControlChar("^D"), attributes.getControlChar(ControlChar.VEOF));
+        assertEquals(-1, attributes.getControlChar(ControlChar.VEOL));
+        assertEquals(-1, attributes.getControlChar(ControlChar.VEOL2));
         assertEquals(ExecPty.parseControlChar("^Q"), attributes.getControlChar(ControlChar.VSTART));
         assertEquals(ExecPty.parseControlChar("^S"), attributes.getControlChar(ControlChar.VSTOP));
         assertEquals(ExecPty.parseControlChar("^Z"), attributes.getControlChar(ControlChar.VSUSP));
