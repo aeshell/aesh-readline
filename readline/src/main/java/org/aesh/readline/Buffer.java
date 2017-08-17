@@ -756,7 +756,7 @@ public class Buffer {
         //make sure we sync the cursor back
         if(!deltaChangedAtEndOfBuffer) {
             if((size + promptLength()) % width == 0 && Config.isOSPOSIXCompatible())
-                builder.append(syncCursor(size+promptLength()-1, cursor+promptLength()-1, width));
+                builder.append(syncCursor(size+promptLength()-1, cursor+promptLength(), width));
             else
                 builder.append(syncCursor(size+promptLength(), cursor+promptLength(), width));
          }
