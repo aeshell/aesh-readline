@@ -208,7 +208,7 @@ public class ExecPty implements Pty {
      * @param cfg ttytype -s output
      * @return attr
      */
-    static Attributes doGetHPUXAttr(String cfg) {
+    private static Attributes doGetHPUXAttr(String cfg) {
         Attributes attributes = new Attributes();
 
         return attributes;
@@ -374,7 +374,7 @@ public class ExecPty implements Pty {
      * LINES=47; export LINES;
      * COLUMNS=112; export COLUMNS;
      * ERASE='^?'; export ERASE;
-
+     *
      * @param cfg input
      * @return size
      */
