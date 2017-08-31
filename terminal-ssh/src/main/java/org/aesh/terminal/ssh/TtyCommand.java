@@ -253,6 +253,11 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
             return charset;
         }
 
+        @Override
+        public boolean supportsAnsi() {
+            return true;
+        }
+
         public long lastAccessedTime() {
             return lastAccessedTime;
         }

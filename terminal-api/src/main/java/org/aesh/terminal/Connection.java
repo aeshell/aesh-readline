@@ -130,6 +130,8 @@ public interface Connection {
 
     Charset outputEncoding();
 
+    boolean supportsAnsi();
+
     /**
      * Write a string to the output handler
      * @param s string

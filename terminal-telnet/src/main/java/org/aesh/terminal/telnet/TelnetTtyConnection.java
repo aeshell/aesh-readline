@@ -98,6 +98,11 @@ public final class TelnetTtyConnection extends TelnetHandler implements Connecti
   }
 
   @Override
+  public boolean supportsAnsi() {
+    return true;
+  }
+
+  @Override
   protected void onSendBinary(boolean binary) {
     sendingBinary = binary;
     if (binary) {

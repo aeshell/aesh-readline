@@ -225,4 +225,9 @@ public abstract class HttpTtyConnection implements Connection {
     @Override
     public void setAttributes(Attributes attr) {
     }
+
+    @Override
+    public boolean supportsAnsi() {
+        return true;
+    }
 }

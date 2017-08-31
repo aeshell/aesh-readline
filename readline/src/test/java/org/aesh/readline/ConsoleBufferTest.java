@@ -204,6 +204,11 @@ public class ConsoleBufferTest {
             return null;
         }
 
+        @Override
+        public boolean supportsAnsi() {
+            return true;
+        }
+
     }
 
 }

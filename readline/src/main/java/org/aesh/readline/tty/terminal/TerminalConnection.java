@@ -21,6 +21,7 @@ package org.aesh.readline.tty.terminal;
 
 import org.aesh.io.Decoder;
 import org.aesh.io.Encoder;
+import org.aesh.readline.terminal.impl.ExternalTerminal;
 import org.aesh.terminal.Device;
 import org.aesh.terminal.Attributes;
 import org.aesh.terminal.EventDecoder;
@@ -69,6 +70,7 @@ public class TerminalConnection implements Connection {
     private Terminal.SignalHandler prevIntrHandler;
     private Terminal.SignalHandler prevWincHandler;
     private Terminal.SignalHandler prevContHandler;
+    private boolean ansi = true;
 
     public TerminalConnection(Charset inputCharset, Charset outputCharset, InputStream inputStream,
                               OutputStream outputStream, Consumer<Connection> handler) throws IOException {
@@ -140,6 +142,9 @@ public class TerminalConnection implements Connection {
         decoder = new Decoder(512, inputEncoding(), eventDecoder);
         stdOut = new Encoder(outputEncoding(), this::write);
 
+        if(terminal instanceof ExternalTerminal)
+            ansi = false;
+
         if(handler != null)
             handler.accept(this);
     }
@@ -179,6 +184,11 @@ public class TerminalConnection implements Connection {
     @Override
     public Charset outputEncoding() {
         return outputCharset;
+    }
+
+    @Override
+    public boolean supportsAnsi() {
+        return ansi;
     }
 
     /**

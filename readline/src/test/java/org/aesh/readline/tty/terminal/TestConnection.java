@@ -296,6 +296,11 @@ public class TestConnection implements Connection {
         return null;
     }
 
+    @Override
+    public boolean supportsAnsi() {
+        return true;
+    }
+
     public void assertOutputBuffer(String expected) {
         assertEquals(expected, bufferBuilder.toString());
     }
