@@ -30,7 +30,7 @@ import org.aesh.readline.action.Action;
  */
 public class Enter implements Action {
 
-    private static final String ENDS_WITH_BACKSLASH = " \\";
+    private static final String ENDS_WITH_BACKSLASH = "\\";
     private static final String HASHTAG = "#";
 
     @Override

@@ -61,6 +61,30 @@ public class HistoryTest {
     }
 
     @Test
+    public void testHistoryMultiLine1() throws Exception {
+
+        TestConnection term = new TestConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).create());
+        term.read("1234 \\" + Config.getLineSeparator());
+        term.read("567" + Config.getLineSeparator());
+        term.readline();
+        term.read(Key.UP);
+        term.read(Key.ENTER);
+        term.assertLine("1234 567");
+    }
+
+    @Test
+    public void testHistoryMultiLine2() throws Exception {
+
+        TestConnection term = new TestConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).create());
+        term.read("1234\\" + Config.getLineSeparator());
+        term.read("567" + Config.getLineSeparator());
+        term.readline();
+        term.read(Key.UP);
+        term.read(Key.ENTER);
+        term.assertLine("1234567");
+    }
+
+    @Test
     public void testReverseSearch() throws Exception {
 
         TestConnection term = new TestConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).create());
