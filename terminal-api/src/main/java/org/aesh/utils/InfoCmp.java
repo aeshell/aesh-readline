@@ -107,7 +107,9 @@ public final class InfoCmp {
                     int index = cap.indexOf('#');
                     String key = cap.substring(0, index);
                     String val = cap.substring(index + 1);
-                    int iVal = Integer.valueOf(val);
+                    int iVal = val.startsWith("0x") ?
+                            Integer.parseInt(val.substring(2), 16) :
+                            Integer.parseInt(val);
                     Capability c = Capability.byName(key);
                     if (c != null) {
                         ints.put(c, iVal);
