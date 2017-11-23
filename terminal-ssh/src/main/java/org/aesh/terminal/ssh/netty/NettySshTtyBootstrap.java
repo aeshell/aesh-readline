@@ -34,6 +34,7 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
+import org.apache.sshd.server.auth.pubkey.PublickeyAuthenticator;
 
 /**
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
@@ -48,6 +49,7 @@ public class NettySshTtyBootstrap {
     private SshServer server;
     private KeyPairProvider keyPairProvider;
     private PasswordAuthenticator passwordAuthenticator;
+    private PublickeyAuthenticator publicKeyAuthenticator;
 
     public NettySshTtyBootstrap() {
         this.host = "localhost";
@@ -74,6 +76,16 @@ public class NettySshTtyBootstrap {
 
     public NettySshTtyBootstrap setPort(int port) {
         this.port = port;
+        return this;
+    }
+
+    public NettySshTtyBootstrap setPasswordAuthenticator(PasswordAuthenticator passwordAuthenticator) {
+        this.passwordAuthenticator = passwordAuthenticator;
+        return this;
+    }
+
+    public NettySshTtyBootstrap setPublicKeyAuthenticator(PublickeyAuthenticator publicKeyAuthenticator) {
+        this.publicKeyAuthenticator = publicKeyAuthenticator;
         return this;
     }
 
@@ -107,6 +119,9 @@ public class NettySshTtyBootstrap {
         server.setHost(host);
         server.setKeyPairProvider(keyPairProvider);
         server.setPasswordAuthenticator(passwordAuthenticator);
+        if (publicKeyAuthenticator != null) {
+            server.setPublickeyAuthenticator(publicKeyAuthenticator);
+        }
         server.setShellFactory(() -> new TtyCommand(charset, factory));
         try {
             server.start();
