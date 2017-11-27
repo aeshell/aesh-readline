@@ -51,8 +51,7 @@ public class ExecPty implements Pty {
         try {
             LOGGER.log(Level.FINE,"getting pty: "+OSUtils.TTY_COMMAND);
             Process p = new ProcessBuilder(OSUtils.TTY_COMMAND)
-                    .redirectInput(Redirect.INHERIT)
-                    .start();
+                    .redirectInput(Redirect.INHERIT).start();
             String result = ExecHelper.waitAndCapture(p).trim();
             if (p.exitValue() != 0) {
                 throw new IOException("Not a tty");
@@ -101,7 +100,8 @@ public class ExecPty implements Pty {
         try {
             String cfg = doGetConfig();
             if (OSUtils.IS_HPUX) {
-                return doGetHPUXAttr(cfg);
+                //return doGetHPUXAttr(cfg);
+                return doGetAttr(cfg);
             }
             else if(OSUtils.IS_LINUX) {
                 return doGetLinuxAttr(cfg);
@@ -170,32 +170,38 @@ public class ExecPty implements Pty {
             }
         }
         if (!commands.isEmpty()) {
-            commands.add(0, OSUtils.STTY_COMMAND);
-            commands.add(1, OSUtils.STTY_F_OPTION);
-            commands.add(2, getName());
-            exec(commands.toArray(new String[commands.size()]));
+            if(OSUtils.IS_HPUX) {
+                commands.add(0, OSUtils.STTY_COMMAND);
+                exec(true, commands.toArray(new String[commands.size()]));
+            }
+            else {
+                commands.add(0, OSUtils.STTY_COMMAND);
+                commands.add(1, OSUtils.STTY_F_OPTION);
+                commands.add(2, getName());
+                exec(false, commands.toArray(new String[commands.size()]));
+            }
         }
     }
 
     @Override
     public Size getSize() throws IOException {
         if(OSUtils.IS_HPUX)
-            return doGetSize(exec("ttytype", "-s"));
+            return doGetOptimalSize(exec(true, OSUtils.STTY_COMMAND, "size"));
         else
-            return doGetOptimalSize(exec(OSUtils.STTY_COMMAND, OSUtils.STTY_F_OPTION, getName(), "size"));
+            return doGetOptimalSize(exec(false, OSUtils.STTY_COMMAND, OSUtils.STTY_F_OPTION, getName(), "size"));
 
     }
 
 
     protected String doGetConfig() throws IOException {
         if(OSUtils.IS_HPUX)
-            return exec("ttytype", "-s");
+            return exec(true, OSUtils.STTY_COMMAND, "-a");
         else
-            return exec(OSUtils.STTY_COMMAND, OSUtils.STTY_F_OPTION, getName(), "-a");
+            return exec(false, OSUtils.STTY_COMMAND, OSUtils.STTY_F_OPTION, getName(), "-a");
     }
 
     private String doGetFailSafeConfig() throws IOException {
-        return exec(OSUtils.STTY_COMMAND, "-a");
+        return exec(false, OSUtils.STTY_COMMAND, "-a");
     }
 
     /**
@@ -408,11 +414,14 @@ public class ExecPty implements Pty {
         throw new IOException("Unable to parse " + name);
     }
 
-    private static String exec(final String... cmd) throws IOException {
+    private static String exec(boolean redirectInherit, final String... cmd) throws IOException {
         assert cmd != null && cmd[0].length() > 0;
         try {
             LOGGER.log(Level.FINE, "Running: "+ Arrays.toString(cmd));
-            Process p = new ProcessBuilder(cmd).start();
+            ProcessBuilder processBuilder = new ProcessBuilder(cmd);
+            if(redirectInherit)
+                processBuilder.redirectInput(Redirect.INHERIT);
+            Process p = processBuilder.start();
             String result = ExecHelper.waitAndCapture(p);
             LOGGER.log(Level.FINE, "Result: "+ result);
             if (p.exitValue() != 0) {
