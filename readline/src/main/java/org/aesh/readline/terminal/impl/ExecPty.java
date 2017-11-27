@@ -99,8 +99,7 @@ public class ExecPty implements Pty {
     public Attributes getAttr() throws IOException {
         try {
             String cfg = doGetConfig();
-            if (OSUtils.IS_HPUX) {
-                //return doGetHPUXAttr(cfg);
+            if (OSUtils.IS_HPUX || OSUtils.IS_SUNOS) {
                 return doGetAttr(cfg);
             }
             else if(OSUtils.IS_LINUX) {
@@ -170,7 +169,7 @@ public class ExecPty implements Pty {
             }
         }
         if (!commands.isEmpty()) {
-            if(OSUtils.IS_HPUX) {
+            if(OSUtils.IS_HPUX || OSUtils.IS_SUNOS) {
                 commands.add(0, OSUtils.STTY_COMMAND);
                 exec(true, commands.toArray(new String[commands.size()]));
             }
@@ -185,7 +184,7 @@ public class ExecPty implements Pty {
 
     @Override
     public Size getSize() throws IOException {
-        if(OSUtils.IS_HPUX)
+        if(OSUtils.IS_HPUX || OSUtils.IS_SUNOS)
             return doGetOptimalSize(exec(true, OSUtils.STTY_COMMAND, "size"));
         else
             return doGetOptimalSize(exec(false, OSUtils.STTY_COMMAND, OSUtils.STTY_F_OPTION, getName(), "size"));
@@ -194,7 +193,7 @@ public class ExecPty implements Pty {
 
 
     protected String doGetConfig() throws IOException {
-        if(OSUtils.IS_HPUX)
+        if(OSUtils.IS_HPUX || OSUtils.IS_SUNOS)
             return exec(true, OSUtils.STTY_COMMAND, "-a");
         else
             return exec(false, OSUtils.STTY_COMMAND, OSUtils.STTY_F_OPTION, getName(), "-a");
@@ -202,22 +201,6 @@ public class ExecPty implements Pty {
 
     private String doGetFailSafeConfig() throws IOException {
         return exec(false, OSUtils.STTY_COMMAND, "-a");
-    }
-
-    /**
-     * There is only a 4 line output from ttytype -s:
-     * TERM='vt200'; export TERM;
-     * LINES=47; export LINES;
-     * COLUMNS=112; export COLUMNS;
-     * ERASE='^?'; export ERASE;
-     *
-     * @param cfg ttytype -s output
-     * @return attr
-     */
-    private static Attributes doGetHPUXAttr(String cfg) {
-        Attributes attributes = new Attributes();
-
-        return attributes;
     }
 
     static Attributes doGetLinuxAttr(String cfg) {

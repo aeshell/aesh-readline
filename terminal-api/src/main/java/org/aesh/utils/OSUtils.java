@@ -35,6 +35,8 @@ public class OSUtils {
 
     public static final boolean IS_HPUX = System.getProperty("os.name").toLowerCase().contains("hp-ux");
 
+    public static final boolean IS_SUNOS = System.getProperty("os.name").toLowerCase().contains("sunos");
+
     public static final String TTY_COMMAND;
     public static final String STTY_COMMAND;
     public static final String STTY_F_OPTION;
@@ -73,7 +75,7 @@ public class OSUtils {
             if (IS_OSX) {
                 sttyfopt = "-f";
             }
-            else if(IS_HPUX) {
+            else if(IS_HPUX || IS_SUNOS) {
                sttyfopt = "";
             }
             else {
