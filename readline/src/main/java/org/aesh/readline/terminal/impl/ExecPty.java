@@ -171,13 +171,13 @@ public class ExecPty implements Pty {
         if (!commands.isEmpty()) {
             if(OSUtils.IS_HPUX || OSUtils.IS_SUNOS) {
                 commands.add(0, OSUtils.STTY_COMMAND);
-                exec(true, commands.toArray(new String[commands.size()]));
+                exec(commands.toArray(new String[commands.size()]));
             }
             else {
                 commands.add(0, OSUtils.STTY_COMMAND);
                 commands.add(1, OSUtils.STTY_F_OPTION);
                 commands.add(2, getName());
-                exec(false, commands.toArray(new String[commands.size()]));
+                exec(commands.toArray(new String[commands.size()]));
             }
         }
     }
@@ -185,22 +185,22 @@ public class ExecPty implements Pty {
     @Override
     public Size getSize() throws IOException {
         if(OSUtils.IS_HPUX || OSUtils.IS_SUNOS)
-            return doGetOptimalSize(exec(true, OSUtils.STTY_COMMAND, "size"));
+            return doGetOptimalSize(exec(OSUtils.STTY_COMMAND, "size"));
         else
-            return doGetOptimalSize(exec(false, OSUtils.STTY_COMMAND, OSUtils.STTY_F_OPTION, getName(), "size"));
+            return doGetOptimalSize(exec(OSUtils.STTY_COMMAND, OSUtils.STTY_F_OPTION, getName(), "size"));
 
     }
 
 
     protected String doGetConfig() throws IOException {
         if(OSUtils.IS_HPUX || OSUtils.IS_SUNOS)
-            return exec(true, OSUtils.STTY_COMMAND, "-a");
+            return exec(OSUtils.STTY_COMMAND, "-a");
         else
-            return exec(false, OSUtils.STTY_COMMAND, OSUtils.STTY_F_OPTION, getName(), "-a");
+            return exec(OSUtils.STTY_COMMAND, OSUtils.STTY_F_OPTION, getName(), "-a");
     }
 
     private String doGetFailSafeConfig() throws IOException {
-        return exec(false, OSUtils.STTY_COMMAND, "-a");
+        return exec(OSUtils.STTY_COMMAND, "-a");
     }
 
     static Attributes doGetLinuxAttr(String cfg) {
@@ -397,13 +397,12 @@ public class ExecPty implements Pty {
         throw new IOException("Unable to parse " + name);
     }
 
-    private static String exec(boolean redirectInherit, final String... cmd) throws IOException {
+    private static String exec(final String... cmd) throws IOException {
         assert cmd != null && cmd[0].length() > 0;
         try {
             LOGGER.log(Level.FINE, "Running: "+ Arrays.toString(cmd));
             ProcessBuilder processBuilder = new ProcessBuilder(cmd);
-            if(redirectInherit)
-                processBuilder.redirectInput(Redirect.INHERIT);
+            processBuilder.redirectInput(Redirect.INHERIT);
             Process p = processBuilder.start();
             String result = ExecHelper.waitAndCapture(p);
             LOGGER.log(Level.FINE, "Result: "+ result);
