@@ -184,10 +184,14 @@ public class ExecPty implements Pty {
 
     @Override
     public Size getSize() throws IOException {
-        if(OSUtils.IS_HPUX || OSUtils.IS_SUNOS)
+        if (OSUtils.IS_HPUX) {
             return doGetOptimalSize(exec(OSUtils.STTY_COMMAND, "size"));
-        else
+        } else if (OSUtils.IS_SUNOS) {
+            String config = doGetConfig();
+            return new Size(doGetInt("columns", config), doGetInt("rows", config));
+        } else {
             return doGetOptimalSize(exec(OSUtils.STTY_COMMAND, OSUtils.STTY_F_OPTION, getName(), "size"));
+        }
 
     }
 
