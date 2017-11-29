@@ -26,6 +26,7 @@ import org.aesh.utils.OSUtils;
 import org.aesh.util.LoggerUtil;
 
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -87,12 +88,24 @@ public class ExecPty implements Pty {
 
     @Override
     public InputStream getSlaveInput() throws IOException {
-        return new FileInputStream(getName());
+        try {
+            return new FileInputStream(getName());
+        } catch (FileNotFoundException fnfe) {
+            // When the tty file is not accessible to the current user,
+            // fallback to using System.in.
+            return System.in;
+        }
     }
 
     @Override
     public OutputStream getSlaveOutput() throws IOException {
-        return new FileOutputStream(getName());
+        try {
+            return new FileOutputStream(getName());
+        } catch (FileNotFoundException fnfe) {
+            // When the tty file is not accessible to the current user,
+            // fallback to using System.out.
+            return System.out;
+        }
     }
 
     @Override
@@ -177,7 +190,14 @@ public class ExecPty implements Pty {
                 commands.add(0, OSUtils.STTY_COMMAND);
                 commands.add(1, OSUtils.STTY_F_OPTION);
                 commands.add(2, getName());
-                exec(commands.toArray(new String[commands.size()]));
+                try {
+                    exec(commands.toArray(new String[commands.size()]));
+                } catch (IOException ex) {
+                    // Try a fallback without -f
+                    commands.remove(2);
+                    commands.remove(1);
+                    exec(commands.toArray(new String[commands.size()]));
+                }
             }
         }
     }
@@ -190,17 +210,27 @@ public class ExecPty implements Pty {
             String config = doGetConfig();
             return new Size(doGetInt("columns", config), doGetInt("rows", config));
         } else {
-            return doGetOptimalSize(exec(OSUtils.STTY_COMMAND, OSUtils.STTY_F_OPTION, getName(), "size"));
+            try {
+                return doGetOptimalSize(exec(OSUtils.STTY_COMMAND, OSUtils.STTY_F_OPTION, getName(), "size"));
+            } catch (IOException ex) {
+                // Try a fallback without -f
+                return doGetOptimalSize(exec(OSUtils.STTY_COMMAND, "size"));
+            }
         }
 
     }
 
 
     protected String doGetConfig() throws IOException {
-        if(OSUtils.IS_HPUX || OSUtils.IS_SUNOS)
+        if (OSUtils.IS_HPUX || OSUtils.IS_SUNOS) {
             return exec(OSUtils.STTY_COMMAND, "-a");
-        else
-            return exec(OSUtils.STTY_COMMAND, OSUtils.STTY_F_OPTION, getName(), "-a");
+        } else {
+            try {
+                return exec(OSUtils.STTY_COMMAND, OSUtils.STTY_F_OPTION, getName(), "-a");
+            } catch (IOException ex) {
+                return exec(OSUtils.STTY_COMMAND, "-a");
+            }
+        }
     }
 
     private String doGetFailSafeConfig() throws IOException {
