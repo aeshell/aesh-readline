@@ -70,6 +70,17 @@ public class EmacsModeTest {
     }
 
     @Test
+    public void testWordMovementWithEndAndHome() throws Exception {
+        TestConnection term = new TestConnection();
+        term.read("oo  bar");
+        term.read(Key.HOME);
+        term.read("f");
+        term.read(Key.END);
+        term.read(".");
+        term.assertBuffer("foo  bar.");
+    }
+
+    @Test
     public void testSwitchingEditModes() throws Exception {
         TestConnection term = new TestConnection();
         term.read("foo  bar...  Foo-Bar.");

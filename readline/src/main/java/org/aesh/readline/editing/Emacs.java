@@ -74,8 +74,8 @@ public class Emacs implements EditMode {
     @Override
     public void remapKeysFromDevice(Device device) {
         //need to make sure we remap keys so we have the correct mapping
-        remap(Key.HOME, device.getStringCapabilityAsInts(Capability.key_home));
-        remap(Key.END, device.getStringCapabilityAsInts(Capability.key_end));
+        remap(Key.HOME_2, device.getStringCapabilityAsInts(Capability.key_home));
+        remap(Key.END_2, device.getStringCapabilityAsInts(Capability.key_end));
         remap(Key.UP, device.getStringCapabilityAsInts(Capability.key_up));
         remap(Key.DOWN, device.getStringCapabilityAsInts(Capability.key_down));
         remap(Key.LEFT, device.getStringCapabilityAsInts(Capability.key_left));
