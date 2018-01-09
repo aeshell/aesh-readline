@@ -70,38 +70,52 @@ public class Parser {
      * @return formatted string to be outputted
      */
     public static String formatDisplayList(List<String> displayList, int termHeight, int termWidth) {
-        if (displayList == null || displayList.size() < 1)
+        if (displayList == null || displayList.size() < 1) {
             return "";
+        }
         // make sure that termWidth is > 0
-        if (termWidth < 1)
+        if (termWidth < 1) {
             termWidth = 80; // setting it to default
-
+        }
         int maxLength = 0;
-        for (String completion : displayList)
-            if (completion.length() > maxLength)
+        for (String completion : displayList) {
+            if (completion.length() > termWidth) {
+                maxLength = termWidth;
+                break;
+            }
+            if (completion.length() > maxLength) {
                 maxLength = completion.length();
+            }
+        }
 
-        maxLength = maxLength + 2; // adding two spaces for better readability
+        if (maxLength + 2 <= termWidth) {
+            maxLength = maxLength + 2; // adding two spaces for better readability
+        }
         int numColumns = termWidth / maxLength;
         if (numColumns > displayList.size()) // we dont need more columns than items
+        {
             numColumns = displayList.size();
-        if (numColumns < 1)
+        }
+        if (numColumns < 1) {
             numColumns = 1;
+        }
         int numRows = displayList.size() / numColumns;
 
         // add a row if we cant display all the items
-        if (numRows * numColumns < displayList.size())
+        if (numRows * numColumns < displayList.size()) {
             numRows++;
+        }
 
         // create the completion listing
         StringBuilder completionOutput = new StringBuilder();
         for (int i = 0; i < numRows; i++) {
             for (int c = 0; c < numColumns; c++) {
                 int fetch = i + (c * numRows);
-                if (fetch < displayList.size())
+                if (fetch < displayList.size()) {
                     completionOutput.append(padRight(maxLength, displayList.get(i + (c * numRows))));
-                else
+                } else {
                     break;
+                }
             }
             completionOutput.append(Config.getLineSeparator());
         }
