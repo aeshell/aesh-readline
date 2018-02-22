@@ -87,14 +87,14 @@
       <dependency>
         <groupId>org.aesh</groupId>
         <artifactId>aesh-terminal-api</artifactId>
-        <version>1.4-SNAPSHOT</version>
+        <version>1.4</version>
         <type>jar</type>
       </dependency>
 
       <dependency>
         <groupId>org.aesh</groupId>
         <artifactId>aesh-terminal-api</artifactId>
-        <version>1.4-SNAPSHOT</version>
+        <version>1.4</version>
         <type>test-jar</type>
         <scope>test</scope>
       </dependency>
