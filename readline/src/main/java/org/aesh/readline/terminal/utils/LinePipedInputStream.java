@@ -64,7 +64,7 @@ public class LinePipedInputStream extends PipedInputStream {
             if (available > (len - 1)) {
                 available = len - 1;
             }
-            enter = findEnter(buffer, out, (out+available > len-1) ? len-1 : out+available);
+            enter = findEnter(buffer, out, out+available);
             if(enter > -1) {
                 if(enter+1 <= available)
                     available = enter+1;
