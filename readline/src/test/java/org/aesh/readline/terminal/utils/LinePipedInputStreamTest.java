@@ -48,31 +48,36 @@ public class LinePipedInputStreamTest {
         PipedOutputStream outputStream = new PipedOutputStream();
         LinePipedInputStream pipedInputStream = new LinePipedInputStream(outputStream);
 
+        int numberOfLines = 0;
         String filename = "src"+Config.getPathSeparator()+"test"+Config.getPathSeparator()+
                 "resources"+Config.getPathSeparator()+"input_stream.txt";
-        Files.lines(Paths.get(filename), StandardCharsets.UTF_8).forEach( line -> {
+        for(String line : Files.readAllLines(Paths.get(filename), StandardCharsets.UTF_8)) {
             try {
+                numberOfLines++;
                 outputStream.write((line+ Config.getLineSeparator()).getBytes());
             }
             catch (IOException e) {
                 e.printStackTrace();
             }
-        });
+        }
 
         outputStream.flush();
 
 
+        int numberOfPipedLines = 0;
         byte[] bBuf = new byte[1024];
-        Files.lines(Paths.get(filename), StandardCharsets.UTF_8).forEach( line -> {
-
+        for(String line : Files.readAllLines(Paths.get(filename), StandardCharsets.UTF_8)) {
             try {
                 int read = pipedInputStream.read(bBuf);
                 String in = new String(bBuf, 0, read);
                 assertEquals(line+Config.getLineSeparator(), in);
+                numberOfPipedLines++;
             }
             catch (IOException e) {
                 e.printStackTrace();
             }
-        });
+        }
+
+        assertEquals(numberOfLines, numberOfPipedLines);
     }
 }
