@@ -19,6 +19,7 @@
  */
 package org.aesh.readline.terminal.impl;
 
+import java.io.File;
 import org.aesh.terminal.Attributes;
 import org.aesh.utils.Config;
 import org.aesh.utils.ExecHelper;
@@ -48,6 +49,9 @@ public class ExecPty implements Pty {
 
     private final String name;
 
+    private final boolean validTTYFile;
+    private static final String NOT_A_TTY = "not a tty";
+
     public static Pty current() throws IOException {
         try {
             LOGGER.log(Level.FINE,"getting pty: "+OSUtils.TTY_COMMAND);
@@ -66,6 +70,13 @@ public class ExecPty implements Pty {
 
     protected ExecPty(String name) {
         this.name = name;
+        /*
+            There are some contexts (eg lxc container) in which tty returns 'not a tty' without
+            error. This file shouldn't exist on the file system but in case it exists
+            concider tty file invalid.
+         */
+        validTTYFile = new File(name).exists() && !NOT_A_TTY.equals(name);
+        LOGGER.log(Level.FINE, "tty file " + name + " valid? " + validTTYFile);
     }
 
     @Override
@@ -89,6 +100,9 @@ public class ExecPty implements Pty {
     @Override
     public InputStream getSlaveInput() throws IOException {
         try {
+            if (!validTTYFile) {
+                return System.in;
+            }
             return new FileInputStream(getName());
         } catch (FileNotFoundException fnfe) {
             // When the tty file is not accessible to the current user,
@@ -100,6 +114,9 @@ public class ExecPty implements Pty {
     @Override
     public OutputStream getSlaveOutput() throws IOException {
         try {
+            if (!validTTYFile) {
+                return System.out;
+            }
             return new FileOutputStream(getName());
         } catch (FileNotFoundException fnfe) {
             // When the tty file is not accessible to the current user,
