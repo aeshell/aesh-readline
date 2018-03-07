@@ -37,8 +37,8 @@ Examples
 -------------
 - We've added some small examples that can be used as a simple introduction and 
   to also show what Æsh-Readline can do. After you have built the source, go to: examples/target/ and run:
-java -cp aesh-readline-examples-(version-number).jar Example
-There are several example classes to choose from: Example, SimpleExample, ShellExample and Snake.
+java -cp aesh-readline-examples-(version-number).jar examples.Example
+There are several example classes to choose from: examples.Example, examples.SimpleExample, examples.ShellExample and examples.Snake.
 
 
 To get going:

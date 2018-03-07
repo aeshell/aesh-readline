@@ -17,19 +17,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import org.aesh.terminal.http.netty.NettyWebsocketTtyBootstrap;
+package examples;
+
+import org.aesh.terminal.telnet.netty.NettyTelnetTtyBootstrap;
 
 import java.util.concurrent.TimeUnit;
 
 /**
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
  */
-public class WebSocketShellExample {
+public class TelnetShellExample {
 
     public static synchronized void main(String[] args) throws Exception {
-        NettyWebsocketTtyBootstrap bootstrap = new NettyWebsocketTtyBootstrap().setHost("localhost").setPort(8080);
+        NettyTelnetTtyBootstrap bootstrap = new NettyTelnetTtyBootstrap().
+                setHost("localhost").
+                setPort(4000);
         bootstrap.start(new ShellExample()).get(10, TimeUnit.SECONDS);
-        System.out.println("Web server started on localhost:8080");
-        WebSocketShellExample.class.wait();
+        System.out.println("Telnet server started on localhost:4000");
+        TelnetShellExample.class.wait();
     }
 }

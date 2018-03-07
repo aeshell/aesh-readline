@@ -17,6 +17,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package examples;
+
 import org.aesh.readline.Prompt;
 import org.aesh.readline.Readline;
 import org.aesh.readline.completion.Completion;
@@ -91,7 +93,7 @@ public class ShellExample implements Consumer<Connection>{
                         new TerminalColor(Color.GREEN, Color.DEFAULT, Color.Intensity.BRIGHT)));
 
         //suspend reader asap since we're creating commands in a new thread
-        //this is not needed when running single threaded, eg as Example
+        //this is not needed when running single threaded, eg as examples.Example
        readline.readline(conn, prompt, line -> {
             // Ctrl-D
             if (line == null) {

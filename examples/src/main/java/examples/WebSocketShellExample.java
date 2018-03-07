@@ -17,32 +17,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import org.aesh.terminal.ssh.netty.NettySshTtyBootstrap;
-import org.apache.sshd.server.keyprovider.AbstractGeneratorHostKeyProvider;
-import org.apache.sshd.server.keyprovider.SimpleGeneratorHostKeyProvider;
+package examples;
 
-import java.io.File;
+import org.aesh.terminal.http.netty.NettyWebsocketTtyBootstrap;
+
 import java.util.concurrent.TimeUnit;
 
 /**
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
  */
-public class SSHShellExample {
+public class WebSocketShellExample {
 
     public static synchronized void main(String[] args) throws Exception {
-
-         AbstractGeneratorHostKeyProvider hostKeyProvider =
-            new SimpleGeneratorHostKeyProvider(     new File("hostkey.ser").toPath());
-         hostKeyProvider.setAlgorithm("RSA");
-        NettySshTtyBootstrap bootstrap = new NettySshTtyBootstrap().
-                setPort(5000).
-                setHost("localhost")
-                .setKeyPairProvider(hostKeyProvider)
-                //.setKeyPairProvider(new SimpleGeneratorHostKeyProvider(new File("/tmp/mysample").toPath()))
-
-                ;
+        NettyWebsocketTtyBootstrap bootstrap = new NettyWebsocketTtyBootstrap().setHost("localhost").setPort(8080);
         bootstrap.start(new ShellExample()).get(10, TimeUnit.SECONDS);
-        System.out.println("SSH started on localhost:5000");
-        SSHShellExample.class.wait();
+        System.out.println("Web server started on localhost:8080");
+        WebSocketShellExample.class.wait();
     }
 }

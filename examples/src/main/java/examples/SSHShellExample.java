@@ -17,21 +17,34 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import org.aesh.terminal.telnet.netty.NettyTelnetTtyBootstrap;
+package examples;
 
+import org.aesh.terminal.ssh.netty.NettySshTtyBootstrap;
+import org.apache.sshd.server.keyprovider.AbstractGeneratorHostKeyProvider;
+import org.apache.sshd.server.keyprovider.SimpleGeneratorHostKeyProvider;
+
+import java.io.File;
 import java.util.concurrent.TimeUnit;
 
 /**
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
  */
-public class TelnetShellExample {
+public class SSHShellExample {
 
     public static synchronized void main(String[] args) throws Exception {
-        NettyTelnetTtyBootstrap bootstrap = new NettyTelnetTtyBootstrap().
-                setHost("localhost").
-                setPort(4000);
+
+         AbstractGeneratorHostKeyProvider hostKeyProvider =
+            new SimpleGeneratorHostKeyProvider(     new File("hostkey.ser").toPath());
+         hostKeyProvider.setAlgorithm("RSA");
+        NettySshTtyBootstrap bootstrap = new NettySshTtyBootstrap().
+                setPort(5000).
+                setHost("localhost")
+                .setKeyPairProvider(hostKeyProvider)
+                //.setKeyPairProvider(new SimpleGeneratorHostKeyProvider(new File("/tmp/mysample").toPath()))
+
+                ;
         bootstrap.start(new ShellExample()).get(10, TimeUnit.SECONDS);
-        System.out.println("Telnet server started on localhost:4000");
-        TelnetShellExample.class.wait();
+        System.out.println("SSH started on localhost:5000");
+        SSHShellExample.class.wait();
     }
 }

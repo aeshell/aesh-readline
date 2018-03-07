@@ -17,6 +17,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package examples;
 
 import org.aesh.readline.tty.terminal.TerminalConnection;
 import org.aesh.terminal.Attributes;

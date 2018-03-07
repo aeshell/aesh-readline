@@ -171,7 +171,6 @@
                     <archive>
                         <manifest>
                             <addClasspath>true</addClasspath>
-                            <mainClass>Example</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
