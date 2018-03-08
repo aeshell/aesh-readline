@@ -20,7 +20,7 @@
 package org.aesh.readline.editing;
 
 import org.aesh.utils.Config;
-import org.aesh.util.LoggerUtil;
+import org.aesh.readline.util.LoggerUtil;
 
 import java.io.InputStream;
 import java.util.Scanner;

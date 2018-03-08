@@ -29,7 +29,7 @@ import org.aesh.terminal.Terminal;
 import org.aesh.readline.terminal.TerminalBuilder;
 import org.aesh.terminal.tty.Capability;
 import org.aesh.terminal.Connection;
-import org.aesh.util.LoggerUtil;
+import org.aesh.readline.util.LoggerUtil;
 
 import java.io.IOException;
 import java.io.InputStream;

@@ -22,7 +22,7 @@ package org.aesh.readline.terminal;
 import org.aesh.readline.action.KeyAction;
 import org.aesh.utils.InfoCmpHelper;
 import org.aesh.utils.Config;
-import org.aesh.util.Parser;
+import org.aesh.readline.util.Parser;
 
 import java.nio.IntBuffer;
 

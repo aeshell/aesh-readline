@@ -34,7 +34,7 @@ import org.aesh.readline.completion.Completion;
 import org.aesh.readline.editing.EditMode;
 import org.aesh.readline.editing.EditModeBuilder;
 import org.aesh.readline.terminal.Key;
-import org.aesh.util.Parser;
+import org.aesh.readline.util.Parser;
 
 import java.nio.charset.Charset;
 import java.util.EnumMap;

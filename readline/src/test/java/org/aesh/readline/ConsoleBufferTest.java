@@ -22,7 +22,7 @@ package org.aesh.readline;
 import org.aesh.terminal.Attributes;
 import org.aesh.terminal.Device;
 import org.aesh.utils.ANSI;
-import org.aesh.util.Parser;
+import org.aesh.readline.util.Parser;
 import org.aesh.readline.editing.EditModeBuilder;
 import org.aesh.readline.history.InMemoryHistory;
 import org.aesh.terminal.tty.Capability;

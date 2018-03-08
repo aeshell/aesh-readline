@@ -21,7 +21,7 @@ package org.aesh.readline;
 
 import org.aesh.readline.example.SimpleTestExample;
 import org.aesh.utils.Config;
-import org.aesh.util.LoggerUtil;
+import org.aesh.readline.util.LoggerUtil;
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.asset.StringAsset;
 import org.jboss.shrinkwrap.api.exporter.ZipExporter;

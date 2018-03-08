@@ -21,7 +21,7 @@ package org.aesh.readline.alias;
 
 import org.aesh.readline.completion.CompleteOperation;
 import org.aesh.readline.completion.Completion;
-import org.aesh.util.Parser;
+import org.aesh.readline.util.Parser;
 
 /**
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>

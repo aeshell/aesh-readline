@@ -5,7 +5,7 @@ import org.aesh.readline.editing.EditModeBuilder;
 import org.aesh.readline.editing.Variable;
 import org.aesh.terminal.Device;
 import org.aesh.terminal.tty.Capability;
-import org.aesh.util.Parser;
+import org.aesh.readline.util.Parser;
 import org.junit.Test;
 
 import java.util.ArrayList;

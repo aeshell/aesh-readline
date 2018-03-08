@@ -22,7 +22,7 @@ package org.aesh.readline.terminal.impl;
 import org.aesh.terminal.Attributes;
 import org.aesh.utils.ExecHelper;
 import org.aesh.utils.OSUtils;
-import org.aesh.util.LoggerUtil;
+import org.aesh.readline.util.LoggerUtil;
 
 import java.io.FileDescriptor;
 import java.io.FileInputStream;

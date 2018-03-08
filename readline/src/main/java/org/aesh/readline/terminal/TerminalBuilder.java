@@ -27,7 +27,7 @@ import org.aesh.readline.terminal.impl.Pty;
 import org.aesh.readline.terminal.impl.WinExternalTerminal;
 import org.aesh.readline.terminal.impl.WinSysTerminal;
 import org.aesh.utils.OSUtils;
-import org.aesh.util.LoggerUtil;
+import org.aesh.readline.util.LoggerUtil;
 
 import java.io.IOException;
 import java.io.InputStream;

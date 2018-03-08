@@ -20,7 +20,7 @@
 package org.aesh.readline.terminal.formatting;
 
 import org.aesh.utils.ANSI;
-import org.aesh.util.Parser;
+import org.aesh.readline.util.Parser;
 
 import java.io.PrintStream;
 

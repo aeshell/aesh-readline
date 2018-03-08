@@ -29,7 +29,7 @@ import org.aesh.readline.terminal.formatting.TerminalCharacter;
 import org.aesh.readline.terminal.formatting.TerminalColor;
 import org.aesh.terminal.Connection;
 import org.aesh.utils.ANSI;
-import org.aesh.util.Parser;
+import org.aesh.readline.util.Parser;
 
 /**
  * A command line. This line abstract commands spread-out on multiple lines.

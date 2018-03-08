@@ -22,7 +22,7 @@ package org.aesh.readline.terminal;
 import org.aesh.utils.InfoCmp;
 import org.aesh.terminal.tty.Capability;
 import org.aesh.utils.Config;
-import org.aesh.util.LoggerUtil;
+import org.aesh.readline.util.LoggerUtil;
 
 import java.util.HashMap;
 import java.util.HashSet;

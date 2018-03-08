@@ -18,7 +18,7 @@
  * limitations under the License.
  */
 
-package org.aesh.util;
+package org.aesh.readline.util;
 
 /**
  * <code>FileAccessPermission</code> defines file access permission like readable, writable.

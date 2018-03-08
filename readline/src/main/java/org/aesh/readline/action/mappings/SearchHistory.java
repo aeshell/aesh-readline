@@ -21,14 +21,14 @@ package org.aesh.readline.action.mappings;
 
 import org.aesh.readline.action.KeyAction;
 import org.aesh.readline.terminal.Key;
-import org.aesh.util.IntArrayBuilder;
-import org.aesh.util.Parser;
+import org.aesh.readline.util.IntArrayBuilder;
+import org.aesh.readline.util.Parser;
 import org.aesh.readline.InputProcessor;
 import org.aesh.readline.action.Action;
 import org.aesh.readline.action.SearchAction;
 import org.aesh.readline.history.SearchDirection;
 import org.aesh.utils.ANSI;
-import org.aesh.util.LoggerUtil;
+import org.aesh.readline.util.LoggerUtil;
 
 import java.util.logging.Logger;
 

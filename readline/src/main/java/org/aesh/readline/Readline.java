@@ -35,9 +35,9 @@ import org.aesh.readline.history.InMemoryHistory;
 import org.aesh.readline.terminal.Key;
 import org.aesh.terminal.Attributes;
 import org.aesh.utils.Config;
-import org.aesh.util.Parser;
+import org.aesh.readline.util.Parser;
 import org.aesh.terminal.Connection;
-import org.aesh.util.LoggerUtil;
+import org.aesh.readline.util.LoggerUtil;
 
 import java.util.List;
 import java.util.Optional;

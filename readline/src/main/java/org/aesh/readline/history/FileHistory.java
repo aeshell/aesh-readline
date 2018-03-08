@@ -20,9 +20,9 @@
 package org.aesh.readline.history;
 
 import org.aesh.utils.Config;
-import org.aesh.util.FileAccessPermission;
-import org.aesh.util.Parser;
-import org.aesh.util.LoggerUtil;
+import org.aesh.readline.util.FileAccessPermission;
+import org.aesh.readline.util.Parser;
+import org.aesh.readline.util.LoggerUtil;
 
 import java.io.BufferedReader;
 import java.io.File;

@@ -23,7 +23,7 @@ import org.aesh.readline.terminal.DeviceBuilder;
 import org.aesh.terminal.Attributes;
 import org.aesh.terminal.Device;
 import org.aesh.terminal.Terminal;
-import org.aesh.util.LoggerUtil;
+import org.aesh.readline.util.LoggerUtil;
 
 import java.io.IOException;
 import java.util.HashMap;

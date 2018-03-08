@@ -24,7 +24,7 @@ import org.aesh.terminal.Attributes;
 import org.aesh.utils.Config;
 import org.aesh.utils.ExecHelper;
 import org.aesh.utils.OSUtils;
-import org.aesh.util.LoggerUtil;
+import org.aesh.readline.util.LoggerUtil;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;

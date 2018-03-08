@@ -1,4 +1,4 @@
-package org.aesh.util;
+package org.aesh.readline.util;
 
 import java.util.Arrays;
 

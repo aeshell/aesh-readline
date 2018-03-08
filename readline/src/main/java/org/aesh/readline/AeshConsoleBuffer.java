@@ -12,7 +12,7 @@ import org.aesh.readline.completion.CompletionHandler;
 import org.aesh.readline.editing.EditMode;
 import org.aesh.readline.history.History;
 import org.aesh.terminal.Connection;
-import org.aesh.util.LoggerUtil;
+import org.aesh.readline.util.LoggerUtil;
 
 import java.util.logging.Logger;
 import org.aesh.terminal.tty.Size;

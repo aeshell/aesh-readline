@@ -19,7 +19,7 @@
  */
 package org.aesh.readline.terminal.utils;
 
-import org.aesh.util.LoggerUtil;
+import org.aesh.readline.util.LoggerUtil;
 
 import java.util.ArrayList;
 import java.util.List;

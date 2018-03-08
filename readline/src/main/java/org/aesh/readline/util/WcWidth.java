@@ -71,7 +71,7 @@
  *
  * Latest version: http://www.cl.cam.ac.uk/~mgk25/ucs/wcwidth.c
  */
-package org.aesh.util;
+package org.aesh.readline.util;
 
 public class WcWidth {
 

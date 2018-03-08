@@ -21,7 +21,7 @@ package org.aesh.readline.action.mappings;
 
 import org.aesh.readline.InputProcessor;
 import org.aesh.readline.editing.EditMode;
-import org.aesh.util.Parser;
+import org.aesh.readline.util.Parser;
 
 import java.util.Arrays;
 

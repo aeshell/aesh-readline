@@ -19,7 +19,7 @@
  */
 package org.aesh.readline.history;
 
-import org.aesh.util.Parser;
+import org.aesh.readline.util.Parser;
 
 import java.util.ArrayList;
 import java.util.Arrays;

@@ -20,11 +20,11 @@
 package org.aesh.readline;
 
 import org.aesh.utils.Config;
-import org.aesh.util.IntArrayBuilder;
+import org.aesh.readline.util.IntArrayBuilder;
 import org.aesh.utils.ANSI;
-import org.aesh.util.LoggerUtil;
-import org.aesh.util.Parser;
-import org.aesh.util.WcWidth;
+import org.aesh.readline.util.LoggerUtil;
+import org.aesh.readline.util.Parser;
+import org.aesh.readline.util.WcWidth;
 
 import java.util.Arrays;
 import java.util.function.Consumer;
