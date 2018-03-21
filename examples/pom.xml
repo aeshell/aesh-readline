@@ -77,19 +77,19 @@
         <dependency>
             <groupId>org.aesh</groupId>
             <artifactId>aesh-readline</artifactId>
-            <version>1.4</version>
+            <version>${project.version}</version>
         </dependency>
       
         <dependency>
             <groupId>org.aesh</groupId>
             <artifactId>aesh-terminal-api</artifactId>
-            <version>1.4</version>
+            <version>${project.version}</version>
         </dependency>
 
         <dependency>
             <groupId>org.aesh</groupId>
             <artifactId>aesh-terminal-ssh</artifactId>
-            <version>1.4</version>
+            <version>${project.version}</version>
         </dependency>
 
         <dependency>
@@ -129,12 +129,12 @@
         <dependency>
             <groupId>org.aesh</groupId>
             <artifactId>aesh-terminal-telnet</artifactId>
-            <version>1.4</version>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>org.aesh</groupId>
             <artifactId>aesh-terminal-http</artifactId>
-            <version>1.4</version>
+            <version>${project.version}</version>
         </dependency>
     </dependencies>
 

@@ -111,13 +111,13 @@
       <dependency>
         <groupId>org.aesh</groupId>
         <artifactId>aesh-terminal-api</artifactId>
-        <version>1.4</version>
+        <version>${project.version}</version>
       </dependency>
 
       <dependency>
         <groupId>org.aesh</groupId>
         <artifactId>aesh-terminal-api</artifactId>
-        <version>1.4</version>
+        <version>${project.version}</version>
         <type>test-jar</type>
         <scope>test</scope>
       </dependency>
