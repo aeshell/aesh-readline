@@ -29,6 +29,7 @@ import org.aesh.terminal.tty.TtyTestBase;
 import org.apache.sshd.server.SshServer;
 import org.apache.sshd.server.keyprovider.SimpleGeneratorHostKeyProvider;
 import org.junit.After;
+import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
@@ -169,6 +170,23 @@ public abstract class SshTtyTestBase extends TtyTestBase {
         } catch (Exception e) {
             throw failure(e);
         }
+    }
+
+    @Test
+    public void testExitCode() throws Exception {
+        server(conn -> {
+            conn.setStdinHandler(bytes -> {
+                conn.close(25);
+            });
+        });
+        assertConnect();
+        assertWrite("whatever");
+        long timeout = System.currentTimeMillis() + 5000;
+        while (!channel.isClosed()) {
+            assertTrue(System.currentTimeMillis() < timeout);
+            Thread.sleep(10);
+        }
+        assertEquals(25, channel.getExitStatus());
     }
 
     @After

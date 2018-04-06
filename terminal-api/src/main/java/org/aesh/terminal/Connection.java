@@ -102,6 +102,10 @@ public interface Connection {
      */
     void close();
 
+    default void close(int exit) {
+        close();
+    }
+
     /**
      * Start reading from the input stream using the current thread.
      * The current thread will be blocked while reading/waiting to read from the stream
