@@ -21,6 +21,8 @@ package org.aesh.terminal;
 
 import org.aesh.terminal.tty.Signal;
 
+import java.util.ArrayDeque;
+import java.util.Queue;
 import java.util.function.Consumer;
 
 /**
@@ -34,6 +36,8 @@ public class EventDecoder implements Consumer<int[]> {
 
     private Consumer<Signal> signalHandler;
     private Consumer<int[]> inputHandler;
+
+    private Queue<int[]> inputQueue = new ArrayDeque<>(10);
 
     public EventDecoder() {
         intr = 3;
@@ -67,6 +71,12 @@ public class EventDecoder implements Consumer<int[]> {
 
     public void setInputHandler(Consumer<int[]> inputHandler) {
         this.inputHandler = inputHandler;
+        checkQueue();
+     }
+
+     private void checkQueue() {
+         while(inputHandler != null && !inputQueue.isEmpty())
+             inputHandler.accept(inputQueue.poll());
      }
 
     @Override
@@ -103,7 +113,11 @@ public class EventDecoder implements Consumer<int[]> {
                 index++;
             }
         }
-        if (input.length > 0 && inputHandler != null)
-            inputHandler.accept(input);
+        if (input.length > 0) {
+            if(inputHandler != null)
+                inputHandler.accept(input);
+            else
+                inputQueue.add(input);
+        }
     }
 }

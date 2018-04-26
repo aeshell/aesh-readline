@@ -25,6 +25,7 @@ import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Consumer;
 
 import static org.junit.Assert.assertEquals;
 
@@ -33,9 +34,9 @@ import static org.junit.Assert.assertEquals;
  */
 public class DecoderTest {
 
-    private void assertDecode(List<String> chars, int... bytes) {
+    private void assertDecode(int initialSize, List<String> chars, int... bytes) {
         final List<String> abc = new ArrayList<>();
-        Decoder decoder = new Decoder(Charset.forName("UTF-8"), event -> {
+        Decoder decoder = new Decoder(initialSize, Charset.forName("UTF-8"), event -> {
             StringBuilder sb = new StringBuilder();
             for (int cp : event) {
                 sb.appendCodePoint(cp);
@@ -51,10 +52,44 @@ public class DecoderTest {
     }
 
     @Test
-    public void testDecoder() throws Exception {
-        assertDecode(Arrays.asList("ABCD","E"), 65, 66, 67, 68, 69);
-        assertDecode(Arrays.asList("\rfoo"), 13, 102, 111, 111);
-        assertDecode(Arrays.asList("\u001B["), 27, 91);
+    public void testDecoder() {
+        assertDecode(4, Arrays.asList("ABCD","E"), 65, 66, 67, 68, 69);
+        assertDecode(4, Arrays.asList("\rfoo"), 13, 102, 111, 111);
+        assertDecode(4, Arrays.asList("\u001B["), 27, 91);
     }
 
+    @Test
+  public void testDecoderOverflow() {
+    assertDecode(2, Arrays.asList("AB", "CD", "E"), 65, 66, 67, 68, 69);
+    assertDecode(3, Arrays.asList("ABC", "DE"), 65, 66, 67, 68, 69);
+    assertDecode(4, Arrays.asList("ABCD", "E"), 65, 66, 67, 68, 69);
+    assertDecode(5, Arrays.asList("ABCDE"), 65, 66, 67, 68, 69);
+    assertDecode(6, Arrays.asList("ABCDE"), 65, 66, 67, 68, 69);
+  }
+
+  @Test
+  public void testDecoderUnderflow() {
+    final ArrayList<Integer> codePoints = new ArrayList<>();
+    Decoder decoder = new Decoder(10, Charset.forName("UTF-8"), new Consumer<int[]>() {
+      @Override
+      public void accept(int[] event) {
+        codePoints.addAll(list(event));
+      }
+    });
+    decoder.write(new byte[]{(byte) 0xE2});
+    assertEquals(0, codePoints.size());
+    decoder.write(new byte[]{(byte) 0x82});
+    assertEquals(0, codePoints.size());
+    decoder.write(new byte[]{(byte) 0xAC});
+    assertEquals(1, codePoints.size());
+    assertEquals('\u20AC', (int)codePoints.get(0));
+  }
+
+  public static List<Integer> list(int... list) {
+    ArrayList<Integer> result = new ArrayList<>(list.length);
+    for (int i : list) {
+      result.add(i);
+    }
+    return result;
+  }
 }
