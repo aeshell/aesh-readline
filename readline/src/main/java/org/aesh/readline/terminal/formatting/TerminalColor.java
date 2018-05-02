@@ -41,8 +41,10 @@ public class TerminalColor {
     }
 
     public TerminalColor(Color text, Color background) {
-        this.textColor = text;
-        this.backgroundColor = background;
+        if(text != null)
+            this.textColor = text;
+        if(background != null)
+            this.backgroundColor = background;
     }
 
     public TerminalColor(Color textColor, Color background, Color.Intensity intensity) {
@@ -93,6 +95,10 @@ public class TerminalColor {
         this.textColor = text;
         this.intBackgroundColor = background;
         this.intensity = intensity;
+    }
+
+    public boolean isFormatted() {
+        return !(textColor == Color.DEFAULT && backgroundColor == Color.DEFAULT && intensity == Color.Intensity.NORMAL);
     }
 
     @Override

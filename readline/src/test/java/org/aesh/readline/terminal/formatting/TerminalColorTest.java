@@ -22,6 +22,8 @@ package org.aesh.readline.terminal.formatting;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 /**
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
@@ -33,5 +35,10 @@ public class TerminalColorTest {
         TerminalColor color = new TerminalColor( Color.DEFAULT, Color.BLACK);
 
         assertEquals("3"+Color.DEFAULT.getValue()+";4"+Color.BLACK.getValue(), color.toString());
+
+        assertTrue(color.isFormatted());
+
+        color = new TerminalColor();
+        assertFalse(color.isFormatted());
     }
 }

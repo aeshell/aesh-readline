@@ -39,8 +39,14 @@ public class TerminalString implements Comparable<TerminalString> {
 
     public TerminalString(String chars, TerminalColor color, TerminalTextStyle style) {
         this.characters = chars;
-        this.color = color;
-        this.style = style;
+        if(color != null)
+            this.color = color;
+        else
+            this.color = new TerminalColor();
+        if(style != null)
+            this.style = style;
+        else
+            this.style = new TerminalTextStyle();
     }
 
     public TerminalString(String chars, TerminalColor color) {
@@ -96,6 +102,10 @@ public class TerminalString implements Comparable<TerminalString> {
             return new TerminalString(chars, true);
         else
             return new TerminalString(chars, color, style);
+    }
+
+    public boolean isFormatted() {
+        return  !ignoreRendering && (color.isFormatted() || style.isFormatted());
     }
 
     /**

@@ -142,6 +142,11 @@ public class TerminalTextStyle {
         this.conceal = conceal;
     }
 
+    public boolean isFormatted() {
+        return !(!bold && !blink && !faint && !italic && !underline && !invert && !crossedOut);
+    }
+
+    @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();
         if(bold) {
