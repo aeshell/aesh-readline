@@ -19,7 +19,6 @@
  */
 package org.aesh.readline.action.mappings;
 
-import org.aesh.utils.ANSI;
 import org.aesh.readline.InputProcessor;
 import org.aesh.readline.action.Action;
 
@@ -34,11 +33,6 @@ public class Clear implements Action {
 
     @Override
     public void accept(InputProcessor inputProcessor) {
-        inputProcessor.buffer().writeOut(ANSI.CLEAR_SCREEN);
-        //move cursor to correct position
-        inputProcessor.buffer().writeChars(ANSI.printAnsi("1;1H"));
-        //then write prompt
-        inputProcessor.buffer().buffer().reset();
-        inputProcessor.buffer().undoManager().clear();
+        inputProcessor.buffer().clear(true);
     }
 }

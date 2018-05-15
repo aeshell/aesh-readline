@@ -210,12 +210,11 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
         // connection.stdoutHandler().accept(Buffer.printAnsi("1;1H"));
         connection.stdoutHandler().accept(new int[] {27, '[', '1', ';', '1', 'H'});
         //then write prompt
-        if(includeBuffer) {
-            buffer.print(connection.stdoutHandler(), size().getWidth());
-            //connection.write(buffer.getLine());
-        }
+        if(!includeBuffer)
+            buffer().reset();
 
-
+        //redraw
+        drawLineForceDisplay();
     }
 
     private boolean isViMode() {
