@@ -206,8 +206,12 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
             connection.stdoutHandler().accept(Config.CR);
         //first clear console
         connection.stdoutHandler().accept(ANSI.CLEAR_SCREEN);
+        int cursorPosition = -1;
+        if(buffer.cursor() < buffer.length()) {
+            cursorPosition = buffer.cursor();
+            buffer.move(connection.stdoutHandler(), buffer.length() - cursorPosition, size().getWidth());
+        }
         //move cursor to correct position
-        // connection.stdoutHandler().accept(Buffer.printAnsi("1;1H"));
         connection.stdoutHandler().accept(new int[] {27, '[', '1', ';', '1', 'H'});
         //then write prompt
         if(!includeBuffer)
@@ -215,6 +219,9 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
 
         //redraw
         drawLineForceDisplay();
+
+        if(cursorPosition > -1)
+            buffer.move(connection.stdoutHandler(), cursorPosition-buffer.length(), size().getWidth());
     }
 
     private boolean isViMode() {
