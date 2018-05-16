@@ -10,6 +10,7 @@ import org.aesh.readline.InputProcessor;
 import org.aesh.readline.ReadlineFlag;
 import org.aesh.readline.action.Action;
 import org.aesh.readline.terminal.Key;
+import org.aesh.utils.Config;
 
 /**
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
@@ -44,6 +45,7 @@ public class EndOfFile implements Action {
                 EOFCounter++;
             else {
                 //we got a eof, close the connection and call finish
+                inputProcessor.connection().write(Config.getLineSeparator());
                 inputProcessor.connection().close();
             }
         }
