@@ -238,6 +238,8 @@ public class Buffer {
             line[cursor++] = data;
             size++;
             delta++;
+            if(size == line.length)
+                line = Arrays.copyOf(line, line.length + line.length/2);
 
             deltaChangedAtEndOfBuffer = (size == cursor);
         }
@@ -258,6 +260,8 @@ public class Buffer {
     }
 
     private void doActualInsert(int[] data) {
+        if(data.length > (line.length-size))
+            line = Arrays.copyOf(line, (line.length-size)+ data.length +1);
         if(cursor < size)
             System.arraycopy(line, cursor, line, cursor + data.length, size - cursor);
         for (int aData : data)
