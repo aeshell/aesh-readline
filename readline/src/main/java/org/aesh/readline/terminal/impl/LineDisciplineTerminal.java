@@ -143,7 +143,28 @@ public class LineDisciplineTerminal extends AbstractTerminal {
      * @throws IOException
      */
     public void processInputByte(int c) throws IOException {
-        if (attributes.getLocalFlag(Attributes.LocalFlag.ISIG)) {
+        doProcessInputByte(c);
+        slaveInputPipe.flush();
+    }
+
+    public void processInputBytes(byte[] input) throws IOException {
+        processInputBytes(input, input.length);
+    }
+
+    public void processInputBytes(byte[] input, int length) throws IOException {
+        for(int i=0; i < length; i++)
+            doProcessInputByte(input[i]);
+        slaveInputPipe.flush();
+    }
+
+    public void processInputBytes(int[] input, int length) throws IOException {
+        for(int i=0; i < length; i++)
+            doProcessInputByte(input[i]);
+        slaveInputPipe.flush();
+    }
+
+    private void doProcessInputByte(int c) throws IOException {
+               if (attributes.getLocalFlag(Attributes.LocalFlag.ISIG)) {
             if (c == attributes.getControlChar(Attributes.ControlChar.VINTR)) {
                 raise(Signal.INT);
                 return;
@@ -172,7 +193,6 @@ public class LineDisciplineTerminal extends AbstractTerminal {
             masterOutput.flush();
         }
         slaveInputPipe.write(c);
-        slaveInputPipe.flush();
     }
 
     protected void closeSlaveInputPipe() {

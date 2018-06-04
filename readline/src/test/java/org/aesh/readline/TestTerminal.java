@@ -61,7 +61,7 @@ public class TestTerminal {
     public void write(String input) {
         input.codePoints().forEach(value -> {
             try {
-                terminal.processInputByte(value);
+                terminal.processInputBytes(input.getBytes());
             }
             catch (IOException e) {
                 e.printStackTrace();

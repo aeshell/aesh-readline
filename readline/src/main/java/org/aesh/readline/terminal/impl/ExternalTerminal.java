@@ -59,8 +59,9 @@ public class ExternalTerminal extends LineDisciplineTerminal {
 
     public void pump() {
         try {
+            byte[] bBuf = new byte[1024];
             while (true) {
-                int c = masterInput.read();
+                int c = masterInput.read(bBuf);
                 if (c < 0 || closed.get()) {
                     //make to close the slaveInputPipe()
                     //this will prevent the
@@ -68,7 +69,7 @@ public class ExternalTerminal extends LineDisciplineTerminal {
                     closeSlaveInputPipe();
                     break;
                 }
-                processInputByte((char) c);
+                processInputBytes(bBuf, c);
             }
         } catch (IOException e) {
             try {
