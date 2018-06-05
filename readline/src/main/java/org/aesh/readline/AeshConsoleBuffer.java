@@ -120,6 +120,8 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
     @Override
     public void drawLineForceDisplay() {
         buffer.setIsPromptDisplayed(false);
+        if(buffer.cursor() < buffer.length())
+            buffer.forceSetDeltaChangedAtEndOfBuffer(false);
         buffer.print(connection.stdoutHandler(), size().getWidth());
     }
 

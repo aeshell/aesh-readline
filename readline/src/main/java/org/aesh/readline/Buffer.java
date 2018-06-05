@@ -131,6 +131,10 @@ public class Buffer {
         this.isPromptDisplayed = isPromptDisplayed;
     }
 
+    public void forceSetDeltaChangedAtEndOfBuffer(boolean delta) {
+        deltaChangedAtEndOfBuffer = delta;
+    }
+
     /**
      * Need to disable prompt in calculations involving search.
      *
@@ -561,8 +565,12 @@ public class Buffer {
         }
         else {
             if (deltaChangedAtEndOfBuffer) {
-                if (delta == 1 || delta == 0)
-                    builder.append(new int[]{line[cursor - 1]});
+                if (delta == 1 || delta == 0) {
+                    if(cursor > 0)
+                        builder.append(new int[]{line[cursor - 1]});
+                    else
+                        builder.append(new int[]{line[0]});
+                }
                 else
                     builder.append(Arrays.copyOfRange(line, cursor - delta, cursor));
             } else {

@@ -73,6 +73,29 @@ public class CompletionReadlineTest {
         term.read(Key.CTRL_I);
         term.read(Config.getLineSeparator());
         term.assertLine("less:");
-
     }
+
+    @Test
+    public void testCompletionEmptyLine() {
+        List<Completion> completions = new ArrayList<>();
+        completions.add(co -> {
+            if(co.getBuffer().trim().equals("")) {
+                co.addCompletionCandidate("bar");
+                co.addCompletionCandidate("foo");
+            }
+        });
+
+        TestConnection term = new TestConnection(completions);
+
+        term.read("  ".getBytes());
+        term.read(Key.LEFT);
+        term.read(Key.LEFT);
+        term.read(Key.CTRL_I);
+        term.assertOutputBuffer(":   \nbar  foo  \n:");
+        term.clearOutputBuffer();
+        term.read("a");
+        term.read(Config.getLineSeparator());
+        term.assertLine("a  ");
+    }
+
 }

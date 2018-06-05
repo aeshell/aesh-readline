@@ -302,7 +302,7 @@ public class TestConnection implements Connection {
     }
 
     public void assertOutputBuffer(String expected) {
-        assertEquals(expected, bufferBuilder.toString());
+        assertEquals(expected, bufferBuilder.toString().trim());
     }
 
     public void assertBuffer(String expected) {
