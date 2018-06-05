@@ -98,4 +98,52 @@ public class CompletionReadlineTest {
         term.assertLine("a  ");
     }
 
+    @Test
+    public void testCompletionMidLine() {
+        List<Completion> completions = new ArrayList<>();
+        completions.add(co -> {
+            if(co.getBuffer().trim().startsWith("1 ")) {
+                co.addCompletionCandidate("1 foo");
+            }
+        });
+
+        TestConnection term = new TestConnection(completions);
+
+        term.read("1 bah".getBytes());
+        term.read(Key.LEFT);
+        term.read(Key.LEFT);
+        term.read(Key.LEFT);
+        term.read(Key.CTRL_I);
+        term.assertBuffer("1 foo bah");
+        term.clearOutputBuffer();
+        term.read("A");
+        term.read(Config.getLineSeparator());
+        term.assertLine("1 foo Abah");
+    }
+
+
+    @Test
+    public void testCompletionsMidLine() {
+        List<Completion> completions = new ArrayList<>();
+        completions.add(co -> {
+            if(co.getBuffer().trim().startsWith("1 ")) {
+                co.addCompletionCandidate("bar");
+                co.addCompletionCandidate("foo");
+            }
+        });
+
+        TestConnection term = new TestConnection(completions);
+
+        term.read("1 bah".getBytes());
+        term.read(Key.LEFT);
+        term.read(Key.LEFT);
+        term.read(Key.LEFT);
+        term.read(Key.CTRL_I);
+        term.assertOutputBuffer(": 1 bah\nbar  foo  \n: 1 bah");
+        term.clearOutputBuffer();
+        term.read("A");
+        term.read(Config.getLineSeparator());
+        term.assertLine("1 Abah");
+    }
+
 }
