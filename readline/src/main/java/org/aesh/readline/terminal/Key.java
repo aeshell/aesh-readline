@@ -199,6 +199,7 @@ public enum Key implements KeyAction {
     HOME_2(InfoCmpHelper.getCurrentTranslatedCapabilityAsInts("home", new int[]{27,91,72})),
     END(InfoCmpHelper.getCurrentTranslatedCapabilityAsInts("kend", new int[]{27,79,70})),
     END_2(InfoCmpHelper.getCurrentTranslatedCapabilityAsInts("end", new int[]{27,91,70})),
+    END_3(InfoCmpHelper.getCurrentTranslatedCapabilityAsInts("end", new int[]{27,91,52,126})),
 
     META_CTRL_J( new int[]{ESC.getFirstValue(),10}),
     META_CTRL_D(new int[]{ESC.getFirstValue(),4}),
