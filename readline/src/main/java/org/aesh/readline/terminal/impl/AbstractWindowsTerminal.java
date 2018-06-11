@@ -41,9 +41,27 @@ import java.util.Map;
 import java.util.logging.Level;
 import org.aesh.terminal.tty.Signal;
 import org.aesh.terminal.tty.Size;
+import static org.fusesource.jansi.internal.Kernel32.GetStdHandle;
+import static org.fusesource.jansi.internal.Kernel32.STD_OUTPUT_HANDLE;
+import static org.fusesource.jansi.internal.Kernel32.WriteConsoleW;
+import org.fusesource.jansi.internal.WindowsSupport;
 
 abstract class AbstractWindowsTerminal extends AbstractTerminal {
 
+    private static class ConsoleOutput extends OutputStream {
+
+        private static final long console = GetStdHandle(STD_OUTPUT_HANDLE);
+        private final int[] writtenChars = new int[1];
+
+        @Override
+        public void write(int b) throws IOException {
+            char[] chars = new char[]{(char) b};
+            if (WriteConsoleW(console, chars, 1, writtenChars, 0) == 0) {
+                throw new IOException("Failed to write to console: " + WindowsSupport.getLastErrorMessage());
+            }
+        }
+
+    }
     private static final int PIPE_SIZE = 1024;
 
     protected static final int ENABLE_PROCESSED_INPUT = 0x0001;
@@ -65,17 +83,21 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
 
     private volatile boolean closing;
 
+    public AbstractWindowsTerminal(String name, boolean nativeSignals, SignalHandler signalHandler) throws IOException {
+        this(null, name, nativeSignals, signalHandler);
+    }
+
     public AbstractWindowsTerminal(OutputStream output, String name, boolean nativeSignals, SignalHandler signalHandler) throws IOException {
         super(name, "windows", signalHandler);
         PipedInputStream input = new PipedInputStream(PIPE_SIZE);
         this.slaveInputPipe = new PipedOutputStream(input);
         this.input = new FilterInputStream(input) {};
-        this.output = output;
+        this.output = output == null ? new ConsoleOutput() : output;
         String encoding = getConsoleEncoding();
         if (encoding == null) {
             encoding = Charset.defaultCharset().name();
         }
-        this.writer = new PrintWriter(new OutputStreamWriter(output, encoding));
+        this.writer = new PrintWriter(new OutputStreamWriter(this.output, encoding));
         // Attributes
         attributes.setLocalFlag(Attributes.LocalFlag.ISIG, true);
         attributes.setControlChar(Attributes.ControlChar.VINTR, ctrl('C'));

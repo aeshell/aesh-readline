@@ -28,19 +28,22 @@ import org.aesh.terminal.tty.Capability;
 import org.aesh.terminal.tty.Size;
 import org.fusesource.jansi.WindowsAnsiOutputStream;
 import org.fusesource.jansi.internal.Kernel32;
+import static org.fusesource.jansi.internal.Kernel32.GetStdHandle;
 import org.fusesource.jansi.internal.Kernel32.INPUT_RECORD;
 import org.fusesource.jansi.internal.Kernel32.KEY_EVENT_RECORD;
+import static org.fusesource.jansi.internal.Kernel32.STD_OUTPUT_HANDLE;
 import org.fusesource.jansi.internal.WindowsSupport;
 
 public class WinSysTerminal extends AbstractWindowsTerminal {
+
+    private static final int VIRTUAL_TERMINAL_PROCESSING = 0x0004;
 
     public WinSysTerminal(String name, boolean nativeSignals) throws IOException {
         this(name, nativeSignals, SignalHandlers.SIG_DFL);
     }
 
     public WinSysTerminal(String name, boolean nativeSignals, SignalHandler signalHandler) throws IOException {
-        super(new WindowsAnsiOutputStream(new FileOutputStream(FileDescriptor.out)),
-              name, nativeSignals, signalHandler);
+        super(setVTMode() ? null : new WindowsAnsiOutputStream(new FileOutputStream(FileDescriptor.out)), name, nativeSignals, signalHandler);
     }
 
     protected int getConsoleOutputCP() {
@@ -123,4 +126,23 @@ public class WinSysTerminal extends AbstractWindowsTerminal {
         return sb.toString().getBytes();
     }
 
+    // This allows to take benefit from Windows 10+ new features.
+    private static boolean setVTMode() {
+        long console = GetStdHandle(STD_OUTPUT_HANDLE);
+        int[] mode = new int[1];
+        if (Kernel32.GetConsoleMode(console, mode) == 0) {
+            // No need to go further, not supported.
+            return false;
+        }
+        if (Kernel32.SetConsoleMode(console, mode[0] | VIRTUAL_TERMINAL_PROCESSING) == 0) {
+            // No need to go further, not supported.
+            return false;
+        }
+
+        return true;
+    }
+
+    public static boolean isVTSupported() {
+        return setVTMode();
+    }
 }
