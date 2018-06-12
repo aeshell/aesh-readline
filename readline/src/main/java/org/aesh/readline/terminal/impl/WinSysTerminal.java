@@ -43,7 +43,7 @@ public class WinSysTerminal extends AbstractWindowsTerminal {
     }
 
     public WinSysTerminal(String name, boolean nativeSignals, SignalHandler signalHandler) throws IOException {
-        super(setVTMode() ? null : new WindowsAnsiOutputStream(new FileOutputStream(FileDescriptor.out)), name, nativeSignals, signalHandler);
+        super(setVTMode(), new WindowsAnsiOutputStream(new FileOutputStream(FileDescriptor.out)), name, nativeSignals, signalHandler);
     }
 
     protected int getConsoleOutputCP() {

@@ -59,7 +59,7 @@ public class TerminalConnection implements Connection {
 
     private Consumer<Size> sizeHandler;
     private Decoder decoder;
-    private Encoder stdOut;
+    private Consumer<int[]> stdOut;
     private Attributes attributes;
     private EventDecoder eventDecoder;
     private volatile boolean reading = false;
@@ -140,8 +140,12 @@ public class TerminalConnection implements Connection {
 
         eventDecoder = new EventDecoder(attributes);
         decoder = new Decoder(512, inputEncoding(), eventDecoder);
-        stdOut = new Encoder(outputEncoding(), this::write);
 
+        if(terminal.getCodePointConsumer() == null) {
+            stdOut = new Encoder(outputEncoding(), this::write);
+        } else {
+            stdOut = terminal.getCodePointConsumer();
+        }
         if(terminal instanceof ExternalTerminal)
             ansi = false;
 
