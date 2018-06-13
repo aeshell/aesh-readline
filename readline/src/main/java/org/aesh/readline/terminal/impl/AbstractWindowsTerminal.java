@@ -35,10 +35,15 @@ import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.nio.CharBuffer;
 import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Consumer;
 import java.util.logging.Level;
+import java.util.logging.Logger;
+import org.aesh.io.Encoder;
+import org.aesh.readline.util.LoggerUtil;
 import org.aesh.terminal.tty.Signal;
 import org.aesh.terminal.tty.Size;
 import static org.fusesource.jansi.internal.Kernel32.GetStdHandle;
@@ -48,16 +53,18 @@ import org.fusesource.jansi.internal.WindowsSupport;
 
 abstract class AbstractWindowsTerminal extends AbstractTerminal {
 
-    private static class ConsoleOutput extends OutputStream {
+    private static class ConsoleOutput implements Consumer<int[]> {
 
+        private static final Logger LOGGER = LoggerUtil.getLogger(AbstractWindowsTerminal.class.getName());
         private static final long console = GetStdHandle(STD_OUTPUT_HANDLE);
         private final int[] writtenChars = new int[1];
 
         @Override
-        public void write(int b) throws IOException {
-            char[] chars = new char[]{(char) b};
-            if (WriteConsoleW(console, chars, 1, writtenChars, 0) == 0) {
-                throw new IOException("Failed to write to console: " + WindowsSupport.getLastErrorMessage());
+        public void accept(int[] input) {
+            CharBuffer buffer = Encoder.toCharBuffer(input);
+            char[] chars = buffer.array();
+            if (WriteConsoleW(console, chars, chars.length, writtenChars, 0) == 0) {
+                LOGGER.log(Level.WARNING, "Failed to write out.", WindowsSupport.getLastErrorMessage());
             }
         }
 
@@ -82,17 +89,15 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
     protected final Thread pump;
 
     private volatile boolean closing;
+    private final ConsoleOutput cpConsumer;
 
-    public AbstractWindowsTerminal(String name, boolean nativeSignals, SignalHandler signalHandler) throws IOException {
-        this(null, name, nativeSignals, signalHandler);
-    }
-
-    public AbstractWindowsTerminal(OutputStream output, String name, boolean nativeSignals, SignalHandler signalHandler) throws IOException {
+    public AbstractWindowsTerminal(boolean consumeCP, OutputStream output, String name, boolean nativeSignals, SignalHandler signalHandler) throws IOException {
         super(name, "windows", signalHandler);
         PipedInputStream input = new PipedInputStream(PIPE_SIZE);
         this.slaveInputPipe = new PipedOutputStream(input);
         this.input = new FilterInputStream(input) {};
-        this.output = output == null ? new ConsoleOutput() : output;
+        this.cpConsumer = consumeCP ? new ConsoleOutput() : null;
+        this.output = output;
         String encoding = getConsoleEncoding();
         if (encoding == null) {
             encoding = Charset.defaultCharset().name();
@@ -114,6 +119,11 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
         pump.start();
         closer = this::close;
         ShutdownHooks.add(closer);
+    }
+
+    @Override
+    public Consumer<int[]> getCodePointConsumer() {
+         return cpConsumer;
     }
 
     @Override

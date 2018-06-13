@@ -48,7 +48,12 @@ public class Encoder implements Consumer<int[]> {
 
     @Override
     public void accept(int[] input) {
-        final char[] tmp = new char[2];
+        ByteBuffer bytesBuf = charset.encode(toCharBuffer(input));
+        out.accept(safeTrim(bytesBuf.array(), bytesBuf.limit()));
+    }
+
+    public static CharBuffer toCharBuffer(int[] input) {
+         final char[] tmp = new char[2];
         int capacity = 0;
         for (int codePoint : input) {
             capacity += Character.charCount(codePoint);
@@ -59,9 +64,7 @@ public class Encoder implements Consumer<int[]> {
             charBuf.put(tmp, 0, size);
         }
         charBuf.flip();
-        ByteBuffer bytesBuf = charset.encode(charBuf);
-
-        out.accept(safeTrim(bytesBuf.array(), bytesBuf.limit()));
+        return charBuf;
     }
 
     private static byte[] safeTrim(byte[] bytes, int length) {

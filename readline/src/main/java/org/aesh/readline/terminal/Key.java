@@ -193,8 +193,12 @@ public enum Key implements KeyAction {
     DELETE( InfoCmpHelper.getCurrentTranslatedCapabilityAsInts("kdch1", new int[]{27,91,51,126})),
 
     INSERT(InfoCmpHelper.getCurrentTranslatedCapabilityAsInts("kich1", new int[]{27,91,50,126})),
-    PGUP(InfoCmpHelper.getCurrentTranslatedCapabilityAsInts("kpp", new int[]{27,91,53,126})),
-    PGDOWN(InfoCmpHelper.getCurrentTranslatedCapabilityAsInts("knp", new int[]{27,91,54,126})),
+    PGUP(InfoCmpHelper.getCurrentTranslatedCapabilityAsInts("kpp", new int[]{27, 91, 53, 126})),
+    // Seen on Solaris, kpp returning different encoding than actual key
+    PGUP_2(new int[]{27, 91, 53, 126}),
+    PGDOWN(InfoCmpHelper.getCurrentTranslatedCapabilityAsInts("knp", new int[]{27, 91, 54, 126})),
+    // Seen on Solaris, knp returning different encoding than actual key
+    PGDOWN_2(new int[]{27, 91, 54, 126}),
     HOME(InfoCmpHelper.getCurrentTranslatedCapabilityAsInts("khome", new int[]{27,79,72})),
     HOME_2(InfoCmpHelper.getCurrentTranslatedCapabilityAsInts("home", new int[]{27,91,72})),
     END(InfoCmpHelper.getCurrentTranslatedCapabilityAsInts("kend", new int[]{27,79,70})),
