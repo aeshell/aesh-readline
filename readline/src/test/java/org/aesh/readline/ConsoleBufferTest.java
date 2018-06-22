@@ -82,7 +82,7 @@ public class ConsoleBufferTest {
         assertEquals("foo0" + Parser.fromCodePoints(ANSI.printAnsi("1D")), connection.bufferBuilder.toString());
         consoleBuffer.moveCursor(-10);
         assertEquals("foo0" + Parser.fromCodePoints(ANSI.printAnsi("1D")) +
-                Parser.fromCodePoints(ANSI.printAnsi("2D")), connection.bufferBuilder.toString());
+                Parser.fromCodePoints(ANSI.printAnsi("3D")), connection.bufferBuilder.toString());
 
         consoleBuffer.writeString("1");
         assertEquals("1foo0", consoleBuffer.buffer().asString());

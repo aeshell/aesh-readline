@@ -319,8 +319,8 @@ public class Buffer {
 
     private int[] syncCursor(int currentPos, int newPos, int width) {
         IntArrayBuilder builder = new IntArrayBuilder();
-        if(newPos < 1)
-            newPos = 1;
+        if(newPos < 0)
+            newPos = 0;
         if(currentPos / width == newPos / width) {
             if(currentPos > newPos)
                 builder.append(moveNumberOfColumns(currentPos-newPos, 'D'));
