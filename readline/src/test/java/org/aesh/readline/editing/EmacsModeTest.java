@@ -72,10 +72,15 @@ public class EmacsModeTest {
     @Test
     public void testWordMovementWithEndAndHome() throws Exception {
         TestConnection term = new TestConnection();
-        term.read("oo  bar");
+        term.read("o  ba");
         term.read(Key.HOME);
-        term.read("f");
+        term.read("o");
         term.read(Key.END);
+        term.read("r");
+        term.assertBuffer("oo  bar");
+        term.read(Key.CTRL_A);
+        term.read("f");
+        term.read(Key.CTRL_E);
         term.read(".");
         term.assertBuffer("foo  bar.");
     }
@@ -101,5 +106,55 @@ public class EmacsModeTest {
         term.read(Key.CTRL_E);
         term.read(".");
         term.assertBuffer("A A foo  bar...  Foo-Bar...");
-     }
+    }
+
+    @Test
+    public void testWordMovementWithArrows() {
+        TestConnection term = new TestConnection();
+        term.read("/subsyste=fo/ba:add(pro=abc)");
+        term.read(Key.CTRL_LEFT);
+        term.read(Key.LEFT);
+        term.read("p");
+        term.assertBuffer("/subsyste=fo/ba:add(prop=abc)");
+        term.read(Key.META_b);
+        term.read(Key.META_b);
+        term.read(Key.LEFT);
+        term.read("r");
+        term.assertBuffer("/subsyste=fo/bar:add(prop=abc)");
+        term.read(Key.HOME);
+        term.read(Key.CTRL_RIGHT);
+        term.read("m");
+        term.assertBuffer("/subsystem=fo/bar:add(prop=abc)");
+        term.read(Key.META_f);
+        term.read("o");
+        term.assertBuffer("/subsystem=foo/bar:add(prop=abc)");
+    }
+
+    @Test
+    public void testCharMovementWithArrows() {
+        TestConnection term = new TestConnection();
+        term.read("foobarfoobarfoo");
+        term.read(Key.LEFT);
+        term.read(Key.LEFT);
+        term.read(Key.LEFT);
+        term.read("-");
+        term.assertBuffer("foobarfoobar-foo");
+        term.read(Key.CTRL_B);
+        term.read(Key.CTRL_B);
+        term.read(Key.CTRL_B);
+        term.read(Key.CTRL_B);
+        term.read("-");
+        term.assertBuffer("foobarfoo-bar-foo");
+        term.read(Key.HOME);
+        term.read(Key.RIGHT);
+        term.read(Key.RIGHT);
+        term.read(Key.RIGHT);
+        term.read("-");
+        term.assertBuffer("foo-barfoo-bar-foo");
+        term.read(Key.CTRL_F);
+        term.read(Key.CTRL_F);
+        term.read(Key.CTRL_F);
+        term.read("-");
+        term.assertBuffer("foo-bar-foo-bar-foo");
+    }
 }
