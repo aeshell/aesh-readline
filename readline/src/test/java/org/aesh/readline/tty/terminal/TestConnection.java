@@ -45,6 +45,7 @@ import java.util.function.Consumer;
 import org.aesh.terminal.tty.Signal;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 /**
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
@@ -303,6 +304,10 @@ public class TestConnection implements Connection {
 
     public void assertOutputBuffer(String expected) {
         assertEquals(expected, bufferBuilder.toString().trim());
+    }
+
+    public void assertOutputBufferEndsWith(String input) {
+        assertTrue(bufferBuilder.toString().trim().endsWith(input));
     }
 
     public void assertBuffer(String expected) {

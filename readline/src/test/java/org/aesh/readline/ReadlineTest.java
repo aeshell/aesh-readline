@@ -73,6 +73,15 @@ public class ReadlineTest {
     }
 
     @Test
+    public void testEmptyPrompt() {
+        TestConnection term = new TestConnection(new Prompt(""));
+        term.read("foo");
+        term.getSizeHandler().accept(new Size(80,80));
+
+        assertEquals("foofoo", term.getOutputBuffer());
+    }
+
+    @Test
     public void testMultiLine() {
         TestConnection term = new TestConnection();
         term.read("foo \\");

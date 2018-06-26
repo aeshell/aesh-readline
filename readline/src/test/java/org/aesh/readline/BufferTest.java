@@ -332,6 +332,22 @@ public class BufferTest {
     }
 
     @Test
+    public void redrawWithEmptyPrompt() {
+        Buffer buffer = new Buffer(new Prompt(""));
+        List<int[]> outConsumer = new ArrayList<>();
+        buffer.insert(outConsumer::add, "foo", 100);
+        outConsumer.clear();
+        buffer.replace(outConsumer::add, "foo",100);
+
+        //first move back width
+        String out = Parser.fromCodePoints(buffer.moveNumberOfColumns(100, 'D'));
+        //then erase
+        out = out + Parser.fromCodePoints(ANSI.ERASE_LINE_FROM_CURSOR);
+
+        assertEquals(out+"foo",Parser.fromCodePoints(outConsumer.get(0)));
+    }
+
+    @Test
     public void multiLineBackslash() {
         Buffer buffer = new Buffer(new Prompt(": "));
         List<int[]> outConsumer = new ArrayList<>();

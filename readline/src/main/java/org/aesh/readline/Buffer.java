@@ -722,7 +722,7 @@ public class Buffer {
     private void moveCursorToStartAndPrint(Consumer<int[]> out, IntArrayBuilder builder,
                                            int width, boolean replace, boolean viMode) {
 
-        if((promptLength() > 0 && cursor != 0) || delta < 0) {
+        if(cursor > 0 || delta < 0) {
             //if we replace we do a quick way of moving to the beginning
             if(replace) {
                 builder.append(moveNumberOfColumns(width, 'D'));
