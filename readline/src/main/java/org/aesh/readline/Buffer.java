@@ -265,7 +265,7 @@ public class Buffer {
 
     private void doActualInsert(int[] data) {
         if(data.length > (line.length-size))
-            line = Arrays.copyOf(line, (line.length-size)+ data.length +1);
+            line = Arrays.copyOf(line, line.length+ data.length +1);
         if(cursor < size)
             System.arraycopy(line, cursor, line, cursor + data.length, size - cursor);
         for (int aData : data)
