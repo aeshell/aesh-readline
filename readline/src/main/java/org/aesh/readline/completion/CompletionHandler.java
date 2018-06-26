@@ -28,6 +28,7 @@ import org.aesh.readline.util.Parser;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.function.Function;
 
@@ -208,7 +209,7 @@ public abstract class CompletionHandler<C extends CompleteOperation> {
      */
     private void displayCompletions(List<TerminalString> completions, Buffer buffer,
                                     InputProcessor inputProcessor) {
-        Collections.sort(completions);
+        Collections.sort(completions, new CaseInsensitiveComparator());
 
         inputProcessor.buffer().writeOut(Config.CR);
         inputProcessor.buffer().writeOut(Parser.formatDisplayListTerminalString(completions,
@@ -221,5 +222,31 @@ public abstract class CompletionHandler<C extends CompleteOperation> {
 
     public enum CompletionStatus {
         ASKING_FOR_COMPLETIONS, COMPLETE;
+    }
+
+    private static class CaseInsensitiveComparator implements Comparator<TerminalString> {
+
+        public int compare(TerminalString s1, TerminalString s2) {
+            int n1 = s1.getCharacters().length();
+            int n2 = s2.getCharacters().length();
+            int min = Math.min(n1, n2);
+            for (int i = 0; i < min; i++) {
+                char c1 = s1.getCharacters().charAt(i);
+                char c2 = s2.getCharacters().charAt(i);
+                if (c1 != c2) {
+                    c1 = Character.toUpperCase(c1);
+                    c2 = Character.toUpperCase(c2);
+                    if (c1 != c2) {
+                        c1 = Character.toLowerCase(c1);
+                        c2 = Character.toLowerCase(c2);
+                        if (c1 != c2) {
+                            // No overflow because of numeric promotion
+                            return c1 - c2;
+                        }
+                    }
+                }
+            }
+            return n1 - n2;
+        }
     }
 }

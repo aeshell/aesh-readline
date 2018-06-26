@@ -76,6 +76,23 @@ public class CompletionReadlineTest {
     }
 
     @Test
+    public void testMultipleCompletionsSorted() {
+        List<Completion> completions = new ArrayList<>();
+        completions.add(co -> {
+            if(co.getBuffer().trim().equals("")) {
+                co.addCompletionCandidate("foo");
+                co.addCompletionCandidate("arg");
+                co.addCompletionCandidate("Arg");
+                co.addCompletionCandidate("boo");
+            }
+        });
+
+        TestConnection term = new TestConnection(completions);
+        term.read(Key.CTRL_I);
+        term.assertOutputBuffer(": \narg  Arg  boo  foo  \n:");
+     }
+
+    @Test
     public void testCompletionEmptyLine() {
         List<Completion> completions = new ArrayList<>();
         completions.add(co -> {
