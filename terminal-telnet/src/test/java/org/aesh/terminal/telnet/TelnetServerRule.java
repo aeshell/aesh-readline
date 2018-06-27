@@ -30,12 +30,14 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
+import io.netty.util.concurrent.Future;
 import org.aesh.terminal.TestBase;
 import org.aesh.terminal.telnet.netty.TelnetChannelHandler;
 import org.junit.rules.ExternalResource;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -63,7 +65,14 @@ public class TelnetServerRule extends ExternalResource {
     try {
       b.bind("localhost", 4000).sync();
       return () -> {
-        bossGroup.shutdownGracefully();
+        Future<?> future = bossGroup.shutdownGracefully();
+        try {
+          if (!future.await(30, TimeUnit.SECONDS)) {
+            throw TestBase.failure("bossGroup not finished in timeout");
+          }
+        } catch (InterruptedException e) {
+          throw TestBase.failure(e);
+        }
       };
     } catch (InterruptedException e) {
       throw TestBase.failure(e);

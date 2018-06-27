@@ -21,6 +21,7 @@ package org.aesh.terminal.http.tty;
 
 import org.aesh.terminal.Connection;
 import org.aesh.terminal.http.netty.NettyWebsocketTtyBootstrap;
+import org.junit.After;
 
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
@@ -45,10 +46,16 @@ public class NettyWebsocketTtyTest extends WebsocketTtyTestBase {
     }
   }
 
-  public void after() throws Exception {
+  @After
+  public void afterNettyWebsocket() throws Exception {
     if (bootstrap != null) {
-      bootstrap.stop().get(10, TimeUnit.SECONDS);
-      bootstrap = null;
+      try {
+        bootstrap.stop().get(10, TimeUnit.SECONDS);
+      } catch (Exception e) {
+        throw failure(e);
+      } finally {
+        bootstrap = null;
+      }
     }
   }
 }
