@@ -21,6 +21,7 @@ package org.aesh.terminal.ssh.tty;
 
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.util.concurrent.Future;
 import org.aesh.terminal.Connection;
 import org.aesh.terminal.ssh.TtyCommand;
 import org.aesh.terminal.ssh.netty.NettyIoServiceFactoryFactory;
@@ -30,6 +31,7 @@ import org.apache.sshd.server.SshServer;
 import org.junit.After;
 import org.junit.Before;
 
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 /**
@@ -46,7 +48,8 @@ public class NettySshTtyTest extends SshTtyTestBase {
 
   @After
   public void after() throws Exception {
-    eventLoopGroup.shutdownGracefully();
+    Future<?> future = eventLoopGroup.shutdownGracefully();
+    assertTrue(future.await(30, TimeUnit.SECONDS));
   }
 
   @Override

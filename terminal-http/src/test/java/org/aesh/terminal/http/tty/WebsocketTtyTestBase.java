@@ -50,7 +50,7 @@ import java.util.concurrent.CountDownLatch;
   private PipedReader in;
 
   @After
-  public void after() throws Exception {
+  public void afterWebsocket() throws Exception {
     if (session != null) {
       try {
         session.close();

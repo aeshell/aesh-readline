@@ -34,6 +34,7 @@ import io.netty.util.concurrent.ImmediateEventExecutor;
 import org.aesh.terminal.Connection;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
 import java.util.function.Consumer;
 
 /**
@@ -99,10 +100,11 @@ public class NettyWebsocketTtyBootstrap {
   }
 
   public void stop(Consumer<Throwable> doneHandler) {
+    CountDownLatch latch = new CountDownLatch(1);
     if (channel != null) {
-      channel.close();
+      channel.close().addListener((Future<Void> f) -> latch.countDown());
     }
-    channelGroup.close().addListener((Future<Void> f) -> doneHandler.accept(f.cause()));
+    channelGroup.close().addListener((Future<Void> f) -> { latch.await(); doneHandler.accept(f.cause()); });
   }
 
   public CompletableFuture<Void> stop() throws InterruptedException {
