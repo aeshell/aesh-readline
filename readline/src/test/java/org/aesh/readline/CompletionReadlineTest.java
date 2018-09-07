@@ -89,7 +89,7 @@ public class CompletionReadlineTest {
 
         TestConnection term = new TestConnection(completions);
         term.read(Key.CTRL_I);
-        term.assertOutputBuffer(": \narg  Arg  boo  foo  \n:");
+        term.assertOutputBuffer(": "+Config.getLineSeparator()+"arg  Arg  boo  foo  "+Config.getLineSeparator()+":");
      }
 
     @Test
@@ -105,10 +105,10 @@ public class CompletionReadlineTest {
         TestConnection term = new TestConnection(completions);
 
         term.read("  ".getBytes());
-        term.read(Key.LEFT);
-        term.read(Key.LEFT);
+        term.read(Key.LEFT_2);
+        term.read(Key.LEFT_2);
         term.read(Key.CTRL_I);
-        term.assertOutputBuffer(":   \nbar  foo  \n:");
+        term.assertOutputBuffer(":   "+Config.getLineSeparator()+"bar  foo  "+Config.getLineSeparator()+":");
         term.clearOutputBuffer();
         term.read("a");
         term.read(Config.getLineSeparator());
@@ -127,9 +127,9 @@ public class CompletionReadlineTest {
         TestConnection term = new TestConnection(completions);
 
         term.read("1 bah".getBytes());
-        term.read(Key.LEFT);
-        term.read(Key.LEFT);
-        term.read(Key.LEFT);
+        term.read(Key.LEFT_2);
+        term.read(Key.LEFT_2);
+        term.read(Key.LEFT_2);
         term.read(Key.CTRL_I);
         term.assertBuffer("1 foo bah");
         term.clearOutputBuffer();
@@ -152,11 +152,11 @@ public class CompletionReadlineTest {
         TestConnection term = new TestConnection(completions);
 
         term.read("1 bah".getBytes());
-        term.read(Key.LEFT);
-        term.read(Key.LEFT);
-        term.read(Key.LEFT);
+        term.read(Key.LEFT_2);
+        term.read(Key.LEFT_2);
+        term.read(Key.LEFT_2);
         term.read(Key.CTRL_I);
-        term.assertOutputBuffer(": 1 bah\nbar  foo  \n: 1 bah");
+        term.assertOutputBuffer(": 1 bah"+Config.getLineSeparator()+"bar  foo  "+Config.getLineSeparator()+": 1 bah");
         term.clearOutputBuffer();
         term.read("A");
         term.read(Config.getLineSeparator());

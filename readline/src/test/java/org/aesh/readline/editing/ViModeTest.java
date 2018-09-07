@@ -257,7 +257,7 @@ public class ViModeTest {
 
         term.read(Key.CTRL_R);
         term.read(Key.a);
-        term.read(Key.RIGHT);
+        term.read(Key.RIGHT_2);
 
         term.assertBuffer("asdf jkl");
 
@@ -275,7 +275,7 @@ public class ViModeTest {
 
         term.read(Key.CTRL_R);
         term.read(Key.a);
-        term.read(Key.LEFT);
+        term.read(Key.LEFT_2);
 
         term.assertBuffer("asdf jkl");
     }
@@ -290,7 +290,7 @@ public class ViModeTest {
 
         term.read(Key.CTRL_R);
         term.read(Key.a);
-        term.read(Key.UP);
+        term.read(Key.UP_2);
 
         term.assertBuffer("footing");
     }
@@ -305,7 +305,7 @@ public class ViModeTest {
 
         term.read(Key.CTRL_R);
         term.read(Key.a);
-        term.read(Key.DOWN);
+        term.read(Key.DOWN_2);
         term.assertBuffer("footing");
     }
 

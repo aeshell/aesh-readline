@@ -38,14 +38,10 @@ public class InfoCmpHelper {
     private static Map<Capability, String> strings = new HashMap<>();
 
     public static int[] getCurrentTranslatedCapabilityAsInts(String cap, int[] defaultValue) {
-        if(Config.isWindows())
+        String s = getCurrentTranslatedCapability(cap, new String(defaultValue, 0, defaultValue.length));
+        if (s.length() == 0)
             return defaultValue;
-        else {
-            String s = getCurrentTranslatedCapability(cap, new String(defaultValue, 0, defaultValue.length));
-            if (s.length() == 0)
-                return defaultValue;
-            return s.codePoints().toArray();
-        }
+        return s.codePoints().toArray();
     }
 
     public static String getCurrentTranslatedCapability(String cap, String defaultValue) {

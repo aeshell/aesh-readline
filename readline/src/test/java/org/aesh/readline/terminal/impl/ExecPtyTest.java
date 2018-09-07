@@ -156,20 +156,26 @@ public class ExecPtyTest {
 
     @Test
     public void testOptimizedParseAttributesLinux() throws IOException {
-        Attributes attributes = ExecPty.doGetLinuxAttr(linuxSttySample);
-        checkAttributestLinux(attributes);
+        if(Config.isOSPOSIXCompatible()) {
+            Attributes attributes = ExecPty.doGetLinuxAttr(linuxSttySample);
+            checkAttributestLinux(attributes);
+        }
     }
 
     @Test
     public void testParseAttributesUbuntu() throws IOException {
-        Attributes attributes = ExecPty.doGetAttr(ubuntuSttySample);
-        checkAttributestUbuntu(attributes);
+        if(Config.isOSPOSIXCompatible()) {
+            Attributes attributes = ExecPty.doGetAttr(ubuntuSttySample);
+            checkAttributestUbuntu(attributes);
+        }
     }
 
     @Test
     public void testOptimizedParseAttributesUbuntu() throws IOException {
-        Attributes attributes = ExecPty.doGetLinuxAttr(ubuntuSttySample);
-        checkAttributestUbuntu(attributes);
+        if(Config.isOSPOSIXCompatible()) {
+            Attributes attributes = ExecPty.doGetLinuxAttr(ubuntuSttySample);
+            checkAttributestUbuntu(attributes);
+        }
     }
 
 
@@ -287,15 +293,17 @@ public class ExecPtyTest {
 
     @Test
     public void testParseSizeHPUX() throws IOException {
-        String input = new String(Files.readAllBytes(
-                        Config.isOSPOSIXCompatible() ?
-                                new File("src/test/resources/ttytype_hpux.txt").toPath() :
-                                new File("src\\test\\resources\\ttytype_hpux.txt").toPath()));
+        if(Config.isOSPOSIXCompatible()) {
+            String input = new String(Files.readAllBytes(
+                    Config.isOSPOSIXCompatible() ?
+                            new File("src/test/resources/ttytype_hpux.txt").toPath() :
+                            new File("src\\test\\resources\\ttytype_hpux.txt").toPath()));
 
-        Size size = ExecPty.doGetHPUXSize(input);
+            Size size = ExecPty.doGetHPUXSize(input);
 
-        assertEquals(47, size.getHeight());
-        assertEquals(112, size.getWidth());
+            assertEquals(47, size.getHeight());
+            assertEquals(112, size.getWidth());
+        }
     }
 
 }

@@ -48,7 +48,7 @@ public class KeyTest {
 
         EditMode editMode = EditModeBuilder.builder(EditMode.Mode.EMACS).create();
 
-        Key up = Key.UP;
+        Key up = Key.UP_2;
 
         Action action = editMode.parse(up);
 

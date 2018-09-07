@@ -35,7 +35,7 @@ public class EmacsModeTest {
         term.read("1234");
         term.read(Key.CTRL_D);
         term.assertBuffer("1234");
-        term.read(Key.LEFT);
+        term.read(Key.LEFT_2);
         term.read(Key.CTRL_D);
         term.read('5');
         term.assertBuffer("1235");
@@ -56,7 +56,7 @@ public class EmacsModeTest {
         term.read(Key.META_d);
         term.assertBuffer("foo  bar...  Foo-.");
         term.read(Key.CTRL_E);
-        term.read(Key.LEFT);
+        term.read(Key.LEFT_2);
         term.read("Bar");
         term.assertBuffer("foo  bar...  Foo-Bar.");
         term.read(Key.CTRL_A);
@@ -113,12 +113,12 @@ public class EmacsModeTest {
         TestConnection term = new TestConnection();
         term.read("/subsyste=fo/ba:add(pro=abc)");
         term.read(Key.CTRL_LEFT);
-        term.read(Key.LEFT);
+        term.read(Key.LEFT_2);
         term.read("p");
         term.assertBuffer("/subsyste=fo/ba:add(prop=abc)");
         term.read(Key.META_b);
         term.read(Key.META_b);
-        term.read(Key.LEFT);
+        term.read(Key.LEFT_2);
         term.read("r");
         term.assertBuffer("/subsyste=fo/bar:add(prop=abc)");
         term.read(Key.HOME);
@@ -134,9 +134,9 @@ public class EmacsModeTest {
     public void testCharMovementWithArrows() {
         TestConnection term = new TestConnection();
         term.read("foobarfoobarfoo");
-        term.read(Key.LEFT);
-        term.read(Key.LEFT);
-        term.read(Key.LEFT);
+        term.read(Key.LEFT_2);
+        term.read(Key.LEFT_2);
+        term.read(Key.LEFT_2);
         term.read("-");
         term.assertBuffer("foobarfoobar-foo");
         term.read(Key.CTRL_B);
