@@ -207,7 +207,8 @@ public class Readline {
             this.flags = flags;
         }
 
-        private void finish(String s) {
+        @Override
+        public void finish(String s) {
             conn.setStdinHandler(prevReadHandler);
             conn.setSizeHandler(prevSizeHandler);
             conn.setSignalHandler(prevSignalHandler);
@@ -305,7 +306,6 @@ public class Readline {
                             break;
                         case EOF:
                             parse(Key.CTRL_D);
-                            finish(null);
                             //if inputHandler is null we send a signal to the previous handler)
                             /*
                             if (prevSignalHandler != null) {

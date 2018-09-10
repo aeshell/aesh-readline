@@ -68,6 +68,8 @@ public interface InputProcessor {
      */
     Connection connection();
 
+    void finish(String out);
+
     /**
      * @return current flags
      */

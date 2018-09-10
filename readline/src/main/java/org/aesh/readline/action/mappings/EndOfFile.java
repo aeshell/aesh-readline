@@ -47,6 +47,7 @@ public class EndOfFile implements Action {
                 //we got a eof, close the connection and call finish
                 inputProcessor.connection().write(Config.getLineSeparator());
                 inputProcessor.connection().close();
+                inputProcessor.finish(null);
             }
         }
 
