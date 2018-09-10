@@ -296,6 +296,7 @@ public class Readline {
                             if (prevSignalHandler != null) {
                                 prevSignalHandler.accept(signal);
                             }
+                            finish(null);
                             break;
                         case CONT:
                             conn.enterRawMode();
@@ -304,6 +305,7 @@ public class Readline {
                             break;
                         case EOF:
                             parse(Key.CTRL_D);
+                            finish(null);
                             //if inputHandler is null we send a signal to the previous handler)
                             /*
                             if (prevSignalHandler != null) {
