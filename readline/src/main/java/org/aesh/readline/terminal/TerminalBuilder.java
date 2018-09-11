@@ -126,7 +126,7 @@ public final class TerminalBuilder {
                     pty = ExecPty.current();
                 }
                 catch (IOException e) {
-                    LOGGER.log(Level.WARNING, "Failed to get a local tty", e);
+                    LOGGER.log(Level.FINE, "Failed to get a local tty", e);
                 }
                 if (pty != null) {
                     return new PosixSysTerminal(name, type, pty, nativeSignals);
