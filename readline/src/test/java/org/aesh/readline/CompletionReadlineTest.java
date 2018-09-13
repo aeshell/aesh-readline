@@ -119,7 +119,7 @@ public class CompletionReadlineTest {
     public void testCompletionMidLine() {
         List<Completion> completions = new ArrayList<>();
         completions.add(co -> {
-            if(co.getBuffer().trim().startsWith("1 ")) {
+            if(co.getBuffer().startsWith("1 ")) {
                 co.addCompletionCandidate("1 foo");
             }
         });
@@ -143,7 +143,7 @@ public class CompletionReadlineTest {
     public void testCompletionsMidLine() {
         List<Completion> completions = new ArrayList<>();
         completions.add(co -> {
-            if(co.getBuffer().trim().startsWith("1 ")) {
+            if(co.getBuffer().startsWith("1 ")) {
                 co.addCompletionCandidate("bar");
                 co.addCompletionCandidate("foo");
             }

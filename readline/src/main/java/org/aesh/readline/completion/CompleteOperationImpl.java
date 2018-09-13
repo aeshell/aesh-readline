@@ -58,13 +58,22 @@ public class CompleteOperationImpl implements CompleteOperation {
     }
 
     private void setBuffer(String buffer) {
+        //if buffer is longer than cursor it means we try to complete
+        //with the cursor not at the end of the buffer, if so we crop away
+        //what is beyond the cursor
+        if(buffer != null && buffer.length() > cursor+1) {
+            trimmed = true;
+            nonTrimmedBuffer = buffer;
+            this.buffer = buffer.substring(0, cursor);
+        }
         if(buffer != null && buffer.startsWith(" ")) {
             trimmed = true;
             this.buffer = Parser.trimInFront(buffer);
             nonTrimmedBuffer = buffer;
             setCursor(cursor - getTrimmedSize());
         }
-        else
+        //make sure we dont forget to set the buffer
+        if(this.buffer == null)
             this.buffer = buffer;
     }
 
