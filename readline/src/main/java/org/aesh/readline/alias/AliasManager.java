@@ -246,11 +246,11 @@ public class AliasManager {
         return null;
     }
 
-    private String aliasUsage() {
+    public String aliasUsage() {
         return "alias: usage: alias [name[=value] ... ]"+Config.getLineSeparator();
     }
 
-    private String unaliasUsage() {
+    public String unaliasUsage() {
         return "unalias: usage: unalias name [name ...]"+Config.getLineSeparator();
     }
 
