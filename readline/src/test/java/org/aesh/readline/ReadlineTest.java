@@ -38,6 +38,21 @@ import static org.junit.Assert.assertEquals;
 public class ReadlineTest {
 
     @Test
+    public void testArrowsThroughSsh() {
+        TestConnection term = new TestConnection();
+        term.read("1234");
+        for (int c : Key.LEFT.getKeyValues()) {
+            term.read(c);
+        }
+        for (int c : Key.LEFT.getKeyValues()) {
+            term.read(c);
+        }
+        term.read(Key.BACKSPACE);
+        term.read(Key.ENTER);
+        term.assertLine("134");
+    }
+
+    @Test
     public void testPaste() {
         TestConnection term = new TestConnection();
         term.read("1234\nfoo bar\ngah bah");
