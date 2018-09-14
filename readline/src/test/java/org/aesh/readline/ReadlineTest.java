@@ -24,6 +24,7 @@ import org.aesh.readline.editing.EditModeBuilder;
 import org.aesh.readline.terminal.Key;
 import org.aesh.readline.tty.terminal.TestConnection;
 import org.aesh.utils.Config;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -37,6 +38,7 @@ import static org.junit.Assert.assertEquals;
  */
 public class ReadlineTest {
 
+    @Ignore
     @Test
     public void testArrowsThroughSsh() {
         TestConnection term = new TestConnection();
