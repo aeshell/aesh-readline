@@ -43,7 +43,7 @@ import java.util.stream.Collectors;
  *
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
  */
-public class AliasManager {
+public abstract class AliasManager {
 
     private final List<Alias> aliases;
     private final Pattern aliasPattern = Pattern.compile("^(alias)\\s+(\\w+)\\s*=\\s*(.*)$");
@@ -67,6 +67,14 @@ public class AliasManager {
                 readAliasesFromFile();
         }
     }
+
+    /**
+     * It is not allowed to create an alias if it conflicts with a command already present
+     *
+     * @param aliasName name of the alias
+     * @return  true if there is no conflict
+     */
+    abstract boolean verifyNoNewAliasConflict(String aliasName);
 
     private void readAliasesFromFile() throws IOException {
         try (BufferedReader br = new BufferedReader(new FileReader(aliasFile))) {
@@ -218,8 +226,12 @@ public class AliasManager {
             if(name.contains(" "))
                 return aliasUsage();
 
-            addAlias(name, value);
-            return null;
+            if(verifyNoNewAliasConflict(name)) {
+                addAlias(name, value);
+                return null;
+            }
+            else
+                return "Alias "+name+" is in conflict with an existing command";
         }
 
         Matcher listMatcher = listAliasPattern.matcher(buffer);

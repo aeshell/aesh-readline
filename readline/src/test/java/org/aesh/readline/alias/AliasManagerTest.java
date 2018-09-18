@@ -44,7 +44,7 @@ public class AliasManagerTest {
     public void setTup() {
         try {
             fooFile = new File("foo");
-            manager = new AliasManager(fooFile, true);
+            manager = new ReadlineAliasManager(fooFile, true);
         } catch (IOException e) {
             e.printStackTrace();
         }
