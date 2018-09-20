@@ -74,7 +74,7 @@ public abstract class AliasManager {
      * @param aliasName name of the alias
      * @return  true if there is no conflict
      */
-    abstract boolean verifyNoNewAliasConflict(String aliasName);
+    public abstract boolean verifyNoNewAliasConflict(String aliasName);
 
     private void readAliasesFromFile() throws IOException {
         try (BufferedReader br = new BufferedReader(new FileReader(aliasFile))) {

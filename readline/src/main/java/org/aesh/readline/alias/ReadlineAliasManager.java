@@ -33,7 +33,7 @@ public class ReadlineAliasManager extends AliasManager {
     }
 
     @Override
-    boolean verifyNoNewAliasConflict(String aliasName) {
+    public boolean verifyNoNewAliasConflict(String aliasName) {
         //for now just return true
         return true;
     }
