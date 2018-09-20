@@ -290,8 +290,6 @@ public class Readline {
                                 }
                                 if (!flags.containsKey(ReadlineFlag.NO_PROMPT_REDRAW_ON_INTR)) {
                                     conn.stdoutHandler().accept(Config.CR);
-                                    this.buffer().buffer().reset();
-                                    consoleBuffer.drawLine();
                                 }
                             }
                             if (prevSignalHandler != null) {
