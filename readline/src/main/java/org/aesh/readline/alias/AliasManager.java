@@ -74,7 +74,7 @@ public abstract class AliasManager {
      * @param aliasName name of the alias
      * @return  true if there is no conflict
      */
-    public abstract boolean verifyNoNewAliasConflict(String aliasName);
+    public abstract boolean verifyNoNewAliasConflict(String aliasName) throws AliasConflictException;
 
     private void readAliasesFromFile() throws IOException {
         try (BufferedReader br = new BufferedReader(new FileReader(aliasFile))) {
@@ -226,12 +226,17 @@ public abstract class AliasManager {
             if(name.contains(" "))
                 return aliasUsage();
 
-            if(verifyNoNewAliasConflict(name)) {
-                addAlias(name, value);
-                return null;
+            try {
+                if(verifyNoNewAliasConflict(name)) {
+                    addAlias(name, value);
+                    return null;
+                }
+                else
+                    return "Alias "+name+" is in conflict with an existing command";
             }
-            else
-                return "Alias "+name+" is in conflict with an existing command";
+            catch(AliasConflictException ace) {
+                return ace.getMessage();
+            }
         }
 
         Matcher listMatcher = listAliasPattern.matcher(buffer);
