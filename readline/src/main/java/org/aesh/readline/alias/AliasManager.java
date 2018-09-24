@@ -43,7 +43,7 @@ import java.util.stream.Collectors;
  *
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
  */
-public abstract class AliasManager {
+public class AliasManager {
 
     private final List<Alias> aliases;
     private final Pattern aliasPattern = Pattern.compile("^(alias)\\s+(\\w+)\\s*=\\s*(.*)$");
@@ -74,7 +74,10 @@ public abstract class AliasManager {
      * @param aliasName name of the alias
      * @return  true if there is no conflict
      */
-    public abstract boolean verifyNoNewAliasConflict(String aliasName) throws AliasConflictException;
+    public boolean verifyNoNewAliasConflict(String aliasName) throws AliasConflictException {
+        //default impl just returns true, designed to be overridden
+        return true;
+    }
 
     private void readAliasesFromFile() throws IOException {
         try (BufferedReader br = new BufferedReader(new FileReader(aliasFile))) {

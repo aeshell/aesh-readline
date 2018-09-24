@@ -24,7 +24,6 @@ import org.aesh.readline.Readline;
 import org.aesh.readline.alias.AliasCompletion;
 import org.aesh.readline.alias.AliasManager;
 import org.aesh.readline.alias.AliasPreProcessor;
-import org.aesh.readline.alias.ReadlineAliasManager;
 import org.aesh.readline.completion.Completion;
 import org.aesh.readline.terminal.formatting.CharacterType;
 import org.aesh.readline.terminal.formatting.Color;
@@ -72,7 +71,7 @@ public class Example implements Consumer<Connection> {
             defaultPrompt = createDefaultPrompt();
             preProcessors = new ArrayList<>();
             if(ALIAS) {
-                aliasManager = new ReadlineAliasManager(null, false);
+                aliasManager = new AliasManager(null, false);
                 AliasPreProcessor aliasPreProcessor = new AliasPreProcessor(aliasManager);
                 preProcessors.add(aliasPreProcessor);
                 aliasCompletion = new AliasCompletion(aliasManager);

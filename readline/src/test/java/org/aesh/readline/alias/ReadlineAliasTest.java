@@ -52,7 +52,7 @@ public class ReadlineAliasTest {
 
         File aliasFile = Config.isOSPOSIXCompatible() ?
                 new File("src/test/resources/alias1") : new File("src\\test\\resources\\alias1");
-        AliasManager aliasManager = new ReadlineAliasManager(aliasFile, false);
+        AliasManager aliasManager = new AliasManager(aliasFile, false);
         AliasPreProcessor aliasPreProcessor = new AliasPreProcessor(aliasManager);
         List<Function<String, Optional<String>>> preProcessors = new ArrayList<>();
         preProcessors.add(aliasPreProcessor);
