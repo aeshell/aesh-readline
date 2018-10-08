@@ -65,10 +65,7 @@ public class Enter implements Action {
                 isCurrentLineEnding = false;
             }
             else if( inputProcessor.buffer().history().isEnabled()) {
-                if(consoleBuffer.buffer().isMultiLine())
-                   inputProcessor.buffer().history().push(consoleBuffer.buffer().multiLine());
-                else
-                    inputProcessor.buffer().history().push(consoleBuffer.buffer().multiLine());
+                inputProcessor.buffer().history().push(consoleBuffer.buffer().multiLine());
             }
         }
 

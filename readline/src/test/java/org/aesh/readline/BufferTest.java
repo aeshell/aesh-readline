@@ -21,6 +21,7 @@ package org.aesh.readline;
 
 import org.aesh.utils.ANSI;
 import org.aesh.readline.util.Parser;
+import org.aesh.utils.Config;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -386,7 +387,7 @@ public class BufferTest {
                 Parser.fromCodePoints(Arrays.copyOfRange(outConsumer.get(0),
                         outConsumer.get(0).length-7, outConsumer.get(0).length )));
 
-        assertEquals("foo \"bar bar ", buffer.asString());
+        assertEquals("foo \"bar"+Config.getLineSeparator()+" bar ", buffer.asString());
 
         //buffer.insert(outConsumer::add, "\\", 100);
         buffer.updateMultiLineBuffer();
@@ -396,7 +397,7 @@ public class BufferTest {
                 Parser.fromCodePoints(Arrays.copyOfRange(outConsumer.get(0),
                         outConsumer.get(0).length-6, outConsumer.get(0).length )));
 
-        assertEquals("foo \"bar bar gar\"", buffer.asString());
+        assertEquals("foo \"bar"+Config.getLineSeparator()+" bar "+Config.getLineSeparator()+"gar\"", buffer.asString());
     }
 
     @Test

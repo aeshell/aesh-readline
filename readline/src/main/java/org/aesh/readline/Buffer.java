@@ -195,10 +195,14 @@ public class Buffer {
             multiLineBuffer = Arrays.copyOf(multiLineBuffer, originalSize + size-1);
             System.arraycopy(line, 0, multiLineBuffer, originalSize, size-1);
         }
+        //here we have an open quote, so we need to feed a new-line into the buffer
         else {
-            cmdSize = size;
-            multiLineBuffer = Arrays.copyOf(multiLineBuffer, originalSize + size);
+            cmdSize = size + Config.getLineSeparator().length();
+            multiLineBuffer = Arrays.copyOf(multiLineBuffer, originalSize + cmdSize);
             System.arraycopy(line, 0, multiLineBuffer, originalSize, size);
+            // add new line
+            int[] lineSeparator = Parser.toCodePoints(Config.getLineSeparator());
+            System.arraycopy(lineSeparator, 0, multiLineBuffer, originalSize+size, lineSeparator.length);
         }
         locator.addLine(cmdSize, prompt.getLength());
         clear();

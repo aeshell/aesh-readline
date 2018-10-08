@@ -111,6 +111,18 @@ public class ReadlineTest {
     }
 
     @Test
+    public void testMultiLineQuote() {
+        TestConnection term = new TestConnection();
+        term.read("\"foo ");
+        term.clearOutputBuffer();
+        term.read(Key.ENTER);
+        term.assertLine(null);
+        assertEquals(Config.getLineSeparator()+"> ", term.getOutputBuffer());
+        term.read("bar\"\n");
+        term.assertLine("\"foo "+Config.getLineSeparator()+"bar\"");
+    }
+
+    @Test
     public void testMultiLineDelete() {
         TestConnection term = new TestConnection();
         term.read("foo \\");
