@@ -227,17 +227,6 @@ public class Readline {
          * @param event event
          */
         private void parse(KeyAction event) {
-            //TODO: the editModes need to parse/handle this, ref ignoreeof
-            //ctrl-d
-            /*
-            if (event.length() == 1) {
-                if (event.getCodePointAt(0) == 4 && buffer().buffer().length() == 0) {
-                    finish(null);
-                    return;
-                }
-            }
-            */
-
             Action action = editMode.parse(event);
             if (action != null) {
                 synchronized (Readline.this) {
@@ -295,7 +284,7 @@ public class Readline {
                             if (prevSignalHandler != null) {
                                 prevSignalHandler.accept(signal);
                             }
-                            finish(null);
+                            finish("");
                             break;
                         case CONT:
                             conn.enterRawMode();

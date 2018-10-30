@@ -95,10 +95,9 @@ public class ShellExample implements Consumer<Connection>{
         //suspend reader asap since we're creating commands in a new thread
         //this is not needed when running single threaded, eg as examples.Example
        readline.readline(conn, prompt, line -> {
-            // Ctrl-D
+            //we got eof or quit
             if (line == null) {
-                //((TerminalConnection) conn).stop();
-                conn.write("logout\n").close();
+                conn.close();
                 return;
             }
 
