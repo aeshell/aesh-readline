@@ -87,6 +87,9 @@ abstract class SearchHistory implements SearchAction {
              if(key == Key.ESC) {
                  status = Status.SEARCH_EXIT;
              }
+             else if(key == Key.CTRL_D) {
+                 status = Status.SEARCH_EXIT;
+             }
              if(Key.isPrintable(key.buffer())) {
                  if(searchArgument == null)
                      searchArgument = new IntArrayBuilder(1);
