@@ -273,7 +273,9 @@ public class Readline {
                         case INT:
                             if (editMode.isInChainedAction()) {
                                 parse(Key.CTRL_C);
-                            } else {
+                                break;
+                            }
+                            else {
                                 if (attributes.getLocalFlag(Attributes.LocalFlag.ECHOCTL)) {
                                     conn.stdoutHandler().accept(new int[]{'^', 'C'});
                                 }
