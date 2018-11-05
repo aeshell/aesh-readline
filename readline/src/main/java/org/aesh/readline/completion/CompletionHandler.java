@@ -27,7 +27,6 @@ import org.aesh.utils.Config;
 import org.aesh.readline.util.Parser;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.function.Function;
@@ -209,14 +208,22 @@ public abstract class CompletionHandler<C extends CompleteOperation> {
      */
     private void displayCompletions(List<TerminalString> completions, Buffer buffer,
                                     InputProcessor inputProcessor) {
-        Collections.sort(completions, new CaseInsensitiveComparator());
+        completions.sort(new CaseInsensitiveComparator());
 
+        //if the buffer is longer than one line, we need to move the cursor down the number of lines
+        //before we continue
+        if(inputProcessor.buffer().buffer().length() > inputProcessor.buffer().size().getWidth()) {
+            int numRows = inputProcessor.buffer().buffer().length() / inputProcessor.buffer().size().getWidth();
+            int cursorRow = inputProcessor.buffer().buffer().cursor() / inputProcessor.buffer().size().getWidth();
+            for(; cursorRow < numRows; cursorRow++)
+                inputProcessor.buffer().writeOut(new int[] {27, '[', 'B' });
+        }
+        //finally move to a new line
         inputProcessor.buffer().writeOut(Config.CR);
+        //then we print out the completions
         inputProcessor.buffer().writeOut(Parser.formatDisplayListTerminalString(completions,
                 inputProcessor.buffer().size().getHeight(), inputProcessor.buffer().size().getWidth()));
-
-        //buffer.setIsPromptDisplayed(false);
-        //buffer.invalidateCursorLocation();
+        //then on the next line we write the line again
         inputProcessor.buffer().drawLineForceDisplay();
     }
 
