@@ -68,7 +68,12 @@ public class Line {
                 throw new RuntimeException("Null Location for " + index);
             }
             CursorLocation cursorLoc = buffer.getCursorLocator().locate(buffer.multiCursor(), width);
-            moveUp(cursorLoc.getRow() - loc.getRow());
+            int num = cursorLoc.getRow() - loc.getRow();
+            if(num > 0) {
+                moveUp(num);
+            } else {
+                moveDown(-num);
+            }
             moveBackward(cursorLoc.getColumn());
             moveForward(loc.getColumn());
         }
@@ -269,6 +274,21 @@ public class Line {
         this.buffer = buffer;
         this.connection = connection;
         this.width = width;
+    }
+
+    /**
+     * Returns a string from the the cursor position to the end of the line. Takes into
+     * account multiple lines.
+     *
+     * @return
+     */
+    public String getLineFromCursor() {
+        return buffer.asString().substring(buffer.multiCursor());
+    }
+
+    @Override
+    public String toString() {
+        return this.buffer.asString();
     }
 
     /**
