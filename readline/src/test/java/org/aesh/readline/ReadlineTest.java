@@ -20,6 +20,7 @@
 package org.aesh.readline;
 
 import org.aesh.readline.completion.Completion;
+import org.aesh.readline.cursor.Line;
 import org.aesh.readline.editing.EditModeBuilder;
 import org.aesh.readline.terminal.Key;
 import org.aesh.readline.tty.terminal.TestConnection;
@@ -303,5 +304,22 @@ public class ReadlineTest {
         term.read(Key.CTRL_I);
         term.assertBuffer("foo  foo foo bar ");
 
+    }
+
+    @Test
+    public void testLineContentsAfterCursorMovement() {
+        TestConnection term = new TestConnection();
+        term.read("12345");
+        int termWidth = term.size().getWidth();
+        Buffer buffer = new Buffer();
+        buffer.insert((c) -> {}, term.getOutputBuffer(), term.getOutputBuffer().length());
+        buffer.move((c) -> {}, -3, termWidth);
+        Line line = new Line(buffer, term, termWidth);
+
+        String s = line.getLineFromCursor();
+        assertEquals("345", s);
+
+        s = line.getLineToCursor();
+        assertEquals(": 12", s);
     }
 }
