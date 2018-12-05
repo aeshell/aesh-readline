@@ -582,17 +582,18 @@ public class Buffer {
             }
         }
 
-        //pad if we are at the end of the terminal
-        if((size + promptLength()) % width == 0 && deltaChangedAtEndOfBuffer) {
-            builder.append(new int[]{32, 13});
-        }
-        //make sure we sync the cursor back
-        if(!deltaChangedAtEndOfBuffer) {
-            if((size + promptLength()) % width == 0 && Config.isOSPOSIXCompatible()) {
-                builder.append(syncCursorWhenBufferIsAtTerminalEdge(size + promptLength(), cursor + promptLength(), width));
+        if(width > 0) {
+            //pad if we are at the end of the terminal
+            if((size + promptLength()) % width == 0 && deltaChangedAtEndOfBuffer) {
+                builder.append(new int[]{32, 13});
             }
-            else
-                builder.append(syncCursor(size+promptLength(), cursor+promptLength(), width));
+            //make sure we sync the cursor back
+            if(!deltaChangedAtEndOfBuffer) {
+                if((size + promptLength()) % width == 0 && Config.isOSPOSIXCompatible()) {
+                    builder.append(syncCursorWhenBufferIsAtTerminalEdge(size + promptLength(), cursor + promptLength(), width));
+                } else
+                    builder.append(syncCursor(size + promptLength(), cursor + promptLength(), width));
+            }
         }
 
         out.accept(builder.toArray());
