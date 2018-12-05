@@ -37,7 +37,7 @@ import org.aesh.readline.cursor.CursorLocator;
  *
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
  */
-public class Buffer {
+public final class Buffer {
 
     private static final Logger LOGGER = LoggerUtil.getLogger(Buffer.class.getName());
 
@@ -303,7 +303,7 @@ public class Buffer {
     public void move(Consumer<int[]> out, int move, int termWidth, boolean viMode) {
         move = calculateActualMovement(move, viMode);
         //quick exit
-        if(move == 0)
+        if(move == 0 || termWidth == 0)
             return;
 
         // 0 Masking separates the UI cursor position from the 'real' cursor position.
@@ -380,7 +380,7 @@ public class Buffer {
         return builder.toArray();
     }
 
-    public int[] moveNumberOfColumns(int column, char direction) {
+    public static int[] moveNumberOfColumns(int column, char direction) {
         if(column < 10) {
             int[] out = new int[4];
             out[0] = 27; // esc
@@ -603,7 +603,7 @@ public class Buffer {
 
     private void printDeletedData(Consumer<int[]> out, int width, boolean viMode) {
         //if we're masking and the mask is no output we just return
-        if(isMasking() && prompt.getMask() == 0)
+        if(width == 0 || (isMasking() && prompt.getMask() == 0))
             return;
         IntArrayBuilder builder = new IntArrayBuilder();
          if(size+promptLength()+Math.abs(delta) >= width) {
@@ -905,7 +905,7 @@ public class Buffer {
      * @param value int value (non ascii value)
      * @return ascii represented int value
      */
-    private int[] intToAsciiInts(int value) {
+    private static int[] intToAsciiInts(int value) {
         int length = getAsciiSize(value);
         int[] asciiValue = new int[length];
 
@@ -923,11 +923,11 @@ public class Buffer {
         return asciiValue;
     }
 
-    private int getAsciiSize(int value) {
+    private static int getAsciiSize(int value) {
         if(value < 10)
             return 1;
         //very simple way of getting the length
-        if(value > 9 && value < 99)
+        if(value < 99)
             return 2;
         else if(value > 99 && value < 999)
             return 3;
