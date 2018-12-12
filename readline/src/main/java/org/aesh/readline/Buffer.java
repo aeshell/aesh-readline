@@ -675,13 +675,24 @@ public final class Buffer {
         //deltaChangedAtEndOfBuffer = false;
         deltaChangedAtEndOfBuffer = (cursor == size);
 
-        IntArrayBuilder builder = new IntArrayBuilder();
-        if(oldSize >= width)
-            clearAllLinesAndReturnToFirstLine(builder, width, oldCursor, oldSize);
+        if(width > 0) {
+            IntArrayBuilder builder = new IntArrayBuilder();
+            if(oldSize >= width)
+                clearAllLinesAndReturnToFirstLine(builder, width, oldCursor, oldSize);
 
-        moveCursorToStartAndPrint(out, builder, width, true, false);
+            moveCursorToStartAndPrint(out, builder, width, true, false);
+        }
+        else
+            //if the width == 0
+            simplePrint(out);
         delta = 0;
         deltaChangedAtEndOfBuffer = true;
+    }
+
+    private void simplePrint(Consumer<int[]> out) {
+        if(promptLength() > 0)
+            out.accept(prompt.getANSI());
+        out.accept(getLine());
     }
 
     /**
