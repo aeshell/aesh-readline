@@ -25,6 +25,8 @@ package org.aesh.utils;
  */
 public class Config {
 
+    private static final boolean macOS = System.getProperty("os.name").startsWith("Mac") ||
+            System.getProperty("os.name").startsWith("darwin");
     private static final boolean windows = System.getProperty("os.name").startsWith("Windows");
     private static final String lineSeparator = System.getProperty("line.separator");
     private static final String pathSeparator = System.getProperty("file.separator");
@@ -39,6 +41,10 @@ public class Config {
 
     public static boolean isCygwin() {
         return cygwin;
+    }
+
+    public static boolean isMacOS() {
+        return macOS;
     }
 
     public static boolean isWindows() {
