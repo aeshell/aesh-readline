@@ -359,7 +359,7 @@ public final class Buffer {
     private int[] syncCursorWhenBufferIsAtTerminalEdge(int currentPos, int newPos, int width) {
         IntArrayBuilder builder = new IntArrayBuilder();
 
-         if((currentPos-1) / width == newPos / width) {
+         if((currentPos) / width == newPos / width) {
              builder.append(moveNumberOfColumns(width, 'D'));
         }
         else {
@@ -577,21 +577,23 @@ public final class Buffer {
                 }
                 else
                     builder.append(Arrays.copyOfRange(line, cursor - delta, cursor));
-            } else {
+            }
+            else {
                 builder.append(Arrays.copyOfRange(line, cursor - delta, size));
             }
         }
 
         if(width > 0) {
             //pad if we are at the end of the terminal
-            if((size + promptLength()) % width == 0 && deltaChangedAtEndOfBuffer) {
+            if((size + promptLength()) % width == 0) {
                 builder.append(new int[]{32, 13});
             }
             //make sure we sync the cursor back
             if(!deltaChangedAtEndOfBuffer) {
                 if((size + promptLength()) % width == 0 && Config.isOSPOSIXCompatible()) {
                     builder.append(syncCursorWhenBufferIsAtTerminalEdge(size + promptLength(), cursor + promptLength(), width));
-                } else
+                }
+                else
                     builder.append(syncCursor(size + promptLength(), cursor + promptLength(), width));
             }
         }
