@@ -375,12 +375,14 @@ public final class Buffer {
             // The cursor is at the 0 of the padded line. Move up and forward (yes - means forward).
             // to newPos.
             builder.append(moveNumberOfColumnsAndRows(moveToLine, rowDirection, -(newPos % width)));
-        } else {
-            if ((currentPos) / width == newPos / width) {
+        }
+        else {
+            if (currentPos / width == newPos / width) {
                 builder.append(moveNumberOfColumns(width, 'D'));
-            } else {
+            }
+            else {
                 //if cursor and end of buffer is on different lines, we need to move the cursor
-                int moveToLine = (currentPos - 1) / width - newPos / width;
+                int moveToLine = currentPos / width - newPos / width;
                 char rowDirection = 'A';
                 if (moveToLine < 0) {
                     rowDirection = 'B';
