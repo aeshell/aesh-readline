@@ -30,6 +30,7 @@ import java.util.Arrays;
 import java.util.function.Consumer;
 import java.util.logging.Logger;
 import org.aesh.readline.cursor.CursorLocator;
+import org.aesh.readline.terminal.impl.WinSysTerminal;
 
 /**
  * Buffer to keep track of text and cursor position in the console.
@@ -607,7 +608,8 @@ public final class Buffer {
             }
             //make sure we sync the cursor back
             if(!deltaChangedAtEndOfBuffer) {
-                if((size + promptLength()) % width == 0 && Config.isOSPOSIXCompatible()) {
+                if((size + promptLength()) % width == 0 &&
+                        (Config.isOSPOSIXCompatible() || (Config.isWindows() && WinSysTerminal.isVTSupported()))) {
                     builder.append(syncCursorWhenBufferIsAtTerminalEdge(size + promptLength(), cursor + promptLength(), width));
                 }
                 else
@@ -802,7 +804,8 @@ public final class Buffer {
         }
         //make sure we sync the cursor back
         if(!deltaChangedAtEndOfBuffer) {
-            if((size + promptLength()) % width == 0 && Config.isOSPOSIXCompatible())
+            if((size + promptLength()) % width == 0 &&
+                    (Config.isOSPOSIXCompatible() || (Config.isWindows() && WinSysTerminal.isVTSupported())))
                 builder.append(syncCursor(size+promptLength()-1, cursor+promptLength(), width, true));
             else
                 builder.append(syncCursor(size+promptLength(), cursor+promptLength(), width));
