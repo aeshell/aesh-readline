@@ -322,13 +322,20 @@ public final class Buffer {
     }
 
     private int[] syncCursor(int currentPos, int newPos, int width) {
+        return syncCursor(currentPos, newPos, width, false);
+    }
+
+    private int[] syncCursor(int currentPos, int newPos, int width, boolean edge) {
         IntArrayBuilder builder = new IntArrayBuilder();
         if(newPos < 0)
             newPos = 0;
         if(currentPos / width == newPos / width) {
-            if(currentPos > newPos)
-                builder.append(moveNumberOfColumns(currentPos-newPos, 'D'));
-            else
+            if(currentPos > newPos) {
+                // Case in which we are suppressing char and command reaches the edge of
+                // terminal width. We must on mac offset of + 1.
+                int move = Config.isMacOS() && edge ? currentPos-newPos + 1 : currentPos-newPos;
+                builder.append(moveNumberOfColumns(move, 'D'));
+            } else
                 builder.append(moveNumberOfColumns(newPos-currentPos, 'C'));
         }
         //if cursor and end of buffer is on different lines, we need to move the cursor
@@ -358,25 +365,33 @@ public final class Buffer {
      */
     private int[] syncCursorWhenBufferIsAtTerminalEdge(int currentPos, int newPos, int width) {
         IntArrayBuilder builder = new IntArrayBuilder();
-
-         if((currentPos) / width == newPos / width) {
-             builder.append(moveNumberOfColumns(width, 'D'));
+        if (Config.isMacOS()) {
+            int moveToLine = currentPos / width - newPos / width;
+            char rowDirection = 'A';
+            if (moveToLine < 0) {
+                rowDirection = 'B';
+                moveToLine = Math.abs(moveToLine);
+            }
+            // The cursor is at the 0 of the padded line. Move up and forward (yes - means forward).
+            // to newPos.
+            builder.append(moveNumberOfColumnsAndRows(moveToLine, rowDirection, -(newPos % width)));
+        } else {
+            if ((currentPos) / width == newPos / width) {
+                builder.append(moveNumberOfColumns(width, 'D'));
+            } else {
+                //if cursor and end of buffer is on different lines, we need to move the cursor
+                int moveToLine = (currentPos - 1) / width - newPos / width;
+                char rowDirection = 'A';
+                if (moveToLine < 0) {
+                    rowDirection = 'B';
+                    moveToLine = Math.abs(moveToLine);
+                }
+                builder.append(moveNumberOfColumnsAndRows(moveToLine, rowDirection, width));
+            }
+            //now the cursor should be on the correct line and at position 0
+            // we then need to move it to newPos
+            builder.append(moveNumberOfColumns(newPos % width, 'C'));
         }
-        else {
-             //if cursor and end of buffer is on different lines, we need to move the cursor
-             int moveToLine = (currentPos - 1) / width - newPos / width;
-             int moveToColumn = -currentPos;
-             char rowDirection = 'A';
-             if (moveToLine < 0) {
-                 rowDirection = 'B';
-                 moveToLine = Math.abs(moveToLine);
-             }
-
-             builder.append(moveNumberOfColumnsAndRows(moveToLine, rowDirection, width));
-         }
-         //now the cursor should be on the correct line and at position 0
-        // we then need to move it to newPos
-        builder.append(moveNumberOfColumns(newPos % width, 'C'));
         return builder.toArray();
     }
 
@@ -786,7 +801,7 @@ public final class Buffer {
         //make sure we sync the cursor back
         if(!deltaChangedAtEndOfBuffer) {
             if((size + promptLength()) % width == 0 && Config.isOSPOSIXCompatible())
-                builder.append(syncCursor(size+promptLength()-1, cursor+promptLength(), width));
+                builder.append(syncCursor(size+promptLength()-1, cursor+promptLength(), width, true));
             else
                 builder.append(syncCursor(size+promptLength(), cursor+promptLength(), width));
          }
