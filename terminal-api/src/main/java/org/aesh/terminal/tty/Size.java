@@ -30,8 +30,14 @@ public class Size {
     private final int width;
 
     public Size(int width, int height) {
-        this.width = width;
-        this.height = height;
+        if(width > 0)
+            this.width = width;
+        else
+            this.width = 80; //we default to 80
+        if(height > 0)
+            this.height = height;
+        else
+            this.height = 20; //we default to 20
     }
 
     public int getWidth() {
