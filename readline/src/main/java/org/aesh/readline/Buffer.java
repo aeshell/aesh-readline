@@ -304,7 +304,7 @@ public final class Buffer {
     public void move(Consumer<int[]> out, int move, int termWidth, boolean viMode) {
         move = calculateActualMovement(move, viMode);
         //quick exit
-        if(move == 0 || termWidth == 0)
+        if(move == 0)
             return;
 
         // 0 Masking separates the UI cursor position from the 'real' cursor position.
@@ -601,20 +601,18 @@ public final class Buffer {
             }
         }
 
-        if(width > 0) {
-            //pad if we are at the end of the terminal
-            if((size + promptLength()) % width == 0) {
-                builder.append(new int[]{32, 13});
+        //pad if we are at the end of the terminal
+        if((size + promptLength()) % width == 0) {
+            builder.append(new int[]{32, 13});
+        }
+        //make sure we sync the cursor back
+        if(!deltaChangedAtEndOfBuffer) {
+            if((size + promptLength()) % width == 0 &&
+                       (Config.isOSPOSIXCompatible() || (Config.isWindows() && WinSysTerminal.isVTSupported()))) {
+                builder.append(syncCursorWhenBufferIsAtTerminalEdge(size + promptLength(), cursor + promptLength(), width));
             }
-            //make sure we sync the cursor back
-            if(!deltaChangedAtEndOfBuffer) {
-                if((size + promptLength()) % width == 0 &&
-                        (Config.isOSPOSIXCompatible() || (Config.isWindows() && WinSysTerminal.isVTSupported()))) {
-                    builder.append(syncCursorWhenBufferIsAtTerminalEdge(size + promptLength(), cursor + promptLength(), width));
-                }
-                else
-                    builder.append(syncCursor(size + promptLength(), cursor + promptLength(), width));
-            }
+            else
+                builder.append(syncCursor(size + promptLength(), cursor + promptLength(), width));
         }
 
         out.accept(builder.toArray());
@@ -696,25 +694,16 @@ public final class Buffer {
         //deltaChangedAtEndOfBuffer = false;
         deltaChangedAtEndOfBuffer = (cursor == size);
 
-        if(width > 0) {
-            IntArrayBuilder builder = new IntArrayBuilder();
-            if(oldSize >= width)
-                clearAllLinesAndReturnToFirstLine(builder, width, oldCursor, oldSize);
+        IntArrayBuilder builder = new IntArrayBuilder();
+        if(oldSize >= width)
+            clearAllLinesAndReturnToFirstLine(builder, width, oldCursor, oldSize);
 
-            moveCursorToStartAndPrint(out, builder, width, true, false);
-        }
-        else
-            //if the width == 0
-            simplePrint(out);
+        moveCursorToStartAndPrint(out, builder, width, true, false);
+
         delta = 0;
         deltaChangedAtEndOfBuffer = true;
     }
 
-    private void simplePrint(Consumer<int[]> out) {
-        if(promptLength() > 0)
-            out.accept(prompt.getANSI());
-        out.accept(getLine());
-    }
 
     /**
      * All parameter values are included the prompt length
