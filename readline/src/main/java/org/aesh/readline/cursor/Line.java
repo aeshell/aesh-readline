@@ -332,6 +332,10 @@ public class Line {
         return buffer.get(buffer.cursor());
     }
 
+    public char getCharacterAtPosition(int position) {
+        return (char) buffer.get(position);
+    }
+
     private void moveUp(int delta) {
         move(delta, 'A');
     }
