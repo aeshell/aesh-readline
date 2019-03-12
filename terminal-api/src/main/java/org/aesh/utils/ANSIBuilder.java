@@ -5,8 +5,8 @@ package org.aesh.utils;
  */
 public class ANSIBuilder {
 
-    private static final String COLOR_START = "\u001B[";
-    private static final String RESET = "\u001B[0m";
+    private static final String ANSI_START = "\u001B[";
+    private static final String ANSI_RESET = "\u001B[0m";
 
     private StringBuilder b;
     private TextType textType = TextType.DEFAULT;
@@ -32,8 +32,12 @@ public class ANSIBuilder {
     private void doAppendColors() {
         if(bg == Color.DEFAULT && text == Color.DEFAULT && textType == TextType.DEFAULT)
             return;
+        else if (bg == Color.DEFAULT && text == Color.DEFAULT) {
+            b.append(ANSI_START)
+                    .append(textType.value()).append("m");
+        }
         else {
-            b.append(COLOR_START)
+            b.append(ANSI_START)
                     .append(textType.value()).append(';')
                     .append(text.text()).append(';')
                     .append(bg.bg()).append('m');
@@ -45,7 +49,7 @@ public class ANSIBuilder {
             return this;
         else {
             doResetColors();
-            b.append(RESET);
+            b.append(ANSI_RESET);
             return this;
         }
     }
@@ -295,32 +299,64 @@ public class ANSIBuilder {
         return textType(TextType.BOLD);
     }
 
+    public ANSIBuilder boldOff() {
+        return textType(TextType.BOLD_OFF);
+    }
+
     public ANSIBuilder faint() {
         return textType(TextType.FAINT);
+    }
+
+    public ANSIBuilder faintOff() {
+        return textType(TextType.DEFAULT);
     }
 
     public ANSIBuilder italic() {
         return textType(TextType.ITALIC);
     }
 
+    public ANSIBuilder italicOff() {
+        return textType(TextType.ITALIC_OFF);
+    }
+
     public ANSIBuilder underline() {
         return textType(TextType.UNDERLINE);
+    }
+
+    public ANSIBuilder underlineOff() {
+        return textType(TextType.UNDERLINE_OFF);
     }
 
     public ANSIBuilder blink() {
         return textType(TextType.BLINK);
     }
 
+    public ANSIBuilder blinkOff() {
+        return textType(TextType.BLINK_OFF);
+    }
+
     public ANSIBuilder invert() {
         return textType(TextType.INVERT);
+    }
+
+    public ANSIBuilder invertOff() {
+        return textType(TextType.INVERT_OFF);
     }
 
     public ANSIBuilder conceal() {
         return textType(TextType.CONCEAL);
     }
 
+    public ANSIBuilder concealOff() {
+        return textType(TextType.CONCEAL_OFF);
+    }
+
     public ANSIBuilder crossedOut() {
         return textType(TextType.CROSSED_OUT);
+    }
+
+    public ANSIBuilder crossedOutOff() {
+        return textType(TextType.CROSSED_OUT_OFF);
     }
 
     public ANSIBuilder newline() {
@@ -329,35 +365,35 @@ public class ANSIBuilder {
     }
 
     public ANSIBuilder bold(String text) {
-        return textType(TextType.BOLD).append(text).resetColors();
+        return textType(TextType.BOLD).append(text).textType(TextType.BOLD_OFF);
     }
 
     public ANSIBuilder faint(String text) {
-        return textType(TextType.FAINT).append(text).resetColors();
+        return textType(TextType.FAINT).append(text).textType(TextType.DEFAULT);
     }
 
     public ANSIBuilder italic(String text) {
-        return textType(TextType.ITALIC).append(text).resetColors();
+        return textType(TextType.ITALIC).append(text).textType(TextType.ITALIC_OFF);
     }
 
     public ANSIBuilder underline(String text) {
-        return textType(TextType.UNDERLINE).append(text).resetColors();
+        return textType(TextType.UNDERLINE).append(text).textType(TextType.UNDERLINE_OFF);
     }
 
     public ANSIBuilder blink(String text) {
-        return textType(TextType.BLINK).append(text).resetColors();
+        return textType(TextType.BLINK).append(text).textType(TextType.BLINK_OFF);
     }
 
     public ANSIBuilder invert(String text) {
-        return textType(TextType.INVERT).append(text).resetColors();
+        return textType(TextType.INVERT).append(text).textType(TextType.INVERT_OFF);
     }
 
     public ANSIBuilder conceal(String text) {
-        return textType(TextType.CONCEAL).append(text).resetColors();
+        return textType(TextType.CONCEAL).append(text).textType(TextType.CONCEAL_OFF);
     }
 
     public ANSIBuilder crossedOut(String text) {
-        return textType(TextType.CROSSED_OUT).append(text).resetColors();
+        return textType(TextType.CROSSED_OUT).append(text).textType(TextType.CROSSED_OUT_OFF);
     }
 
     public String toString() {
@@ -408,7 +444,15 @@ public class ANSIBuilder {
         BLINK(5),
         INVERT(7),
         CONCEAL(8),
-        CROSSED_OUT(9);
+        CROSSED_OUT(9),
+        UNDERLINE_DOUBLE(21),
+        BOLD_OFF(22),
+        ITALIC_OFF(23),
+        UNDERLINE_OFF(24),
+        BLINK_OFF(25),
+        INVERT_OFF(27),
+        CONCEAL_OFF(28),
+        CROSSED_OUT_OFF(29);
 
         private final int value;
 
