@@ -86,6 +86,9 @@ public class ANSI {
     public static final int[] MOVE_LINE_UP = new int[]{ 27, '[', '1', 'A'};
     public static final int[] MOVE_LINE_DOWN = new int[]{ 27, '[', '1', 'B'};
 
+    public static final String LIGHT_BG = "\u001B[?5h";
+    public static final String DARK_BG = "\u001B[?5l"; //resets the bg
+
     private ANSI() {
     }
 
