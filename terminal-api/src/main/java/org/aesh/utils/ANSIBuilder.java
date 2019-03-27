@@ -26,6 +26,7 @@ public class ANSIBuilder {
 
     private static final String ANSI_START = "\u001B[";
     private static final String ANSI_RESET = "\u001B[0m";
+    private final boolean ansi;
 
     private StringBuilder b;
     private TextType textType = TextType.DEFAULT;
@@ -33,16 +34,21 @@ public class ANSIBuilder {
     private Color text = Color.DEFAULT;
     private boolean havePrintedColor = false;
 
-    public ANSIBuilder() {
+    private ANSIBuilder(boolean enableAnsi) {
+        ansi = enableAnsi;
         b = new StringBuilder();
     }
 
     public static ANSIBuilder builder() {
-        return new ANSIBuilder();
+        return new ANSIBuilder(true);
+    }
+
+    public static ANSIBuilder builder(boolean enableAnsi) {
+        return new ANSIBuilder(enableAnsi);
     }
 
     private void checkColor() {
-        if(!havePrintedColor) {
+        if(ansi && !havePrintedColor) {
             havePrintedColor = true;
             doAppendColors();
         }
@@ -64,6 +70,8 @@ public class ANSIBuilder {
     }
 
     public ANSIBuilder resetColors() {
+        if(!ansi)
+            return this;
         if(textType == TextType.DEFAULT && bg == Color.DEFAULT && text == Color.DEFAULT)
             return this;
         else {
@@ -81,7 +89,8 @@ public class ANSIBuilder {
 
     public ANSIBuilder clear() {
         b = new StringBuilder();
-        doResetColors();
+        if(ansi)
+            doResetColors();
         havePrintedColor = false;
         return this;
     }

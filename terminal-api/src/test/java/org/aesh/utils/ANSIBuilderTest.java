@@ -35,7 +35,7 @@ public class ANSIBuilderTest {
 
     @Test
     public void testAnsiBuilder() {
-        ANSIBuilder builder = new ANSIBuilder();
+        ANSIBuilder builder = ANSIBuilder.builder();
 
         assertEquals(COLOR_START+"0;"+ YELLOW.text()+";"+ DEFAULT.bg()+"m"+"FOO"+RESET,
                 builder.yellowText().append("FOO").toString());
@@ -56,5 +56,9 @@ public class ANSIBuilderTest {
         assertEquals(COLOR_START+ TextType.BOLD.value()+"mFOO"+
                              COLOR_START+ TextType.BOLD_OFF.value()+"m BAR"+RESET,
                 builder.bold("FOO").append(' ').append("BAR").toString());
+
+
+        builder = ANSIBuilder.builder(false);
+        assertEquals("FOO BAR", builder.bold("FOO").append(' ').blackBg("BAR").toString());
     }
 }
