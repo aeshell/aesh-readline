@@ -20,7 +20,6 @@
 package org.aesh.readline.util;
 
 import org.aesh.readline.tty.terminal.TerminalConnection;
-import org.aesh.terminal.Device;
 import org.aesh.terminal.tty.Size;
 
 import java.io.IOException;
