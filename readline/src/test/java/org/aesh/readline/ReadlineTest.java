@@ -24,7 +24,7 @@ import org.aesh.readline.cursor.Line;
 import org.aesh.readline.editing.EditModeBuilder;
 import org.aesh.readline.terminal.Key;
 import org.aesh.readline.tty.terminal.TestConnection;
-import org.aesh.utils.Config;
+import org.aesh.terminal.utils.Config;
 import org.junit.Ignore;
 import org.junit.Test;
 

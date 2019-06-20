@@ -21,9 +21,9 @@ package org.aesh.readline.terminal.impl;
 
 import java.io.File;
 import org.aesh.terminal.Attributes;
-import org.aesh.utils.Config;
-import org.aesh.utils.ExecHelper;
-import org.aesh.utils.OSUtils;
+import org.aesh.terminal.utils.Config;
+import org.aesh.terminal.utils.ExecHelper;
+import org.aesh.terminal.utils.OSUtils;
 import org.aesh.readline.util.LoggerUtil;
 
 import java.io.FileInputStream;

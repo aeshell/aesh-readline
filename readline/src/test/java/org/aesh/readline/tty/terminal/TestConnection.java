@@ -27,7 +27,7 @@ import org.aesh.terminal.Device;
 import org.aesh.terminal.EventDecoder;
 import org.aesh.terminal.tty.Size;
 import org.aesh.terminal.tty.Capability;
-import org.aesh.io.Decoder;
+import org.aesh.terminal.io.Decoder;
 import org.aesh.readline.Prompt;
 import org.aesh.readline.TestReadline;
 import org.aesh.readline.completion.Completion;

@@ -24,7 +24,7 @@ import org.aesh.terminal.Attributes;
 import org.aesh.terminal.Connection;
 import org.aesh.terminal.tty.Point;
 import org.aesh.terminal.tty.Size;
-import org.aesh.utils.ANSI;
+import org.aesh.terminal.utils.ANSI;
 import org.aesh.readline.util.LoggerUtil;
 
 import java.io.IOException;

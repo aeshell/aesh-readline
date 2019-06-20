@@ -19,7 +19,7 @@
  */
 package org.aesh.readline.editing;
 
-import org.aesh.utils.Config;
+import org.aesh.terminal.utils.Config;
 import org.aesh.readline.util.LoggerUtil;
 
 import java.io.InputStream;

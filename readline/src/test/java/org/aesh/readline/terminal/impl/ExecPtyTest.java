@@ -25,7 +25,7 @@ import org.aesh.terminal.Attributes.ControlFlag;
 import org.aesh.terminal.Attributes.InputFlag;
 import org.aesh.terminal.Attributes.LocalFlag;
 import org.aesh.terminal.Attributes.OutputFlag;
-import org.aesh.utils.Config;
+import org.aesh.terminal.utils.Config;
 import org.junit.Test;
 
 import java.io.File;

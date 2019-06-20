@@ -17,7 +17,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.aesh.utils;
+package org.aesh.terminal.utils;
 
 /**
  * @author <a href="mailto:stalep@gmail.com">Ståle Pedersen</a>

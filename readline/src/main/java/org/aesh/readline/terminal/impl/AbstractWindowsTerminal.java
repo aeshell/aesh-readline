@@ -20,7 +20,7 @@
 package org.aesh.readline.terminal.impl;
 
 import org.aesh.terminal.Attributes;
-import org.aesh.utils.Curses;
+import org.aesh.terminal.utils.Curses;
 import org.aesh.readline.terminal.utils.ShutdownHooks;
 import org.aesh.readline.terminal.utils.Signals;
 import org.aesh.terminal.tty.Capability;
@@ -42,7 +42,7 @@ import java.util.Map;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import org.aesh.io.Encoder;
+import org.aesh.terminal.io.Encoder;
 import org.aesh.readline.util.LoggerUtil;
 import org.aesh.terminal.tty.Signal;
 import org.aesh.terminal.tty.Size;

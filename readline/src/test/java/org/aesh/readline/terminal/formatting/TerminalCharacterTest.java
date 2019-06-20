@@ -19,7 +19,7 @@
  */
 package org.aesh.readline.terminal.formatting;
 
-import org.aesh.utils.ANSI;
+import org.aesh.terminal.utils.ANSI;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;

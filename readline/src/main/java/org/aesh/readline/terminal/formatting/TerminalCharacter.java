@@ -19,7 +19,7 @@
  */
 package org.aesh.readline.terminal.formatting;
 
-import org.aesh.utils.ANSI;
+import org.aesh.terminal.utils.ANSI;
 
 /**
  * Value object that describe how a terminal character should be displayed

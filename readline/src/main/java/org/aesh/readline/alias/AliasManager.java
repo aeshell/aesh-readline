@@ -19,7 +19,7 @@
  */
 package org.aesh.readline.alias;
 
-import org.aesh.utils.Config;
+import org.aesh.terminal.utils.Config;
 import org.aesh.readline.util.Parser;
 import org.aesh.readline.util.LoggerUtil;
 

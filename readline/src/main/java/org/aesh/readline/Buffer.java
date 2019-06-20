@@ -19,9 +19,9 @@
  */
 package org.aesh.readline;
 
-import org.aesh.utils.Config;
+import org.aesh.terminal.utils.Config;
 import org.aesh.readline.util.IntArrayBuilder;
-import org.aesh.utils.ANSI;
+import org.aesh.terminal.utils.ANSI;
 import org.aesh.readline.util.LoggerUtil;
 import org.aesh.readline.util.Parser;
 import org.aesh.readline.util.WcWidth;

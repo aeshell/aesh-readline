@@ -20,7 +20,7 @@
 package org.aesh.readline;
 
 import org.aesh.readline.tty.terminal.TestConnection;
-import org.aesh.utils.Config;
+import org.aesh.terminal.utils.Config;
 import org.junit.Assume;
 import org.junit.Test;
 

@@ -21,7 +21,7 @@ package org.aesh.terminal.http;
 
 import org.aesh.terminal.BaseDevice;
 import org.aesh.terminal.tty.Capability;
-import org.aesh.utils.InfoCmp;
+import org.aesh.terminal.utils.InfoCmp;
 
 import java.util.HashMap;
 import java.util.HashSet;

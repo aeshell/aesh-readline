@@ -20,7 +20,7 @@
 package org.aesh.readline;
 
 import org.aesh.readline.example.SimpleTestExample;
-import org.aesh.utils.Config;
+import org.aesh.terminal.utils.Config;
 import org.aesh.readline.util.LoggerUtil;
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.asset.StringAsset;

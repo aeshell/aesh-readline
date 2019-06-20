@@ -19,7 +19,7 @@
  */
 package org.aesh.readline.action.mappings;
 
-import org.aesh.utils.Config;
+import org.aesh.terminal.utils.Config;
 import org.aesh.readline.util.Parser;
 import org.aesh.readline.ConsoleBuffer;
 import org.aesh.readline.InputProcessor;

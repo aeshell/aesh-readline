@@ -20,8 +20,8 @@
 package org.aesh.parser;
 
 import org.aesh.readline.terminal.formatting.TerminalString;
-import org.aesh.utils.ANSI;
-import org.aesh.utils.Config;
+import org.aesh.terminal.utils.ANSI;
+import org.aesh.terminal.utils.Config;
 import org.aesh.readline.util.Parser;
 import org.junit.Assert;
 import org.junit.Test;

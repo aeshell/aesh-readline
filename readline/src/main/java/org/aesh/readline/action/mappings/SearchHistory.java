@@ -27,7 +27,7 @@ import org.aesh.readline.InputProcessor;
 import org.aesh.readline.action.Action;
 import org.aesh.readline.action.SearchAction;
 import org.aesh.readline.history.SearchDirection;
-import org.aesh.utils.ANSI;
+import org.aesh.terminal.utils.ANSI;
 import org.aesh.readline.util.LoggerUtil;
 
 import java.util.logging.Logger;

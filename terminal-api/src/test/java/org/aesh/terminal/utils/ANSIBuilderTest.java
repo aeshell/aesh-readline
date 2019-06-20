@@ -17,12 +17,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.aesh.utils;
+package org.aesh.terminal.utils;
 
-import org.aesh.utils.ANSIBuilder.TextType;
+import org.aesh.terminal.utils.ANSIBuilder.TextType;
 import org.junit.Test;
 
-import static org.aesh.utils.ANSIBuilder.Color.*;
+import static org.aesh.terminal.utils.ANSIBuilder.Color.*;
 import static org.junit.Assert.assertEquals;
 
 /**

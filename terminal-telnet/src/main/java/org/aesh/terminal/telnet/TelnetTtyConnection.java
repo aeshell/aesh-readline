@@ -20,8 +20,8 @@
 
 package org.aesh.terminal.telnet;
 
-import org.aesh.io.Decoder;
-import org.aesh.io.Encoder;
+import org.aesh.terminal.io.Decoder;
+import org.aesh.terminal.io.Encoder;
 import org.aesh.terminal.Attributes;
 import org.aesh.terminal.Connection;
 import org.aesh.terminal.Device;

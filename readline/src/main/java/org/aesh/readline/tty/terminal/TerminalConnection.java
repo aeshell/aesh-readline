@@ -19,8 +19,8 @@
  */
 package org.aesh.readline.tty.terminal;
 
-import org.aesh.io.Decoder;
-import org.aesh.io.Encoder;
+import org.aesh.terminal.io.Decoder;
+import org.aesh.terminal.io.Encoder;
 import org.aesh.readline.terminal.impl.ExternalTerminal;
 import org.aesh.terminal.Device;
 import org.aesh.terminal.Attributes;

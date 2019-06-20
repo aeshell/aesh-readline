@@ -28,7 +28,7 @@ import java.util.EnumSet;
 import java.util.concurrent.CountDownLatch;
 import java.util.function.Consumer;
 import org.aesh.terminal.tty.Signal;
-import org.aesh.utils.ANSI;
+import org.aesh.terminal.utils.ANSI;
 
 /**
  * Represent a connection to either a local/direct/remote Terminal.

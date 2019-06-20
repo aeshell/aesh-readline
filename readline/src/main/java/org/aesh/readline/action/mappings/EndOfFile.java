@@ -10,7 +10,7 @@ import org.aesh.readline.InputProcessor;
 import org.aesh.readline.ReadlineFlag;
 import org.aesh.readline.action.Action;
 import org.aesh.readline.terminal.Key;
-import org.aesh.utils.Config;
+import org.aesh.terminal.utils.Config;
 
 /**
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>

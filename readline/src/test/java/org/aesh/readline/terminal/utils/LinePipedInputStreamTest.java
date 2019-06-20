@@ -19,7 +19,7 @@
  */
 package org.aesh.readline.terminal.utils;
 
-import org.aesh.utils.Config;
+import org.aesh.terminal.utils.Config;
 import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;

@@ -28,7 +28,7 @@ import org.aesh.readline.terminal.formatting.Color;
 import org.aesh.readline.terminal.formatting.TerminalCharacter;
 import org.aesh.readline.terminal.formatting.TerminalColor;
 import org.aesh.terminal.Connection;
-import org.aesh.utils.ANSI;
+import org.aesh.terminal.utils.ANSI;
 import org.aesh.readline.util.Parser;
 
 /**

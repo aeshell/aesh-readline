@@ -32,7 +32,7 @@ import org.aesh.terminal.Attributes;
 import org.aesh.terminal.Connection;
 import org.aesh.terminal.tty.Point;
 import org.aesh.terminal.tty.Signal;
-import org.aesh.utils.Config;
+import org.aesh.terminal.utils.Config;
 import org.aesh.readline.util.LoggerUtil;
 
 import java.io.IOException;

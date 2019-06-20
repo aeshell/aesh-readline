@@ -20,8 +20,8 @@
 package org.aesh.readline.terminal;
 
 import org.aesh.readline.action.KeyAction;
-import org.aesh.utils.InfoCmpHelper;
-import org.aesh.utils.Config;
+import org.aesh.terminal.utils.InfoCmpHelper;
+import org.aesh.terminal.utils.Config;
 import org.aesh.readline.util.Parser;
 
 import java.nio.IntBuffer;

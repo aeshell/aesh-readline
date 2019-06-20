@@ -20,8 +20,8 @@
 package org.aesh.readline.terminal.impl;
 
 import org.aesh.terminal.Attributes;
-import org.aesh.utils.ExecHelper;
-import org.aesh.utils.OSUtils;
+import org.aesh.terminal.utils.ExecHelper;
+import org.aesh.terminal.utils.OSUtils;
 import org.aesh.readline.util.LoggerUtil;
 
 import java.io.FileDescriptor;

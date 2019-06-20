@@ -19,7 +19,7 @@
  */
 package org.aesh.readline.util;
 
-import org.aesh.utils.Config;
+import org.aesh.terminal.utils.Config;
 
 import java.io.File;
 import java.io.IOException;

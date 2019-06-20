@@ -24,7 +24,7 @@ import org.aesh.readline.action.ActionEvent;
 import org.aesh.readline.action.KeyAction;
 import org.aesh.readline.completion.CompletionHandler;
 import org.aesh.readline.terminal.Key;
-import org.aesh.utils.Config;
+import org.aesh.terminal.utils.Config;
 import org.aesh.readline.InputProcessor;
 
 /**

@@ -23,7 +23,7 @@ import org.aesh.readline.Buffer;
 import org.aesh.readline.InputProcessor;
 import org.aesh.readline.action.mappings.ActionMapper;
 import org.aesh.readline.terminal.formatting.TerminalString;
-import org.aesh.utils.Config;
+import org.aesh.terminal.utils.Config;
 import org.aesh.readline.util.Parser;
 
 import java.util.ArrayList;
