@@ -44,7 +44,6 @@
     <modules>
         <module>terminal-api</module>
         <module>readline</module>
-        <module>examples</module>
         <module>terminal-ssh</module>
         <module>terminal-telnet</module>
         <module>terminal-http</module>
