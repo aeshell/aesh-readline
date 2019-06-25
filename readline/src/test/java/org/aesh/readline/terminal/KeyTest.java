@@ -17,9 +17,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.aesh.terminal;
+package org.aesh.readline.terminal;
 
-import org.aesh.readline.terminal.Key;
 import org.aesh.readline.action.mappings.ActionMapper;
 import org.aesh.terminal.utils.Config;
 import org.aesh.readline.action.Action;

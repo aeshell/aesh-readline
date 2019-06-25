@@ -69,14 +69,6 @@
          <version>4.12</version>
          <scope>test</scope>
       </dependency>
-
-      <dependency>
-         <groupId>org.jboss.shrinkwrap.resolver</groupId>
-         <artifactId>shrinkwrap-resolver-depchain</artifactId>
-         <type>pom</type>
-         <version>2.2.4</version>
-         <scope>test</scope>
-      </dependency>
    </dependencies>
 
    <build>
@@ -117,6 +109,7 @@
                  <failsOnError>true</failsOnError>
                  <useFile/>
                  <includeTestSourceDirectory>true</includeTestSourceDirectory>
+                 <excludes>**/module-info.java</excludes>
                </configuration>
                <goals>
                  <goal>check</goal>

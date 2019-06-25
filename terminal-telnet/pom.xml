@@ -28,7 +28,7 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>aesh-terminal-telnet</artifactId>
+    <artifactId>terminal-telnet</artifactId>
     <packaging>jar</packaging>
     <name>Æsh Terminal Telnet</name>
     <description>Æsh (Another Extendable SHell) Terminal Telnet</description>
@@ -87,14 +87,14 @@
 
       <dependency>
         <groupId>org.aesh</groupId>
-        <artifactId>aesh-terminal-api</artifactId>
+        <artifactId>terminal-api</artifactId>
         <version>${project.version}</version>
         <type>jar</type>
       </dependency>
 
       <dependency>
         <groupId>org.aesh</groupId>
-        <artifactId>aesh-terminal-api</artifactId>
+        <artifactId>terminal-api</artifactId>
         <version>${project.version}</version>
         <type>test-jar</type>
         <scope>test</scope>
@@ -160,10 +160,8 @@
                           <configLocation>${project.basedir}/../config/checkstyle/checkstyle.xml</configLocation>
                             <consoleOutput>true</consoleOutput>
                             <failsOnError>true</failsOnError>
-                            <linkXRef>false</linkXRef>
-                            <!--
                             <useFile/>
--->
+                            <excludes>**/module-info.java</excludes>
                             <includeTestSourceDirectory>true</includeTestSourceDirectory>
                         </configuration>
                         <goals>

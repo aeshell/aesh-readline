@@ -70,7 +70,7 @@
       
         <dependency>
             <groupId>org.aesh</groupId>
-            <artifactId>aesh-terminal-api</artifactId>
+            <artifactId>terminal-api</artifactId>
             <version>${project.version}</version>
             <type>jar</type>
         </dependency>
@@ -82,13 +82,6 @@
             <scope>test</scope>
         </dependency>
 
-        <dependency>
-            <groupId>org.jboss.shrinkwrap.resolver</groupId>
-            <artifactId>shrinkwrap-resolver-depchain</artifactId>
-            <type>pom</type>
-            <version>2.2.4</version>
-            <scope>test</scope>
-        </dependency>
     </dependencies>
 
     <build>
@@ -138,7 +131,6 @@
                     <artifactSet>
                       <excludes>
                         <exclude>org.fusesource.jansi:jansi</exclude>
-                        <exclude>org.jboss.shrinkwrap.resolver:shrinkwrap-resolver-depchain</exclude>
                         <exclude>junit:junit</exclude>
                         <!--
                         <exclude>org.apache.maven:lib:tests</exclude>
@@ -162,9 +154,7 @@
                             <consoleOutput>true</consoleOutput>
                             <failsOnError>true</failsOnError>
                             <linkXRef>false</linkXRef>
-                            <!--
-                            <useFile/>
--->
+                            <excludes>**/module-info.java</excludes>
                             <includeTestSourceDirectory>true</includeTestSourceDirectory>
                         </configuration>
                         <goals>

@@ -28,7 +28,7 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>aesh-terminal-http</artifactId>
+    <artifactId>terminal-http</artifactId>
     <packaging>jar</packaging>
     <name>Æsh Terminal Http</name>
     <description>Æsh (Another Extendable SHell) Terminal Http</description>
@@ -81,22 +81,21 @@
             <groupId>io.netty</groupId>
             <artifactId>netty-codec-http</artifactId>
             <version>${netty.version}</version>
-        </dependency>
-
-
-      <dependency>
-        <groupId>org.aesh</groupId>
-        <artifactId>aesh-terminal-api</artifactId>
-        <version>${project.version}</version>
-        <type>jar</type>
       </dependency>
 
       <dependency>
         <groupId>org.aesh</groupId>
-        <artifactId>aesh-terminal-api</artifactId>
+        <artifactId>terminal-api</artifactId>
         <version>${project.version}</version>
         <type>test-jar</type>
         <scope>test</scope>
+      </dependency>
+
+      <dependency>
+        <groupId>org.aesh</groupId>
+        <artifactId>terminal-api</artifactId>
+        <version>${project.version}</version>
+        <type>jar</type>
       </dependency>
 
       <dependency>
@@ -182,9 +181,8 @@
                             <consoleOutput>true</consoleOutput>
                             <failsOnError>true</failsOnError>
                             <linkXRef>false</linkXRef>
-                            <!--
+                            <excludes>**/module-info.java</excludes>
                             <useFile/>
--->
                             <includeTestSourceDirectory>true</includeTestSourceDirectory>
                         </configuration>
                         <goals>
