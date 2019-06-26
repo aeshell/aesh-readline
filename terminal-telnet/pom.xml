@@ -23,7 +23,7 @@
     <!-- Parent -->
     <parent>
         <groupId>org.aesh</groupId>
-        <artifactId>aesh-readline-all</artifactId>
+        <artifactId>readline-all</artifactId>
         <version>1.8-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>

@@ -23,12 +23,12 @@
     <!-- Parent -->
     <parent>
         <groupId>org.aesh</groupId>
-        <artifactId>aesh-readline-all</artifactId>
+        <artifactId>readline-all</artifactId>
         <version>1.8-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>aesh-readline</artifactId>
+    <artifactId>readline</artifactId>
     <packaging>jar</packaging>
     <name>Æsh Readline</name>
     <description>Æsh (Another Extendable SHell) Readline API</description>
@@ -153,7 +153,6 @@
                           <configLocation>${project.basedir}/../config/checkstyle/checkstyle.xml</configLocation>
                             <consoleOutput>true</consoleOutput>
                             <failsOnError>true</failsOnError>
-                            <linkXRef>false</linkXRef>
                             <excludes>**/module-info.java</excludes>
                             <includeTestSourceDirectory>true</includeTestSourceDirectory>
                         </configuration>
