@@ -45,7 +45,11 @@
             <url>http://www.apache.org/licenses/LICENSE-2.0</url>
         </license>
     </licenses>
-   
+
+    <properties>
+        <javaModuleName>org.aesh.readline</javaModuleName>
+    </properties>
+
     <developers>
         <developer>
             <name>Jean-Francois Denise</name>
@@ -101,10 +105,13 @@
                 <artifactId>maven-jar-plugin</artifactId>
                 <configuration>
                     <archive>
-                        <manifest>
-                            <addClasspath>true</addClasspath>
-                            <mainClass>examples.Example</mainClass>
-                        </manifest>
+                      <manifest>
+                        <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+                      </manifest>
+                      <manifestEntries>
+                        <Automatic-Module-Name>${javaModuleName}</Automatic-Module-Name>
+                      </manifestEntries>
+                      <index>true</index>
                     </archive>
                 </configuration>
                 <executions>

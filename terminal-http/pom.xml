@@ -46,6 +46,10 @@
         </license>
     </licenses>
    
+    <properties>
+        <javaModuleName>org.aesh.terminal.http</javaModuleName>
+    </properties>
+
     <developers>
         <developer>
             <name>Jean-Francois Denise</name>
@@ -119,6 +123,13 @@
         <scope>test</scope>
       </dependency>
 
+      <dependency>
+        <groupId>org.aesh</groupId>
+        <artifactId>terminal-api</artifactId>
+        <version>${project.version}</version>
+        <type>test-jar</type>
+        <scope>test</scope>
+      </dependency>
 
      <dependency>
         <groupId>junit</groupId>
@@ -152,9 +163,13 @@
                 <artifactId>maven-jar-plugin</artifactId>
                 <configuration>
                     <archive>
-                        <manifest>
-                            <addClasspath>true</addClasspath>
-                        </manifest>
+                      <manifest>
+                        <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+                      </manifest>
+                      <manifestEntries>
+                        <Automatic-Module-Name>${javaModuleName}</Automatic-Module-Name>
+                      </manifestEntries>
+                      <index>true</index>
                     </archive>
                 </configuration>
                 <executions>
@@ -180,7 +195,6 @@
                           <configLocation>${project.basedir}/../config/checkstyle/checkstyle.xml</configLocation>
                             <consoleOutput>true</consoleOutput>
                             <failsOnError>true</failsOnError>
-                            <linkXRef>false</linkXRef>
                             <excludes>**/module-info.java</excludes>
                             <useFile/>
                             <includeTestSourceDirectory>true</includeTestSourceDirectory>

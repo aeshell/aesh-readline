@@ -46,6 +46,11 @@
         </license>
     </licenses>
    
+    <properties>
+        <javaModuleName>org.aesh.terminal.ssh</javaModuleName>
+        <version.org.slf4j>1.7.12</version.org.slf4j>
+    </properties>
+
     <developers>
         <developer>
             <name>Jean-Francois Denise</name>
@@ -60,12 +65,6 @@
             <organizationUrl>http://www.redhat.com</organizationUrl>
         </developer>
     </developers>
-
-    <properties>
-      <version.org.slf4j>1.7.12</version.org.slf4j>
-      <netty.version>4.0.31.Final</netty.version>
-      <jackson.version>2.6.1</jackson.version>
-    </properties>
 
     <dependencies>
       <dependency>
@@ -110,11 +109,18 @@
         <version>${project.version}</version>
       </dependency>
 
+      <dependency>
+        <groupId>org.aesh</groupId>
+        <artifactId>terminal-api</artifactId>
+        <version>${project.version}</version>
+        <type>test-jar</type>
+        <scope>test</scope>
+      </dependency>
 
       <dependency>
         <groupId>junit</groupId>
         <artifactId>junit</artifactId>
-        <version>4.12</version>
+        <version>${junit.version}</version>
         <scope>test</scope>
       </dependency>
 
@@ -150,9 +156,13 @@
                 <artifactId>maven-jar-plugin</artifactId>
                 <configuration>
                     <archive>
-                        <manifest>
-                            <addClasspath>true</addClasspath>
-                        </manifest>
+                      <manifest>
+                        <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+                      </manifest>
+                      <manifestEntries>
+                        <Automatic-Module-Name>${javaModuleName}</Automatic-Module-Name>
+                      </manifestEntries>
+                      <index>true</index>
                     </archive>
                 </configuration>
                 <executions>
