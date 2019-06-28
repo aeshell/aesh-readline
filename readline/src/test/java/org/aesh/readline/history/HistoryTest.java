@@ -214,7 +214,7 @@ public class HistoryTest {
 
         assertArrayEquals(Parser.toCodePoints("2"), history.getPreviousFetch());
         history.clear();
-        assertEquals(null, history.getPreviousFetch());
+        assertArrayEquals(new int[]{}, history.getPreviousFetch());
     }
 
     @Test
