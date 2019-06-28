@@ -430,17 +430,21 @@ public class EditModeBuilder {
         }
         if(Key.HOME.equalTo(Key.HOME_2.getKeyValues())) {
             vi.addAction(Key.HOME, new BeginningOfLine(), EditMode.Status.EDIT, EditMode.Status.EDIT);
+            vi.addAction(Key.HOME_3, new BeginningOfLine(), EditMode.Status.EDIT, EditMode.Status.EDIT);
         }
         else {
             vi.addAction(Key.HOME, new BeginningOfLine(), EditMode.Status.EDIT, EditMode.Status.EDIT);
             vi.addAction(Key.HOME_2, new BeginningOfLine(), EditMode.Status.EDIT, EditMode.Status.EDIT);
+            vi.addAction(Key.HOME_3, new BeginningOfLine(), EditMode.Status.EDIT, EditMode.Status.EDIT);
         }
         if(Key.END.equalTo(Key.END_2.getKeyValues())) {
             vi.addAction(Key.END, new EndOfLine(), EditMode.Status.EDIT, EditMode.Status.EDIT);
+            vi.addAction(Key.END_3, new EndOfLine(), EditMode.Status.EDIT, EditMode.Status.EDIT);
         }
         else {
             vi.addAction(Key.END, new EndOfLine(), EditMode.Status.EDIT, EditMode.Status.EDIT);
             vi.addAction(Key.END_2, new EndOfLine(), EditMode.Status.EDIT, EditMode.Status.EDIT);
+            vi.addAction(Key.END_3, new EndOfLine(), EditMode.Status.EDIT, EditMode.Status.EDIT);
         }
 
         vi.addAction(Key.CTRL_UP, new EndOfLine(), EditMode.Status.EDIT, EditMode.Status.EDIT);
