@@ -192,17 +192,23 @@ public class EditModeBuilder {
         emacs.addAction(Key.CTRL_RIGHT, "forward-word"); //ctrl-right
         emacs.addAction(Key.PGUP, "no-action"); //page-up
         emacs.addAction(Key.PGDOWN, "no-action"); //page-down
-        if(Key.HOME.equalTo(Key.HOME_2.getKeyValues()))
+        if(Key.HOME.equalTo(Key.HOME_2.getKeyValues())) {
             emacs.addAction(Key.HOME, "beginning-of-line"); //home
+            emacs.addAction(Key.HOME_3, "beginning-of-line"); //home
+        }
         else {
             emacs.addAction(Key.HOME, "beginning-of-line"); //home
             emacs.addAction(Key.HOME_2, "beginning-of-line"); //home
+            emacs.addAction(Key.HOME_3, "beginning-of-line"); //home
         }
-        if(Key.END.equalTo(Key.END_2.getKeyValues()))
+        if(Key.END.equalTo(Key.END_2.getKeyValues())) {
             emacs.addAction(Key.END, "end-of-line"); //end
+            emacs.addAction(Key.END_3, "end-of-line"); //end
+        }
         else {
             emacs.addAction(Key.END, "end-of-line"); //end
             emacs.addAction(Key.END_2, "end-of-line"); //end
+            emacs.addAction(Key.END_3, "end-of-line"); //end
         }
         emacs.addAction(Key.INSERT, "no-action"); //insert
         emacs.addAction(Key.META_CTRL_J, "vi-editing-mode"); //insert

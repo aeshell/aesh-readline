@@ -201,6 +201,7 @@ public enum Key implements KeyAction {
     PGDOWN_2(new int[]{27, 91, 54, 126}),
     HOME(InfoCmpHelper.getCurrentTranslatedCapabilityAsInts("khome", new int[]{27,79,72})),
     HOME_2(InfoCmpHelper.getCurrentTranslatedCapabilityAsInts("home", new int[]{27,91,72})),
+    HOME_3(InfoCmpHelper.getCurrentTranslatedCapabilityAsInts("home", new int[]{27,91,49,126})),
     END(InfoCmpHelper.getCurrentTranslatedCapabilityAsInts("kend", new int[]{27,79,70})),
     END_2(InfoCmpHelper.getCurrentTranslatedCapabilityAsInts("end", new int[]{27,91,70})),
     END_3(InfoCmpHelper.getCurrentTranslatedCapabilityAsInts("end", new int[]{27,91,52,126})),
