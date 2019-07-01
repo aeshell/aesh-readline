@@ -200,11 +200,11 @@ public enum Key implements KeyAction {
     // Seen on Solaris, knp returning different encoding than actual key
     PGDOWN_2(new int[]{27, 91, 54, 126}),
     HOME(InfoCmpHelper.getCurrentTranslatedCapabilityAsInts("khome", new int[]{27,79,72})),
-    HOME_2(InfoCmpHelper.getCurrentTranslatedCapabilityAsInts("home", new int[]{27,91,72})),
-    HOME_3(InfoCmpHelper.getCurrentTranslatedCapabilityAsInts("home", new int[]{27,91,49,126})),
+    HOME_2(InfoCmpHelper.getCurrentTranslatedCapabilityAsInts("khome2", new int[]{27,91,72})),
+    HOME_3(InfoCmpHelper.getCurrentTranslatedCapabilityAsInts("khome3", new int[]{27,91,49,126})),
     END(InfoCmpHelper.getCurrentTranslatedCapabilityAsInts("kend", new int[]{27,79,70})),
-    END_2(InfoCmpHelper.getCurrentTranslatedCapabilityAsInts("end", new int[]{27,91,70})),
-    END_3(InfoCmpHelper.getCurrentTranslatedCapabilityAsInts("end", new int[]{27,91,52,126})),
+    END_2(InfoCmpHelper.getCurrentTranslatedCapabilityAsInts("kend2", new int[]{27,91,70})),
+    END_3(InfoCmpHelper.getCurrentTranslatedCapabilityAsInts("kend3", new int[]{27,91,52,126})),
 
     META_CTRL_J( new int[]{ESC.getFirstValue(),10}),
     META_CTRL_D(new int[]{ESC.getFirstValue(),4}),

@@ -156,5 +156,11 @@ public class EmacsModeTest {
         term.read(Key.CTRL_F);
         term.read("-");
         term.assertBuffer("foo-bar-foo-bar-foo");
+        term.read(Key.HOME_3);
+        term.read("-");
+        term.assertBuffer("-foo-bar-foo-bar-foo");
+        term.read(Key.END_3);
+        term.read("-");
+        term.assertBuffer("-foo-bar-foo-bar-foo-");
     }
 }
