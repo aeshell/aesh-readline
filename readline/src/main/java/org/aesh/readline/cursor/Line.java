@@ -317,7 +317,7 @@ public class Line {
      * Returns a string from the beginning of the line to the cursor. Takes into
      * account multiple lines.
      *
-     * @return
+     * @return the contents of the beginning of the line up to where the cursor is
      */
     public String getLineToCursor() {
         return buffer.asString().substring(0, buffer.multiCursor());
@@ -332,8 +332,14 @@ public class Line {
         return buffer.get(buffer.cursor());
     }
 
+    /**
+     * Returns the character at an arbitrary position
+     *
+     * @param position the position which a character is
+     * @return the character at the given position
+     */
     public char getCharacterAtPosition(int position) {
-        return (char) buffer.get(position);
+        return buffer.asString().charAt(position);
     }
 
     private void moveUp(int delta) {
