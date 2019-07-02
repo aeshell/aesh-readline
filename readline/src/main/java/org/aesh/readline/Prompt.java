@@ -40,6 +40,10 @@ public class Prompt {
     private Character mask;
     private int[] ansiString;
 
+    public Prompt() {
+        this.prompt = new int[]{};
+    }
+
     public Prompt(String prompt) {
         if(prompt != null)
             this.prompt = Parser.toCodePoints(prompt);
