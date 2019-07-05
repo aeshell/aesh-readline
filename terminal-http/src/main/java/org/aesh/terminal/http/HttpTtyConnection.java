@@ -111,6 +111,7 @@ public abstract class HttpTtyConnection implements Connection {
 
     protected abstract void write(byte[] buffer);
 
+    @SuppressWarnings("unchecked")
     public void writeToDecoder(String msg) {
         ObjectMapper mapper = new ObjectMapper();
         Map<String, Object> obj;
