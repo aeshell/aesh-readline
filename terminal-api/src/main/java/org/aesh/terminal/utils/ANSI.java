@@ -161,4 +161,79 @@ public class ANSI {
 
         return new Point(col, row);
     }
+
+    public static int[] moveRowsUp(int rows) {
+        return moveInDirection(rows, 'A');
+    }
+
+    public static int[] moveRowsDown(int rows) {
+        return moveInDirection(rows, 'B');
+    }
+
+    public static int[] moveColumnsRight(int rows) {
+        return moveInDirection(rows, 'C');
+    }
+
+    public static int[] moveColumnsLeft(int rows) {
+        return moveInDirection(rows, 'D');
+    }
+
+    private static int[] moveInDirection(int value, char direction) {
+        if(value < 10) {
+            int[] out = new int[4];
+            out[0] = 27; // esc
+            out[1] = '['; // [
+            out[2] = 48 + value;
+            out[3] = direction;
+            return out;
+        }
+        else {
+            int[] asciiColumn = intToAsciiInts(value);
+            int[] out = new int[3+asciiColumn.length];
+            out[0] = 27; // esc
+            out[1] = '['; // [
+            System.arraycopy(asciiColumn, 0, out, 2, asciiColumn.length);
+            out[out.length-1] = direction;
+            return out;
+        }
+    }
+
+    /**
+     * we assume that value is > 0
+     *
+     * @param value int value (non ascii value)
+     * @return ascii represented int value
+     */
+    private static int[] intToAsciiInts(int value) {
+        int length = getAsciiSize(value);
+        int[] asciiValue = new int[length];
+
+        if(length == 1) {
+            asciiValue[0] = 48+value;
+        }
+        else {
+            while(length > 0) {
+                length--;
+                int num = value % 10;
+                asciiValue[length] = 48+num;
+                value = value / 10;
+            }
+        }
+        return asciiValue;
+    }
+
+    private static int getAsciiSize(int value) {
+        if(value < 10)
+            return 1;
+        //very simple way of getting the length
+        if(value > 9 && value < 99)
+            return 2;
+        else if(value > 99 && value < 999)
+            return 3;
+        else if(value > 999 && value < 9999)
+            return 4;
+        else
+            return 5;
+    }
+
 }
