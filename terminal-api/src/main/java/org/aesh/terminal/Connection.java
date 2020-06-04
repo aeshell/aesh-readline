@@ -35,7 +35,7 @@ import org.aesh.terminal.utils.ANSI;
  *
  * @author <a href=mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
  */
-public interface Connection {
+public interface Connection extends AutoCloseable {
 
     /**
      * @return type of terminal
@@ -100,6 +100,7 @@ public interface Connection {
      * Note that if the reader thread is blocking waiting for data it will wait until either
      * killed or if the input stream is closed.
      */
+    @Override
     void close();
 
     default void close(int exit) {
