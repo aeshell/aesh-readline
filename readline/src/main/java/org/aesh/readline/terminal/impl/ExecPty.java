@@ -174,14 +174,13 @@ public class ExecPty implements Pty {
         }
         String undef = System.getProperty("os.name").toLowerCase().startsWith("hp") ? "^-" : "undef";
         for (Attributes.ControlChar cchar : Attributes.ControlChar.values()) {
-            if (attr.getControlChar(cchar) != current.getControlChar(cchar)) {
+            int v = attr.getControlChar(cchar);
+            if (v >= 0 && v != current.getControlChar(cchar)) {
                 String str = "";
-                int v = attr.getControlChar(cchar);
                 commands.add(cchar.name().toLowerCase().substring(1));
                 if (cchar == Attributes.ControlChar.VMIN || cchar == Attributes.ControlChar.VTIME) {
-                    commands.add(Integer.toBinaryString(v));
-                }
-                else if (v == 0) {
+                    commands.add(Integer.toString(v));
+                } else if (v == 0) {
                     commands.add(undef);
                 }
                 else {
