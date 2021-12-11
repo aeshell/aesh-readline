@@ -19,6 +19,7 @@
  */
 package org.aesh.readline;
 
+import java.util.EnumMap;
 import org.aesh.readline.completion.Completion;
 import org.aesh.readline.cursor.Line;
 import org.aesh.readline.editing.EditModeBuilder;
@@ -322,4 +323,27 @@ public class ReadlineTest {
         s = line.getLineToCursor();
         assertEquals(": 12", s);
     }
+
+    @Test
+    public void testMultiLineDisableForSingleQuote() {
+        EnumMap<ReadlineFlag, Integer> flags = new EnumMap<>(ReadlineFlag.class);
+        flags.put(ReadlineFlag.NO_MULTI_LINE_ON_QUOTE, 2);
+        TestConnection term = new TestConnection(flags);
+        term.read("'foo ");
+        term.clearOutputBuffer();
+        term.read(Key.ENTER);
+        term.assertLine("'foo ");
+    }
+
+    @Test
+    public void testMultiLineDisableForDoubleQuote() {
+        EnumMap<ReadlineFlag, Integer> flags = new EnumMap<>(ReadlineFlag.class);
+        flags.put(ReadlineFlag.NO_MULTI_LINE_ON_QUOTE, 1);
+        TestConnection term = new TestConnection(flags);
+        term.read("\"foo ");
+        term.clearOutputBuffer();
+        term.read(Key.ENTER);
+        term.assertLine("\"foo ");
+    }
+
 }

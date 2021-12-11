@@ -19,6 +19,7 @@
  */
 package org.aesh.readline.action.mappings;
 
+import org.aesh.readline.ReadlineFlag;
 import org.aesh.terminal.utils.Config;
 import org.aesh.readline.util.Parser;
 import org.aesh.readline.ConsoleBuffer;
@@ -43,22 +44,21 @@ public class Enter implements Action {
         ConsoleBuffer consoleBuffer = inputProcessor.buffer();
         consoleBuffer.undoManager().clear();
         boolean isCurrentLineEnding = true;
-        if(!consoleBuffer.buffer().isMasking()) {// dont push to history if masking
-            //dont push lines that end with \ to history
+        // check flags to see if we should ignore one or both of the quotes
+        // (0=ignore both, 1=ignore for double quotes, 2=ignore for single quotes)
+        int multilineFlags = inputProcessor.flags().getOrDefault(ReadlineFlag.NO_MULTI_LINE_ON_QUOTE, -1);
+        boolean ignoreQuotes = multilineFlags == 0;
+
+        if(!consoleBuffer.buffer().isMasking()) { // don't push to history if masking
+            // don't push lines that end with \ to history
             String buffer = consoleBuffer.buffer().asString().trim();
-            //lines starting with a hashtag is treated as a comment
-            if(buffer.startsWith(HASHTAG)) {
+            // lines starting with a hashtag is treated as a comment
+            if(buffer.startsWith(HASHTAG) ) {
                 consoleBuffer.buffer().reset();
                 inputProcessor.buffer().writeOut(Config.CR);
                 isCurrentLineEnding = false;
             }
-            else if(buffer.endsWith(ENDS_WITH_BACKSLASH)) {
-                consoleBuffer.buffer().setMultiLine(true);
-                consoleBuffer.buffer().updateMultiLineBuffer();
-                inputProcessor.buffer().writeOut(Config.CR);
-                isCurrentLineEnding = false;
-            }
-            else if(Parser.doesStringContainOpenQuote(buffer)) {
+            else if (buffer.endsWith(ENDS_WITH_BACKSLASH) || (!ignoreQuotes && Parser.doesStringContainOpenQuote(buffer, multilineFlags))) {
                 consoleBuffer.buffer().setMultiLine(true);
                 consoleBuffer.buffer().updateMultiLineBuffer();
                 inputProcessor.buffer().writeOut(Config.CR);
