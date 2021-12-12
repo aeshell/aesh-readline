@@ -31,6 +31,11 @@ public enum ReadlineFlag {
      * <li>2 = Disable for single quote
      * </ul>
      */
-    NO_MULTI_LINE_ON_QUOTE
+    NO_MULTI_LINE_ON_QUOTE,
+
+    /**
+     * Do not discard lines starting with '#'
+     */
+    NO_COMMENT_DISCARD
 
 }

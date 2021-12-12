@@ -346,4 +346,21 @@ public class ReadlineTest {
         term.assertLine("\"foo ");
     }
 
+    @Test
+    public void testNoDiscardOfComment() {
+        EnumMap<ReadlineFlag, Integer> flags = new EnumMap<>(ReadlineFlag.class);
+        TestConnection term;
+        term = new TestConnection(); // default behavior, discard comment
+        term.read("# this is a comment");
+        term.clearOutputBuffer();
+        term.read(Key.ENTER);
+        term.assertLine(null);
+        flags.put(ReadlineFlag.NO_COMMENT_DISCARD, 1);
+        term = new TestConnection(flags); // do not discard comment
+        term.read("# this is not a comment");
+        term.clearOutputBuffer();
+        term.read(Key.ENTER);
+        term.assertLine("# this is not a comment");
+    }
+
 }

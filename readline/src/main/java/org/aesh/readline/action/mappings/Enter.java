@@ -48,12 +48,15 @@ public class Enter implements Action {
         // (0=ignore both, 1=ignore for double quotes, 2=ignore for single quotes)
         int multilineFlags = inputProcessor.flags().getOrDefault(ReadlineFlag.NO_MULTI_LINE_ON_QUOTE, -1);
         boolean ignoreQuotes = multilineFlags == 0;
+        // check flags to see if we should discard lines starting with a '#'
+        int commentFlag = inputProcessor.flags().getOrDefault(ReadlineFlag.NO_COMMENT_DISCARD, -1);
+        boolean discardComments = commentFlag == -1;
 
         if(!consoleBuffer.buffer().isMasking()) { // don't push to history if masking
             // don't push lines that end with \ to history
             String buffer = consoleBuffer.buffer().asString().trim();
             // lines starting with a hashtag is treated as a comment
-            if(buffer.startsWith(HASHTAG) ) {
+            if(discardComments && buffer.startsWith(HASHTAG)) {
                 consoleBuffer.buffer().reset();
                 inputProcessor.buffer().writeOut(Config.CR);
                 isCurrentLineEnding = false;
