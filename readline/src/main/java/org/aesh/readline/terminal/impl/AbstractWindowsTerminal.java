@@ -49,7 +49,8 @@ import org.aesh.terminal.tty.Size;
 import static org.fusesource.jansi.internal.Kernel32.GetStdHandle;
 import static org.fusesource.jansi.internal.Kernel32.STD_OUTPUT_HANDLE;
 import static org.fusesource.jansi.internal.Kernel32.WriteConsoleW;
-import org.fusesource.jansi.internal.WindowsSupport;
+
+import org.fusesource.jansi.WindowsSupport;
 
 abstract class AbstractWindowsTerminal extends AbstractTerminal {
 

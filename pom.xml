@@ -61,7 +61,7 @@
       <version.org.slf4j>1.7.12</version.org.slf4j>
       <netty.version>4.1.36.Final</netty.version>
       <jackson.version>2.6.1</jackson.version>
-      <jansi.version>1.18</jansi.version>
+      <jansi.version>2.4.0</jansi.version>
       <junit.version>4.12</junit.version>
 
       <!-- maven-compiler-plugin -->
