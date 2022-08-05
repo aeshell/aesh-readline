@@ -19,20 +19,18 @@
  */
 package org.aesh.readline.terminal.impl;
 
-import java.io.FileDescriptor;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.logging.Level;
 
 import org.aesh.terminal.tty.Capability;
 import org.aesh.terminal.tty.Size;
-import org.fusesource.jansi.WindowsAnsiOutputStream;
+import org.fusesource.jansi.AnsiConsole;
 import org.fusesource.jansi.internal.Kernel32;
 import static org.fusesource.jansi.internal.Kernel32.GetStdHandle;
 import org.fusesource.jansi.internal.Kernel32.INPUT_RECORD;
 import org.fusesource.jansi.internal.Kernel32.KEY_EVENT_RECORD;
+
 import static org.fusesource.jansi.internal.Kernel32.STD_OUTPUT_HANDLE;
-import org.fusesource.jansi.internal.WindowsSupport;
 
 public class WinSysTerminal extends AbstractWindowsTerminal {
 
@@ -43,7 +41,7 @@ public class WinSysTerminal extends AbstractWindowsTerminal {
     }
 
     public WinSysTerminal(String name, boolean nativeSignals, SignalHandler signalHandler) throws IOException {
-        super(setVTMode(), new WindowsAnsiOutputStream(new FileOutputStream(FileDescriptor.out)), name, nativeSignals, signalHandler);
+        super(setVTMode(), AnsiConsole.out(), name, nativeSignals, signalHandler);
     }
 
     protected int getConsoleOutputCP() {
@@ -52,25 +50,37 @@ public class WinSysTerminal extends AbstractWindowsTerminal {
 
     @Override
     protected int getConsoleMode() {
-        return WindowsSupport.getConsoleMode();
+        long hConsole = Kernel32.GetStdHandle(Kernel32.STD_INPUT_HANDLE);
+        if (hConsole == (long)Kernel32.INVALID_HANDLE_VALUE) {
+            return -1;
+        } else {
+            int[] mode = new int[1];
+            return Kernel32.GetConsoleMode(hConsole, mode) == 0 ? -1 : mode[0];
+        }
     }
 
     @Override
     protected void setConsoleMode(int mode) {
-        WindowsSupport.setConsoleMode(mode);
+        long hConsole = Kernel32.GetStdHandle(Kernel32.STD_INPUT_HANDLE);
+        if (hConsole != (long)Kernel32.INVALID_HANDLE_VALUE) {
+            Kernel32.SetConsoleMode(hConsole, mode);
+        }
     }
 
     public Size getSize() {
-        Size size = new Size(WindowsSupport.getWindowsTerminalWidth(),
-                WindowsSupport.getWindowsTerminalHeight());
+        long outputHandle = Kernel32.GetStdHandle(Kernel32.STD_OUTPUT_HANDLE);
+        Kernel32.CONSOLE_SCREEN_BUFFER_INFO info = new Kernel32.CONSOLE_SCREEN_BUFFER_INFO();
+        Kernel32.GetConsoleScreenBufferInfo(outputHandle, info);
+        Size size = new Size(info.windowWidth(), info.windowHeight());
         return size;
     }
 
     protected byte[] readConsoleInput() {
         // XXX does how many events to read in one call matter?
         INPUT_RECORD[] events = null;
+        long hConsole = Kernel32.GetStdHandle(Kernel32.STD_INPUT_HANDLE);
         try {
-            events = WindowsSupport.readConsoleInput(1);
+            events = hConsole == (long)Kernel32.INVALID_HANDLE_VALUE ? null : Kernel32.readConsoleInputHelper(hConsole, 1, false);
         } catch (IOException e) {
             LOGGER.log(Level.INFO, "read Windows terminal input error: ", e);
         }
