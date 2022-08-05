@@ -21,6 +21,21 @@ public enum ReadlineFlag {
     /**
      * Ignore EOF signal a given number of times
      */
-    IGNORE_EOF
+    IGNORE_EOF,
+
+    /**
+     * Do not activate multi-line mode
+     * <ul>
+     * <li>0 = Disable for both single and double quote
+     * <li>1 = Disable for double quote
+     * <li>2 = Disable for single quote
+     * </ul>
+     */
+    NO_MULTI_LINE_ON_QUOTE,
+
+    /**
+     * Do not discard lines starting with '#'
+     */
+    NO_COMMENT_DISCARD
 
 }

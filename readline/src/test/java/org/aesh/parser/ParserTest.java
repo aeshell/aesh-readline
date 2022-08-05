@@ -191,6 +191,27 @@ public class ParserTest {
         assertTrue(Parser.doesStringContainOpenQuote("\"foo bar is bar is \\\"foo is bar\'"));
     }
 
+    @Test
+    public void testDoesStringContainQuoteIgnoreSingleQuote() {
+        int flags = 2; // ignore single quotes
+        assertFalse(Parser.doesStringContainOpenQuote("foo bar is bar", flags));
+        assertFalse(Parser.doesStringContainOpenQuote("\'foo bar \"is bar is \"foo is bar\'", flags));
+        assertFalse(Parser.doesStringContainOpenQuote("\'foo bar is bar is foo is bar", flags));
+        assertFalse(Parser.doesStringContainOpenQuote("'foo bar is bar is foo is bar", flags));
+        assertTrue(Parser.doesStringContainOpenQuote("'foo bar is bar is foo is bar"));
+        assertFalse(Parser.doesStringContainOpenQuote("'", flags));
+        assertTrue(Parser.doesStringContainOpenQuote("\"", flags));
+    }
+
+    @Test
+    public void testDoesStringContainQuoteIgnoreDoubleQuote() {
+        int flags = 1; // ignore double quotes
+        assertFalse(Parser.doesStringContainOpenQuote("foo bar is bar", flags));
+        assertTrue(Parser.doesStringContainOpenQuote("'", flags));
+        assertFalse(Parser.doesStringContainOpenQuote("''", flags));
+        assertFalse(Parser.doesStringContainOpenQuote("\\'", flags));
+        assertFalse(Parser.doesStringContainOpenQuote("\"", flags));
+    }
 
     @Test
     public void testFormatDisplayCompactListTerminalString() {

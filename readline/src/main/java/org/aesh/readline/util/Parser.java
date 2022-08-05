@@ -535,12 +535,16 @@ public class Parser {
     }
 
     /**
-     * Check if a string contain openBlocking quotes. Escaped quotes does not count.
+     * Check if a string contain open quotes. Escaped quotes does not count.
      *
      * @param text text
-     * @return true if it contains openBlocking quotes, else false
+     * @param flags flags, <code>1</code> to ignore double quotes, <code>2</code> to ignore single
+     * quotes. Other values will check for both.
+     * @return true if it contains open quotes, else false
      */
-    public static boolean doesStringContainOpenQuote(String text) {
+    public static boolean doesStringContainOpenQuote(String text, int flags) {
+        boolean ignoreDoubleQuote = flags == 1;
+        boolean ignoreSingleQuote = flags == 2;
         boolean doubleQuote = false;
         boolean singleQuote = false;
         boolean escapedByBackSlash = false;
@@ -553,16 +557,20 @@ public class Parser {
                  escapedByBackSlash = !escapedByBackSlash;
                  continue;
              }
-            if (text.charAt(i) == SINGLE_QUOTE) {
+            if (text.charAt(i) == SINGLE_QUOTE && !ignoreSingleQuote) {
                 if (!doubleQuote)
                     singleQuote = !singleQuote;
             }
-            else if (text.charAt(i) == DOUBLE_QUOTE) {
+            else if (text.charAt(i) == DOUBLE_QUOTE && !ignoreDoubleQuote) {
                 if (!singleQuote)
                     doubleQuote = !doubleQuote;
             }
         }
         return doubleQuote || singleQuote;
+    }
+
+    public static boolean doesStringContainOpenQuote(String text) {
+        return doesStringContainOpenQuote(text, -1);
     }
 
     public static boolean doWordContainOnlyEscapedSpace(String word) {
