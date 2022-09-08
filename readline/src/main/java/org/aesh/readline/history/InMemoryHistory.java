@@ -144,17 +144,16 @@ public class InMemoryHistory extends History {
     }
 
     private int[] searchReverse(int[] search) {
-        if(lastId <= 0 || lastId > size()-1)
+        if(size() == 0)
+            return new int[] {};
+        else if(lastId <= 0 || lastId > size()-1)
             lastId = size()-1;
         else if(lastSearchArgument != null && Arrays.equals(lastSearchArgument, search) && lastId > 0)
             lastId--;
 
         for(; lastId >= 0; lastId--)
             if(Parser.arrayContains(historyList.get(lastId), search)) {
-            //if(historyList.get(lastId).contains(search)) {
                 lastSearchArgument = search;
-                if(lastId < 0)
-                    lastId = 0;
                 return get(lastId);
             }
 

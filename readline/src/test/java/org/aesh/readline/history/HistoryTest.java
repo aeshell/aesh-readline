@@ -61,6 +61,24 @@ public class HistoryTest {
     }
 
     @Test
+    public void testEmptyHistory() {
+
+        TestConnection term = new TestConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).create());
+        term.read(Key.UP);
+        term.read(Key.ENTER);
+        term.assertLine("");
+
+        term = new TestConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).create());
+        term.read(Key.CTRL_R);
+        term.assertBuffer("(reverse-i-search) `': ");
+
+        term = new TestConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).create());
+        term.read(Key.CTRL_S);
+        term.assertBuffer("(forward-i-search) `': ");
+
+    }
+
+    @Test
     public void testHistoryMultiLine1() throws Exception {
 
         TestConnection term = new TestConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).create());
