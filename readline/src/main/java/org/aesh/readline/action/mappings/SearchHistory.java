@@ -83,6 +83,10 @@ abstract class SearchHistory implements SearchAction {
          }
          else if(action instanceof BackwardChar)
              status = Status.SEARCH_MOVE_LEFT;
+         else if(action instanceof BeginningOfLine)
+             status = Status.SEARCH_MOVE_BEGINNING_OF_LINE;
+         else if(action instanceof EndOfLine)
+             status = Status.SEARCH_MOVE_END_OF_LINE;
          else {
              if(key == Key.ESC) {
                  status = Status.SEARCH_EXIT;
@@ -182,9 +186,11 @@ abstract class SearchHistory implements SearchAction {
                    inputProcessor.buffer().replace(searchResult);
                    break;
                case SEARCH_MOVE_RIGHT:
-                   inputProcessor.buffer().replace(searchResult);
                case SEARCH_MOVE_LEFT:
+               case SEARCH_MOVE_BEGINNING_OF_LINE:
+               case SEARCH_MOVE_END_OF_LINE:
                    inputProcessor.buffer().replace(searchResult);
+                   break;
            }
 
            if(!keepFocus()) {
@@ -236,8 +242,15 @@ abstract class SearchHistory implements SearchAction {
 
     //TODO: depending on specific actions, the cursor should be moved to a correct spot
     private void moveCursorAtExit(InputProcessor inputProcessor) {
-        if(status == Status.SEARCH_MOVE_RIGHT)
-            inputProcessor.buffer().moveCursor(inputProcessor.buffer().buffer().length());
+        switch(status) {
+            case SEARCH_MOVE_RIGHT:
+            case SEARCH_MOVE_END_OF_LINE:
+                inputProcessor.buffer().moveCursor(inputProcessor.buffer().buffer().length());
+                break;
+            case SEARCH_MOVE_BEGINNING_OF_LINE:
+                inputProcessor.buffer().moveCursor(-inputProcessor.buffer().buffer().length());
+                break;
+        }
     }
 
  }
