@@ -36,6 +36,8 @@ public interface SearchAction extends ActionEvent {
         SEARCH_MOVE_PREV,
         SEARCH_MOVE_NEXT,
         SEARCH_MOVE_RIGHT,
-        SEARCH_MOVE_LEFT
+        SEARCH_MOVE_LEFT,
+        SEARCH_MOVE_BEGINNING_OF_LINE,
+        SEARCH_MOVE_END_OF_LINE,
     }
 }
