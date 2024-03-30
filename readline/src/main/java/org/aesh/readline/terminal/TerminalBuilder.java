@@ -29,9 +29,11 @@ import org.aesh.readline.terminal.impl.WinSysTerminal;
 import org.aesh.terminal.utils.OSUtils;
 import org.aesh.readline.util.LoggerUtil;
 
+import java.io.Console;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.reflect.Method;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -143,8 +145,8 @@ public final class TerminalBuilder {
 
     private Terminal createWindowsTerminal(String name) throws IOException {
         try {
-            //if console != null its a native terminal, not redirects etc
-            if(System.console() != null)
+            Console console = System.console();
+            if (console != null && isTerminal(console)) // a native terminal, not redirects etc
                 return new WinSysTerminal(name, nativeSignals);
             else {
                 return new WinExternalTerminal(name, type, (in == null) ? System.in : in,
@@ -154,6 +156,21 @@ public final class TerminalBuilder {
         catch(IOException e) {
             return new WinExternalTerminal(name, type, (in == null) ? System.in : in,
                     (out == null) ? System.out : out);
+        }
+    }
+
+    // Console.isTerminal() was introduced in Java 22
+    private static boolean isTerminal(Console console) {
+        try {
+            Method isTerminal = Console.class.getMethod("isTerminal");
+            try {
+                return (boolean) isTerminal.invoke(console);
+            } catch (Exception e) {
+                LOGGER.log(Level.SEVERE, "Failed to invoke System.console().isTerminal() via Reflection API", e);
+                return false;
+            }
+        } catch (NoSuchMethodException e) {
+            return true; // for Java <= 21
         }
     }
 }
