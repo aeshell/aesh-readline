@@ -161,6 +161,9 @@ public final class TerminalBuilder {
 
     // Console.isTerminal() was introduced in Java 22
     private static boolean isTerminal(Console console) {
+        if (console == null) {
+            return false;
+        }
         try {
             Method isTerminal = Console.class.getMethod("isTerminal");
             try {
