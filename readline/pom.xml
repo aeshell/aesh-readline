@@ -110,6 +110,7 @@
                       </manifest>
                       <manifestEntries>
                         <Automatic-Module-Name>${javaModuleName}</Automatic-Module-Name>
+                        <Multi-Release>true</Multi-Release>
                       </manifestEntries>
                       <index>true</index>
                     </archive>
@@ -124,6 +125,32 @@
             </plugin>
             <plugin>
                 <artifactId>maven-compiler-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>compile-java-8</id>
+                        <goals>
+                            <goal>compile</goal>
+                        </goals>
+                        <configuration>
+                            <source>1.8</source>
+                            <target>1.8</target>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>compile-java-22</id>
+                        <phase>compile</phase>
+                        <goals>
+                            <goal>compile</goal>
+                        </goals>
+                        <configuration>
+                            <release>22</release>
+                            <compileSourceRoots>
+                                <compileSourceRoot>${project.basedir}/src/main/java22</compileSourceRoot>
+                            </compileSourceRoots>
+                            <multiReleaseOutput>true</multiReleaseOutput>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
               <groupId>org.apache.maven.plugins</groupId>

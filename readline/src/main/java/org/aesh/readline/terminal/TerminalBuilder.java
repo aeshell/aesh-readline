@@ -143,8 +143,8 @@ public final class TerminalBuilder {
 
     private Terminal createWindowsTerminal(String name) throws IOException {
         try {
-            //if console != null its a native terminal, not redirects etc
-            if(System.console() != null)
+            // a native terminal, not redirects etc
+            if(TerminalChecker.isTerminalAvailable())
                 return new WinSysTerminal(name, nativeSignals);
             else {
                 return new WinExternalTerminal(name, type, (in == null) ? System.in : in,
