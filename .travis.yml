@@ -1,7 +1,0 @@
-language: java
-
-jdk:
-  - oraclejdk11
-
-notifications:
-  irc: chat.freenode.net#aesh
