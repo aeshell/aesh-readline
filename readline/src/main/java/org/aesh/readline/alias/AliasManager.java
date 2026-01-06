@@ -25,6 +25,7 @@ import org.aesh.readline.util.LoggerUtil;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -79,7 +80,7 @@ public class AliasManager {
         return true;
     }
 
-    private void readAliasesFromFile() throws IOException {
+    private void readAliasesFromFile() {
         try (BufferedReader br = new BufferedReader(new FileReader(aliasFile))) {
             String line;
             while((line = br.readLine()) != null) {
@@ -91,6 +92,10 @@ public class AliasManager {
                     }
                 }
             }
+        } catch (FileNotFoundException e) {
+          LOGGER.warning("Could not find alias file: "+ e);
+        } catch (IOException e) {
+          LOGGER.warning("Could not read alias file: "+ e);
         }
     }
 
