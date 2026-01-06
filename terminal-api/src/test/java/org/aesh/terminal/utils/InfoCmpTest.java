@@ -28,8 +28,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 /**
  * @author <a href=mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
@@ -86,6 +85,7 @@ public class InfoCmpTest {
                 assertTrue(ints.get(Capability.lines) > 0);
                 assertTrue(bools.size() > 0);
                 assertTrue(strings.size() > 0);
+                assertNotNull(strings.get(Capability.byName("smcup")));
             }
         }
     }

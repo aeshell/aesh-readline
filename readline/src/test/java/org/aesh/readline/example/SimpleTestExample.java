@@ -22,6 +22,7 @@ package org.aesh.readline.example;
 import org.aesh.readline.Readline;
 import org.aesh.readline.ReadlineBuilder;
 import org.aesh.readline.tty.terminal.TerminalConnection;
+import org.aesh.terminal.tty.Capability;
 
 import java.io.IOException;
 
@@ -40,8 +41,11 @@ public class SimpleTestExample {
 
     private static void read(TerminalConnection connection, Readline readline, String prompt) {
         readline.readline(connection, prompt, input -> {
+
+            connection.put(Capability.enter_ca_mode);
             if(input != null && input.equals("exit")) {
                 connection.write("we're exiting\n");
+                connection.put(Capability.exit_ca_mode);
                 connection.close();
             }
             else {

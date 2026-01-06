@@ -47,6 +47,7 @@ public class SignalTest {
         assertEquals(": foo", connection.getOutputBuffer());
         connection.read(Key.CTRL_D);
         assertEquals(": fooEOF", connection.getOutputBuffer());
+        connection.close();
     }
 
     @Test

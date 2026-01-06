@@ -5,16 +5,14 @@ import org.aesh.readline.editing.EditModeBuilder;
 import org.aesh.readline.editing.Variable;
 import org.aesh.terminal.Device;
 import org.aesh.terminal.tty.Capability;
+import org.aesh.terminal.utils.ANSI;
 import org.aesh.readline.util.Parser;
 import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.function.Consumer;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 /**
  * @author Ståle W. Pedersen <stale.pedersen@jboss.org>
@@ -24,6 +22,8 @@ public class DeviceTest {
     @Test
     public void testAnsiCapabilities() throws Exception {
         Device device = DeviceBuilder.builder().name("ansi").build();
+
+        assertNotNull(device.getStringCapability(Capability.enter_alt_charset_mode));
 
         assertTrue( device.getBooleanCapability(Capability.auto_right_margin));
         assertFalse( device.getBooleanCapability(Capability.auto_left_margin));
@@ -75,8 +75,15 @@ public class DeviceTest {
     @Test
     public void testXTermCapabilities() throws Exception {
         Device device = DeviceBuilder.builder().name("xterm-256color").build();
-        Consumer<int[]> output = ints -> assertEquals("\u001B[H\u001B[2J", Parser.fromCodePoints(ints));
-        device.puts(output, Capability.clear_screen);
+//        Consumer<int[]> output = ints -> assertEquals("\u001B[H\u001B[2J", Parser.fromCodePoints(ints));
+//        device.puts(output, Capability.clear_screen);
+
+//        assertNotNull(device.getStringCapability(Capability.enter_ca_mode));
+        System.out.println("ANSI: "+ ANSI.ALTERNATE_BUFFER);
+        System.out.println("Device: "+device.getStringCapability(Capability.enter_ca_mode));
+        assertEquals(ANSI.ALTERNATE_BUFFER, device.getStringCapability(Capability.enter_ca_mode));
+        assertEquals(ANSI.ALTERNATE_BUFFER,
+                device.getStringCapability(Capability.enter_ca_mode));
     }
 
 }

@@ -27,8 +27,6 @@ import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * Infocmp helper methods.
@@ -92,11 +90,22 @@ public final class InfoCmp {
         CAPS.putIfAbsent(terminal, caps);
     }
 
+    /**
+     * Trying to parse input from either running the infocmp command or using the default
+     * values stored in terminal-api/src/main/resources/org/aesh/terminal/utils/*
+     * Format:
+     * 1 line; comma separated list of capabilities
+     * 2 line: comma separated list of key value pair using # as the value separator
+     * 3 line to the end: comma separated list of key value pair using = as the value separator
+
+     */
+        /*
     public static void parseInfoCmp(
             String capabilities,
             Set<Capability> bools,
             Map<Capability, Integer> ints,
             Map<Capability, String> strings ) {
+
 
         String[] lines = capabilities.split("\n");
         for (int i = 1; i < lines.length; i++) {
@@ -131,5 +140,109 @@ public final class InfoCmp {
             }
         }
     }
+         */
+public static void parseInfoCmp(
+        String capabilities,
+        Set<Capability> bools,
+        Map<Capability, Integer> ints,
+        Map<Capability, String> strings ) {
 
+    if (capabilities == null || capabilities.isEmpty()) {
+        return;
+    }
+
+    String[] lines = capabilities.split("\n");
+    for (int i = 1; i < lines.length; i++) {
+        String line = lines[i].trim();
+        if (line.isEmpty()) continue;
+
+        java.util.List<String> tokens = splitTokens(line);
+        for (String cap : tokens) {
+            if (cap == null) continue;
+            cap = cap.trim();
+            if (cap.isEmpty()) continue;
+
+            int hash = cap.indexOf('#');
+            int eq = cap.indexOf('=');
+
+            if (hash >= 0) {
+                String key = cap.substring(0, hash).trim();
+                String val = cap.substring(hash + 1).trim();
+                try {
+                    int iVal;
+                    if (val.startsWith("0x") || val.startsWith("0X")) {
+                        iVal = Integer.parseInt(val.substring(2), 16);
+                    } else if (val.startsWith("0")) {
+                        iVal = Integer.parseInt(val.substring(1), 8);
+                    } else {
+                        iVal = Integer.parseInt(val);
+                    }
+                    Capability c = Capability.byName(key);
+                    if (c != null) {
+                        ints.put(c, iVal);
+                    }
+                } catch (NumberFormatException e) {
+                    // ignore malformed integer values
+                }
+            } else if (eq >= 0) {
+                String key = cap.substring(0, eq).trim();
+                String val = cap.substring(eq + 1).trim();
+                if(key.equals("smcup")) {
+                    System.out.println("smcup value: " + val);
+                }
+                Capability c = Capability.byName(key);
+                if (c != null) {
+                    strings.put(c, val);
+                }
+            } else {
+                // boolean capability
+                // remove any trailing punctuation
+                String key = cap.replaceAll("[,\\.]$", "").trim();
+                Capability c = Capability.byName(key);
+                if (c != null) {
+                    bools.add(c);
+                }
+            }
+        }
+    }
+}
+
+private static java.util.List<String> splitTokens(String line) {
+    java.util.List<String> tokens = new java.util.ArrayList<>();
+    StringBuilder sb = new StringBuilder();
+    for (int i = 0; i < line.length(); i++) {
+        char ch = line.charAt(i);
+        if (ch == '\\' && i + 1 < line.length()) {
+            char next = line.charAt(i + 1);
+            if (next == ',') {
+                // escaped comma -> include literal comma
+                sb.append(',');
+                i++; // skip next
+                continue;
+            } else {
+                // keep the backslash for other escapes
+                sb.append(ch);
+                continue;
+            }
+        }
+        if (ch == ',') {
+            tokens.add(sb.toString().trim());
+            sb.setLength(0);
+        } else {
+            sb.append(ch);
+        }
+    }
+    if (sb.length() > 0) {
+        tokens.add(sb.toString().trim());
+    }
+
+    // clean tokens: remove trailing commas or dots leftover
+    for (int j = 0; j < tokens.size(); j++) {
+        String t = tokens.get(j);
+        t = t.replaceAll("[,\\.]$", "").trim();
+        tokens.set(j, t);
+    }
+
+    return tokens;
+}
 }

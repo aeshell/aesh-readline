@@ -19,8 +19,10 @@
  */
 package org.aesh.terminal.utils;
 
+import java.io.Flushable;
 import java.io.IOException;
 import java.io.Writer;
+import java.util.ArrayDeque;
 import java.util.Stack;
 
 /**
@@ -54,58 +56,66 @@ public final class Curses {
         int length = str.length();
         int ifte = IFTE_NONE;
         boolean exec = true;
-        Stack<Object> stack = new Stack<Object>();
+        ArrayDeque<Object> stack = new ArrayDeque<>();
         while (index < length) {
             char ch = str.charAt(index++);
             switch (ch) {
                 case '\\':
                     ch = str.charAt(index++);
-                    if (ch >= '0' && ch <= '9') {
-                        throw new UnsupportedOperationException(); // todo
+                    if (ch >= '0' && ch <= '7') {
+                        int val = ch - '0';
+                        for (int i = 0; i < 2; i++) {
+                            ch = str.charAt(index++);
+                            if (ch < '0' || ch > '7') {
+                                throw new IllegalStateException();
+                            }
+                            val = val * 8 + (ch - '0');
+                        }
+                        out.append((char) val);
                     } else {
                         switch (ch) {
                             case 'e':
                             case 'E':
                                 if (exec) {
-                                    out.write(27); // escape
+                                    out.append((char) 27); // escape
                                 }
                                 break;
                             case 'n':
-                                out.write('\n');
+                                out.append('\n');
                                 break;
-//                        case 'l':
-//                            rawPrint('\l');
-//                            break;
+                            //                        case 'l':
+                            //                            rawPrint('\l');
+                            //                            break;
                             case 'r':
                                 if (exec) {
-                                    out.write('\r');
+                                    out.append('\r');
                                 }
                                 break;
                             case 't':
                                 if (exec) {
-                                    out.write('\t');
+                                    out.append('\t');
                                 }
                                 break;
                             case 'b':
                                 if (exec) {
-                                    out.write('\b');
+                                    out.append('\b');
                                 }
                                 break;
                             case 'f':
                                 if (exec) {
-                                    out.write('\f');
+                                    out.append('\f');
                                 }
                                 break;
                             case 's':
                                 if (exec) {
-                                    out.write(' ');
+                                    out.append(' ');
                                 }
                                 break;
                             case ':':
                             case '^':
                             case '\\':
                                 if (exec) {
-                                    out.write(ch);
+                                    out.append(ch);
                                 }
                                 break;
                             default:
@@ -116,7 +126,7 @@ public final class Curses {
                 case '^':
                     ch = str.charAt(index++);
                     if (exec) {
-                        out.write(ch - '@');
+                        out.append((char) (ch - '@'));
                     }
                     break;
                 case '%':
@@ -124,7 +134,7 @@ public final class Curses {
                     switch (ch) {
                         case '%':
                             if (exec) {
-                                out.write('%');
+                                out.append('%');
                             }
                             break;
                         case 'p':
@@ -173,9 +183,10 @@ public final class Curses {
                             break;
                         case '{':
                             int start = index;
-                            while (str.charAt(index++) != '}');
+                            while (str.charAt(index++) != '}')
+                                ;
                             if (exec) {
-                                int v = Integer.valueOf(str.substring(start, index - 1));
+                                int v = Integer.parseInt(str.substring(start, index - 1));
                                 stack.push(v);
                             }
                             break;
@@ -327,25 +338,123 @@ public final class Curses {
                             }
                             break;
                         case 'd':
-                            out.write(Integer.toString(toInteger(stack.pop())));
+                            out.append(Integer.toString(toInteger(stack.pop())));
                             break;
                         default:
-                            throw new UnsupportedOperationException();
+                            if (ch == ':') {
+                                ch = str.charAt(index++);
+                            }
+                            boolean alternate = false;
+                            boolean left = false;
+                            boolean space = false;
+                            boolean plus = false;
+                            int width = 0;
+                            int prec = -1;
+                            int cnv;
+                            while ("-+# ".indexOf(ch) >= 0) {
+                                switch (ch) {
+                                    case '-':
+                                        left = true;
+                                        break;
+                                    case '+':
+                                        plus = true;
+                                        break;
+                                    case '#':
+                                        alternate = true;
+                                        break;
+                                    case ' ':
+                                        space = true;
+                                        break;
+                                }
+                                ch = str.charAt(index++);
+                            }
+                            if ("123456789".indexOf(ch) >= 0) {
+                                do {
+                                    width = width * 10 + (ch - '0');
+                                    ch = str.charAt(index++);
+                                } while ("0123456789".indexOf(ch) >= 0);
+                            }
+                            if (ch == '.') {
+                                prec = 0;
+                                ch = str.charAt(index++);
+                            }
+                            if ("0123456789".indexOf(ch) >= 0) {
+                                do {
+                                    prec = prec * 10 + (ch - '0');
+                                    ch = str.charAt(index++);
+                                } while ("0123456789".indexOf(ch) >= 0);
+                            }
+                            if ("cdoxXs".indexOf(ch) < 0) {
+                                throw new IllegalArgumentException();
+                            }
+                            cnv = ch;
+                            if (exec) {
+                                String res;
+                                if (cnv == 's') {
+                                    res = (String) stack.pop();
+                                    if (prec >= 0) {
+                                        res = res.substring(0, prec);
+                                    }
+                                } else {
+                                    int p = toInteger(stack.pop());
+                                    StringBuilder fmt = new StringBuilder(16);
+                                    fmt.append('%');
+                                    if (alternate) {
+                                        fmt.append('#');
+                                    }
+                                    if (plus) {
+                                        fmt.append('+');
+                                    }
+                                    if (space) {
+                                        fmt.append(' ');
+                                    }
+                                    if (prec >= 0) {
+                                        fmt.append('0');
+                                        fmt.append(prec);
+                                    }
+                                    fmt.append((char) cnv);
+                                    res = String.format(fmt.toString(), p);
+                                }
+                                if (width > res.length()) {
+                                    res = String.format("%" + (left ? "-" : "") + width + "s", res);
+                                }
+                                out.append(res);
+                            }
+                            break;
                     }
                     break;
                 case '$':
-                    if (str.charAt(index) == '<') {
+                    if (index < length && str.charAt(index) == '<') {
                         // We don't honour delays, just skip
-                        while (str.charAt(index++) != '>');
+                        int nb = 0;
+                        while ((ch = str.charAt(++index)) != '>') {
+                            if (ch >= '0' && ch <= '9') {
+                                nb = nb * 10 + (ch - '0');
+                            } else if (ch == '*') {
+                                // ignore
+                            } else if (ch == '/') {
+                                // ignore
+                            } else {
+                                // illegal, but ...
+                            }
+                        }
+                        index++;
+                        try {
+                            if (out instanceof Flushable) {
+                                out.flush();
+                            }
+                            Thread.sleep(nb);
+                        } catch (InterruptedException e) {
+                        }
                     } else {
                         if (exec) {
-                            out.write(ch);
+                            out.append(ch);
                         }
                     }
                     break;
                 default:
                     if (exec) {
-                        out.write(ch);
+                        out.append(ch);
                     }
                     break;
             }
