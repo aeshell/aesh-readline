@@ -58,11 +58,9 @@ public class InfoCmpHelper {
             Capability capability = Capability.byName(cap);
             if (capability != null) {
                 String capStr = strings.get(capability);
-                System.out.println("capability: " + cap + " -> " + capStr);
                 if (capStr != null) {
                     StringWriter sw = new StringWriter();
                     Curses.tputs(sw, capStr);
-                    System.out.println("translated: " + sw.toString());
                     if (!sw.toString().isEmpty())
                         return sw.toString();
                     else

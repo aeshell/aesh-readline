@@ -56,12 +56,17 @@ public class TelnetDevice implements Device {
     }
 
     @Override
-    public int[] getStringCapabilityAsInts(Capability capability) {
+    public int[] getStringCapabilityAsInts(Capability capability, Object... params) {
         return new int[0];
     }
 
     @Override
-    public boolean puts(Consumer<int[]> output, Capability capability) {
+    public boolean puts(Consumer<int[]> output, Capability capability, Object... params) {
+        return false;
+    }
+
+    @Override
+    public boolean puts(Consumer<int[]> output, String capability, Object... params) {
         return false;
     }
 }

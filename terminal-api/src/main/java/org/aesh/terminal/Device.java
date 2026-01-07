@@ -38,7 +38,9 @@ public interface Device {
 
     String getStringCapability(Capability capability);
 
-    int[] getStringCapabilityAsInts(Capability capability);
+    int[] getStringCapabilityAsInts(Capability capability, Object... params);
 
-    boolean puts(Consumer<int[]> output, Capability capability);
+    boolean puts(Consumer<int[]> output, Capability capability, Object... params);
+
+    boolean puts(Consumer<int[]> output, String capability, Object... params);
 }

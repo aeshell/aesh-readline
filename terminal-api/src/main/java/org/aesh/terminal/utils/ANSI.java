@@ -53,7 +53,6 @@ public class ANSI {
     public static final String WHITE_BG = "\u001B[0;47m";
     public static final String DEFAULT_BG = "\u001B[0;49m";
     public static final String ALTERNATE_BUFFER =
-//            InfoCmpHelper.getCurrentTranslatedCapability("smcup","\u001B[?1049h");
             InfoCmpHelper.getCurrentTranslatedCapability("smcup","\u001B[?1049h");
     public static final String MAIN_BUFFER =
             InfoCmpHelper.getCurrentTranslatedCapability("rmcup","\u001B[?1049l");

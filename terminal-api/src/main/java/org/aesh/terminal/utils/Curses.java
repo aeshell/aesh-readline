@@ -20,10 +20,9 @@
 package org.aesh.terminal.utils;
 
 import java.io.Flushable;
+import java.io.IOError;
 import java.io.IOException;
-import java.io.Writer;
 import java.util.ArrayDeque;
-import java.util.Stack;
 
 /**
  * Curses helper methods.
@@ -43,6 +42,14 @@ public final class Curses {
     private Curses() {
     }
 
+    public static void tputs(Appendable out, String str, Object... params) {
+        try {
+            doTputs(out, str, params);
+        } catch (IOException e) {
+            throw new IOError(e);
+        }
+    }
+
     /**
      * Print the given terminal capabilities
      *
@@ -51,7 +58,7 @@ public final class Curses {
      * @param params optional parameters
      * @throws IOException if an error occurs
      */
-    public static void tputs(Writer out, String str, Object... params) throws IOException {
+    public static void doTputs(Appendable out, String str, Object... params) throws IOException {
         int index = 0;
         int length = str.length();
         int ifte = IFTE_NONE;
@@ -441,7 +448,7 @@ public final class Curses {
                         index++;
                         try {
                             if (out instanceof Flushable) {
-                                out.flush();
+                                ((Flushable) out).flush();
                             }
                             Thread.sleep(nb);
                         } catch (InterruptedException e) {

@@ -3,10 +3,9 @@ package org.aesh.readline.terminal;
 import org.aesh.readline.editing.EditMode;
 import org.aesh.readline.editing.EditModeBuilder;
 import org.aesh.readline.editing.Variable;
+import org.aesh.readline.tty.terminal.TestConnection;
 import org.aesh.terminal.Device;
 import org.aesh.terminal.tty.Capability;
-import org.aesh.terminal.utils.ANSI;
-import org.aesh.readline.util.Parser;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -33,20 +32,13 @@ public class DeviceTest {
 
         assertEquals("^M", device.getStringCapability(Capability.carriage_return));
 
-        String cuf = device.getStringCapability(Capability.parm_right_cursor);
-        System.out.println("CUF: "+cuf);
-
         ArrayList<int[]> out = new ArrayList<>();
-
         Consumer<int[]> capabilityConsumer = out::add;
         device.puts(capabilityConsumer, Capability.carriage_return);
         assertArrayEquals(new int[]{13}, out.get(0));
 
         //home
         assertArrayEquals(new int[]{27,91,72}, device.getStringCapabilityAsInts(Capability.key_home));
-
-        //assertArrayEquals(Key.HOME.getKeyValues(), device.getStringCapabilityAsInts(Capability.key_home));
-
     }
 
     @Test
@@ -75,15 +67,52 @@ public class DeviceTest {
     @Test
     public void testXTermCapabilities() throws Exception {
         Device device = DeviceBuilder.builder().name("xterm-256color").build();
-//        Consumer<int[]> output = ints -> assertEquals("\u001B[H\u001B[2J", Parser.fromCodePoints(ints));
-//        device.puts(output, Capability.clear_screen);
+        String deviceCap = device.getStringCapability(Capability.enter_ca_mode);
+        assertNotNull(deviceCap);
+        // Translate the device capability like ANSI does
+        ArrayList<int[]> out = new ArrayList<>();
+        Consumer<int[]> capabilityConsumer = out::add;
+        device.puts(capabilityConsumer, Capability.enter_ca_mode);
+        // Also check the out variable against a hardcoded value \u001B[?1049h
+        assertArrayEquals(new int[]{27,91,63,49,48,52,57,104}, out.get(0));
+    }
 
-//        assertNotNull(device.getStringCapability(Capability.enter_ca_mode));
-        System.out.println("ANSI: "+ ANSI.ALTERNATE_BUFFER);
-        System.out.println("Device: "+device.getStringCapability(Capability.enter_ca_mode));
-        assertEquals(ANSI.ALTERNATE_BUFFER, device.getStringCapability(Capability.enter_ca_mode));
-        assertEquals(ANSI.ALTERNATE_BUFFER,
-                device.getStringCapability(Capability.enter_ca_mode));
+    @Test
+    public void testScreen256Capabilities() throws Exception {
+        Device device = DeviceBuilder.builder().name("screen-256color").build();
+        String deviceCap = device.getStringCapability(Capability.enter_ca_mode);
+        assertNotNull(deviceCap);
+        // Translate the device capability like ANSI does
+        ArrayList<int[]> out = new ArrayList<>();
+        Consumer<int[]> capabilityConsumer = out::add;
+        device.puts(capabilityConsumer, Capability.enter_ca_mode);
+        // Also check the out variable against a hardcoded value \u001B[?1049h
+        assertArrayEquals(new int[]{27,91,63,49,48,52,57,104}, out.get(0));
+    }
+
+    @Test
+    public void testMovementCapabilities() throws Exception {
+        Device device = DeviceBuilder.builder().name("xterm-256color").build();
+
+        String cup = device.getStringCapability(Capability.cursor_address);
+        assertNotNull(cup);
+
+        ArrayList<int[]> out = new ArrayList<>();
+
+        Consumer<int[]> capabilityConsumer = out::add;
+        device.puts(capabilityConsumer, Capability.cursor_address, 10, 20);
+
+        // ESC [ 11 ; 21 H (parameters are 1-based, %i increments them)
+        assertArrayEquals(new int[]{27,91,49,49,59,50,49,72}, out.get(0));
+    }
+
+    @Test
+    public void testCapabilityIsPushedToTestConnection() throws Exception {
+        TestConnection connection = new TestConnection(false);
+        connection.clearOutputBuffer();
+        connection.put(Capability.enter_ca_mode);
+        // ESC [ ? 1 0 4 9 h
+        assertArrayEquals(new int[]{27,91,63,49,48,52,57,104}, connection.getOutputBuffer().codePoints().toArray());
     }
 
 }

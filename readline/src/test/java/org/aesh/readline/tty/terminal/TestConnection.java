@@ -64,12 +64,18 @@ public class TestConnection implements Connection {
     private Size size;
     private Device device;
     private Attributes attributes;
+    private boolean stripAnsi = true;
 
     private Prompt prompt = new Prompt(": ");
 
     public TestConnection() {
         //default emacs mode
         this(EditModeBuilder.builder().create(), null);
+    }
+
+    public TestConnection(boolean stripAnsi) {
+        //default emacs mode
+        this(null, null, null, null, null, null, null, stripAnsi);
     }
 
     public TestConnection(Prompt prompt) {
@@ -110,11 +116,17 @@ public class TestConnection implements Connection {
     }
     public TestConnection(TestReadline readline, EditMode editMode, List<Completion> completions, Size size, Prompt prompt,
                           Attributes attributes, EnumMap<ReadlineFlag, Integer> flags) {
+        this(readline, editMode, completions, size, prompt, attributes, flags, true);
+    }
+    public TestConnection(TestReadline readline, EditMode editMode, List<Completion> completions, Size size, Prompt prompt,
+                Attributes attributes, EnumMap<ReadlineFlag, Integer> flags, boolean stripAnsi) {
         if(editMode == null)
             editMode = EditModeBuilder.builder().create();
         bufferBuilder = new StringBuilder();
-        stdOutHandler = ints ->
-                bufferBuilder.append(Parser.stripAwayAnsiCodes(Parser.fromCodePoints(ints)));
+        if(stripAnsi)
+            stdOutHandler = ints -> bufferBuilder.append(Parser.stripAwayAnsiCodes(Parser.fromCodePoints(ints)));
+        else
+            stdOutHandler = ints -> bufferBuilder.append(Parser.fromCodePoints(ints));
 
         if(size == null)
             this.size = new Size(80, 20);
@@ -134,7 +146,7 @@ public class TestConnection implements Connection {
             this.attributes = new Attributes();
         }
 
-        device = DeviceBuilder.builder().name("ansi").build();
+        device = DeviceBuilder.builder().name("xterm-256color").build();
         decoder = new Decoder(512, Charset.defaultCharset(), eventDecoder);
 
 
@@ -261,7 +273,9 @@ public class TestConnection implements Connection {
 
     @Override
     public void close() {
-        closeHandler.accept(null);
+        if (closeHandler != null) {
+            closeHandler.accept(null);
+        }
     }
 
     @Override
@@ -274,7 +288,7 @@ public class TestConnection implements Connection {
 
     @Override
     public boolean put(Capability capability, Object... params) {
-        return false;
+        return device.puts(stdOutHandler, capability, params);
     }
 
     @Override

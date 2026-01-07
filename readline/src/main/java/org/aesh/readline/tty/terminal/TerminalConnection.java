@@ -167,7 +167,7 @@ public class TerminalConnection implements Connection {
 
     @Override
     public boolean put(Capability capability, Object... params) {
-        return terminal.device().puts(stdoutHandler(), capability);
+        return terminal.device().puts(stdoutHandler(), capability, params);
     }
 
     @Override

@@ -27,7 +27,6 @@ import org.aesh.terminal.tty.Capability;
 
 import java.io.FilterInputStream;
 import java.io.InputStream;
-import java.io.IOError;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
@@ -295,11 +294,7 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
         String str = device.getStringCapability(cap);
         if (str != null) {
             StringWriter sw = new StringWriter();
-            try {
-                Curses.tputs(sw, str);
-            } catch (IOException e) {
-                throw new IOError(e);
-            }
+            Curses.tputs(sw, str);
             return sw.toString();
         }
         return null;
