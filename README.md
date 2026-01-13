@@ -1,7 +1,6 @@
 # Æsh (Another Extendable SHell) Readline
 
 [![Build Status](https://github.com/aeshell/aesh-readline/actions/workflows/main.yml/badge.svg)](https://github.com/aeshell/aesh-readline/actions)
-[![Maven Central](https://maven-badges.herokuapp.com/maven-central/org.aesh/readline/badge.svg)](https://maven-badges.herokuapp.com/maven-central/org.aesh/readline)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 Æsh Readline is a library for handling console input with the goal to support most GNU Readline features.
