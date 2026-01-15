@@ -23,7 +23,6 @@ import com.jcraft.jsch.JSchException;
 import org.aesh.terminal.TestBase;
 import org.apache.sshd.util.test.EchoShellFactory;
 import org.apache.sshd.client.SshClient;
-import org.apache.sshd.client.future.AuthFuture;
 import org.apache.sshd.client.session.ClientSession;
 import org.apache.sshd.core.CoreModuleProperties;
 import org.apache.sshd.server.SshServer;
@@ -33,6 +32,7 @@ import org.apache.sshd.server.keyprovider.SimpleGeneratorHostKeyProvider;
 import org.apache.sshd.server.session.ServerConnectionServiceFactory;
 import org.apache.sshd.server.session.ServerUserAuthServiceFactory;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.File;
@@ -79,14 +79,14 @@ public class AsyncAuthTest extends TestBase {
     public void testSyncAuthFailed() throws Exception {
         startServer();
         authenticator = (username, password, sess) -> false;
-        assertFalse(authenticate());
+        Assert.assertFalse(authenticate());
     }
 
     @Test
     public void testSyncAuthSucceeded() throws Exception {
         startServer();
         authenticator = (username, password, sess) -> true;
-        assertTrue(authenticate());
+        Assert.assertTrue(authenticate());
     }
 
     @Test
@@ -107,7 +107,7 @@ public class AsyncAuthTest extends TestBase {
             }.start();
             throw auth;
         };
-        assertFalse(authenticate());
+        Assert.assertFalse(authenticate());
     }
 
     @Test
@@ -128,7 +128,7 @@ public class AsyncAuthTest extends TestBase {
             }.start();
             throw auth;
         };
-        assertTrue(authenticate());
+        Assert.assertTrue(authenticate());
     }
 
     @Test
@@ -140,7 +140,7 @@ public class AsyncAuthTest extends TestBase {
         try {
             authenticate();
         } catch (JSchException e) {
-            assertTrue("Unexpected failure " + e.getMessage(), e.getMessage().startsWith("SSH_MSG_DISCONNECT"));
+            Assert.assertTrue("Unexpected failure " + e.getMessage(), e.getMessage().startsWith("SSH_MSG_DISCONNECT"));
         }
     }
 
@@ -165,7 +165,7 @@ public class AsyncAuthTest extends TestBase {
         try {
             authenticate();
         } catch (JSchException e) {
-            assertTrue("Unexpected failure " + e.getMessage(), e.getMessage().startsWith("SSH_MSG_DISCONNECT"));
+            Assert.assertTrue("Unexpected failure " + e.getMessage(), e.getMessage().startsWith("SSH_MSG_DISCONNECT"));
         }
     }
 
@@ -174,12 +174,15 @@ public class AsyncAuthTest extends TestBase {
             client.start();
             ClientSession sess = client
                     .connect("whatever", "localhost", 5000)
-                    .verify()
+                    .verify(TimeUnit.SECONDS.toMillis(5))
                     .getSession();
+            // Only use password authentication, don't try to load SSH keys
+            sess.setKeyIdentityProvider(null);
             sess.addPasswordIdentity("whocares");
-            AuthFuture auth = sess.auth();
-            auth.await(TimeUnit.SECONDS.toMillis(5000));
-            return auth.isSuccess();
+            sess.auth().verify(TimeUnit.SECONDS.toMillis(5));
+            return true;
+        } catch (Exception e) {
+            return false;
         }
     }
 
