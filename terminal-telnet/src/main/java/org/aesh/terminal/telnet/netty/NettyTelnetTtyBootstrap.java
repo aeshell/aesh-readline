@@ -21,7 +21,7 @@ package org.aesh.terminal.telnet.netty;
 
 import org.aesh.terminal.Connection;
 import org.aesh.terminal.telnet.TelnetTtyConnection;
-import org.aesh.terminal.telnet.util.Helper;
+import org.aesh.terminal.utils.Helper;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;

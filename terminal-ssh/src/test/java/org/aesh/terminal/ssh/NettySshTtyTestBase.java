@@ -17,30 +17,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.aesh.terminal.telnet.util;
+package org.aesh.terminal.ssh;
 
-import java.util.concurrent.CompletableFuture;
-import java.util.function.Consumer;
+import org.apache.sshd.common.io.IoServiceFactoryFactory;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
 
 /**
- * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
+ * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
  */
-public class Helper {
+public class NettySshTtyTestBase extends Assert {
 
-    public static Consumer<Throwable> startedHandler(CompletableFuture<?> fut) {
-        return err -> {
-            if (err == null) {
-                fut.complete(null);
-            } else {
-                fut.completeExceptionally(err);
-            }
-        };
+    @Before
+    public void setNettyServer() {
     }
 
-    public static Consumer<Throwable> stoppedHandler(CompletableFuture<?> fut) {
-        return err -> {
-            fut.complete(null);
-        };
+    @After
+    public void unsetNettyServer() {
+        System.clearProperty(IoServiceFactoryFactory.class.getName());
     }
-
 }

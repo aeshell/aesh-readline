@@ -17,26 +17,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.aesh.terminal.ssh.netty;
+package org.aesh.terminal.utils;
 
-import org.apache.sshd.common.io.IoService;
-import org.apache.sshd.common.io.IoSession;
-import org.apache.sshd.common.util.CloseableUtils;
-
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 
 /**
- * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
+ * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
  */
-public class NettyIoService extends CloseableUtils.AbstractCloseable implements IoService {
+public class Helper {
 
-  final AtomicLong sessionSeq = new AtomicLong();
-  final Map<Long, IoSession> sessions = new ConcurrentHashMap<>();
+    public static Consumer<Throwable> startedHandler(CompletableFuture<?> fut) {
+        return err -> {
+            if (err == null) {
+                fut.complete(null);
+            } else {
+                fut.completeExceptionally(err);
+            }
+        };
+    }
 
-  @Override
-  public Map<Long, IoSession> getManagedSessions() {
-    return null;
-  }
+    public static Consumer<Throwable> stoppedHandler(CompletableFuture<?> fut) {
+        return err -> {
+            fut.complete(null);
+        };
+    }
+
 }

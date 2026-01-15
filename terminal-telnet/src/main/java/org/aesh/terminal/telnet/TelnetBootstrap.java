@@ -19,7 +19,7 @@
  */
 package org.aesh.terminal.telnet;
 
-import org.aesh.terminal.telnet.util.Helper;
+import org.aesh.terminal.utils.Helper;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;

@@ -23,7 +23,9 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import org.aesh.terminal.Connection;
 import org.aesh.terminal.ssh.TtyCommand;
+import org.aesh.terminal.utils.Helper;
 import org.apache.sshd.common.keyprovider.KeyPairProvider;
+import org.apache.sshd.netty.NettyIoServiceFactoryFactory;
 import org.apache.sshd.server.SshServer;
 import org.apache.sshd.server.auth.password.PasswordAuthenticator;
 import org.apache.sshd.server.keyprovider.SimpleGeneratorHostKeyProvider;
@@ -119,10 +121,8 @@ public class NettySshTtyBootstrap {
         server.setHost(host);
         server.setKeyPairProvider(keyPairProvider);
         server.setPasswordAuthenticator(passwordAuthenticator);
-        if (publicKeyAuthenticator != null) {
-            server.setPublickeyAuthenticator(publicKeyAuthenticator);
-        }
-        server.setShellFactory(() -> new TtyCommand(charset, factory));
+        server.setPublickeyAuthenticator(publicKeyAuthenticator);
+        server.setShellFactory(channelSession -> new TtyCommand(charset, factory));
         try {
             server.start();
         } catch (Exception e) {
