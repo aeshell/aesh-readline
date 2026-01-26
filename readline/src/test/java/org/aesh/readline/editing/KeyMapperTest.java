@@ -19,6 +19,8 @@
  */
 package org.aesh.readline.editing;
 
+import static org.junit.Assert.assertEquals;
+
 import org.aesh.readline.action.mappings.BackwardChar;
 import org.aesh.readline.action.mappings.BeginningOfLine;
 import org.aesh.readline.action.mappings.DeletePrevChar;
@@ -31,8 +33,6 @@ import org.aesh.readline.terminal.Key;
 import org.aesh.terminal.utils.Config;
 import org.junit.Test;
 
-import static org.junit.Assert.assertEquals;
-
 /**
  *
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
@@ -41,7 +41,7 @@ public class KeyMapperTest {
 
     @Test
     public void testQuoteMapKeys() {
-        if(Config.isOSPOSIXCompatible()) {
+        if (Config.isOSPOSIXCompatible()) {
             EditModeBuilder builder = EditModeBuilder.builder();
             InputrcParser.parseLine("\"\\M-a\":   meta", builder);
             assertEquals(builder.create().parse(Key.META_a).name(), new NoAction().name());
@@ -67,8 +67,7 @@ public class KeyMapperTest {
 
     @Test
     public void testMapKeys() {
-        if(Config.isOSPOSIXCompatible()) {
-
+        if (Config.isOSPOSIXCompatible()) {
 
             EditModeBuilder builder = EditModeBuilder.builder();
 

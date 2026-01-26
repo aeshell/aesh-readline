@@ -19,14 +19,14 @@
  */
 package org.aesh.terminal.ssh;
 
-import org.aesh.terminal.BaseDevice;
-import org.aesh.terminal.tty.Capability;
-import org.aesh.terminal.utils.InfoCmp;
-
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+
+import org.aesh.terminal.BaseDevice;
+import org.aesh.terminal.tty.Capability;
+import org.aesh.terminal.utils.InfoCmp;
 
 /**
  * Device implementation for SSH terminal connections.
@@ -39,7 +39,6 @@ public class SSHDevice extends BaseDevice {
     private final Set<Capability> bools;
     private final Map<Capability, Integer> ints;
     private final Map<Capability, String> strings;
-
 
     /**
      * Creates a new SSH device with the specified terminal type.
@@ -54,7 +53,6 @@ public class SSHDevice extends BaseDevice {
         String data = InfoCmp.getDefaultInfoCmp(type);
         InfoCmp.parseInfoCmp(data, bools, ints, strings);
     }
-
 
     @Override
     public String type() {

@@ -19,15 +19,15 @@
  */
 package org.aesh.readline;
 
-import org.aesh.terminal.Terminal;
-import org.aesh.readline.terminal.impl.LineDisciplineTerminal;
-import org.aesh.readline.tty.terminal.TerminalConnection;
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
+
+import org.aesh.readline.terminal.impl.LineDisciplineTerminal;
+import org.aesh.readline.tty.terminal.TerminalConnection;
+import org.aesh.terminal.Terminal;
 
 /**
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
@@ -52,8 +52,7 @@ public class TestTerminal {
             output = new ArrayList<>();
             prompt = new Prompt(": ");
             readline = new Readline();
-        }
-        catch (IOException e) {
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }
@@ -62,8 +61,7 @@ public class TestTerminal {
         input.codePoints().forEach(value -> {
             try {
                 terminal.processInputBytes(input.getBytes());
-            }
-            catch (IOException e) {
+            } catch (IOException e) {
                 e.printStackTrace();
             }
         });
@@ -72,18 +70,16 @@ public class TestTerminal {
     public void write(int in) {
         try {
             terminal.processInputByte(in);
-        }
-        catch (IOException e) {
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
     public void write(int[] in) {
         try {
-            for(int i : in)
+            for (int i : in)
                 terminal.processInputByte(i);
-        }
-        catch (IOException e) {
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }
@@ -97,7 +93,7 @@ public class TestTerminal {
     }
 
     public String getLine() {
-        if(output.size() > 0)
+        if (output.size() > 0)
             return output.remove(0);
         else
             return null;
@@ -110,8 +106,7 @@ public class TestTerminal {
     public void close() {
         try {
             terminal.close();
-        }
-        catch (IOException e) {
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }

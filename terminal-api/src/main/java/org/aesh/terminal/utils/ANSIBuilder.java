@@ -62,20 +62,19 @@ public class ANSIBuilder {
     }
 
     private void checkColor() {
-        if(ansi && !havePrintedColor) {
+        if (ansi && !havePrintedColor) {
             havePrintedColor = true;
             doAppendColors();
         }
     }
 
     private void doAppendColors() {
-        if(bg == Color.DEFAULT && text == Color.DEFAULT && textType == TextType.DEFAULT)
+        if (bg == Color.DEFAULT && text == Color.DEFAULT && textType == TextType.DEFAULT)
             return;
         else if (bg == Color.DEFAULT && text == Color.DEFAULT) {
             b.append(ANSI_START)
                     .append(textType.value()).append("m");
-        }
-        else {
+        } else {
             b.append(ANSI_START)
                     .append(textType.value()).append(';')
                     .append(text.text()).append(';')
@@ -89,9 +88,9 @@ public class ANSIBuilder {
      * @return this builder for method chaining
      */
     public ANSIBuilder resetColors() {
-        if(!ansi)
+        if (!ansi)
             return this;
-        if(textType == TextType.DEFAULT && bg == Color.DEFAULT && text == Color.DEFAULT)
+        if (textType == TextType.DEFAULT && bg == Color.DEFAULT && text == Color.DEFAULT)
             return this;
         else {
             doResetColors();
@@ -113,7 +112,7 @@ public class ANSIBuilder {
      */
     public ANSIBuilder clear() {
         b = new StringBuilder();
-        if(ansi)
+        if (ansi)
             doResetColors();
         havePrintedColor = false;
         return this;
@@ -126,7 +125,7 @@ public class ANSIBuilder {
      * @return this builder for method chaining
      */
     public ANSIBuilder text(Color color) {
-        if(color != null && this.text != color) {
+        if (color != null && this.text != color) {
             this.text = color;
             havePrintedColor = false;
         }
@@ -140,7 +139,7 @@ public class ANSIBuilder {
      * @return this builder for method chaining
      */
     public ANSIBuilder textType(TextType type) {
-        if(type != null && textType != type) {
+        if (type != null && textType != type) {
             textType = type;
             havePrintedColor = false;
         }
@@ -154,7 +153,7 @@ public class ANSIBuilder {
      * @return this builder for method chaining
      */
     public ANSIBuilder bg(Color color) {
-        if(color != null && this.bg != color) {
+        if (color != null && this.bg != color) {
             this.bg = color;
             havePrintedColor = false;
         }

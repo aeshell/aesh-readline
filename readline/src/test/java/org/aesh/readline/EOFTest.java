@@ -6,24 +6,23 @@
  */
 package org.aesh.readline;
 
-import org.aesh.readline.terminal.Key;
-import org.aesh.readline.tty.terminal.TestConnection;
-import org.junit.Test;
+import static org.junit.Assert.assertEquals;
 
 import java.util.EnumMap;
 
-import static org.junit.Assert.assertEquals;
+import org.aesh.readline.terminal.Key;
+import org.aesh.readline.tty.terminal.TestConnection;
+import org.junit.Test;
 
 /**
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public class EOFTest {
 
-
     @Test
     public void testEOF() {
 
-        final int[] closeCalled = {0};
+        final int[] closeCalled = { 0 };
 
         EnumMap<ReadlineFlag, Integer> flags = new EnumMap<>(ReadlineFlag.class);
         TestConnection term = new TestConnection(flags);
@@ -31,7 +30,6 @@ public class EOFTest {
         term.setCloseHandler(v -> {
             closeCalled[0]++;
         });
-
 
         term.read("foo".getBytes());
         term.read(Key.CTRL_D);
@@ -50,7 +48,7 @@ public class EOFTest {
     @Test
     public void testIgnoreEOF() {
 
-        final int[] closeCalled = {0};
+        final int[] closeCalled = { 0 };
 
         EnumMap<ReadlineFlag, Integer> flags = new EnumMap<>(ReadlineFlag.class);
         flags.put(ReadlineFlag.IGNORE_EOF, 2);
@@ -80,7 +78,7 @@ public class EOFTest {
     @Test
     public void testIgnoreEOF2() {
 
-        final int[] closeCalled = {0};
+        final int[] closeCalled = { 0 };
 
         EnumMap<ReadlineFlag, Integer> flags = new EnumMap<>(ReadlineFlag.class);
         flags.put(ReadlineFlag.IGNORE_EOF, 2);
@@ -110,6 +108,5 @@ public class EOFTest {
         term.read(Key.CTRL_D);
         assertEquals(1, closeCalled[0]);
     }
-
 
 }

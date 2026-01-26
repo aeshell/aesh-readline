@@ -19,7 +19,6 @@
  */
 package org.aesh.terminal.tty;
 
-
 /**
  * Terminal capabilities as defined in the terminfo database.
  * Each capability has a name and a short cap code.
@@ -510,8 +509,8 @@ public enum Capability {
     }
 
     public static Capability byName(String name) {
-        for(Capability c : values()) {
-            if(c.name().equals(name) || c.getName().equals(name) || c.getCap().equals(name))
+        for (Capability c : values()) {
+            if (c.name().equals(name) || c.getName().equals(name) || c.getCap().equals(name))
                 return c;
         }
         return null;

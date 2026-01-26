@@ -40,7 +40,7 @@ public class LinePipedInputStream extends PipedInputStream {
         super(src);
     }
 
-    public synchronized int read(byte[] b, int off, int len)  throws IOException {
+    public synchronized int read(byte[] b, int off, int len) throws IOException {
         /* possibly wait on the first character */
         int c = read();
         if (c < 0) {
@@ -48,7 +48,7 @@ public class LinePipedInputStream extends PipedInputStream {
         }
         b[off] = (byte) c;
         int rlen = 1;
-        if(c == NEW_LINE) {
+        if (c == NEW_LINE) {
             return rlen;
         }
         int enter = -1;
@@ -66,10 +66,10 @@ public class LinePipedInputStream extends PipedInputStream {
             if (available > (len - 1)) {
                 available = len - 1;
             }
-            enter = findEnter(buffer, out, out+available);
-            if(enter > -1) {
-                if(enter+1 <= available)
-                    available = enter+1;
+            enter = findEnter(buffer, out, out + available);
+            if (enter > -1) {
+                if (enter + 1 <= available)
+                    available = enter + 1;
                 else
                     available = enter;
             }
@@ -85,7 +85,7 @@ public class LinePipedInputStream extends PipedInputStream {
                 /* now empty */
                 in = -1;
             }
-            if(enter > -1) {
+            if (enter > -1) {
                 return rlen;
             }
         }
@@ -93,9 +93,9 @@ public class LinePipedInputStream extends PipedInputStream {
     }
 
     private int findEnter(byte[] buffer, int start, int length) {
-            for(int i = start; i < length; i++) {
-            if(buffer[i] == NEW_LINE)
-                return i-start;
+        for (int i = start; i < length; i++) {
+            if (buffer[i] == NEW_LINE)
+                return i - start;
         }
         return -1;
     }

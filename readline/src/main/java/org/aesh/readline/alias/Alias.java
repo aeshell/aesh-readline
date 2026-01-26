@@ -60,6 +60,6 @@ public class Alias implements Comparable {
 
     @Override
     public int compareTo(Object o) {
-        return getName().compareTo(((Alias )o ).getName());
+        return getName().compareTo(((Alias) o).getName());
     }
 }

@@ -19,12 +19,12 @@
  */
 package org.aesh.readline.terminal.utils;
 
-import org.aesh.readline.util.LoggerUtil;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import org.aesh.readline.util.LoggerUtil;
 
 /**
  * Manages the shutdown-hook thread and tasks to execute on shutdown.
@@ -66,8 +66,7 @@ public final class ShutdownHooks {
             LOGGER.log(Level.FINE, "Running task: ", task);
             try {
                 task.run();
-            }
-            catch (Throwable e) {
+            } catch (Throwable e) {
                 LOGGER.log(Level.WARNING, "Task failed", e);
             }
         }
@@ -79,8 +78,7 @@ public final class ShutdownHooks {
         LOGGER.log(Level.FINE, "Registering shutdown-hook: ", thread);
         try {
             Runtime.getRuntime().addShutdownHook(thread);
-        }
-        catch (AbstractMethodError e) {
+        } catch (AbstractMethodError e) {
             // JDK 1.3+ only method. Bummer.
             LOGGER.log(Level.FINE, "Failed to register shutdown-hook", e);
         }
@@ -110,12 +108,10 @@ public final class ShutdownHooks {
 
         try {
             Runtime.getRuntime().removeShutdownHook(thread);
-        }
-        catch (AbstractMethodError e) {
+        } catch (AbstractMethodError e) {
             // JDK 1.3+ only method. Bummer.
             LOGGER.log(Level.FINE, "Failed to remove shutdown-hook", e);
-        }
-        catch (IllegalStateException e) {
+        } catch (IllegalStateException e) {
             // The VM is shutting down, not a big deal; ignore
         }
     }

@@ -19,11 +19,11 @@
  */
 package org.aesh.readline;
 
+import static org.junit.Assert.assertEquals;
+
 import org.aesh.readline.tty.terminal.TestConnection;
 import org.aesh.terminal.utils.Config;
 import org.junit.Test;
-
-import static org.junit.Assert.assertEquals;
 
 /**
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
@@ -34,17 +34,17 @@ public class PasteReadlineTest {
     public void paste() throws Exception {
         TestConnection connection = new TestConnection();
         connection.read("connect" + Config.getLineSeparator() +
-                        "admin" + Config.getLineSeparator() +
-                        "admin!");
+                "admin" + Config.getLineSeparator() +
+                "admin!");
         connection.assertLine("connect");
         connection.readline(s -> {
             assertEquals("admin", s);
-            connection.setPrompt(new Prompt("[password:] ",'\u0000'));
+            connection.setPrompt(new Prompt("[password:] ", '\u0000'));
         });
         connection.readline();
         connection.assertBuffer("admin!");
         assertEquals("[password:] ", connection.getOutputBuffer());
-        connection.read("234"+ Config.getLineSeparator());
+        connection.read("234" + Config.getLineSeparator());
         connection.assertLine("admin!234");
     }
 }

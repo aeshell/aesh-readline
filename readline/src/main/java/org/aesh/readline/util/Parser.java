@@ -19,14 +19,14 @@
  */
 package org.aesh.readline.util;
 
-import org.aesh.readline.completion.CompleteOperation;
-import org.aesh.readline.terminal.formatting.TerminalString;
-import org.aesh.terminal.utils.Config;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Pattern;
+
+import org.aesh.readline.completion.CompleteOperation;
+import org.aesh.readline.terminal.formatting.TerminalString;
+import org.aesh.terminal.utils.Config;
 
 /**
  * String/Parser util methods
@@ -47,7 +47,6 @@ public class Parser {
     private static final Pattern ansiPattern = Pattern.compile("\\u001B\\[[\\?]?[0-9;]*[a-zA-Z]?");
     // command text which starts with '#' is a comment
     private static final Pattern commentPattern = Pattern.compile("^(\\s*)(#)(.*)");
-
 
     /**
      * Format completions so that they look similar to GNU Readline
@@ -162,7 +161,7 @@ public class Parser {
                 for (int c = 0; c < numColumns; c++) {
                     int fetch = i + (c * numRows);
                     if (fetch < displayList.size()) {
-                        if (c == numColumns - 1) {  // No need to pad the right most column
+                        if (c == numColumns - 1) { // No need to pad the right most column
                             completionOutput.append(displayList.get(i + (c * numRows)).toString());
                         } else {
                             completionOutput.append(padRight(maxLength
@@ -175,8 +174,7 @@ public class Parser {
                 }
                 completionOutput.append(Config.getLineSeparator());
             }
-        }
-        else {
+        } else {
             for (TerminalString ts : displayList) {
                 completionOutput.append(ts.toString()).append("  ");
             }
@@ -226,12 +224,10 @@ public class Parser {
                     if (nextFetch < displayList.size()) {
                         stringOutput.append(padRight(columnsSizes[c] + displayList.get(i + (c * numRows)).getANSILength(),
                                 displayList.get(i + (c * numRows)).toString()));
-                    }
-                    else {
+                    } else {
                         stringOutput.append(displayList.get(i + (c * numRows)).toString());
                     }
-                }
-                else {
+                } else {
                     break;
                 }
             }
@@ -294,15 +290,13 @@ public class Parser {
         if (words.length() <= size) {
             out.add(words);
             return out;
-        }
-        else {
+        } else {
             while (words.length() > size) {
                 int i = words.lastIndexOf(' ', size);
                 if (i > 0) {
                     out.add(words.substring(0, i));
                     words = words.substring(i + 1);
-                }
-                else {
+                } else {
                     out.add(words);
                     break;
                 }
@@ -425,8 +419,7 @@ public class Parser {
                     if (text.charAt(start) == BACK_SLASH) {
                         space = false;
                         foundBackslash = true;
-                    }
-                    else {
+                    } else {
                         start += 2;
                         break;
                     }
@@ -440,13 +433,11 @@ public class Parser {
                 if (text.charAt(end) == BACK_SLASH) {
                     back = true;
                     foundBackslash = true;
-                }
-                else if (back) {
+                } else if (back) {
                     if (Character.isSpaceChar(text.charAt(end))) {
                         back = false;
                     }
-                }
-                else if (Character.isSpaceChar(text.charAt(end))) {
+                } else if (Character.isSpaceChar(text.charAt(end))) {
                     break;
                 }
             }
@@ -454,8 +445,7 @@ public class Parser {
                 return switchEscapedSpacesToSpacesInWord(text.substring(start, end));
             else
                 return text.substring(start, end);
-        }
-        else {
+        } else {
             return text.trim();
         }
     }
@@ -477,18 +467,15 @@ public class Parser {
                     else {
                         return switchEscapedSpacesToSpacesInWord(findEscapedSpaceWordCloseToEnd(text));
                     }
-                }
-                else {
+                } else {
                     if (text.lastIndexOf(SPACE) >= cursor) // cant use lastIndexOf
                         return text.substring(text.substring(0, cursor).lastIndexOf(SPACE)).trim();
                     else
                         return text.substring(text.lastIndexOf(SPACE)).trim();
                 }
-            }
-            else
+            } else
                 return text.trim();
-        }
-        else {
+        } else {
             String rest;
             if (text.length() > cursor + 1)
                 rest = text.substring(0, cursor + 1);
@@ -501,8 +488,7 @@ public class Parser {
                     return "";
                 else
                     return switchEscapedSpacesToSpacesInWord(rest);
-            }
-            else {
+            } else {
                 if (cursor > 1 &&
                         text.charAt(cursor) == SPACE_CHAR && text.charAt(cursor - 1) == SPACE_CHAR)
                     return "";
@@ -527,8 +513,7 @@ public class Parser {
         while ((index = text.lastIndexOf(SPACE)) > -1) {
             if (index > 0 && text.charAt(index - 1) == BACK_SLASH) {
                 text = text.substring(0, index - 1);
-            }
-            else
+            } else
                 return originalText.substring(index + 1);
         }
         return originalText;
@@ -539,7 +524,7 @@ public class Parser {
      *
      * @param text text
      * @param flags flags, <code>1</code> to ignore double quotes, <code>2</code> to ignore single
-     * quotes. Other values will check for both.
+     *        quotes. Other values will check for both.
      * @return true if it contains open quotes, else false
      */
     public static boolean doesStringContainOpenQuote(String text, int flags) {
@@ -553,15 +538,14 @@ public class Parser {
             return false;
 
         for (int i = 0; i < text.length(); i++) {
-             if (text.charAt(i) == BACK_SLASH || escapedByBackSlash) {
-                 escapedByBackSlash = !escapedByBackSlash;
-                 continue;
-             }
+            if (text.charAt(i) == BACK_SLASH || escapedByBackSlash) {
+                escapedByBackSlash = !escapedByBackSlash;
+                continue;
+            }
             if (text.charAt(i) == SINGLE_QUOTE && !ignoreSingleQuote) {
                 if (!doubleQuote)
                     singleQuote = !singleQuote;
-            }
-            else if (text.charAt(i) == DOUBLE_QUOTE && !ignoreDoubleQuote) {
+            } else if (text.charAt(i) == DOUBLE_QUOTE && !ignoreDoubleQuote) {
                 if (!singleQuote)
                     doubleQuote = !doubleQuote;
             }
@@ -737,8 +721,8 @@ public class Parser {
     }
 
     public static boolean isTrimmedArrayEmpty(int[] input) {
-        for(int i : input) {
-            if(i != 32)
+        for (int i : input) {
+            if (i != 32)
                 return false;
         }
         return true;
@@ -750,7 +734,7 @@ public class Parser {
     }
 
     public static int arrayIndexOf(int[] source, int sourceOffset, int sourceCount,
-                              int[] target, int targetOffset, int targetCount, int fromIndex) {
+            int[] target, int targetOffset, int targetCount, int fromIndex) {
         if (fromIndex >= sourceCount) {
             return (targetCount == 0 ? sourceCount : -1);
         }
@@ -767,15 +751,16 @@ public class Parser {
         for (int i = sourceOffset + fromIndex; i <= max; i++) {
             /* Look for first character. */
             if (source[i] != first) {
-                while (++i <= max && source[i] != first);
+                while (++i <= max && source[i] != first)
+                    ;
             }
 
             /* Found first character, now look at the rest of v2 */
             if (i <= max) {
                 int j = i + 1;
                 int end = j + targetCount - 1;
-                for (int k = targetOffset + 1; j < end && source[j]
-                        == target[k]; j++, k++);
+                for (int k = targetOffset + 1; j < end && source[j] == target[k]; j++, k++)
+                    ;
 
                 if (j == end) {
                     /* Found whole string. */

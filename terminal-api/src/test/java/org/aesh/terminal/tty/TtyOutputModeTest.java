@@ -19,41 +19,41 @@
  */
 package org.aesh.terminal.tty;
 
-import org.junit.Test;
+import static org.junit.Assert.assertEquals;
 
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-import static org.junit.Assert.assertEquals;
+import org.junit.Test;
 
 /**
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
  */
 public class TtyOutputModeTest {
 
-  @Test
-  public void testTranslateLFToCRLF() {
-    assertOutput("a", "a");
-    assertOutput("\r\n", "\n");
-    assertOutput("a\r\n", "a\n");
-    assertOutput("\r\na", "\na");
-    assertOutput("a\r\nb\r\nc", "a\nb\nc");
-  }
+    @Test
+    public void testTranslateLFToCRLF() {
+        assertOutput("a", "a");
+        assertOutput("\r\n", "\n");
+        assertOutput("a\r\n", "a\n");
+        assertOutput("\r\na", "\na");
+        assertOutput("a\r\nb\r\nc", "a\nb\nc");
+    }
 
-  private void assertOutput(String expected, String actual) {
-    Stream.Builder<int[]> builder = Stream.<int[]>builder();
-    TtyOutputMode out = new TtyOutputMode(builder);
-    out.accept(toCodePoints(actual));
-    String result = fromCodePoints(builder.build().flatMapToInt(IntStream::of).toArray());
-    assertEquals(expected, result);
-  }
+    private void assertOutput(String expected, String actual) {
+        Stream.Builder<int[]> builder = Stream.<int[]> builder();
+        TtyOutputMode out = new TtyOutputMode(builder);
+        out.accept(toCodePoints(actual));
+        String result = fromCodePoints(builder.build().flatMapToInt(IntStream::of).toArray());
+        assertEquals(expected, result);
+    }
 
-  int[] toCodePoints(String s) {
-    return s.codePoints().toArray();
-  }
+    int[] toCodePoints(String s) {
+        return s.codePoints().toArray();
+    }
 
-  String fromCodePoints(int[] input) {
-    return new String(input, 0, input.length);
-  }
+    String fromCodePoints(int[] input) {
+        return new String(input, 0, input.length);
+    }
 
 }

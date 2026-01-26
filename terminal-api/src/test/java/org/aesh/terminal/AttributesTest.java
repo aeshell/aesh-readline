@@ -19,9 +19,9 @@
  */
 package org.aesh.terminal;
 
-import org.junit.Test;
-
 import static org.junit.Assert.assertEquals;
+
+import org.junit.Test;
 
 /**
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>

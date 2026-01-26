@@ -41,7 +41,7 @@ public class EmacsEditingMode implements Action {
 
     @Override
     public void accept(InputProcessor inputProcessor) {
-        if(inputProcessor.editMode().mode() != EditMode.Mode.EMACS)
+        if (inputProcessor.editMode().mode() != EditMode.Mode.EMACS)
             inputProcessor.setEditMode(EditModeBuilder.builder(EditMode.Mode.EMACS).create());
     }
 }

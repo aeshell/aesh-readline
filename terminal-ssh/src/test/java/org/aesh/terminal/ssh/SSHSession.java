@@ -1,15 +1,15 @@
 package org.aesh.terminal.ssh;
 
-import org.aesh.terminal.TestBase;
-import org.apache.sshd.client.channel.ChannelShell;
-import org.apache.sshd.client.session.ClientSession;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.util.concurrent.TimeUnit;
+
+import org.aesh.terminal.TestBase;
+import org.apache.sshd.client.channel.ChannelShell;
+import org.apache.sshd.client.session.ClientSession;
 
 public class SSHSession {
 
@@ -94,16 +94,22 @@ public class SSHSession {
 
     public void close() {
         if (out != null) {
-            try { out.close(); } catch (Exception ignore) {}
+            try {
+                out.close();
+            } catch (Exception ignore) {
+            }
         }
         if (in != null) {
-            try { in.close(); } catch (Exception ignore) {}
+            try {
+                in.close();
+            } catch (Exception ignore) {
+            }
         }
         if (channel != null) {
-//      try { channel.disconnect(); } catch (Exception ignore) {}
+            //      try { channel.disconnect(); } catch (Exception ignore) {}
         }
         if (session != null) {
-//      try { session.disconnect(); } catch (Exception ignore) {}
+            //      try { session.disconnect(); } catch (Exception ignore) {}
         }
     }
 

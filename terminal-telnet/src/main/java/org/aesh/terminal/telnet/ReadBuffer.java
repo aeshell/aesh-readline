@@ -32,69 +32,69 @@ import java.util.function.Consumer;
  */
 public class ReadBuffer implements Consumer<int[]> {
 
-  private final Queue<int[]> queue = new ArrayDeque<>(10);
-  private final Executor executor;
-  private volatile Consumer<int[]> readHandler;
+    private final Queue<int[]> queue = new ArrayDeque<>(10);
+    private final Executor executor;
+    private volatile Consumer<int[]> readHandler;
 
-  /**
-   * Creates a new ReadBuffer with the specified executor.
-   *
-   * @param executor the executor used for dispatching data to the read handler
-   */
-  public ReadBuffer(Executor executor) {
-    this.executor = executor;
-  }
-
-  @Override
-  public void accept(int[] data) {
-    queue.add(data);
-    while (readHandler != null && queue.size() > 0) {
-      data = queue.poll();
-      if (data != null) {
-        readHandler.accept(data);
-      }
+    /**
+     * Creates a new ReadBuffer with the specified executor.
+     *
+     * @param executor the executor used for dispatching data to the read handler
+     */
+    public ReadBuffer(Executor executor) {
+        this.executor = executor;
     }
-  }
 
-  /**
-   * Returns the current read handler.
-   *
-   * @return the read handler, or null if none is set
-   */
-  public Consumer<int[]> getReadHandler() {
-    return readHandler;
-  }
-
-  /**
-   * Sets the read handler for receiving buffered data.
-   * When a handler is set, any queued data will be drained to the handler.
-   *
-   * @param readHandler the handler to receive data, or null to clear the handler
-   */
-  public void setReadHandler(final Consumer<int[]> readHandler) {
-    if (readHandler != null) {
-      if (this.readHandler != null) {
-        this.readHandler = readHandler;
-      } else {
-        ReadBuffer.this.readHandler = readHandler;
-        drainQueue();
-      }
-    } else {
-      this.readHandler = null;
-    }
-  }
-
-  private void drainQueue() {
-    if (queue.size() > 0 && readHandler != null) {
-      executor.execute(() -> {
-        if (readHandler != null) {
-          final int[] data = queue.poll();
-          if (data != null) {
-            readHandler.accept(data);
-            drainQueue();
-          }
+    @Override
+    public void accept(int[] data) {
+        queue.add(data);
+        while (readHandler != null && queue.size() > 0) {
+            data = queue.poll();
+            if (data != null) {
+                readHandler.accept(data);
+            }
         }
-      });
     }
-  }
+
+    /**
+     * Returns the current read handler.
+     *
+     * @return the read handler, or null if none is set
+     */
+    public Consumer<int[]> getReadHandler() {
+        return readHandler;
+    }
+
+    /**
+     * Sets the read handler for receiving buffered data.
+     * When a handler is set, any queued data will be drained to the handler.
+     *
+     * @param readHandler the handler to receive data, or null to clear the handler
+     */
+    public void setReadHandler(final Consumer<int[]> readHandler) {
+        if (readHandler != null) {
+            if (this.readHandler != null) {
+                this.readHandler = readHandler;
+            } else {
+                ReadBuffer.this.readHandler = readHandler;
+                drainQueue();
+            }
+        } else {
+            this.readHandler = null;
+        }
+    }
+
+    private void drainQueue() {
+        if (queue.size() > 0 && readHandler != null) {
+            executor.execute(() -> {
+                if (readHandler != null) {
+                    final int[] data = queue.poll();
+                    if (data != null) {
+                        readHandler.accept(data);
+                        drainQueue();
+                    }
+                }
+            });
+        }
+    }
 }

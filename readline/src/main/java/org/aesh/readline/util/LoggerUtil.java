@@ -19,8 +19,6 @@
  */
 package org.aesh.readline.util;
 
-import org.aesh.terminal.utils.Config;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.Enumeration;
@@ -31,6 +29,8 @@ import java.util.logging.LogManager;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
 import java.util.logging.StreamHandler;
+
+import org.aesh.terminal.utils.Config;
 
 /**
  * butt ugly logger util, but its simple and gets the job done (hopefully not too dangerous)
@@ -49,18 +49,17 @@ public class LoggerUtil {
             File logFile = new File(log);
             createLogHandlerToFile(logFile);
 
-            if(logFile.isDirectory()) {
+            if (logFile.isDirectory()) {
                 logFile = new File(logFile.getAbsolutePath() + Config.getPathSeparator() + "aesh.log");
             }
             createLogHandler(new FileHandler(logFile.getAbsolutePath()));
-        }
-        catch(IOException e) {
+        } catch (IOException e) {
             createLogHandler(new ConsoleHandler());
         }
     }
 
     private static void createLogHandlerToFile(File logFile) {
-        if(isCreateANewHandler(logFile)) {
+        if (isCreateANewHandler(logFile)) {
             createLogHandler(new ConsoleHandler());
         }
     }
@@ -74,22 +73,20 @@ public class LoggerUtil {
         logHandler.setFormatter(new SimpleFormatter());
     }
 
-
     public static synchronized Logger getLogger(Class clazz) {
         return getLogger(clazz.getName());
     }
 
     public static synchronized Logger getLogger(String name) {
-       if(!doLog) {
-           Logger log = Logger.getLogger(name);
-           return log;
-        }
-        else {
-            if(logHandler == null) {
+        if (!doLog) {
+            Logger log = Logger.getLogger(name);
+            return log;
+        } else {
+            if (logHandler == null) {
                 createLogHandler(Config.getTmpDir() + Config.getPathSeparator() + "aesh.log");
             }
 
-            if(logHandler == null) {
+            if (logHandler == null) {
                 return Logger.getLogger(name);
             }
 
@@ -102,10 +99,10 @@ public class LoggerUtil {
     }
 
     public static synchronized void doLog() {
-        if(!doLog) {
+        if (!doLog) {
             doLog = true;
             createLogHandler(Config.getTmpDir() + Config.getPathSeparator() + "aesh.log");
-            for(Enumeration<String> loggerEnum = LogManager.getLogManager().getLoggerNames(); loggerEnum.hasMoreElements(); ) {
+            for (Enumeration<String> loggerEnum = LogManager.getLogManager().getLoggerNames(); loggerEnum.hasMoreElements();) {
                 Logger logger = LogManager.getLogManager().getLogger(loggerEnum.nextElement());
                 if (logger != null) {
                     removeAllHandlers(logger);
@@ -116,7 +113,7 @@ public class LoggerUtil {
     }
 
     private static void removeAllHandlers(Logger logger) {
-        for(Handler handler : logger.getHandlers())
+        for (Handler handler : logger.getHandlers())
             logger.removeHandler(handler);
     }
 

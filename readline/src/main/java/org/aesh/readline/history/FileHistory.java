@@ -19,11 +19,6 @@
  */
 package org.aesh.readline.history;
 
-import org.aesh.terminal.utils.Config;
-import org.aesh.readline.util.FileAccessPermission;
-import org.aesh.readline.util.Parser;
-import org.aesh.readline.util.LoggerUtil;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -32,6 +27,11 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import org.aesh.readline.util.FileAccessPermission;
+import org.aesh.readline.util.LoggerUtil;
+import org.aesh.readline.util.Parser;
+import org.aesh.terminal.utils.Config;
 
 /**
  * Read the history file at init and writeToStdOut to it at shutdown
@@ -54,7 +54,7 @@ public class FileHistory extends InMemoryHistory {
     }
 
     public FileHistory(File file, int maxSize, FileAccessPermission historyFilePermission,
-                       boolean logging) {
+            boolean logging) {
         super(maxSize);
         this.logging = logging;
         historyFile = file;
@@ -66,15 +66,15 @@ public class FileHistory extends InMemoryHistory {
      * Read specified history file to history buffer
      */
     private void readFile() {
-        if(historyFile.exists()) {
+        if (historyFile.exists()) {
             try (BufferedReader reader = new BufferedReader(new FileReader(historyFile))) {
                 String line;
-                while((line = reader.readLine()) != null)
+                while ((line = reader.readLine()) != null)
                     push(Parser.toCodePoints(line));
-            } catch(FileNotFoundException ignored) {
+            } catch (FileNotFoundException ignored) {
                 //AESH-205
             } catch (IOException e) {
-                if(logging)
+                if (logging)
                     LOGGER.log(Level.WARNING, "Failed to read from history file, ", e);
             }
         }
@@ -88,7 +88,7 @@ public class FileHistory extends InMemoryHistory {
     private void writeFile() throws IOException {
         historyFile.delete();
         try (FileWriter fw = new FileWriter(historyFile)) {
-            for(int i=0; i < size();i++)
+            for (int i = 0; i < size(); i++)
                 fw.write(Parser.fromCodePoints(get(i)) + (Config.getLineSeparator()));
         }
         if (historyFilePermission != null) {
@@ -104,13 +104,12 @@ public class FileHistory extends InMemoryHistory {
 
     @Override
     public void stop() {
-       try {
-           writeFile();
-       }
-       catch (IOException e) {
-           if(logging)
-               LOGGER.log(Level.WARNING, "Failed when trying to write history file", e);
-       }
+        try {
+            writeFile();
+        } catch (IOException e) {
+            if (logging)
+                LOGGER.log(Level.WARNING, "Failed when trying to write history file", e);
+        }
     }
 
 }

@@ -72,10 +72,10 @@ public enum Variable {
     }
 
     public static Variable findVariable(String value) {
-        if(value == null)
+        if (value == null)
             return null;
-        for(Variable variable : values()) {
-            if(variable.getValue().equals(value))
+        for (Variable variable : values()) {
+            if (variable.getValue().equals(value))
                 return variable;
         }
         return null;

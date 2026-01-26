@@ -20,21 +20,21 @@
 
 package org.aesh.terminal.telnet;
 
-import org.aesh.terminal.io.Decoder;
-import org.aesh.terminal.io.Encoder;
-import org.aesh.terminal.Attributes;
-import org.aesh.terminal.Connection;
-import org.aesh.terminal.Device;
-import org.aesh.terminal.EventDecoder;
-import org.aesh.terminal.tty.Capability;
-import org.aesh.terminal.tty.Signal;
-import org.aesh.terminal.tty.Size;
-import org.aesh.terminal.tty.TtyOutputMode;
-
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+
+import org.aesh.terminal.Attributes;
+import org.aesh.terminal.Connection;
+import org.aesh.terminal.Device;
+import org.aesh.terminal.EventDecoder;
+import org.aesh.terminal.io.Decoder;
+import org.aesh.terminal.io.Encoder;
+import org.aesh.terminal.tty.Capability;
+import org.aesh.terminal.tty.Signal;
+import org.aesh.terminal.tty.Size;
+import org.aesh.terminal.tty.TtyOutputMode;
 
 /**
  * A telnet handler that implements {@link org.aesh.terminal.Connection}.
@@ -43,269 +43,269 @@ import java.util.function.Consumer;
  */
 public final class TelnetTtyConnection extends TelnetHandler implements Connection {
 
-  private final boolean inBinary;
-  private final boolean outBinary;
-  private boolean receivingBinary;
-  private boolean sendingBinary;
-  private boolean accepted;
-  private Size size;
-  private String terminalType;
-  private Consumer<Size> sizeHandler;
-  private Consumer<Void> closeHandler;
-  /** The underlying telnet connection. */
-  protected TelnetConnection conn;
-  private final Charset charset;
-  private final EventDecoder eventDecoder = new EventDecoder(3, 4, 26);
-  private final ReadBuffer readBuffer = new ReadBuffer(this::execute);
-  private final Decoder decoder = new Decoder(512, TelnetCharset.INSTANCE, readBuffer);
-  private final Encoder encoder = new Encoder(StandardCharsets.US_ASCII, data -> conn.write(data));
-  private final Consumer<int[]> stdout = new TtyOutputMode(encoder);
-  private final Consumer<Connection> handler;
-  private long lastAccessedTime = System.currentTimeMillis();
-  private Device device;
-  private Attributes attributes;
+    private final boolean inBinary;
+    private final boolean outBinary;
+    private boolean receivingBinary;
+    private boolean sendingBinary;
+    private boolean accepted;
+    private Size size;
+    private String terminalType;
+    private Consumer<Size> sizeHandler;
+    private Consumer<Void> closeHandler;
+    /** The underlying telnet connection. */
+    protected TelnetConnection conn;
+    private final Charset charset;
+    private final EventDecoder eventDecoder = new EventDecoder(3, 4, 26);
+    private final ReadBuffer readBuffer = new ReadBuffer(this::execute);
+    private final Decoder decoder = new Decoder(512, TelnetCharset.INSTANCE, readBuffer);
+    private final Encoder encoder = new Encoder(StandardCharsets.US_ASCII, data -> conn.write(data));
+    private final Consumer<int[]> stdout = new TtyOutputMode(encoder);
+    private final Consumer<Connection> handler;
+    private long lastAccessedTime = System.currentTimeMillis();
+    private Device device;
+    private Attributes attributes;
 
-  /**
-   * Creates a new TelnetTtyConnection.
-   *
-   * @param inBinary true to enable binary mode for input
-   * @param outBinary true to enable binary mode for output
-   * @param charset the charset to use for encoding/decoding
-   * @param handler the connection handler to be notified when the connection is established
-   */
-  public TelnetTtyConnection(boolean inBinary, boolean outBinary, Charset charset, Consumer<Connection> handler) {
-    this.charset = charset;
-    this.inBinary = inBinary;
-    this.outBinary = outBinary;
-    this.handler = handler;
-  }
-
-  /**
-   * Returns the timestamp of the last access to this connection.
-   *
-   * @return the last accessed time in milliseconds since epoch
-   */
-  public long lastAccessedTime() {
-    return lastAccessedTime;
-  }
-
-  /**
-   * Returns the terminal type reported by the client.
-   *
-   * @return the terminal type string, or null if not yet received
-   */
-  public String terminalType() {
-    return terminalType;
-  }
-
-  /**
-   * Executes a task on the connection's event loop.
-   *
-   * @param task the task to execute
-   */
-  public void execute(Runnable task) {
-    conn.execute(task);
-  }
-
-  /**
-   * Schedules a task to be executed after a delay.
-   *
-   * @param task the task to execute
-   * @param delay the delay before execution
-   * @param unit the time unit of the delay
-   */
-  public void schedule(Runnable task, long delay, TimeUnit unit) {
-    conn.schedule(task, delay, unit);
-  }
-
-  @Override
-  public Charset inputEncoding() {
-    return inBinary ? charset : StandardCharsets.US_ASCII;
-  }
-
-  @Override
-  public Charset outputEncoding() {
-    return outBinary ? charset : StandardCharsets.US_ASCII;
-  }
-
-  @Override
-  public boolean supportsAnsi() {
-    return true;
-  }
-
-  @Override
-  protected void onSendBinary(boolean binary) {
-    sendingBinary = binary;
-    if (binary) {
-      encoder.setCharset(charset);
-    }
-    checkAccept();
-  }
-
-  @Override
-  protected void onReceiveBinary(boolean binary) {
-    receivingBinary = binary;
-    if (binary) {
-      decoder.setCharset(charset);
-    }
-    checkAccept();
-  }
-
-  @Override
-  protected void onData(byte[] data) {
-    lastAccessedTime = System.currentTimeMillis();
-    decoder.write(data);
-  }
-
-  @Override
-  protected void onOpen(TelnetConnection conn) {
-    this.conn = conn;
-
-    //set default size for now
-      size = new Size(80, 24);
-
-    // Kludge mode
-    conn.writeWillOption(Option.ECHO);
-    conn.writeWillOption(Option.SGA);
-
-    //
-    if (inBinary) {
-      conn.writeDoOption(Option.BINARY);
-    }
-    if (outBinary) {
-      conn.writeWillOption(Option.BINARY);
+    /**
+     * Creates a new TelnetTtyConnection.
+     *
+     * @param inBinary true to enable binary mode for input
+     * @param outBinary true to enable binary mode for output
+     * @param charset the charset to use for encoding/decoding
+     * @param handler the connection handler to be notified when the connection is established
+     */
+    public TelnetTtyConnection(boolean inBinary, boolean outBinary, Charset charset, Consumer<Connection> handler) {
+        this.charset = charset;
+        this.inBinary = inBinary;
+        this.outBinary = outBinary;
+        this.handler = handler;
     }
 
-    // Window size
-    conn.writeDoOption(Option.NAWS);
+    /**
+     * Returns the timestamp of the last access to this connection.
+     *
+     * @return the last accessed time in milliseconds since epoch
+     */
+    public long lastAccessedTime() {
+        return lastAccessedTime;
+    }
 
-    // Get some info about user
-    conn.writeDoOption(Option.TERMINAL_TYPE);
+    /**
+     * Returns the terminal type reported by the client.
+     *
+     * @return the terminal type string, or null if not yet received
+     */
+    public String terminalType() {
+        return terminalType;
+    }
 
-    attributes = new Attributes();
+    /**
+     * Executes a task on the connection's event loop.
+     *
+     * @param task the task to execute
+     */
+    public void execute(Runnable task) {
+        conn.execute(task);
+    }
 
-    //
-    checkAccept();
-  }
+    /**
+     * Schedules a task to be executed after a delay.
+     *
+     * @param task the task to execute
+     * @param delay the delay before execution
+     * @param unit the time unit of the delay
+     */
+    public void schedule(Runnable task, long delay, TimeUnit unit) {
+        conn.schedule(task, delay, unit);
+    }
 
-  private void checkAccept() {
-    if (!accepted) {
-      if (!outBinary | (outBinary && sendingBinary)) {
-        if (!inBinary | (inBinary && receivingBinary)) {
-          accepted = true;
-          readBuffer.setReadHandler(eventDecoder);
-          handler.accept(this);
+    @Override
+    public Charset inputEncoding() {
+        return inBinary ? charset : StandardCharsets.US_ASCII;
+    }
+
+    @Override
+    public Charset outputEncoding() {
+        return outBinary ? charset : StandardCharsets.US_ASCII;
+    }
+
+    @Override
+    public boolean supportsAnsi() {
+        return true;
+    }
+
+    @Override
+    protected void onSendBinary(boolean binary) {
+        sendingBinary = binary;
+        if (binary) {
+            encoder.setCharset(charset);
         }
-      }
+        checkAccept();
     }
-  }
 
-  @Override
-  protected void onTerminalType(String terminalType) {
-    this.terminalType = terminalType;
-
-    device = new TelnetDevice(terminalType);
-
-  }
-
-  @Override
-  public Size size() {
-    return size;
-  }
-
-  @Override
-  protected void onSize(int width, int height) {
-    this.size = new Size(width, height);
-    if (sizeHandler != null) {
-      sizeHandler.accept(size);
+    @Override
+    protected void onReceiveBinary(boolean binary) {
+        receivingBinary = binary;
+        if (binary) {
+            decoder.setCharset(charset);
+        }
+        checkAccept();
     }
-  }
 
-  @Override
-  public Device device() {
-      //create a default device for now
-      if(device == null)
-          device = new TelnetDevice("vt100");
-    return device;
-  }
-
-  @Override
-  public Consumer<Size> getSizeHandler() {
-    return sizeHandler;
-  }
-
-  @Override
-  public void setSizeHandler(Consumer<Size> handler) {
-    this.sizeHandler = handler;
-  }
-
-  @Override
-  public Consumer<Signal> getSignalHandler() {
-    return eventDecoder.getSignalHandler();
-  }
-
-  @Override
-  public void setSignalHandler(Consumer<Signal> handler) {
-    eventDecoder.setSignalHandler(handler);
-  }
-
-  @Override
-  public Consumer<int[]> getStdinHandler() {
-    return eventDecoder.getInputHandler();
-  }
-
-  @Override
-  public void setStdinHandler(Consumer<int[]> handler) {
-    eventDecoder.setInputHandler(handler);
-  }
-
-  @Override
-  public Consumer<int[]> stdoutHandler() {
-    return stdout;
-  }
-
-  @Override
-  public void setCloseHandler(Consumer<Void> closeHandler) {
-    this.closeHandler = closeHandler;
-  }
-
-  @Override
-  public Consumer<Void> getCloseHandler() {
-    return closeHandler;
-  }
-
-  @Override
-  protected void onClose() {
-    if (closeHandler != null) {
-      closeHandler.accept(null);
+    @Override
+    protected void onData(byte[] data) {
+        lastAccessedTime = System.currentTimeMillis();
+        decoder.write(data);
     }
-  }
 
-  @Override
-  public void close() {
-    conn.close();
-  }
+    @Override
+    protected void onOpen(TelnetConnection conn) {
+        this.conn = conn;
 
-  @Override
-  public void openBlocking() {
-  }
+        //set default size for now
+        size = new Size(80, 24);
 
-  @Override
-  public void openNonBlocking() {
-  }
+        // Kludge mode
+        conn.writeWillOption(Option.ECHO);
+        conn.writeWillOption(Option.SGA);
 
-  @Override
-  public boolean put(Capability capability, Object... params) {
-    return false;
-  }
+        //
+        if (inBinary) {
+            conn.writeDoOption(Option.BINARY);
+        }
+        if (outBinary) {
+            conn.writeWillOption(Option.BINARY);
+        }
 
-  @Override
-  public Attributes getAttributes() {
-    return attributes;
-  }
+        // Window size
+        conn.writeDoOption(Option.NAWS);
 
-  @Override
-  public void setAttributes(Attributes attr) {
+        // Get some info about user
+        conn.writeDoOption(Option.TERMINAL_TYPE);
 
-  }
+        attributes = new Attributes();
+
+        //
+        checkAccept();
+    }
+
+    private void checkAccept() {
+        if (!accepted) {
+            if (!outBinary | (outBinary && sendingBinary)) {
+                if (!inBinary | (inBinary && receivingBinary)) {
+                    accepted = true;
+                    readBuffer.setReadHandler(eventDecoder);
+                    handler.accept(this);
+                }
+            }
+        }
+    }
+
+    @Override
+    protected void onTerminalType(String terminalType) {
+        this.terminalType = terminalType;
+
+        device = new TelnetDevice(terminalType);
+
+    }
+
+    @Override
+    public Size size() {
+        return size;
+    }
+
+    @Override
+    protected void onSize(int width, int height) {
+        this.size = new Size(width, height);
+        if (sizeHandler != null) {
+            sizeHandler.accept(size);
+        }
+    }
+
+    @Override
+    public Device device() {
+        //create a default device for now
+        if (device == null)
+            device = new TelnetDevice("vt100");
+        return device;
+    }
+
+    @Override
+    public Consumer<Size> getSizeHandler() {
+        return sizeHandler;
+    }
+
+    @Override
+    public void setSizeHandler(Consumer<Size> handler) {
+        this.sizeHandler = handler;
+    }
+
+    @Override
+    public Consumer<Signal> getSignalHandler() {
+        return eventDecoder.getSignalHandler();
+    }
+
+    @Override
+    public void setSignalHandler(Consumer<Signal> handler) {
+        eventDecoder.setSignalHandler(handler);
+    }
+
+    @Override
+    public Consumer<int[]> getStdinHandler() {
+        return eventDecoder.getInputHandler();
+    }
+
+    @Override
+    public void setStdinHandler(Consumer<int[]> handler) {
+        eventDecoder.setInputHandler(handler);
+    }
+
+    @Override
+    public Consumer<int[]> stdoutHandler() {
+        return stdout;
+    }
+
+    @Override
+    public void setCloseHandler(Consumer<Void> closeHandler) {
+        this.closeHandler = closeHandler;
+    }
+
+    @Override
+    public Consumer<Void> getCloseHandler() {
+        return closeHandler;
+    }
+
+    @Override
+    protected void onClose() {
+        if (closeHandler != null) {
+            closeHandler.accept(null);
+        }
+    }
+
+    @Override
+    public void close() {
+        conn.close();
+    }
+
+    @Override
+    public void openBlocking() {
+    }
+
+    @Override
+    public void openNonBlocking() {
+    }
+
+    @Override
+    public boolean put(Capability capability, Object... params) {
+        return false;
+    }
+
+    @Override
+    public Attributes getAttributes() {
+        return attributes;
+    }
+
+    @Override
+    public void setAttributes(Attributes attr) {
+
+    }
 }

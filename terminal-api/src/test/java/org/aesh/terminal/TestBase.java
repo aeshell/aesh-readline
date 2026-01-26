@@ -16,14 +16,14 @@
  */
 package org.aesh.terminal;
 
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-
 import java.util.Arrays;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.function.IntConsumer;
+
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
 
 /**
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
@@ -44,7 +44,7 @@ public class TestBase {
     protected static final int[] BACKWARD_KEY = { 27, '[', 'D' };
     protected static final int[] BACKWARD_DELETE_KEY = { 8 };
     protected static final int[] KILL_LINE = { ctrl('K') };
-    protected static final int[] META_BACKWARD_DELETE_KEY = { 27,8 };
+    protected static final int[] META_BACKWARD_DELETE_KEY = { 27, 8 };
 
     private volatile Throwable throwable;
     private CountDownLatch latch;
@@ -111,7 +111,7 @@ public class TestBase {
         throwable = t;
         latch.countDown();
         if (t instanceof AssertionError) {
-            throw (AssertionError)t;
+            throw (AssertionError) t;
         }
     }
 
@@ -182,7 +182,8 @@ public class TestBase {
 
     public void assertEquals(int[] expected, int[] actual) {
         try {
-            Assert.assertTrue("Was expecting " + Arrays.toString(expected) + " to be equals to " + Arrays.toString(actual), Arrays.equals(expected, actual));
+            Assert.assertTrue("Was expecting " + Arrays.toString(expected) + " to be equals to " + Arrays.toString(actual),
+                    Arrays.equals(expected, actual));
         } catch (AssertionError e) {
             handleThrowable(e);
         }
@@ -203,7 +204,8 @@ public class TestBase {
     @After
     public void afterTest() {
         if (testCompleteCalled == null && !awaitCalled && throwable != null) {
-            throw new IllegalStateException("You either forget to call testComplete() or forgot to await() for an asynchronous test");
+            throw new IllegalStateException(
+                    "You either forget to call testComplete() or forgot to await() for an asynchronous test");
         }
     }
 
@@ -225,4 +227,4 @@ public class TestBase {
         }
     }
 
- }
+}

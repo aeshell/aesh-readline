@@ -20,29 +20,6 @@
 
 package org.aesh.terminal.ssh;
 
-import org.aesh.terminal.io.Decoder;
-import org.aesh.terminal.io.Encoder;
-import org.aesh.terminal.Attributes;
-import org.aesh.terminal.Connection;
-import org.aesh.terminal.Device;
-import org.aesh.terminal.EventDecoder;
-import org.aesh.terminal.tty.Capability;
-import org.aesh.terminal.tty.Signal;
-import org.aesh.terminal.tty.Size;
-import org.aesh.terminal.tty.TtyOutputMode;
-import org.apache.sshd.common.channel.PtyMode;
-import org.apache.sshd.common.io.IoInputStream;
-import org.apache.sshd.common.io.IoOutputStream;
-import org.apache.sshd.common.io.IoWriteFuture;
-import org.apache.sshd.common.io.WritePendingException;
-import org.apache.sshd.common.util.buffer.ByteArrayBuffer;
-import org.apache.sshd.server.command.AsyncCommand;
-import org.apache.sshd.server.channel.ChannelSessionAware;
-import org.apache.sshd.server.Environment;
-import org.apache.sshd.server.ExitCallback;
-import org.apache.sshd.server.channel.ChannelDataReceiver;
-import org.apache.sshd.server.channel.ChannelSession;
-
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -54,6 +31,29 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import org.aesh.terminal.Attributes;
+import org.aesh.terminal.Connection;
+import org.aesh.terminal.Device;
+import org.aesh.terminal.EventDecoder;
+import org.aesh.terminal.io.Decoder;
+import org.aesh.terminal.io.Encoder;
+import org.aesh.terminal.tty.Capability;
+import org.aesh.terminal.tty.Signal;
+import org.aesh.terminal.tty.Size;
+import org.aesh.terminal.tty.TtyOutputMode;
+import org.apache.sshd.common.channel.PtyMode;
+import org.apache.sshd.common.io.IoInputStream;
+import org.apache.sshd.common.io.IoOutputStream;
+import org.apache.sshd.common.io.IoWriteFuture;
+import org.apache.sshd.common.io.WritePendingException;
+import org.apache.sshd.common.util.buffer.ByteArrayBuffer;
+import org.apache.sshd.server.Environment;
+import org.apache.sshd.server.ExitCallback;
+import org.apache.sshd.server.channel.ChannelDataReceiver;
+import org.apache.sshd.server.channel.ChannelSession;
+import org.apache.sshd.server.channel.ChannelSessionAware;
+import org.apache.sshd.server.command.AsyncCommand;
 
 /**
  * SSH command implementation that handles TTY connections and data transfer.
@@ -112,7 +112,6 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
         this.session = session;
     }
 
-
     @Override
     public void setInputStream(InputStream in) {
     }
@@ -131,22 +130,22 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
 
     @Override
     public void setIoOutputStream(IoOutputStream out) {
-      this.ioOut = out;
-      this.out = bytes -> {
-        ByteArrayBuffer byteArrayBuffer = new ByteArrayBuffer(bytes);
-        // the loop is only needed if we catch a WritePendingException, to retry the write and clear the buffer
-        while (byteArrayBuffer.available() > 0) {
-          try {
-            IoWriteFuture ioWriteFuture = out.writeBuffer(byteArrayBuffer);
-            // await the write so that we do not lose bytes
-            ioWriteFuture.verify(1, TimeUnit.SECONDS);
-          } catch (WritePendingException | EOFException ignored) {
-            // WritePendingException is only cought if the verify() method timeouts
-          } catch (IOException e) {
-            throw new RuntimeException(e);
-          }
-        }
-      };
+        this.ioOut = out;
+        this.out = bytes -> {
+            ByteArrayBuffer byteArrayBuffer = new ByteArrayBuffer(bytes);
+            // the loop is only needed if we catch a WritePendingException, to retry the write and clear the buffer
+            while (byteArrayBuffer.available() > 0) {
+                try {
+                    IoWriteFuture ioWriteFuture = out.writeBuffer(byteArrayBuffer);
+                    // await the write so that we do not lose bytes
+                    ioWriteFuture.verify(1, TimeUnit.SECONDS);
+                } catch (WritePendingException | EOFException ignored) {
+                    // WritePendingException is only cought if the verify() method timeouts
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        };
     }
 
     @Override
@@ -168,7 +167,7 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
         if (charset == null) {
             charset = defaultCharset;
         }
-            env.addSignalListener((ch, signal) -> updateSize(env), EnumSet.of(org.apache.sshd.server.Signal.WINCH));
+        env.addSignalListener((ch, signal) -> updateSize(env), EnumSet.of(org.apache.sshd.server.Signal.WINCH));
         updateSize(env);
 
         // Event handling
@@ -206,8 +205,7 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
                 int width = Integer.parseInt(columns);
                 int height = Integer.parseInt(lines);
                 size = new Size(width, height);
-            }
-            catch (Exception ignore) {
+            } catch (Exception ignore) {
                 size = null;
             }
             if (size != null) {
@@ -219,10 +217,9 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
         }
     }
 
-
     @Override
     public void close() throws IOException {
-            close(0);
+        close(0);
     }
 
     private void close(int exit) throws IOException {
@@ -231,8 +228,7 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
             if (closed.compareAndSet(false, true)) {
                 if (closeHandler != null) {
                     closeHandler.accept(null);
-                }
-                else {
+                } else {
                     // This happen : report it to the SSHD project
                 }
             }
@@ -241,7 +237,7 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
 
     @Override
     public void destroy(ChannelSession channelSession) throws Exception {
-            // Test this
+        // Test this
     }
 
     /**
@@ -269,8 +265,7 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
         if (matcher.matches()) {
             try {
                 return Charset.forName(matcher.group(1));
-            }
-            catch (Exception ignore) {
+            } catch (Exception ignore) {
             }
         }
         return null;
@@ -355,8 +350,7 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
         public void close() {
             try {
                 TtyCommand.this.close();
-            }
-            catch (IOException ignore) {
+            } catch (IOException ignore) {
             }
         }
 
@@ -364,8 +358,7 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
         public void close(int exit) {
             try {
                 TtyCommand.this.close(exit);
-            }
-            catch (IOException ignore) {
+            } catch (IOException ignore) {
             }
         }
 

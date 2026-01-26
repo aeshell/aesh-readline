@@ -19,10 +19,7 @@
  */
 package org.aesh.readline.terminal.utils;
 
-import org.aesh.terminal.utils.Config;
-import org.junit.Assume;
-import org.junit.Before;
-import org.junit.Test;
+import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
 import java.io.PipedOutputStream;
@@ -30,7 +27,10 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
-import static org.junit.Assert.assertEquals;
+import org.aesh.terminal.utils.Config;
+import org.junit.Assume;
+import org.junit.Before;
+import org.junit.Test;
 
 /**
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
@@ -49,31 +49,28 @@ public class LinePipedInputStreamTest {
         LinePipedInputStream pipedInputStream = new LinePipedInputStream(outputStream);
 
         int numberOfLines = 0;
-        String filename = "src"+Config.getPathSeparator()+"test"+Config.getPathSeparator()+
-                "resources"+Config.getPathSeparator()+"input_stream.txt";
-        for(String line : Files.readAllLines(Paths.get(filename), StandardCharsets.UTF_8)) {
+        String filename = "src" + Config.getPathSeparator() + "test" + Config.getPathSeparator() +
+                "resources" + Config.getPathSeparator() + "input_stream.txt";
+        for (String line : Files.readAllLines(Paths.get(filename), StandardCharsets.UTF_8)) {
             try {
                 numberOfLines++;
-                outputStream.write((line+ Config.getLineSeparator()).getBytes());
-            }
-            catch (IOException e) {
+                outputStream.write((line + Config.getLineSeparator()).getBytes());
+            } catch (IOException e) {
                 e.printStackTrace();
             }
         }
 
         outputStream.flush();
 
-
         int numberOfPipedLines = 0;
         byte[] bBuf = new byte[1024];
-        for(String line : Files.readAllLines(Paths.get(filename), StandardCharsets.UTF_8)) {
+        for (String line : Files.readAllLines(Paths.get(filename), StandardCharsets.UTF_8)) {
             try {
                 int read = pipedInputStream.read(bBuf);
                 String in = new String(bBuf, 0, read);
-                assertEquals(line+Config.getLineSeparator(), in);
+                assertEquals(line + Config.getLineSeparator(), in);
                 numberOfPipedLines++;
-            }
-            catch (IOException e) {
+            } catch (IOException e) {
                 e.printStackTrace();
             }
         }

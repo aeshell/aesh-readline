@@ -19,16 +19,16 @@
  */
 package org.aesh.readline;
 
-import org.aesh.readline.tty.terminal.TestConnection;
-import org.aesh.terminal.utils.Config;
-import org.junit.Assume;
-import org.junit.Test;
+import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static org.junit.Assert.assertTrue;
+import org.aesh.readline.tty.terminal.TestConnection;
+import org.aesh.terminal.utils.Config;
+import org.junit.Assume;
+import org.junit.Test;
 
 /**
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
@@ -46,7 +46,8 @@ public class ThreadSafetyTest {
         for (int i = 'a'; i <= 'f'; i++) {
             final char finalI = (char) i;
             threads.add(new Thread() {
-                TestConnection connection = new TestConnection(readline, null, null, null, null );
+                TestConnection connection = new TestConnection(readline, null, null, null, null);
+
                 @Override
                 public void run() {
                     for (int i = 0; i < 20; i++) {
@@ -54,9 +55,9 @@ public class ThreadSafetyTest {
                             connection.readline();
                             for (int j = 0; j < 10; j++) {
                                 Thread.yield();
-                                connection.read(new byte[]{(byte) (finalI)});
+                                connection.read(new byte[] { (byte) (finalI) });
                             }
-                            connection.read(new byte[]{'\n'});
+                            connection.read(new byte[] { '\n' });
 
                             String line = connection.getLine();
                             for (int k = 0; k < line.length(); k++) {
@@ -64,8 +65,7 @@ public class ThreadSafetyTest {
                                     result.set(false);
                                 }
                             }
-                        }
-                        catch(IllegalStateException ise) {
+                        } catch (IllegalStateException ise) {
                             //ignored, this will happen a lot here...
                         }
                     }

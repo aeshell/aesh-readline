@@ -19,14 +19,14 @@
  */
 package org.aesh.readline.terminal.impl;
 
-import org.aesh.readline.terminal.utils.ShutdownHooks;
-import org.aesh.readline.terminal.utils.Signals;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.Map;
+
+import org.aesh.readline.terminal.utils.ShutdownHooks;
+import org.aesh.readline.terminal.utils.Signals;
 import org.aesh.terminal.tty.Signal;
 
 public class PosixSysTerminal extends AbstractPosixTerminal {

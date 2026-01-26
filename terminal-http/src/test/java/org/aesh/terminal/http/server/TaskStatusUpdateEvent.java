@@ -19,17 +19,18 @@
  */
 package org.aesh.terminal.http.server;
 
+import java.io.IOException;
+import java.io.Serializable;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+import org.aesh.terminal.http.Status;
+
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import org.aesh.terminal.http.Status;
-
-import java.io.IOException;
-import java.io.Serializable;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * @author <a href="mailto:matejonnet@gmail.com">Matej Lazar</a>
@@ -71,8 +72,7 @@ public class TaskStatusUpdateEvent implements Serializable {
         ObjectMapper mapper = new ObjectMapper();
         try {
             return mapper.writeValueAsString(this);
-        }
-        catch (JsonProcessingException e) {
+        } catch (JsonProcessingException e) {
             LOGGER.log(Level.SEVERE, "Cannot serialize object.", e);
         }
         return null;
@@ -82,8 +82,7 @@ public class TaskStatusUpdateEvent implements Serializable {
         ObjectMapper mapper = new ObjectMapper();
         try {
             return mapper.readValue(serialized, TaskStatusUpdateEvent.class);
-        }
-        catch (JsonParseException | JsonMappingException e) {
+        } catch (JsonParseException | JsonMappingException e) {
             LOGGER.log(Level.SEVERE, "Cannot deserialize object from json", e);
             throw e;
         }

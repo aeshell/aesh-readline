@@ -19,9 +19,9 @@
  */
 package org.aesh.readline.completion;
 
-import org.aesh.readline.terminal.formatting.TerminalString;
-
 import java.util.List;
+
+import org.aesh.readline.terminal.formatting.TerminalString;
 
 /**
  * Interface representing a completion operation with candidates and configuration options.

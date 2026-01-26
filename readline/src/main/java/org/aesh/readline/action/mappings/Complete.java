@@ -19,13 +19,13 @@
  */
 package org.aesh.readline.action.mappings;
 
+import org.aesh.readline.InputProcessor;
 import org.aesh.readline.action.Action;
 import org.aesh.readline.action.ActionEvent;
 import org.aesh.readline.action.KeyAction;
 import org.aesh.readline.completion.CompletionHandler;
 import org.aesh.readline.terminal.Key;
 import org.aesh.terminal.utils.Config;
-import org.aesh.readline.InputProcessor;
 
 /**
  * Action that triggers tab completion for the current input.
@@ -44,13 +44,12 @@ public class Complete implements ActionEvent {
 
     @Override
     public void accept(InputProcessor inputProcessor) {
-        if(askForCompletion) {
-            if(key == Key.y) {
+        if (askForCompletion) {
+            if (key == Key.y) {
                 askForCompletion = false;
                 key = null;
                 inputProcessor.buffer().completer().complete(inputProcessor);
-            }
-            else if(key == Key.n){
+            } else if (key == Key.n) {
                 askForCompletion = false;
                 key = null;
                 inputProcessor.buffer().completer().setCompletionStatus(CompletionHandler.CompletionStatus.COMPLETE);
@@ -58,12 +57,11 @@ public class Complete implements ActionEvent {
                 inputProcessor.buffer().writeOut(Config.CR);
                 inputProcessor.buffer().drawLineForceDisplay();
             }
-        }
-        else {
-            if(inputProcessor.buffer().completer() != null) {
-                inputProcessor.buffer().completer().complete( inputProcessor);
-                if(inputProcessor.buffer().completer().completionStatus() ==
-                        CompletionHandler.CompletionStatus.ASKING_FOR_COMPLETIONS) {
+        } else {
+            if (inputProcessor.buffer().completer() != null) {
+                inputProcessor.buffer().completer().complete(inputProcessor);
+                if (inputProcessor.buffer().completer()
+                        .completionStatus() == CompletionHandler.CompletionStatus.ASKING_FOR_COMPLETIONS) {
                     askForCompletion = true;
                 }
             }
@@ -72,12 +70,12 @@ public class Complete implements ActionEvent {
 
     @Override
     public void input(Action action, KeyAction key) {
-        if(askForCompletion) {
-            if(Key.isPrintable(key.buffer())) {
-                if(Key.y.equalTo(key.buffer().array())) {
+        if (askForCompletion) {
+            if (Key.isPrintable(key.buffer())) {
+                if (Key.y.equalTo(key.buffer().array())) {
                     this.key = Key.y;
                 }
-                if(Key.n.equalTo(key.buffer().array())) {
+                if (Key.n.equalTo(key.buffer().array())) {
                     this.key = Key.n;
                 }
             }

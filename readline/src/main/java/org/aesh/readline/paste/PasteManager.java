@@ -42,14 +42,14 @@ public class PasteManager {
     }
 
     private void checkSize() {
-        if(pasteStack.size() >= PASTE_SIZE) {
+        if (pasteStack.size() >= PASTE_SIZE) {
             pasteStack.remove(0);
         }
     }
 
     public int[] get(int index) {
-        if(index < pasteStack.size())
-            return pasteStack.get((pasteStack.size()-index-1));
+        if (index < pasteStack.size())
+            return pasteStack.get((pasteStack.size() - index - 1));
         else
             return pasteStack.get(0);
     }

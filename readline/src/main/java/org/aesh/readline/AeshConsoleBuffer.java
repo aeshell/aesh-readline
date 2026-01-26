@@ -1,21 +1,21 @@
 package org.aesh.readline;
 
-import org.aesh.readline.cursor.Line;
+import java.util.logging.Logger;
+
+import org.aesh.readline.completion.CompletionHandler;
 import org.aesh.readline.cursor.CursorListener;
+import org.aesh.readline.cursor.Line;
+import org.aesh.readline.editing.EditMode;
+import org.aesh.readline.history.History;
 import org.aesh.readline.history.InMemoryHistory;
 import org.aesh.readline.paste.PasteManager;
 import org.aesh.readline.undo.UndoAction;
 import org.aesh.readline.undo.UndoManager;
+import org.aesh.readline.util.LoggerUtil;
+import org.aesh.terminal.Connection;
+import org.aesh.terminal.tty.Size;
 import org.aesh.terminal.utils.ANSI;
 import org.aesh.terminal.utils.Config;
-import org.aesh.readline.completion.CompletionHandler;
-import org.aesh.readline.editing.EditMode;
-import org.aesh.readline.history.History;
-import org.aesh.terminal.Connection;
-import org.aesh.readline.util.LoggerUtil;
-
-import java.util.logging.Logger;
-import org.aesh.terminal.tty.Size;
 
 /**
  * Default implementation of the ConsoleBuffer interface for managing console input and output.
@@ -41,19 +41,18 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
     private final CursorListener cursorListener;
 
     public AeshConsoleBuffer(Connection connection, Prompt prompt,
-                             EditMode editMode, History history,
-                             CompletionHandler completionHandler,
-                             boolean ansi, CursorListener listener) {
+            EditMode editMode, History history,
+            CompletionHandler completionHandler,
+            boolean ansi, CursorListener listener) {
         this.connection = connection;
         this.ansiMode = ansi;
         this.buffer = new Buffer(prompt);
         pasteManager = new PasteManager();
         undoManager = new UndoManager();
-        if(history == null) {
+        if (history == null) {
             this.history = new InMemoryHistory();
             this.history.enable();
-        }
-        else {
+        } else {
             //do not enable an history object if its given
             this.history = history;
         }
@@ -64,7 +63,8 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
         this.editMode = editMode;
         this.cursorListener = listener;
     }
-      @Override
+
+    @Override
     public History history() {
         return history;
     }
@@ -122,7 +122,7 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
     @Override
     public void drawLineForceDisplay() {
         buffer.setIsPromptDisplayed(false);
-        if(buffer.cursor() < buffer.length())
+        if (buffer.cursor() < buffer.length())
             buffer.forceSetDeltaChangedAtEndOfBuffer(false);
         buffer.print(connection.stdoutHandler(), size().getWidth());
     }
@@ -149,7 +149,7 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
 
     @Override
     public void writeString(String input) {
-        if(input != null && input.length() > 0)
+        if (input != null && input.length() > 0)
             buffer.insert(connection.stdoutHandler(), input, size().getWidth());
     }
 
@@ -206,32 +206,31 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
     @Override
     public void clear(boolean includeBuffer) {
         //(windows fix)
-        if(!Config.isOSPOSIXCompatible())
+        if (!Config.isOSPOSIXCompatible())
             connection.stdoutHandler().accept(Config.CR);
         //first clear console
         connection.stdoutHandler().accept(ANSI.CLEAR_SCREEN);
         int cursorPosition = -1;
-        if(buffer.cursor() < buffer.length()) {
+        if (buffer.cursor() < buffer.length()) {
             cursorPosition = buffer.cursor();
             buffer.move(connection.stdoutHandler(), buffer.length() - cursorPosition, size().getWidth());
         }
         //move cursor to correct position
-        connection.stdoutHandler().accept(new int[] {27, '[', '1', ';', '1', 'H'});
+        connection.stdoutHandler().accept(new int[] { 27, '[', '1', ';', '1', 'H' });
         //then write prompt
-        if(!includeBuffer)
+        if (!includeBuffer)
             buffer().reset();
 
         //redraw
         drawLineForceDisplay();
 
-        if(cursorPosition > -1)
-            buffer.move(connection.stdoutHandler(), cursorPosition-buffer.length(), size().getWidth());
+        if (cursorPosition > -1)
+            buffer.move(connection.stdoutHandler(), cursorPosition - buffer.length(), size().getWidth());
     }
 
     private boolean isViMode() {
         return editMode.mode() == EditMode.Mode.VI &&
                 editMode.status() != EditMode.Status.EDIT;
     }
-
 
 }

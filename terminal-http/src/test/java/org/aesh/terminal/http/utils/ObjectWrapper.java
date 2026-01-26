@@ -19,7 +19,6 @@
  */
 package org.aesh.terminal.http.utils;
 
-
 /**
  * Created by <a href="mailto:matejonnet@gmail.com">Matej Lazar</a> on 2014-12-09.
  */

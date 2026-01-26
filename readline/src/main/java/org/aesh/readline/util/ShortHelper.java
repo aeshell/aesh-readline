@@ -28,8 +28,8 @@ public class ShortHelper {
 
     public static short[] toShortPoints(String input) {
         short[] out = new short[input.length()];
-        final int[] counter = {0};
-        input.chars().forEach( i -> {
+        final int[] counter = { 0 };
+        input.chars().forEach(i -> {
             out[counter[0]] = (short) i;
             counter[0]++;
         });
@@ -38,10 +38,9 @@ public class ShortHelper {
 
     public static String fromShortPoints(short[] input) {
         char[] output = new char[input.length];
-        for(int i=0; i < input.length; i++)
+        for (int i = 0; i < input.length; i++)
             output[i] = (char) input[i];
 
         return new String(output, 0, output.length);
     }
 }
-

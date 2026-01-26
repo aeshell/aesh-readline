@@ -19,6 +19,12 @@
  */
 package org.aesh.readline.editing;
 
+import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import org.aesh.readline.action.Action;
 import org.aesh.readline.action.ActionEvent;
 import org.aesh.readline.action.KeyAction;
@@ -26,12 +32,6 @@ import org.aesh.readline.action.mappings.ActionMapper;
 import org.aesh.readline.terminal.Key;
 import org.aesh.terminal.Device;
 import org.aesh.terminal.tty.Capability;
-
-import java.util.ArrayList;
-import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 /**
  * Emacs-style line editing mode implementation.
@@ -42,9 +42,9 @@ public class Emacs implements EditMode {
 
     private ActionEvent currentAction;
 
-    private Map<Key,Action> actions;
-    private Map<Variable,String> variables;
-    private Map<KeyAction,Action> keyEventActions;
+    private Map<Key, Action> actions;
+    private Map<Variable, String> variables;
+    private Map<KeyAction, Action> keyEventActions;
 
     //counting how many times eof been pressed
     private int eofCounter;
@@ -67,7 +67,7 @@ public class Emacs implements EditMode {
     @Override
     public void addAction(int[] input, String action) {
         Key key = Key.getKey(input);
-        if(key != null)
+        if (key != null)
             actions.put(key, ActionMapper.mapToAction(action));
         else
             keyEventActions.put(createKeyEvent(input), ActionMapper.mapToAction(action));
@@ -98,7 +98,7 @@ public class Emacs implements EditMode {
     }
 
     private void remap(Key key, int[] newMapping) {
-        if(newMapping != null && actions.containsKey(key) && !key.equalTo(newMapping)) {
+        if (newMapping != null && actions.containsKey(key) && !key.equalTo(newMapping)) {
             Action homeAction = actions.remove(key);
             addAction(newMapping, homeAction.name());
         }
@@ -114,19 +114,19 @@ public class Emacs implements EditMode {
     }
 
     private Action parseKeyEventActions(KeyAction event) {
-        for(KeyAction key : keyEventActions.keySet()) {
+        for (KeyAction key : keyEventActions.keySet()) {
             boolean isEquals = true;
-            if(key.length() == event.length()) {
-                for(int i=0; i<key.length() && isEquals; i++)
-                    if(key.getCodePointAt(i) != event.getCodePointAt(i))
+            if (key.length() == event.length()) {
+                for (int i = 0; i < key.length() && isEquals; i++)
+                    if (key.getCodePointAt(i) != event.getCodePointAt(i))
                         isEquals = false;
 
-                if(isEquals)
+                if (isEquals)
                     return keyEventActions.get(key);
             }
         }
         //if we have ctrlX from the previous input
-        if(ctrlX) {
+        if (ctrlX) {
             if (event.length() == 1) {
                 ctrlX = false;
                 KeyAction customCtrlX = new KeyAction() {
@@ -149,14 +149,13 @@ public class Emacs implements EditMode {
                     }
                 };
                 return parseKeyEventActions(customCtrlX);
-            }
-            else {
+            } else {
                 ctrlX = false;
                 return null;
             }
         }
 
-        if(event.getCodePointAt(0) == Key.CTRL_X.getFirstValue()) {
+        if (event.getCodePointAt(0) == Key.CTRL_X.getFirstValue()) {
             ctrlX = true;
         }
 
@@ -173,7 +172,7 @@ public class Emacs implements EditMode {
         ignoreEOFSize = eof;
     }
 
-    protected void resetEOF()  {
+    protected void resetEOF() {
         eofCounter = 0;
     }
 
@@ -188,7 +187,7 @@ public class Emacs implements EditMode {
 
     @Override
     public KeyAction[] keys() {
-        List<KeyAction> keys = new ArrayList<>(actions.size()+keyEventActions.size());
+        List<KeyAction> keys = new ArrayList<>(actions.size() + keyEventActions.size());
         keys.addAll(actions.keySet());
         keys.addAll(keyEventActions.keySet());
         return keys.toArray(new KeyAction[keys.size()]);
@@ -207,12 +206,11 @@ public class Emacs implements EditMode {
     @Override
     public Action parse(KeyAction event) {
         //are we already searching, it need to be processed by search action
-        if(currentAction != null) {
-            if(currentAction.keepFocus()) {
+        if (currentAction != null) {
+            if (currentAction.keepFocus()) {
                 currentAction.input(getAction(event), event);
                 return currentAction;
-            }
-            else
+            } else
                 currentAction = null;
         }
 
@@ -231,13 +229,12 @@ public class Emacs implements EditMode {
 
     private Action getAction(KeyAction event) {
         Action action;
-        if(event instanceof Key && actions.containsKey(event)) {
+        if (event instanceof Key && actions.containsKey(event)) {
             action = actions.get(event);
+        } else {
+            action = parseKeyEventActions(event);
         }
-        else {
-            action  = parseKeyEventActions(event);
-        }
-        if(action != null && action instanceof ActionEvent) {
+        if (action != null && action instanceof ActionEvent) {
             currentAction = (ActionEvent) action;
             currentAction.input(action, event);
         }

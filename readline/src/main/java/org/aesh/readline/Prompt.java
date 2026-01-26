@@ -19,12 +19,12 @@
  */
 package org.aesh.readline;
 
-import org.aesh.readline.terminal.formatting.TerminalString;
-import org.aesh.readline.util.Parser;
-import org.aesh.readline.terminal.formatting.TerminalCharacter;
-
 import java.util.Arrays;
 import java.util.List;
+
+import org.aesh.readline.terminal.formatting.TerminalCharacter;
+import org.aesh.readline.terminal.formatting.TerminalString;
+import org.aesh.readline.util.Parser;
 
 /**
  * The Prompt:
@@ -41,14 +41,14 @@ public class Prompt {
     private int[] ansiString;
 
     public Prompt() {
-        this.prompt = new int[]{};
+        this.prompt = new int[] {};
     }
 
     public Prompt(String prompt) {
-        if(prompt != null)
+        if (prompt != null)
             this.prompt = Parser.toCodePoints(prompt);
         else
-            this.prompt = new int[]{};
+            this.prompt = new int[] {};
     }
 
     public Prompt(Prompt prompt) {
@@ -58,47 +58,45 @@ public class Prompt {
     }
 
     public Prompt(String prompt, String ansiString) {
-        if(prompt != null)
+        if (prompt != null)
             this.prompt = Parser.toCodePoints(prompt);
         else
-            this.prompt = new int[]{};
+            this.prompt = new int[] {};
         this.ansiString = Parser.toCodePoints(ansiString);
     }
 
     public Prompt(String prompt, Character mask) {
-        if(prompt != null)
+        if (prompt != null)
             this.prompt = Parser.toCodePoints(prompt);
         else
-            this.prompt = new int[]{};
+            this.prompt = new int[] {};
         this.mask = mask;
     }
 
     public Prompt(String prompt, String ansiString, Character mask) {
-        if(prompt != null)
+        if (prompt != null)
             this.prompt = Parser.toCodePoints(prompt);
         else
-            this.prompt = new int[]{};
+            this.prompt = new int[] {};
         this.ansiString = Parser.toCodePoints(ansiString);
         this.mask = mask;
     }
 
     public Prompt(int[] prompt, Character mask) {
-        if(prompt != null) {
+        if (prompt != null) {
             this.prompt = new int[prompt.length];
             System.arraycopy(prompt, 0, this.prompt, 0, prompt.length);
-        }
-        else
-            this.prompt = new int[]{};
+        } else
+            this.prompt = new int[] {};
         this.mask = mask;
     }
 
     public Prompt(TerminalString terminalString) {
-        if(terminalString != null) {
+        if (terminalString != null) {
             ansiString = Parser.toCodePoints(terminalString.toString());
             this.prompt = Parser.toCodePoints(terminalString.getCharacters());
-        }
-        else
-            this.prompt = new int[]{};
+        } else
+            this.prompt = new int[] {};
     }
 
     public Prompt(List<TerminalCharacter> characters) {
@@ -114,8 +112,8 @@ public class Prompt {
         StringBuilder promptBuilder = new StringBuilder();
         StringBuilder builder = new StringBuilder();
         TerminalCharacter prev = null;
-        for(TerminalCharacter c : chars) {
-            if(prev == null)
+        for (TerminalCharacter c : chars) {
+            if (prev == null)
                 builder.append(c.toString());
             else
                 builder.append(c.toString(prev));
@@ -147,7 +145,7 @@ public class Prompt {
     }
 
     public int[] getANSI() {
-        if(ansiString == null)
+        if (ansiString == null)
             return prompt;
         return ansiString;
     }
@@ -158,14 +156,18 @@ public class Prompt {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof Prompt)) return false;
+        if (this == o)
+            return true;
+        if (!(o instanceof Prompt))
+            return false;
 
         Prompt prompt1 = (Prompt) o;
 
-        if (ansiString != null ? !Arrays.equals(ansiString, prompt1.ansiString) : prompt1.ansiString != null) return false;
+        if (ansiString != null ? !Arrays.equals(ansiString, prompt1.ansiString) : prompt1.ansiString != null)
+            return false;
 
-        if (mask != null ? !mask.equals(prompt1.mask) : prompt1.mask != null) return false;
+        if (mask != null ? !mask.equals(prompt1.mask) : prompt1.mask != null)
+            return false;
 
         return Arrays.equals(prompt, prompt1.prompt);
     }

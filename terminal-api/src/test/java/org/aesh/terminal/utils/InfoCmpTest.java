@@ -19,8 +19,7 @@
  */
 package org.aesh.terminal.utils;
 
-import org.aesh.terminal.tty.Capability;
-import org.junit.Test;
+import static org.junit.Assert.*;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -28,7 +27,8 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import static org.junit.Assert.*;
+import org.aesh.terminal.tty.Capability;
+import org.junit.Test;
 
 /**
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
@@ -71,13 +71,13 @@ public class InfoCmpTest {
 
     @Test
     public void testNative() throws IOException, InterruptedException {
-        if(Config.isOSPOSIXCompatible()) {
+        if (Config.isOSPOSIXCompatible()) {
             Set<Capability> bools = new HashSet<>();
             Map<Capability, Integer> ints = new HashMap<>();
             Map<Capability, String> strings = new HashMap<>();
 
             String infocmp = InfoCmp.getInfoCmp("xterm-256color");
-            if(infocmp != null) {
+            if (infocmp != null) {
                 InfoCmp.parseInfoCmp(infocmp, bools, ints, strings);
 
                 assertEquals(256, ints.get(Capability.max_colors).intValue());

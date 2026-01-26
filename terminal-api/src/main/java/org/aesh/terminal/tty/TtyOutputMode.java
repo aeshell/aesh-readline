@@ -29,41 +29,41 @@ import java.util.function.Consumer;
  */
 public class TtyOutputMode implements Consumer<int[]> {
 
-  private final Consumer<int[]> readHandler;
+    private final Consumer<int[]> readHandler;
 
-  public TtyOutputMode(Consumer<int[]> readHandler) {
-    this.readHandler = readHandler;
-  }
-
-  @Override
-  public void accept(int[] data) {
-    if (readHandler != null && data.length > 0) {
-      int prev = 0;
-      int ptr = 0;
-      while (ptr < data.length) {
-        // Simple implementation that works only on system that uses /n as line terminator
-        // equivalent to 'stty onlcr'
-        int cp = data[ptr];
-        if (cp == '\n') {
-          if (ptr > prev) {
-            sendChunk(data, prev, ptr);
-          }
-          readHandler.accept(new int[]{'\r','\n'});
-          prev = ++ptr;
-        } else {
-          ptr++;
-        }
-      }
-      if (ptr > prev) {
-        sendChunk(data, prev, ptr);
-      }
+    public TtyOutputMode(Consumer<int[]> readHandler) {
+        this.readHandler = readHandler;
     }
-  }
 
-  private void sendChunk(int[] data, int prev, int ptr) {
-    int len = ptr - prev;
-    int[] buf = new int[len];
-    System.arraycopy(data, prev, buf, 0, len);
-    readHandler.accept(buf);
-  }
+    @Override
+    public void accept(int[] data) {
+        if (readHandler != null && data.length > 0) {
+            int prev = 0;
+            int ptr = 0;
+            while (ptr < data.length) {
+                // Simple implementation that works only on system that uses /n as line terminator
+                // equivalent to 'stty onlcr'
+                int cp = data[ptr];
+                if (cp == '\n') {
+                    if (ptr > prev) {
+                        sendChunk(data, prev, ptr);
+                    }
+                    readHandler.accept(new int[] { '\r', '\n' });
+                    prev = ++ptr;
+                } else {
+                    ptr++;
+                }
+            }
+            if (ptr > prev) {
+                sendChunk(data, prev, ptr);
+            }
+        }
+    }
+
+    private void sendChunk(int[] data, int prev, int ptr) {
+        int len = ptr - prev;
+        int[] buf = new int[len];
+        System.arraycopy(data, prev, buf, 0, len);
+        readHandler.accept(buf);
+    }
 }

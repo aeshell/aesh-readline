@@ -19,43 +19,43 @@
  */
 package org.aesh.terminal.http.tty;
 
+import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
+
 import org.aesh.terminal.Connection;
 import org.aesh.terminal.http.netty.NettyWebsocketTtyBootstrap;
 import org.junit.After;
-
-import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
 
 /**
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
  */
 public class NettyWebsocketTtyTest extends WebsocketTtyTestBase {
 
-  private NettyWebsocketTtyBootstrap bootstrap;
+    private NettyWebsocketTtyBootstrap bootstrap;
 
-  @Override
-  protected void server(Consumer<Connection> onConnect) {
-    if (bootstrap != null) {
-      throw failure("Server already started");
+    @Override
+    protected void server(Consumer<Connection> onConnect) {
+        if (bootstrap != null) {
+            throw failure("Server already started");
+        }
+        bootstrap = new NettyWebsocketTtyBootstrap().setHost("localhost").setPort(8080);
+        try {
+            bootstrap.start(onConnect).get(10, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            throw failure(e);
+        }
     }
-    bootstrap = new NettyWebsocketTtyBootstrap().setHost("localhost").setPort(8080);
-    try {
-      bootstrap.start(onConnect).get(10, TimeUnit.SECONDS);
-    } catch (Exception e) {
-      throw failure(e);
-    }
-  }
 
-  @After
-  public void afterNettyWebsocket() throws Exception {
-    if (bootstrap != null) {
-      try {
-        bootstrap.stop().get(10, TimeUnit.SECONDS);
-      } catch (Exception e) {
-        throw failure(e);
-      } finally {
-        bootstrap = null;
-      }
+    @After
+    public void afterNettyWebsocket() throws Exception {
+        if (bootstrap != null) {
+            try {
+                bootstrap.stop().get(10, TimeUnit.SECONDS);
+            } catch (Exception e) {
+                throw failure(e);
+            } finally {
+                bootstrap = null;
+            }
+        }
     }
-  }
 }

@@ -19,13 +19,14 @@
  */
 package org.aesh.terminal.telnet.netty;
 
-import io.netty.buffer.Unpooled;
-import io.netty.channel.ChannelFutureListener;
-import io.netty.channel.ChannelHandlerContext;
+import java.util.concurrent.TimeUnit;
+
 import org.aesh.terminal.telnet.TelnetConnection;
 import org.aesh.terminal.telnet.TelnetHandler;
 
-import java.util.concurrent.TimeUnit;
+import io.netty.buffer.Unpooled;
+import io.netty.channel.ChannelFutureListener;
+import io.netty.channel.ChannelHandlerContext;
 
 /**
  * Netty-based implementation of TelnetConnection for handling Telnet I/O.
@@ -34,43 +35,43 @@ import java.util.concurrent.TimeUnit;
  */
 public class NettyTelnetConnection extends TelnetConnection {
 
-  /** The Netty channel handler context for this connection. */
-  final ChannelHandlerContext context;
+    /** The Netty channel handler context for this connection. */
+    final ChannelHandlerContext context;
 
-  /**
-   * Creates a new NettyTelnetConnection.
-   *
-   * @param handler the telnet handler for processing events
-   * @param context the Netty channel handler context
-   */
-  public NettyTelnetConnection(TelnetHandler handler, ChannelHandlerContext context) {
-    super(handler);
-    this.context = context;
-  }
+    /**
+     * Creates a new NettyTelnetConnection.
+     *
+     * @param handler the telnet handler for processing events
+     * @param context the Netty channel handler context
+     */
+    public NettyTelnetConnection(TelnetHandler handler, ChannelHandlerContext context) {
+        super(handler);
+        this.context = context;
+    }
 
-  @Override
-  protected void execute(Runnable task) {
-    context.channel().eventLoop().execute(task);
-  }
+    @Override
+    protected void execute(Runnable task) {
+        context.channel().eventLoop().execute(task);
+    }
 
-  @Override
-  protected void schedule(Runnable task, long delay, TimeUnit unit) {
-    context.channel().eventLoop().schedule(task, delay, unit);
-  }
+    @Override
+    protected void schedule(Runnable task, long delay, TimeUnit unit) {
+        context.channel().eventLoop().schedule(task, delay, unit);
+    }
 
-  // Not properly synchronized, but ok for now
-  @Override
-  protected void send(byte[] data) {
-    context.writeAndFlush(Unpooled.buffer().writeBytes(data));
-  }
+    // Not properly synchronized, but ok for now
+    @Override
+    protected void send(byte[] data) {
+        context.writeAndFlush(Unpooled.buffer().writeBytes(data));
+    }
 
-  @Override
-  protected void onClose() {
-    super.onClose();
-  }
+    @Override
+    protected void onClose() {
+        super.onClose();
+    }
 
-  @Override
-  public void close() {
-    context.writeAndFlush(Unpooled.EMPTY_BUFFER).addListener(ChannelFutureListener.CLOSE);
-  }
+    @Override
+    public void close() {
+        context.writeAndFlush(Unpooled.EMPTY_BUFFER).addListener(ChannelFutureListener.CLOSE);
+    }
 }

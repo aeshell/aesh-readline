@@ -20,19 +20,19 @@
 
 package org.aesh.readline.editing;
 
-import org.aesh.readline.action.KeyAction;
-import org.aesh.readline.action.mappings.ActionMapper;
-import org.aesh.readline.terminal.Key;
-import org.aesh.readline.action.Action;
-import org.aesh.readline.action.ActionEvent;
-import org.aesh.terminal.Device;
-import org.aesh.terminal.tty.Capability;
-
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import org.aesh.readline.action.Action;
+import org.aesh.readline.action.ActionEvent;
+import org.aesh.readline.action.KeyAction;
+import org.aesh.readline.action.mappings.ActionMapper;
+import org.aesh.readline.terminal.Key;
+import org.aesh.terminal.Device;
+import org.aesh.terminal.tty.Capability;
 
 /**
  * Vi-style line editing mode implementation.
@@ -48,10 +48,10 @@ public class Vi implements EditMode {
     private ActionEvent currentAction;
 
     private Map<Key, ActionStatus> actions;
-    private Map<KeyAction,ActionStatus> keyEventActions;
+    private Map<KeyAction, ActionStatus> keyEventActions;
     private Map<Key, ActionStatusGroup> actionGroups;
     private Map<KeyAction, ActionStatusGroup> keyEventActionGroups;
-    private Map<Variable,String> variables;
+    private Map<Variable, String> variables;
 
     Vi() {
         actions = new EnumMap<>(Key.class);
@@ -64,7 +64,7 @@ public class Vi implements EditMode {
     @Override
     public void addAction(int[] input, String action) {
         Key key = Key.getKey(input);
-        if(key != null)
+        if (key != null)
             addAction(key, action);
         else
             keyEventActions.put(createKeyEvent(input),
@@ -88,11 +88,10 @@ public class Vi implements EditMode {
     }
 
     private void remap(Key key, int[] newMapping) {
-        if(newMapping != null && actions.containsKey(key) && !key.equalTo(newMapping)) {
+        if (newMapping != null && actions.containsKey(key) && !key.equalTo(newMapping)) {
             ActionStatus action = actions.remove(key);
             addAction(newMapping, action);
-        }
-        else if(newMapping != null && actionGroups.containsKey(key) && !key.equalTo(newMapping)) {
+        } else if (newMapping != null && actionGroups.containsKey(key) && !key.equalTo(newMapping)) {
             ActionStatusGroup statusGroup = actionGroups.remove(key);
             addActionGroup(newMapping, statusGroup);
 
@@ -120,7 +119,7 @@ public class Vi implements EditMode {
 
     public Vi addAction(int[] input, ActionStatus status) {
         Key key = Key.getKey(input);
-        if(key != null)
+        if (key != null)
             actions.put(key, status);
         else
             keyEventActions.put(createKeyEvent(input), status);
@@ -164,7 +163,7 @@ public class Vi implements EditMode {
 
     public Vi addActionGroup(int[] input, ActionStatusGroup group) {
         Key key = Key.getKey(input);
-        if(key != null)
+        if (key != null)
             actionGroups.put(key, group);
         else
             keyEventActionGroups.put(createKeyEvent(input), group);
@@ -184,9 +183,9 @@ public class Vi implements EditMode {
     @Override
     public KeyAction[] keys() {
         List<KeyAction> keys = new ArrayList<>(actions.size()
-                +keyEventActions.size()+actionGroups.size()+keyEventActionGroups.size());
-        actions.keySet().forEach( keys::add);
-        actionGroups.keySet().forEach( keys::add);
+                + keyEventActions.size() + actionGroups.size() + keyEventActionGroups.size());
+        actions.keySet().forEach(keys::add);
+        actionGroups.keySet().forEach(keys::add);
         keyEventActions.keySet().forEach(keys::add);
         keyEventActionGroups.keySet().forEach(keys::add);
         return keys.toArray(new KeyAction[keys.size()]);
@@ -205,12 +204,11 @@ public class Vi implements EditMode {
     @Override
     public Action parse(KeyAction event) {
         //are we already searching, it need to be processed by search action
-        if(currentAction != null) {
-            if(currentAction.keepFocus()) {
+        if (currentAction != null) {
+            if (currentAction.keepFocus()) {
                 currentAction.input(getAction(event), event);
                 return currentAction;
-            }
-            else
+            } else
                 currentAction = null;
         }
 
@@ -224,20 +222,18 @@ public class Vi implements EditMode {
 
     private Action getAction(KeyAction event) {
         ActionStatus newStatus = getActionStatus(event);
-        if(newStatus == null)
+        if (newStatus == null)
             return null;
         else {
-            if(newStatus.getCurrentStatus() == status) {
-                if(newStatus.getAction() instanceof ActionEvent) {
+            if (newStatus.getCurrentStatus() == status) {
+                if (newStatus.getAction() instanceof ActionEvent) {
                     currentAction = (ActionEvent) newStatus.getAction();
                     currentAction.input(newStatus.getAction(), event);
-                }
-                else {
-                    if(newStatus.nextStatus == Status.REPEAT) {
+                } else {
+                    if (newStatus.nextStatus == Status.REPEAT) {
                         return previousAction;
-                    }
-                    else {
-                        if(status == Status.DELETE ||
+                    } else {
+                        if (status == Status.DELETE ||
                                 newStatus.actionStatus == Status.DELETE ||
                                 newStatus.actionStatus == Status.CHANGE)
                             previousAction = newStatus.getAction();
@@ -245,75 +241,72 @@ public class Vi implements EditMode {
                     }
                 }
                 return newStatus.getAction();
-            }
-            else
+            } else
                 return null;
-         }
+        }
 
         /*
-        if(event instanceof Key) {
-            parseKeyEvent((Key) event);
-        }
-
-        if(actions.containsKey(event)) {
-            ActionStatus actionStatus =  actions.get(event);
-            if(actionStatus.getAction() instanceof ActionEvent) {
-                currentAction = (ActionEvent) actionStatus.getAction();
-                currentAction.input(actionStatus.getAction(), event);
-            }
-            return actionStatus.getAction();
-        }
-        else {
-            return null;
-        }
-        */
+         * if(event instanceof Key) {
+         * parseKeyEvent((Key) event);
+         * }
+         *
+         * if(actions.containsKey(event)) {
+         * ActionStatus actionStatus = actions.get(event);
+         * if(actionStatus.getAction() instanceof ActionEvent) {
+         * currentAction = (ActionEvent) actionStatus.getAction();
+         * currentAction.input(actionStatus.getAction(), event);
+         * }
+         * return actionStatus.getAction();
+         * }
+         * else {
+         * return null;
+         * }
+         */
     }
 
     private void parseKeyEvent(Key event) {
-        if(Key.ESC == event) {
-            if(searchMode()) {
+        if (Key.ESC == event) {
+            if (searchMode()) {
                 status = Status.EDIT;
-            }
-            else
+            } else
                 status = Status.COMMAND;
         }
         //new line
-        else if(Key.ENTER == event || Key.ENTER_2 == event ||
+        else if (Key.ENTER == event || Key.ENTER_2 == event ||
                 Key.CTRL_J == event || Key.CTRL_K == event) {
             status = Status.EDIT;
         }
     }
 
     private ActionStatus getActionStatus(KeyAction event) {
-        if(event instanceof Key) {
+        if (event instanceof Key) {
             ActionStatus actionStatus = actions.get(event);
-            if(actionStatus != null)
+            if (actionStatus != null)
                 return actionStatus;
             else {
                 ActionStatusGroup group = actionGroups.get(event);
-                if(group != null)
+                if (group != null)
                     return group.getByCurrentStatus(status);
 
                 group = keyEventActionGroups.get(event);
-                if(group != null)
+                if (group != null)
                     return group.getByCurrentStatus(status);
             }
             return null;
-        }
-        else {
+        } else {
             return parseKeyEventActions(event);
         }
     }
 
     private ActionStatus parseKeyEventActions(KeyAction event) {
-        for(KeyAction key : keyEventActions.keySet()) {
+        for (KeyAction key : keyEventActions.keySet()) {
             boolean isEquals = true;
-            if(key.length() == event.length()) {
-                for(int i=0; i<key.length() && isEquals; i++)
-                    if(key.getCodePointAt(i) != event.getCodePointAt(i))
+            if (key.length() == event.length()) {
+                for (int i = 0; i < key.length() && isEquals; i++)
+                    if (key.getCodePointAt(i) != event.getCodePointAt(i))
                         isEquals = false;
 
-                if(isEquals)
+                if (isEquals)
                     return keyEventActions.get(key);
             }
         }
@@ -353,8 +346,8 @@ public class Vi implements EditMode {
         }
 
         ActionStatus getByCurrentStatus(Status currentStatus) {
-            for(ActionStatus status : actionStatuses)
-                if(status.getCurrentStatus() == currentStatus)
+            for (ActionStatus status : actionStatuses)
+                if (status.getCurrentStatus() == currentStatus)
                     return status;
             return null;
         }

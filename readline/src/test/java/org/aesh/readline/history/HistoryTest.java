@@ -19,22 +19,22 @@
  */
 package org.aesh.readline.history;
 
-import org.aesh.readline.terminal.Key;
-import org.aesh.readline.tty.terminal.TestConnection;
-import org.aesh.terminal.utils.Config;
-import org.aesh.readline.util.FileAccessPermission;
-import org.aesh.readline.util.Parser;
-import org.aesh.readline.editing.EditMode;
-import org.aesh.readline.editing.EditModeBuilder;
-import org.junit.Test;
-
-import java.io.File;
-import java.io.IOException;
-
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+
+import java.io.File;
+import java.io.IOException;
+
+import org.aesh.readline.editing.EditMode;
+import org.aesh.readline.editing.EditModeBuilder;
+import org.aesh.readline.terminal.Key;
+import org.aesh.readline.tty.terminal.TestConnection;
+import org.aesh.readline.util.FileAccessPermission;
+import org.aesh.readline.util.Parser;
+import org.aesh.terminal.utils.Config;
+import org.junit.Test;
 
 /**
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
@@ -45,9 +45,9 @@ public class HistoryTest {
     public void testHistory() throws Exception {
 
         TestConnection term = new TestConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).create());
-        term.read("1234"+ Config.getLineSeparator());
+        term.read("1234" + Config.getLineSeparator());
         term.readline();
-        term.read("567"+Config.getLineSeparator());
+        term.read("567" + Config.getLineSeparator());
         term.readline();
         term.read(Key.UP);
         term.read(Key.UP);
@@ -106,11 +106,11 @@ public class HistoryTest {
     public void testReverseSearch() throws Exception {
 
         TestConnection term = new TestConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).create());
-        term.read("1234"+ Config.getLineSeparator());
+        term.read("1234" + Config.getLineSeparator());
         term.readline();
-        term.read("567"+Config.getLineSeparator());
+        term.read("567" + Config.getLineSeparator());
         term.readline();
-        term.read("589"+Config.getLineSeparator());
+        term.read("589" + Config.getLineSeparator());
         term.readline();
         term.clearOutputBuffer();
         term.read(Key.CTRL_R);
@@ -127,11 +127,11 @@ public class HistoryTest {
     public void testForwardSearch() throws Exception {
 
         TestConnection term = new TestConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).create());
-        term.read("1234"+ Config.getLineSeparator());
+        term.read("1234" + Config.getLineSeparator());
         term.readline();
-        term.read("567"+Config.getLineSeparator());
+        term.read("567" + Config.getLineSeparator());
         term.readline();
-        term.read("589"+Config.getLineSeparator());
+        term.read("589" + Config.getLineSeparator());
         term.readline();
         term.clearOutputBuffer();
         term.read(Key.CTRL_S);
@@ -148,11 +148,11 @@ public class HistoryTest {
     public void testReverseSearchEscape() throws Exception {
 
         TestConnection term = new TestConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).create());
-        term.read("1234"+ Config.getLineSeparator());
+        term.read("1234" + Config.getLineSeparator());
         term.readline();
-        term.read("567"+Config.getLineSeparator());
+        term.read("567" + Config.getLineSeparator());
         term.readline();
-        term.read("589"+Config.getLineSeparator());
+        term.read("589" + Config.getLineSeparator());
         term.readline();
         term.clearOutputBuffer();
         term.read(Key.CTRL_R);
@@ -169,7 +169,6 @@ public class HistoryTest {
         term.assertLine("589");
     }
 
-
     @Test
     public void testSearch() {
         History history = new InMemoryHistory(20);
@@ -178,26 +177,26 @@ public class HistoryTest {
         history.push(Parser.toCodePoints("foo3"));
 
         history.setSearchDirection(SearchDirection.REVERSE);
-        assertArrayEquals(Parser.toCodePoints("foo3"),history.search(Parser.toCodePoints("foo")) );
-        assertArrayEquals(Parser.toCodePoints("foo2"),history.search(Parser.toCodePoints("foo")) );
-        assertArrayEquals(Parser.toCodePoints("foo1"),history.search(Parser.toCodePoints("foo")) );
+        assertArrayEquals(Parser.toCodePoints("foo3"), history.search(Parser.toCodePoints("foo")));
+        assertArrayEquals(Parser.toCodePoints("foo2"), history.search(Parser.toCodePoints("foo")));
+        assertArrayEquals(Parser.toCodePoints("foo1"), history.search(Parser.toCodePoints("foo")));
 
         history.setSearchDirection(SearchDirection.FORWARD);
-        assertArrayEquals(Parser.toCodePoints("foo1"),history.search(Parser.toCodePoints("foo")) );
-        assertArrayEquals(Parser.toCodePoints("foo2"),history.search(Parser.toCodePoints("foo")) );
-        assertArrayEquals(Parser.toCodePoints("foo3"),history.search(Parser.toCodePoints("foo")) );
+        assertArrayEquals(Parser.toCodePoints("foo1"), history.search(Parser.toCodePoints("foo")));
+        assertArrayEquals(Parser.toCodePoints("foo2"), history.search(Parser.toCodePoints("foo")));
+        assertArrayEquals(Parser.toCodePoints("foo3"), history.search(Parser.toCodePoints("foo")));
 
         history.setSearchDirection(SearchDirection.REVERSE);
-        assertArrayEquals(Parser.toCodePoints("foo3"),history.search(Parser.toCodePoints("foo")) );
-        assertArrayEquals(Parser.toCodePoints("foo2"),history.search(Parser.toCodePoints("foo")) );
-        assertArrayEquals(Parser.toCodePoints("foo1"),history.search(Parser.toCodePoints("foo")) );
+        assertArrayEquals(Parser.toCodePoints("foo3"), history.search(Parser.toCodePoints("foo")));
+        assertArrayEquals(Parser.toCodePoints("foo2"), history.search(Parser.toCodePoints("foo")));
+        assertArrayEquals(Parser.toCodePoints("foo1"), history.search(Parser.toCodePoints("foo")));
 
         history.setSearchDirection(SearchDirection.REVERSE);
 
-        assertArrayEquals(Parser.toCodePoints("foo3"),history.search(Parser.toCodePoints("foo")) );
-        assertArrayEquals(Parser.toCodePoints("foo2"),history.search(Parser.toCodePoints("foo")) );
-        assertArrayEquals(Parser.toCodePoints("foo1"),history.search(Parser.toCodePoints("foo")) );
-        assertArrayEquals(Parser.toCodePoints("foo3"),history.search(Parser.toCodePoints("foo")) );
+        assertArrayEquals(Parser.toCodePoints("foo3"), history.search(Parser.toCodePoints("foo")));
+        assertArrayEquals(Parser.toCodePoints("foo2"), history.search(Parser.toCodePoints("foo")));
+        assertArrayEquals(Parser.toCodePoints("foo1"), history.search(Parser.toCodePoints("foo")));
+        assertArrayEquals(Parser.toCodePoints("foo3"), history.search(Parser.toCodePoints("foo")));
     }
 
     @Test
@@ -208,7 +207,7 @@ public class HistoryTest {
         history.push(Parser.toCodePoints("foo3"));
 
         history.setSearchDirection(SearchDirection.REVERSE);
-        assertArrayEquals(Parser.toCodePoints("foo3"),history.search(Parser.toCodePoints("foo")) );
+        assertArrayEquals(Parser.toCodePoints("foo3"), history.search(Parser.toCodePoints("foo")));
         assertArrayEquals(Parser.toCodePoints("foo2"), history.getPreviousFetch());
     }
 
@@ -216,9 +215,8 @@ public class HistoryTest {
     public void testHistorySize() {
         History history = new InMemoryHistory(20);
 
-        for(int i=0; i < 25; i++)
+        for (int i = 0; i < 25; i++)
             history.push(Parser.toCodePoints(String.valueOf(i)));
-
 
         assertEquals(20, history.size());
         assertArrayEquals(Parser.toCodePoints("24"), history.getPreviousFetch());
@@ -232,7 +230,7 @@ public class HistoryTest {
 
         assertArrayEquals(Parser.toCodePoints("2"), history.getPreviousFetch());
         history.clear();
-        assertArrayEquals(new int[]{}, history.getPreviousFetch());
+        assertArrayEquals(new int[] {}, history.getPreviousFetch());
     }
 
     @Test
@@ -253,8 +251,8 @@ public class HistoryTest {
     }
 
     @Test
-    public void testFileHistoryPermission() throws IOException{
-        if(Config.isOSPOSIXCompatible()) {
+    public void testFileHistoryPermission() throws IOException {
+        if (Config.isOSPOSIXCompatible()) {
             File historyFile = new File(System.getProperty("java.io.tmpdir"), "aesh-history-file.test.1");
             historyFile.deleteOnExit();
             int maxSize = 10;

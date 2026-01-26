@@ -19,16 +19,18 @@
  */
 package org.aesh.terminal;
 
-import org.aesh.terminal.tty.Point;
-import org.aesh.terminal.tty.Size;
-import org.aesh.terminal.tty.Capability;
-
 import java.nio.charset.Charset;
 import java.util.EnumSet;
 import java.util.concurrent.CountDownLatch;
 import java.util.function.Consumer;
+
+import org.aesh.terminal.tty.Capability;
+import org.aesh.terminal.tty.Point;
 import org.aesh.terminal.tty.Signal;
+import org.aesh.terminal.tty.Size;
 import org.aesh.terminal.utils.ANSI;
+import org.aesh.terminal.utils.ColorDepth;
+import org.aesh.terminal.utils.TerminalColorCapability;
 
 /**
  * Represent a connection to either a local/direct/remote Terminal.
@@ -54,12 +56,14 @@ public interface Connection extends AutoCloseable {
 
     /**
      * Specify size handler that's called when the terminal changes size.
+     *
      * @param handler
      */
     void setSizeHandler(Consumer<Size> handler);
 
     /**
      * Get SignalHandler. A handler that's called when a Signal is sent to the terminal
+     *
      * @return Signal handler
      */
     Consumer<Signal> getSignalHandler();
@@ -67,6 +71,7 @@ public interface Connection extends AutoCloseable {
     /**
      * Specify the signal handler.
      * A handler that's called when a Signal is sent to the terminal
+     *
      * @param handler signal handler
      */
     void setSignalHandler(Consumer<Signal> handler);
@@ -77,12 +82,14 @@ public interface Connection extends AutoCloseable {
 
     /**
      * Handler that's called for all output
+     *
      * @return output handler
      */
     Consumer<int[]> stdoutHandler();
 
     /**
      * Specify handler that's called when the input stream is closed.
+     *
      * @param closeHandler handler
      */
     void setCloseHandler(Consumer<Void> closeHandler);
@@ -121,6 +128,7 @@ public interface Connection extends AutoCloseable {
 
     /**
      * Specify terminal settings
+     *
      * @param capability capability
      * @param params parameters
      * @return true if the terminal accepted the settings
@@ -139,6 +147,7 @@ public interface Connection extends AutoCloseable {
 
     /**
      * Write a string to the output handler
+     *
      * @param s string
      * @return this connection
      */
@@ -151,8 +160,10 @@ public interface Connection extends AutoCloseable {
     default Attributes enterRawMode() {
         Attributes prvAttr = getAttributes();
         Attributes newAttr = new Attributes(prvAttr);
-        newAttr.setLocalFlags(EnumSet.of(Attributes.LocalFlag.ICANON, Attributes.LocalFlag.ECHO, Attributes.LocalFlag.IEXTEN), false);
-        newAttr.setInputFlags(EnumSet.of(Attributes.InputFlag.IXON, Attributes.InputFlag.ICRNL, Attributes.InputFlag.INLCR), false);
+        newAttr.setLocalFlags(EnumSet.of(Attributes.LocalFlag.ICANON, Attributes.LocalFlag.ECHO, Attributes.LocalFlag.IEXTEN),
+                false);
+        newAttr.setInputFlags(EnumSet.of(Attributes.InputFlag.IXON, Attributes.InputFlag.ICRNL, Attributes.InputFlag.INLCR),
+                false);
         newAttr.setControlChar(Attributes.ControlChar.VMIN, 1);
         newAttr.setControlChar(Attributes.ControlChar.VTIME, 0);
         newAttr.setControlChar(Attributes.ControlChar.VINTR, 0);
@@ -163,7 +174,7 @@ public interface Connection extends AutoCloseable {
     default Point getCursorPosition() {
         Consumer<int[]> prevInputHandler = getStdinHandler();
         CountDownLatch latch = new CountDownLatch(1);
-        final Point[] p = {null};
+        final Point[] p = { null };
         Attributes attributes = enterRawMode();
         setStdinHandler(ints -> {
             p[0] = ANSI.getActualCursor(ints);
@@ -178,6 +189,125 @@ public interface Connection extends AutoCloseable {
             e.printStackTrace();
         }
         return p[0];
+    }
+
+    /**
+     * Send a query to the terminal and wait for a response with timeout.
+     * <p>
+     * This method enters raw mode, sends the query, collects the response,
+     * and restores the original terminal attributes. It's useful for OSC queries
+     * and other terminal interrogation sequences.
+     * <p>
+     * Note: This method requires the connection to be actively reading input
+     * (via {@link #openBlocking()} or {@link #openNonBlocking()}).
+     *
+     * @param query the query sequence to send
+     * @param timeoutMs timeout in milliseconds to wait for response
+     * @param responseParser function to parse the response; should return non-null when
+     *        a complete response is received, null to continue waiting
+     * @param <T> the type of the parsed response
+     * @return the parsed response, or null if timeout or parsing failed
+     */
+    default <T> T queryTerminal(String query, long timeoutMs,
+            java.util.function.Function<int[], T> responseParser) {
+        if (!supportsAnsi()) {
+            return null;
+        }
+
+        // Check if OSC queries are supported
+        if (device() != null && !device().supportsOscQueries()) {
+            return null;
+        }
+
+        Consumer<int[]> prevInputHandler = getStdinHandler();
+        CountDownLatch latch = new CountDownLatch(1);
+        @SuppressWarnings("unchecked")
+        final Object[] result = { null };
+        Attributes savedAttributes = enterRawMode();
+
+        setStdinHandler(ints -> {
+            T parsed = responseParser.apply(ints);
+            if (parsed != null) {
+                result[0] = parsed;
+                latch.countDown();
+            }
+        });
+
+        try {
+            stdoutHandler().accept(query.codePoints().toArray());
+            latch.await(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } finally {
+            setStdinHandler(prevInputHandler);
+            setAttributes(savedAttributes);
+        }
+
+        @SuppressWarnings("unchecked")
+        T typedResult = (T) result[0];
+        return typedResult;
+    }
+
+    /**
+     * Check if OSC (Operating System Command) queries are supported.
+     * <p>
+     * This checks both the device type and environment variables to determine
+     * if OSC queries like color detection are likely to work.
+     *
+     * @return true if OSC queries are likely supported
+     */
+    default boolean supportsOscQueries() {
+        // First check device
+        if (device() != null && !device().supportsOscQueries()) {
+            return false;
+        }
+
+        // Also check environment for terminal multiplexers
+        String termProgram = System.getenv("TERM_PROGRAM");
+        if (termProgram != null) {
+            String lower = termProgram.toLowerCase();
+            if (lower.equals("tmux") || lower.equals("screen")) {
+                return false;
+            }
+        }
+
+        return supportsAnsi();
+    }
+
+    /**
+     * Get the color depth of this terminal connection.
+     * <p>
+     * This method uses the device's max_colors capability if available,
+     * otherwise falls back to environment variable detection.
+     *
+     * @return the detected color depth
+     */
+    default ColorDepth getColorDepth() {
+        // Check terminfo max_colors capability first
+        if (device() != null) {
+            Integer maxColors = device().getNumericCapability(Capability.max_colors);
+            if (maxColors != null) {
+                return ColorDepth.fromColorCount(maxColors);
+            }
+        }
+
+        // Fall back to environment detection
+        return TerminalColorCapability.detectColorDepthFromEnvironment();
+    }
+
+    /**
+     * Get the color capabilities of this terminal connection.
+     * <p>
+     * This is a fast, non-blocking operation that uses environment variables
+     * and terminfo data. For more accurate color detection including
+     * background theme detection via OSC queries, use the
+     * {@code TerminalColorDetector} class in the readline module.
+     *
+     * @return the detected color capabilities
+     */
+    default TerminalColorCapability getColorCapability() {
+        ColorDepth depth = getColorDepth();
+        return new TerminalColorCapability(depth, TerminalColorCapability.detectThemeFromEnvironment());
     }
 
 }

@@ -19,10 +19,10 @@
  */
 package org.aesh.readline.terminal.formatting;
 
-import org.aesh.terminal.utils.ANSI;
-import org.aesh.readline.util.Parser;
-
 import java.io.PrintStream;
+
+import org.aesh.readline.util.Parser;
+import org.aesh.terminal.utils.ANSI;
 
 /**
  * Value object that describe how a string should be displayed
@@ -39,11 +39,11 @@ public class TerminalString implements Comparable<TerminalString> {
 
     public TerminalString(String chars, TerminalColor color, TerminalTextStyle style) {
         this.characters = chars;
-        if(color != null)
+        if (color != null)
             this.color = color;
         else
             this.color = new TerminalColor();
-        if(style != null)
+        if (style != null)
             this.style = style;
         else
             this.style = new TerminalTextStyle();
@@ -79,7 +79,7 @@ public class TerminalString implements Comparable<TerminalString> {
     }
 
     public void switchSpacesToEscapedSpaces() {
-       characters = Parser.switchSpacesToEscapedSpacesInWord(characters);
+        characters = Parser.switchSpacesToEscapedSpacesInWord(characters);
     }
 
     public TerminalTextStyle getStyle() {
@@ -87,42 +87,42 @@ public class TerminalString implements Comparable<TerminalString> {
     }
 
     public int getANSILength() {
-        if(ignoreRendering)
+        if (ignoreRendering)
             return 0;
         else {
             if (ansiLength == 0)
                 ansiLength = ANSI.START.length() + color.getLength() +
-                        style.getLength() + ANSI.RESET.length() +2 ; // ; + m
+                        style.getLength() + ANSI.RESET.length() + 2; // ; + m
             return ansiLength;
         }
     }
 
     public TerminalString cloneRenderingAttributes(String chars) {
-        if(ignoreRendering)
+        if (ignoreRendering)
             return new TerminalString(chars, true);
         else
             return new TerminalString(chars, color, style);
     }
 
     public boolean isFormatted() {
-        return  !ignoreRendering && (color.isFormatted() || style.isFormatted());
+        return !ignoreRendering && (color.isFormatted() || style.isFormatted());
     }
 
     /**
      * style, text color, background color
      */
     public String toString(TerminalString prev) {
-        if(ignoreRendering)
+        if (ignoreRendering)
             return characters;
-        if(equalsIgnoreCharacter(prev))
+        if (equalsIgnoreCharacter(prev))
             return characters;
         else {
             StringBuilder builder = new StringBuilder();
             builder.append(ANSI.START)
                     .append(style.getValueComparedToPrev(prev.getStyle()));
 
-            if(!this.color.equals(prev.color)) {
-                if(prev.getStyle().isInvert())
+            if (!this.color.equals(prev.color)) {
+                if (prev.getStyle().isInvert())
                     builder.append(';').append(this.color.toString());
                 else
                     builder.append(';').append(this.color.toString(prev.color));
@@ -135,7 +135,7 @@ public class TerminalString implements Comparable<TerminalString> {
 
     @Override
     public String toString() {
-        if(ignoreRendering)
+        if (ignoreRendering)
             return characters;
         return ANSI.START + style.toString() + ';' +
                 this.color.toString() +
@@ -143,10 +143,9 @@ public class TerminalString implements Comparable<TerminalString> {
     }
 
     public void write(PrintStream out) {
-        if(ignoreRendering) {
+        if (ignoreRendering) {
             out.print(characters);
-        }
-        else {
+        } else {
             out.print(ANSI.START);
             out.print(style.toString());
             out.print(';');
@@ -157,27 +156,35 @@ public class TerminalString implements Comparable<TerminalString> {
     }
 
     public boolean equalsIgnoreCharacter(TerminalString that) {
-        if (style != that.style) return false;
-        if (ignoreRendering != that.ignoreRendering) return false;
-        if (!color.equals(that.color)) return false;
+        if (style != that.style)
+            return false;
+        if (ignoreRendering != that.ignoreRendering)
+            return false;
+        if (!color.equals(that.color))
+            return false;
 
         return true;
     }
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof TerminalString)) return false;
+        if (this == o)
+            return true;
+        if (!(o instanceof TerminalString))
+            return false;
 
         TerminalString that = (TerminalString) o;
 
-        if(ignoreRendering) {
+        if (ignoreRendering) {
             return characters.equals(that.characters);
         }
 
-        if (!characters.equals(that.characters)) return false;
-        if (!color.equals(that.color)) return false;
-        if (style != that.style) return false;
+        if (!characters.equals(that.characters))
+            return false;
+        if (!color.equals(that.color))
+            return false;
+        if (style != that.style)
+            return false;
 
         return true;
     }

@@ -19,8 +19,13 @@
  */
 package org.aesh.terminal.ssh.netty;
 
-import io.netty.channel.EventLoopGroup;
-import io.netty.channel.nio.NioEventLoopGroup;
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
+
 import org.aesh.terminal.Connection;
 import org.aesh.terminal.ssh.TtyCommand;
 import org.aesh.terminal.utils.Helper;
@@ -28,15 +33,11 @@ import org.apache.sshd.common.keyprovider.KeyPairProvider;
 import org.apache.sshd.netty.NettyIoServiceFactoryFactory;
 import org.apache.sshd.server.SshServer;
 import org.apache.sshd.server.auth.password.PasswordAuthenticator;
+import org.apache.sshd.server.auth.pubkey.PublickeyAuthenticator;
 import org.apache.sshd.server.keyprovider.SimpleGeneratorHostKeyProvider;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
-import java.util.concurrent.CompletableFuture;
-import java.util.function.Consumer;
-import org.apache.sshd.server.auth.pubkey.PublickeyAuthenticator;
+import io.netty.channel.EventLoopGroup;
+import io.netty.channel.nio.NioEventLoopGroup;
 
 /**
  * Bootstrap class for starting an SSH TTY server using Netty.

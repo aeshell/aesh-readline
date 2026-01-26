@@ -20,12 +20,6 @@
 package org.aesh.readline.terminal.impl;
 
 import java.io.File;
-import org.aesh.terminal.Attributes;
-import org.aesh.terminal.utils.Config;
-import org.aesh.terminal.utils.ExecHelper;
-import org.aesh.terminal.utils.OSUtils;
-import org.aesh.readline.util.LoggerUtil;
-
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -41,7 +35,13 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import org.aesh.readline.util.LoggerUtil;
+import org.aesh.terminal.Attributes;
 import org.aesh.terminal.tty.Size;
+import org.aesh.terminal.utils.Config;
+import org.aesh.terminal.utils.ExecHelper;
+import org.aesh.terminal.utils.OSUtils;
 
 public class ExecPty implements Pty {
 
@@ -54,14 +54,14 @@ public class ExecPty implements Pty {
 
     public static Pty current() throws IOException {
         try {
-            LOGGER.log(Level.FINE,"getting pty: "+OSUtils.TTY_COMMAND);
+            LOGGER.log(Level.FINE, "getting pty: " + OSUtils.TTY_COMMAND);
             Process p = new ProcessBuilder(OSUtils.TTY_COMMAND)
                     .redirectInput(Redirect.INHERIT).start();
             String result = ExecHelper.waitAndCapture(p).trim();
             if (p.exitValue() != 0) {
                 throw new IOException("Not a tty");
             }
-            LOGGER.log(Level.FINE,"result: "+result);
+            LOGGER.log(Level.FINE, "result: " + result);
             return new ExecPty(result);
         } catch (InterruptedException e) {
             throw (IOException) new InterruptedIOException("Command interrupted").initCause(e);
@@ -71,9 +71,9 @@ public class ExecPty implements Pty {
     protected ExecPty(String name) {
         this.name = name;
         /*
-            There are some contexts (eg lxc container) in which tty returns 'not a tty' without
-            error. This file shouldn't exist on the file system but in case it exists
-            concider tty file invalid.
+         * There are some contexts (eg lxc container) in which tty returns 'not a tty' without
+         * error. This file shouldn't exist on the file system but in case it exists
+         * concider tty file invalid.
          */
         validTTYFile = new File(name).exists() && !NOT_A_TTY.equals(name);
         LOGGER.log(Level.FINE, "tty file " + name + " valid? " + validTTYFile);
@@ -131,19 +131,15 @@ public class ExecPty implements Pty {
             String cfg = doGetConfig();
             if (OSUtils.IS_HPUX || OSUtils.IS_SUNOS) {
                 return doGetAttr(cfg);
-            }
-            else if(OSUtils.IS_LINUX) {
+            } else if (OSUtils.IS_LINUX) {
                 return doGetLinuxAttr(cfg);
-            }
-             else
+            } else
                 return doGetAttr(cfg);
-        }
-        catch(IOException ioe) {
+        } catch (IOException ioe) {
             //if we get permission denied on stty -F tty -a we can try without -F tty
-            if(ioe.getMessage().contains("Permission denied")) {
-               return doGetAttr(doGetFailSafeConfig());
-            }
-            else
+            if (ioe.getMessage().contains("Permission denied")) {
+                return doGetAttr(doGetFailSafeConfig());
+            } else
                 throw ioe;
         }
     }
@@ -182,8 +178,7 @@ public class ExecPty implements Pty {
                     commands.add(Integer.toString(v));
                 } else if (v == 0) {
                     commands.add(undef);
-                }
-                else {
+                } else {
                     if (v >= 128) {
                         v -= 128;
                         str += "M-";
@@ -198,11 +193,10 @@ public class ExecPty implements Pty {
             }
         }
         if (!commands.isEmpty()) {
-            if(OSUtils.IS_HPUX || OSUtils.IS_SUNOS) {
+            if (OSUtils.IS_HPUX || OSUtils.IS_SUNOS) {
                 commands.add(0, OSUtils.STTY_COMMAND);
                 exec(commands.toArray(new String[commands.size()]));
-            }
-            else {
+            } else {
                 commands.add(0, OSUtils.STTY_COMMAND);
                 commands.add(1, OSUtils.STTY_F_OPTION);
                 commands.add(2, getName());
@@ -235,7 +229,6 @@ public class ExecPty implements Pty {
         }
 
     }
-
 
     protected String doGetConfig() throws IOException {
         if (OSUtils.IS_HPUX || OSUtils.IS_SUNOS) {
@@ -283,25 +276,25 @@ public class ExecPty implements Pty {
 
     private static void doParseLinuxOptions(String options, Attributes attributes) {
         String[] optionLines = options.split(Config.getLineSeparator());
-        for(String line : optionLines)
-            for(String option : line.trim().split(" ")) {
+        for (String line : optionLines)
+            for (String option : line.trim().split(" ")) {
                 //options starting with - are ignored
                 option = option.trim();
-                if(option.length() > 0 && option.charAt(0) != '-') {
+                if (option.length() > 0 && option.charAt(0) != '-') {
                     Attributes.ControlFlag controlFlag = getEnumFromString(Attributes.ControlFlag.class, option);
-                    if(controlFlag != null)
+                    if (controlFlag != null)
                         attributes.setControlFlag(controlFlag, true);
                     else {
                         Attributes.InputFlag inputFlag = getEnumFromString(Attributes.InputFlag.class, option);
-                        if(inputFlag != null)
+                        if (inputFlag != null)
                             attributes.setInputFlag(inputFlag, true);
                         else {
                             Attributes.LocalFlag localFlag = getEnumFromString(Attributes.LocalFlag.class, option);
-                            if(localFlag != null)
+                            if (localFlag != null)
                                 attributes.setLocalFlag(localFlag, true);
                             else {
                                 Attributes.OutputFlag outputFlag = getEnumFromString(Attributes.OutputFlag.class, option);
-                                if(outputFlag != null)
+                                if (outputFlag != null)
                                     attributes.setOutputFlag(outputFlag, true);
                             }
                         }
@@ -311,12 +304,12 @@ public class ExecPty implements Pty {
     }
 
     private static void setAttr(Attributes.ControlChar cc, String input, Attributes attr) {
-        attr.setControlChar(cc, parseControlChar(input.substring(input.lastIndexOf(' ')+1)));
+        attr.setControlChar(cc, parseControlChar(input.substring(input.lastIndexOf(' ') + 1)));
     }
 
     private static <T extends Enum<T>> T getEnumFromString(Class<T> c, String string) {
-        for(T flag : c.getEnumConstants())
-            if(flag.name().toLowerCase().equals(string))
+        for (T flag : c.getEnumConstants())
+            if (flag.name().toLowerCase().equals(string))
                 return flag;
         return null;
     }
@@ -381,8 +374,7 @@ public class ExecPty implements Pty {
             } else {
                 return str.charAt(1) - 64;
             }
-        }
-        else if (str.charAt(0) == 'M' && str.charAt(1) == '-') {
+        } else if (str.charAt(0) == 'M' && str.charAt(1) == '-') {
             if (str.charAt(2) == '^') {
                 if (str.charAt(3) == '?') {
                     return 127 + 128;
@@ -450,12 +442,12 @@ public class ExecPty implements Pty {
     private static String exec(final String... cmd) throws IOException {
         assert cmd != null && cmd[0].length() > 0;
         try {
-            LOGGER.log(Level.FINE, "Running: "+ Arrays.toString(cmd));
+            LOGGER.log(Level.FINE, "Running: " + Arrays.toString(cmd));
             ProcessBuilder processBuilder = new ProcessBuilder(cmd);
             processBuilder.redirectInput(Redirect.INHERIT);
             Process p = processBuilder.start();
             String result = ExecHelper.waitAndCapture(p);
-            LOGGER.log(Level.FINE, "Result: "+ result);
+            LOGGER.log(Level.FINE, "Result: " + result);
             if (p.exitValue() != 0) {
                 throw new IOException("Error executing '" + String.join(" ", cmd) + "': " + result);
             }

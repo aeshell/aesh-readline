@@ -19,12 +19,12 @@
  */
 package org.aesh.terminal.io;
 
-import org.junit.Test;
+import static org.junit.Assert.assertEquals;
 
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 
-import static org.junit.Assert.assertEquals;
+import org.junit.Test;
 
 /**
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
@@ -41,23 +41,23 @@ public class EncoderTest {
 
         final byte[] output = new byte[4];
         Encoder encoder = new Encoder(charset, event -> {
-            for(int i=0; i < event.length; i++)
+            for (int i = 0; i < event.length; i++)
                 output[i] = event[i];
         });
 
         decoder.write(incoming.getBytes());
 
-        for(int i=0; i < expected.length; i++) {
+        for (int i = 0; i < expected.length; i++) {
             encoder.accept(result.get(i));
-            for(int j=0; j < expected[i].length(); j++)
+            for (int j = 0; j < expected[i].length(); j++)
                 assertEquals(expected[i].getBytes()[j], output[j]);
         }
     }
 
     @Test
     public void testInputs() {
-        decodeEndcode("foo", new String[] {"foo"});
-        decodeEndcode("foo bar!!??", new String[] {"foo ","bar!","!??"});
-        decodeEndcode("\r", new String[] {"\r"});
+        decodeEndcode("foo", new String[] { "foo" });
+        decodeEndcode("foo bar!!??", new String[] { "foo ", "bar!", "!??" });
+        decodeEndcode("\r", new String[] { "\r" });
     }
 }

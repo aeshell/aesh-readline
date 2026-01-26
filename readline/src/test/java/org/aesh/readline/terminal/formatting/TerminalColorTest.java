@@ -19,11 +19,11 @@
  */
 package org.aesh.readline.terminal.formatting;
 
-import org.junit.Test;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+
+import org.junit.Test;
 
 /**
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
@@ -32,9 +32,9 @@ public class TerminalColorTest {
 
     @Test
     public void testTerminalColor() {
-        TerminalColor color = new TerminalColor( Color.DEFAULT, Color.BLACK);
+        TerminalColor color = new TerminalColor(Color.DEFAULT, Color.BLACK);
 
-        assertEquals("3"+Color.DEFAULT.getValue()+";4"+Color.BLACK.getValue(), color.toString());
+        assertEquals("3" + Color.DEFAULT.getValue() + ";4" + Color.BLACK.getValue(), color.toString());
 
         assertTrue(color.isFormatted());
 

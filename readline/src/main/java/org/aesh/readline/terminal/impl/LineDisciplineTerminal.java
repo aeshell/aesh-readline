@@ -19,16 +19,16 @@
  */
 package org.aesh.readline.terminal.impl;
 
-import org.aesh.readline.terminal.utils.LinePipedInputStream;
-import org.aesh.terminal.Attributes;
-import org.aesh.terminal.Terminal;
-
 import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
+
+import org.aesh.readline.terminal.utils.LinePipedInputStream;
+import org.aesh.terminal.Attributes;
+import org.aesh.terminal.Terminal;
 import org.aesh.terminal.tty.Signal;
 import org.aesh.terminal.tty.Size;
 
@@ -75,8 +75,8 @@ public class LineDisciplineTerminal extends AbstractTerminal {
     protected Size size;
 
     public LineDisciplineTerminal(String name,
-                                  String type,
-                                  OutputStream masterOutput) throws IOException {
+            String type,
+            OutputStream masterOutput) throws IOException {
         super(name, type);
         PipedInputStream input = new LinePipedInputStream(PIPE_SIZE);
         this.slaveInputPipe = new PipedOutputStream(input);
@@ -84,7 +84,8 @@ public class LineDisciplineTerminal extends AbstractTerminal {
         // streams for commands if they are instances of PipedInputStream.
         // So we need to get around and make sure it's not an instance of
         // that class by using a dumb FilterInputStream class to wrap it.
-        this.slaveInput = new FilterInputStream(input) {};
+        this.slaveInput = new FilterInputStream(input) {
+        };
         this.slaveOutput = new FilteringOutputStream();
         this.masterOutput = masterOutput;
         this.attributes = new Attributes();
@@ -115,21 +116,21 @@ public class LineDisciplineTerminal extends AbstractTerminal {
         return size;
     }
 
-   @Override
+    @Override
     public void raise(Signal signal) {
         assert signal != null;
         // Do not call clear() atm as this can cause
         // deadlock between reading / writing threads
         // TODO: any way to fix that ?
         /*
-        if (!attributes.getLocalFlag(LocalFlag.NOFLSH)) {
-            try {
-                slaveReader.clear();
-            } catch (IOException e) {
-                // Ignore
-            }
-        }
-        */
+         * if (!attributes.getLocalFlag(LocalFlag.NOFLSH)) {
+         * try {
+         * slaveReader.clear();
+         * } catch (IOException e) {
+         * // Ignore
+         * }
+         * }
+         */
         echoSignal(signal);
         super.raise(signal);
     }
@@ -152,19 +153,19 @@ public class LineDisciplineTerminal extends AbstractTerminal {
     }
 
     public void processInputBytes(byte[] input, int length) throws IOException {
-        for(int i=0; i < length; i++)
+        for (int i = 0; i < length; i++)
             doProcessInputByte(input[i]);
         slaveInputPipe.flush();
     }
 
     public void processInputBytes(int[] input, int length) throws IOException {
-        for(int i=0; i < length; i++)
+        for (int i = 0; i < length; i++)
             doProcessInputByte(input[i]);
         slaveInputPipe.flush();
     }
 
     private void doProcessInputByte(int c) throws IOException {
-               if (attributes.getLocalFlag(Attributes.LocalFlag.ISIG)) {
+        if (attributes.getLocalFlag(Attributes.LocalFlag.ISIG)) {
             if (c == attributes.getControlChar(Attributes.ControlChar.VINTR)) {
                 raise(Signal.INT);
                 return;
@@ -198,8 +199,7 @@ public class LineDisciplineTerminal extends AbstractTerminal {
     protected void closeSlaveInputPipe() {
         try {
             slaveInputPipe.close();
-        }
-        catch (IOException e) {
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }

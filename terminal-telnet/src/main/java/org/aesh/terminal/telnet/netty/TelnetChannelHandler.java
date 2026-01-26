@@ -20,14 +20,15 @@
 
 package org.aesh.terminal.telnet.netty;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundHandlerAdapter;
-import org.aesh.terminal.telnet.TelnetHandler;
-
 import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import org.aesh.terminal.telnet.TelnetHandler;
+
+import io.netty.buffer.ByteBuf;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInboundHandlerAdapter;
 
 /**
  * Telnet server integration with Netty {@link io.netty.channel.socket.ServerSocketChannel}.
@@ -36,43 +37,43 @@ import java.util.logging.Logger;
  */
 public class TelnetChannelHandler extends ChannelInboundHandlerAdapter {
 
-  private final Supplier<TelnetHandler> factory;
-  private NettyTelnetConnection conn;
-  private static final Logger LOGGER = Logger.getLogger(TelnetChannelHandler.class.getName());
+    private final Supplier<TelnetHandler> factory;
+    private NettyTelnetConnection conn;
+    private static final Logger LOGGER = Logger.getLogger(TelnetChannelHandler.class.getName());
 
-  /**
-   * Creates a new TelnetChannelHandler with the specified handler factory.
-   *
-   * @param factory the factory to create TelnetHandler instances for each connection
-   */
-  public TelnetChannelHandler(Supplier<TelnetHandler> factory) {
-    this.factory = factory;
-  }
+    /**
+     * Creates a new TelnetChannelHandler with the specified handler factory.
+     *
+     * @param factory the factory to create TelnetHandler instances for each connection
+     */
+    public TelnetChannelHandler(Supplier<TelnetHandler> factory) {
+        this.factory = factory;
+    }
 
-  @Override
-  public void channelRead(ChannelHandlerContext ctx, Object msg) {
-    ByteBuf buf = (ByteBuf) msg;
-    int size = buf.readableBytes();
-    byte[] data = new byte[size];
-    buf.getBytes(0, data);
-    conn.receive(data);
-  }
+    @Override
+    public void channelRead(ChannelHandlerContext ctx, Object msg) {
+        ByteBuf buf = (ByteBuf) msg;
+        int size = buf.readableBytes();
+        byte[] data = new byte[size];
+        buf.getBytes(0, data);
+        conn.receive(data);
+    }
 
-  @Override
-  public void channelActive(ChannelHandlerContext ctx) throws Exception {
-    this.conn = new NettyTelnetConnection(factory.get(), ctx);
-    conn.onInit();
-  }
+    @Override
+    public void channelActive(ChannelHandlerContext ctx) throws Exception {
+        this.conn = new NettyTelnetConnection(factory.get(), ctx);
+        conn.onInit();
+    }
 
-  @Override
-  public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-    conn.onClose();
-    this.conn = null;
-  }
+    @Override
+    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+        conn.onClose();
+        this.conn = null;
+    }
 
-  @Override
-  public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-    LOGGER.log(Level.WARNING, "IO exception, closing", cause);
-    ctx.close();
-  }
+    @Override
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
+        LOGGER.log(Level.WARNING, "IO exception, closing", cause);
+        ctx.close();
+    }
 }

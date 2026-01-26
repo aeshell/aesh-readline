@@ -53,25 +53,25 @@ public class AliasCompletion implements Completion {
         completeOperation.addCompletionCandidates(manager.findAllMatchingNames(completeOperation.getBuffer()));
 
         //only includeAliasIncCompletion if we're running in pure readline, not if we're running in æsh
-        if(includeAliasInCompletion) {
-            if(completeOperation.getBuffer() == null || completeOperation.getBuffer().length() < 1) {
+        if (includeAliasInCompletion) {
+            if (completeOperation.getBuffer() == null || completeOperation.getBuffer().length() < 1) {
                 completeOperation.addCompletionCandidate(ALIAS);
                 completeOperation.addCompletionCandidate(UNALIAS);
-            } else if(ALIAS.startsWith(completeOperation.getBuffer()))
+            } else if (ALIAS.startsWith(completeOperation.getBuffer()))
                 completeOperation.addCompletionCandidate(ALIAS);
-            else if(UNALIAS.startsWith(completeOperation.getBuffer()))
+            else if (UNALIAS.startsWith(completeOperation.getBuffer()))
                 completeOperation.addCompletionCandidate(UNALIAS);
-            else if(completeOperation.getBuffer().equals(ALIAS_SPACE) ||
-                            completeOperation.getBuffer().equals(UNALIAS_SPACE)) {
+            else if (completeOperation.getBuffer().equals(ALIAS_SPACE) ||
+                    completeOperation.getBuffer().equals(UNALIAS_SPACE)) {
                 completeOperation.addCompletionCandidates(manager.getAllNames());
                 completeOperation.addCompletionCandidate(HELP);
                 completeOperation.setOffset(completeOperation.getCursor());
-            } else if(completeOperation.getBuffer().startsWith(ALIAS_SPACE) ||
-                              completeOperation.getBuffer().startsWith(UNALIAS_SPACE)) {
+            } else if (completeOperation.getBuffer().startsWith(ALIAS_SPACE) ||
+                    completeOperation.getBuffer().startsWith(UNALIAS_SPACE)) {
                 String word = Parser.findWordClosestToCursor(
                         completeOperation.getBuffer(), completeOperation.getCursor());
                 completeOperation.addCompletionCandidates(manager.findAllMatchingNames(word));
-                if(!word.isEmpty() && HELP.startsWith(word)) {
+                if (!word.isEmpty() && HELP.startsWith(word)) {
                     completeOperation.addCompletionCandidate(HELP);
                 }
                 completeOperation.setOffset(completeOperation.getCursor() - word.length());

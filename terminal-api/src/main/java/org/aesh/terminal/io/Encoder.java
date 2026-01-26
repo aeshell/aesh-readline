@@ -36,7 +36,7 @@ public class Encoder implements Consumer<int[]> {
     private final Consumer<byte[]> out;
 
     public Encoder(Charset charset, Consumer<byte[]> out) {
-        if(charset != null)
+        if (charset != null)
             this.charset = charset;
         else
             this.charset = Charset.defaultCharset();
@@ -44,7 +44,7 @@ public class Encoder implements Consumer<int[]> {
     }
 
     public void setCharset(Charset charset) {
-        if(charset != null)
+        if (charset != null)
             this.charset = charset;
     }
 
@@ -55,7 +55,7 @@ public class Encoder implements Consumer<int[]> {
     }
 
     public static CharBuffer toCharBuffer(int[] input) {
-         final char[] tmp = new char[2];
+        final char[] tmp = new char[2];
         int capacity = 0;
         for (int codePoint : input) {
             capacity += Character.charCount(codePoint);
@@ -70,7 +70,7 @@ public class Encoder implements Consumer<int[]> {
     }
 
     private static byte[] safeTrim(byte[] bytes, int length) {
-        if(bytes.length == length)
+        if (bytes.length == length)
             return bytes;
         else
             return Arrays.copyOf(bytes, length);

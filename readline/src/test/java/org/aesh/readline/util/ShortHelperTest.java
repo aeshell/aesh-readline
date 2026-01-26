@@ -19,10 +19,10 @@
  */
 package org.aesh.readline.util;
 
-import org.junit.Test;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+
+import org.junit.Test;
 
 /**
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
@@ -41,7 +41,7 @@ public class ShortHelperTest {
 
         assertTrue(shorts.length == ints.length);
 
-        for(int i=0; i < shorts.length; i++) {
+        for (int i = 0; i < shorts.length; i++) {
             assertTrue(shorts[i] == ints[i]);
         }
     }

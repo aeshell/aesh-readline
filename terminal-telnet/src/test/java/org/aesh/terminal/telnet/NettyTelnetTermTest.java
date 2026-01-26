@@ -31,8 +31,8 @@ import java.util.function.Supplier;
  */
 public class NettyTelnetTermTest extends TelnetTermTest {
 
-  @Override
-  protected Function<Supplier<TelnetHandler>, Closeable> serverFactory() {
-    return TelnetServerRule.NETTY_SERVER;
-  }
+    @Override
+    protected Function<Supplier<TelnetHandler>, Closeable> serverFactory() {
+        return TelnetServerRule.NETTY_SERVER;
+    }
 }

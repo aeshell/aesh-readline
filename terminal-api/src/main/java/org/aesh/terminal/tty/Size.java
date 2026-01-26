@@ -30,11 +30,11 @@ public class Size {
     private final int width;
 
     public Size(int width, int height) {
-        if(width > 0)
+        if (width > 0)
             this.width = width;
         else
             this.width = 80; //we default to 80
-        if(height > 0)
+        if (height > 0)
             this.height = height;
         else
             this.height = 20; //we default to 20
@@ -55,12 +55,15 @@ public class Size {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
 
         Size size = (Size) o;
 
-        if (height != size.height) return false;
+        if (height != size.height)
+            return false;
         return width == size.width;
     }
 

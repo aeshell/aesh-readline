@@ -19,13 +19,13 @@
  */
 package org.aesh.terminal.utils;
 
-import org.aesh.terminal.tty.Capability;
-
 import java.io.StringWriter;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+
+import org.aesh.terminal.tty.Capability;
 
 /**
  * Helper class for retrieving terminal capabilities from the terminfo database.
@@ -69,8 +69,7 @@ public class InfoCmpHelper {
                         return capStr;
                 }
             }
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             // Ignore
         }
         return defaultValue;

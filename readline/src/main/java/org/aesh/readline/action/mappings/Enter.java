@@ -19,12 +19,12 @@
  */
 package org.aesh.readline.action.mappings;
 
-import org.aesh.readline.ReadlineFlag;
-import org.aesh.terminal.utils.Config;
-import org.aesh.readline.util.Parser;
 import org.aesh.readline.ConsoleBuffer;
 import org.aesh.readline.InputProcessor;
+import org.aesh.readline.ReadlineFlag;
 import org.aesh.readline.action.Action;
+import org.aesh.readline.util.Parser;
+import org.aesh.terminal.utils.Config;
 
 /**
  * Action that accepts the current input line and processes it.
@@ -54,34 +54,32 @@ public class Enter implements Action {
         int commentFlag = inputProcessor.flags().getOrDefault(ReadlineFlag.NO_COMMENT_DISCARD, -1);
         boolean discardComments = commentFlag == -1;
 
-        if(!consoleBuffer.buffer().isMasking()) { // don't push to history if masking
+        if (!consoleBuffer.buffer().isMasking()) { // don't push to history if masking
             // don't push lines that end with \ to history
             String buffer = consoleBuffer.buffer().asString().trim();
             // lines starting with a hashtag is treated as a comment
-            if(discardComments && buffer.startsWith(HASHTAG)) {
+            if (discardComments && buffer.startsWith(HASHTAG)) {
                 consoleBuffer.buffer().reset();
                 inputProcessor.buffer().writeOut(Config.CR);
                 isCurrentLineEnding = false;
-            }
-            else if (buffer.endsWith(ENDS_WITH_BACKSLASH) || (!ignoreQuotes && Parser.doesStringContainOpenQuote(buffer, multilineFlags))) {
+            } else if (buffer.endsWith(ENDS_WITH_BACKSLASH)
+                    || (!ignoreQuotes && Parser.doesStringContainOpenQuote(buffer, multilineFlags))) {
                 consoleBuffer.buffer().setMultiLine(true);
                 consoleBuffer.buffer().updateMultiLineBuffer();
                 inputProcessor.buffer().writeOut(Config.CR);
                 isCurrentLineEnding = false;
-            }
-            else if( inputProcessor.buffer().history().isEnabled()) {
+            } else if (inputProcessor.buffer().history().isEnabled()) {
                 inputProcessor.buffer().history().push(consoleBuffer.buffer().multiLine());
             }
         }
 
-        if(isCurrentLineEnding)
+        if (isCurrentLineEnding)
             consoleBuffer.moveCursor(consoleBuffer.buffer().length());
 
-        if(isCurrentLineEnding) {
+        if (isCurrentLineEnding) {
             inputProcessor.setReturnValue(consoleBuffer.buffer().multiLine());
             consoleBuffer.buffer().reset();
-        }
-        else
+        } else
             consoleBuffer.drawLine();
     }
 }

@@ -38,6 +38,10 @@
  */
 package org.aesh.terminal.http.netty;
 
+import java.util.function.Consumer;
+
+import org.aesh.terminal.Connection;
+
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.group.ChannelGroup;
@@ -46,9 +50,6 @@ import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpServerCodec;
 import io.netty.handler.codec.http.websocketx.WebSocketServerProtocolHandler;
 import io.netty.handler.stream.ChunkedWriteHandler;
-import org.aesh.terminal.Connection;
-
-import java.util.function.Consumer;
 
 /**
  * Netty channel initializer that sets up the HTTP and WebSocket pipeline for TTY connections.
@@ -57,28 +58,28 @@ import java.util.function.Consumer;
  */
 public class TtyServerInitializer extends ChannelInitializer<SocketChannel> {
 
-  private final ChannelGroup group;
-  private final Consumer<Connection> handler;
+    private final ChannelGroup group;
+    private final Consumer<Connection> handler;
 
-  /**
-   * Creates a new server initializer with the specified channel group and connection handler.
-   *
-   * @param group the channel group for managing active channels
-   * @param handler the handler to invoke for each new connection
-   */
-  public TtyServerInitializer(ChannelGroup group, Consumer<Connection> handler) {
-    this.group = group;
-    this.handler = handler;
-  }
+    /**
+     * Creates a new server initializer with the specified channel group and connection handler.
+     *
+     * @param group the channel group for managing active channels
+     * @param handler the handler to invoke for each new connection
+     */
+    public TtyServerInitializer(ChannelGroup group, Consumer<Connection> handler) {
+        this.group = group;
+        this.handler = handler;
+    }
 
-  @Override
-  protected void initChannel(SocketChannel ch) throws Exception {
-    ChannelPipeline pipeline = ch.pipeline();
-    pipeline.addLast(new HttpServerCodec());
-    pipeline.addLast(new ChunkedWriteHandler());
-    pipeline.addLast(new HttpObjectAggregator(64 * 1024));
-    pipeline.addLast(new HttpRequestHandler("/ws"));
-    pipeline.addLast(new WebSocketServerProtocolHandler("/ws"));
-    pipeline.addLast(new TtyWebSocketFrameHandler(group, handler));
-  }
+    @Override
+    protected void initChannel(SocketChannel ch) throws Exception {
+        ChannelPipeline pipeline = ch.pipeline();
+        pipeline.addLast(new HttpServerCodec());
+        pipeline.addLast(new ChunkedWriteHandler());
+        pipeline.addLast(new HttpObjectAggregator(64 * 1024));
+        pipeline.addLast(new HttpRequestHandler("/ws"));
+        pipeline.addLast(new WebSocketServerProtocolHandler("/ws"));
+        pipeline.addLast(new TtyWebSocketFrameHandler(group, handler));
+    }
 }

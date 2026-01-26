@@ -53,26 +53,26 @@ public class TerminalTextStyle {
     }
 
     public TerminalTextStyle(CharacterType type) {
-        if(type == CharacterType.BOLD)
+        if (type == CharacterType.BOLD)
             bold = true;
-        else if(type == CharacterType.FAINT)
+        else if (type == CharacterType.FAINT)
             faint = true;
-        else if(type == CharacterType.ITALIC)
+        else if (type == CharacterType.ITALIC)
             italic = true;
-        else if(type == CharacterType.UNDERLINE)
+        else if (type == CharacterType.UNDERLINE)
             underline = true;
-        else if(type == CharacterType.BLINK)
+        else if (type == CharacterType.BLINK)
             blink = true;
-        else if(type == CharacterType.INVERT)
+        else if (type == CharacterType.INVERT)
             invert = true;
-        else if(type == CharacterType.CROSSED_OUT)
+        else if (type == CharacterType.CROSSED_OUT)
             crossedOut = true;
-        else if(type == CharacterType.CONCEAL)
+        else if (type == CharacterType.CONCEAL)
             conceal = true;
     }
 
     public TerminalTextStyle(boolean bold, boolean faint, boolean italic, boolean underline,
-                             boolean blink, boolean invert, boolean crossedOut) {
+            boolean blink, boolean invert, boolean crossedOut) {
         this.bold = bold;
         this.faint = faint;
         this.italic = italic;
@@ -149,63 +149,65 @@ public class TerminalTextStyle {
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();
-        if(bold) {
-            if(builder.length() > 0)
+        if (bold) {
+            if (builder.length() > 0)
                 builder.append(';');
             builder.append(CharacterType.BOLD.getValue());
         }
-        if(faint) {
-            if(builder.length() > 0)
+        if (faint) {
+            if (builder.length() > 0)
                 builder.append(';');
             builder.append(CharacterType.FAINT.getValue());
         }
-        if(italic) {
-            if(builder.length() > 0)
+        if (italic) {
+            if (builder.length() > 0)
                 builder.append(';');
             builder.append(CharacterType.ITALIC.getValue());
         }
-        if(underline) {
-            if(builder.length() > 0)
+        if (underline) {
+            if (builder.length() > 0)
                 builder.append(';');
             builder.append(CharacterType.UNDERLINE.getValue());
         }
-        if(blink) {
-            if(builder.length() > 0)
+        if (blink) {
+            if (builder.length() > 0)
                 builder.append(';');
             builder.append(CharacterType.BLINK.getValue());
         }
-        if(invert) {
-            if(builder.length() > 0)
+        if (invert) {
+            if (builder.length() > 0)
                 builder.append(';');
             builder.append(CharacterType.INVERT.getValue());
         }
-        if(crossedOut) {
-            if(builder.length() > 0)
+        if (crossedOut) {
+            if (builder.length() > 0)
                 builder.append(';');
             builder.append(CharacterType.CROSSED_OUT.getValue());
         }
-        if(conceal) {
-            if(builder.length() > 0)
+        if (conceal) {
+            if (builder.length() > 0)
                 builder.append(';');
             builder.append(CharacterType.CONCEAL.getValue());
         }
 
-        if(length < 0)
+        if (length < 0)
             length = builder.length();
 
         return builder.toString();
     }
 
     public int getLength() {
-        if(length < 0)
+        if (length < 0)
             toString();
         return length;
     }
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof TerminalTextStyle)) return false;
+        if (this == o)
+            return true;
+        if (!(o instanceof TerminalTextStyle))
+            return false;
 
         TerminalTextStyle that = (TerminalTextStyle) o;
 
@@ -234,46 +236,46 @@ public class TerminalTextStyle {
 
     public String getValueComparedToPrev(TerminalTextStyle prev) {
         StringBuilder builder = new StringBuilder();
-        if(!this.equals(prev)) {
-            if(prev.isBold() || prev.isFaint()) {
-                if(builder.length() > 0)
+        if (!this.equals(prev)) {
+            if (prev.isBold() || prev.isFaint()) {
+                if (builder.length() > 0)
                     builder.append(SEPARATOR);
                 builder.append(BOLD_OFF);
             }
-            if(prev.isUnderline()) {
-                if(builder.length() > 0)
+            if (prev.isUnderline()) {
+                if (builder.length() > 0)
                     builder.append(SEPARATOR);
                 builder.append(UNDERLINE_OFF);
             }
-            if(prev.isItalic()) {
-                if(builder.length() > 0)
+            if (prev.isItalic()) {
+                if (builder.length() > 0)
                     builder.append(SEPARATOR);
                 builder.append(ITALIC_OFF);
             }
-            if(prev.isBlink()) {
-                if(builder.length() > 0)
+            if (prev.isBlink()) {
+                if (builder.length() > 0)
                     builder.append(SEPARATOR);
                 builder.append(BLINK_OFF);
             }
-            if(prev.isInvert()) {
-                if(builder.length() > 0)
+            if (prev.isInvert()) {
+                if (builder.length() > 0)
                     builder.append(SEPARATOR);
                 builder.append(INVERT_OFF);
             }
-            if(prev.isCrossedOut()) {
-                if(builder.length() > 0)
+            if (prev.isCrossedOut()) {
+                if (builder.length() > 0)
                     builder.append(SEPARATOR);
                 builder.append(CROSSED_OUT_OFF);
             }
-            if(prev.isConceal()) {
-                if(builder.length() > 0)
+            if (prev.isConceal()) {
+                if (builder.length() > 0)
                     builder.append(SEPARATOR);
                 builder.append(REVEAL);
             }
         }
 
         String str = toString();
-        if(str.length() > 0 && builder.length() > 0)
+        if (str.length() > 0 && builder.length() > 0)
             return builder.append(SEPARATOR).append(str).toString();
         else
             return builder.append(str).toString();

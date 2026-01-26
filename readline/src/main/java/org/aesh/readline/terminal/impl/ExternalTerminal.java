@@ -42,7 +42,7 @@ public class ExternalTerminal extends LineDisciplineTerminal {
     protected final InputStream masterInput;
 
     public ExternalTerminal(String name, String type,
-                            InputStream masterInput, OutputStream masterOutput) throws IOException {
+            InputStream masterInput, OutputStream masterOutput) throws IOException {
         super(name, type, masterOutput);
         this.masterInput = masterInput;
         this.pumpThread = new Thread(this::pump, toString() + " input pump thread");

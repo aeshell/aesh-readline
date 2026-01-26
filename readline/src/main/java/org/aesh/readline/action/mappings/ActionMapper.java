@@ -44,167 +44,167 @@ public class ActionMapper {
      */
     public static Action mapToAction(String function) {
 
-        if(function.equals("abort"))
+        if (function.equals("abort"))
             return new NullAction();
-        else if(function.equals("accept-line"))
+        else if (function.equals("accept-line"))
             return new Enter();
-        else if(function.equals("backward-char"))
+        else if (function.equals("backward-char"))
             return new BackwardChar();
-        else if(function.equals("backward-delete-char"))
+        else if (function.equals("backward-delete-char"))
             return new DeletePrevChar();
-        else if(function.equals("backward-kill-line"))
+        else if (function.equals("backward-kill-line"))
             return new DeleteStartOfLine();
-        else if(function.equals("backward-kill-word"))
+        else if (function.equals("backward-kill-word"))
             return new DeleteBackwardWord();
-        else if(function.equals("backward-word"))
+        else if (function.equals("backward-word"))
             return new MoveBackwardWord();
-        else if(function.equals("beginning-of-history"))
+        else if (function.equals("beginning-of-history"))
             return new NextHistory(); //TODO: need to add a proper Operation
-        else if(function.equals("beginning-of-line"))
+        else if (function.equals("beginning-of-line"))
             return new BeginningOfLine();
-        else if(function.equals("call-last-kbd-macro"))
+        else if (function.equals("call-last-kbd-macro"))
             return new NullAction(); //TODO: need to add a proper Operation
-        else if(function.equals("capitalize-word"))
+        else if (function.equals("capitalize-word"))
             return new CapitalizeForwardWord();
-        else if(function.equals("character-search"))
+        else if (function.equals("character-search"))
             return new NullAction(); //TODO: need to add a proper Operation
-        else if(function.equals("character-search-backward"))
+        else if (function.equals("character-search-backward"))
             return new NullAction(); //TODO: need to add a proper Operation
-        else if(function.equals("clear-screen"))
+        else if (function.equals("clear-screen"))
             return new Clear();
-        else if(function.equals("complete"))
+        else if (function.equals("complete"))
             return new Complete();
-        else if(function.equals("copy-backward-word"))
+        else if (function.equals("copy-backward-word"))
             return new CopyBackwardWord();
-        else if(function.equals("copy-backward-big-word"))
+        else if (function.equals("copy-backward-big-word"))
             return new CopyBackwardBigWord();
-        else if(function.equals("copy-forward-word"))
+        else if (function.equals("copy-forward-word"))
             return new CopyForwardWord();
-        else if(function.equals("copy-forward-big-word"))
+        else if (function.equals("copy-forward-big-word"))
             return new CopyForwardBigWord();
-        else if(function.equals("copy-line"))
+        else if (function.equals("copy-line"))
             return new CopyLine();
-        else if(function.equals("delete-char"))
+        else if (function.equals("delete-char"))
             return new DeleteChar();
-        else if(function.equals("delete-char-or-list"))
+        else if (function.equals("delete-char-or-list"))
             return new NullAction(); //TODO: need to add a proper Operation
-        else if(function.equals("delete-horizontal-space"))
+        else if (function.equals("delete-horizontal-space"))
             return new NullAction(); //TODO: need to add a proper Operation
-        else if(function.equals("digit-argument"))
+        else if (function.equals("digit-argument"))
             return new NullAction(); //TODO: need to add a proper Operation
-        else if(function.equals("do-uppercase-version"))
+        else if (function.equals("do-uppercase-version"))
             return new NullAction(); //TODO: need to add a proper Operation
-        else if(function.equals("downcase-word"))
+        else if (function.equals("downcase-word"))
             return new DownCaseForwardWord();
-        else if(function.equals("dump-functions"))
+        else if (function.equals("dump-functions"))
             return new NullAction(); //TODO: need to add a proper Operation
-        else if(function.equals("dump-macros"))
+        else if (function.equals("dump-macros"))
             return new NullAction(); //TODO: need to add a proper Operation
-        else if(function.equals("dump-variables"))
+        else if (function.equals("dump-variables"))
             return new NullAction(); //TODO: need to add a proper Operation
-        else if(function.equals("emacs-editing-mode"))
+        else if (function.equals("emacs-editing-mode"))
             return new EmacsEditingMode();
-        else if(function.equals("end-kbd-macro"))
+        else if (function.equals("end-kbd-macro"))
             return new NullAction(); // TODO: need to add a proper Operation
-        else if(function.equals("end-of-history"))
+        else if (function.equals("end-of-history"))
             return new NullAction(); // TODO: need to add a proper Operation
-        else if(function.equals("end-of-line"))
+        else if (function.equals("end-of-line"))
             return new EndOfLine();
-        else if(function.equals("exchange-point-and-mark"))
+        else if (function.equals("exchange-point-and-mark"))
             return new NullAction(); // TODO: need to add a proper Operation
-        else if(function.equals("forward-backward-delete-char"))
+        else if (function.equals("forward-backward-delete-char"))
             return new DeleteChar(); //TODO: need a proper impl
-        else if(function.equals("forward-char"))
+        else if (function.equals("forward-char"))
             return new ForwardChar();
-        else if(function.equals("forward-search-history"))
+        else if (function.equals("forward-search-history"))
             return new ForwardSearchHistory();
-        else if(function.equals("forward-word"))
+        else if (function.equals("forward-word"))
             return new MoveForwardWord();
-        else if(function.equals("history-search-backward"))
+        else if (function.equals("history-search-backward"))
             return new NullAction(); // TODO: need to add a proper Operation
-        else if(function.equals("history-search-forward"))
+        else if (function.equals("history-search-forward"))
             return new NullAction(); // TODO: need to add a proper Operation
-        else if(function.equals("insert-comment"))
+        else if (function.equals("insert-comment"))
             return new NullAction(); // TODO: need to add a proper Operation
-        else if(function.equals("insert-completions"))
+        else if (function.equals("insert-completions"))
             return new NullAction(); // TODO: need to add a proper Operation
-        else if(function.equals("kill-line"))
+        else if (function.equals("kill-line"))
             return new DeleteEndOfLine();
-        else if(function.equals("kill-region"))
+        else if (function.equals("kill-region"))
             return new NullAction(); // TODO: need to add a proper Operation
-        else if(function.equals("kill-whole-line"))
+        else if (function.equals("kill-whole-line"))
             return new DeleteLine();
-        else if(function.equals("kill-word"))
+        else if (function.equals("kill-word"))
             return new DeleteForwardWord();
-        else if(function.equals("menu-complete"))
+        else if (function.equals("menu-complete"))
             return new NullAction(); // TODO: need to add a proper Operation
-        else if(function.equals("menu-complete-backward"))
+        else if (function.equals("menu-complete-backward"))
             return new NullAction(); // TODO: need to add a proper Operation
-        else if(function.equals("next-history"))
+        else if (function.equals("next-history"))
             return new NextHistory();
-        else if(function.equals("non-incremental-forward-search-history"))
+        else if (function.equals("non-incremental-forward-search-history"))
             return new NullAction(); // TODO: need to add a proper Operation
-        else if(function.equals("non-incremental-reverse-search-history"))
+        else if (function.equals("non-incremental-reverse-search-history"))
             return new NullAction(); // TODO: need to add a proper Operation
-        else if(function.equals("overwrite-mode"))
+        else if (function.equals("overwrite-mode"))
             return new NullAction(); // TODO: need to add a proper Operation
-        else if(function.equals("possible-completions"))
+        else if (function.equals("possible-completions"))
             return new NullAction(); // TODO: need to add a proper Operation
-        else if(function.equals("prefix-meta"))
+        else if (function.equals("prefix-meta"))
             return new NullAction(); // TODO: need to add a proper Operation
-        else if(function.equals("previous-history"))
+        else if (function.equals("previous-history"))
             return new PrevHistory();
-        else if(function.equals("quoted-insert"))
+        else if (function.equals("quoted-insert"))
             return new NullAction(); // TODO: need to add a proper Operation
-        else if(function.equals("re-read-init-file"))
+        else if (function.equals("re-read-init-file"))
             return new NullAction(); // TODO: need to add a proper Operation
-        else if(function.equals("redraw-current-line"))
+        else if (function.equals("redraw-current-line"))
             return new NullAction(); // TODO: need to add a proper Operation
-        else if(function.equals("reverse-search-history"))
+        else if (function.equals("reverse-search-history"))
             return new ReverseSearchHistory();
-        else if(function.equals("revert-line"))
+        else if (function.equals("revert-line"))
             return new NullAction(); // TODO: need to add a proper Operation
-        else if(function.equals("self-insert"))
+        else if (function.equals("self-insert"))
             return new NullAction(); // TODO: need to add a proper Operation
-        else if(function.equals("set-mark"))
+        else if (function.equals("set-mark"))
             return new NullAction(); // TODO: need to add a proper Operation
-        else if(function.equals("skip-csi-sequence"))
+        else if (function.equals("skip-csi-sequence"))
             return new NullAction(); // TODO: need to add a proper Operation
-        else if(function.equals("start-kbd-macro"))
+        else if (function.equals("start-kbd-macro"))
             return new NullAction(); // TODO: need to add a proper Operation
-        else if(function.equals("tilde-expand"))
+        else if (function.equals("tilde-expand"))
             return new NullAction(); // TODO: need to add a proper Operation
-        else if(function.equals("transpose-chars"))
+        else if (function.equals("transpose-chars"))
             return new NullAction(); // TODO: need to add a proper Operation
-        else if(function.equals("transpose-words"))
+        else if (function.equals("transpose-words"))
             return new NullAction(); // TODO: need to add a proper Operation
-        else if(function.equals("undo"))
+        else if (function.equals("undo"))
             return new Undo();
-        else if(function.equals("universal-argument"))
+        else if (function.equals("universal-argument"))
             return new NullAction(); // TODO: need to add a proper Operation
-        else if(function.equals("unix-filename-rubout"))
+        else if (function.equals("unix-filename-rubout"))
             return new NullAction(); // TODO: need to add a proper Operation
-        else if(function.equals("unix-line-discard"))
+        else if (function.equals("unix-line-discard"))
             return new DeleteStartOfLine();
-        else if(function.equals("unix-word-rubout"))
+        else if (function.equals("unix-word-rubout"))
             return new DeleteBackwardBigWord();
-        else if(function.equals("upcase-word"))
+        else if (function.equals("upcase-word"))
             return new UpCaseForwardWord();
-        else if(function.equals("upcase-char"))
+        else if (function.equals("upcase-char"))
             return new UpCaseChar();
-        else if(function.equals("vi-editing-mode"))
+        else if (function.equals("vi-editing-mode"))
             return new ViEditingMode();
-        else if(function.equals("yank"))
+        else if (function.equals("yank"))
             return new Yank();
-        else if(function.equals("yank-last-arg"))
+        else if (function.equals("yank-last-arg"))
             return new NullAction(); // TODO: need to add a proper Operation
-        else if(function.equals("yank-nth-arg"))
+        else if (function.equals("yank-nth-arg"))
             return new NullAction(); // TODO: need to add a proper Operation
-        else if(function.equals("yank-pop"))
+        else if (function.equals("yank-pop"))
             return new NullAction(); // TODO: need to add a proper Operation
-        else if(function.equals("yank-after"))
+        else if (function.equals("yank-after"))
             return new YankAfter(); // TODO: need to add a proper Operation
-        else if(function.equals("eof"))
+        else if (function.equals("eof"))
             return new EndOfFile();
 
         return new NullAction();

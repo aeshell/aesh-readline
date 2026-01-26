@@ -19,7 +19,6 @@
  */
 package org.aesh.readline.action;
 
-
 /**
  * An action that can receive input events and maintain focus state.
  *

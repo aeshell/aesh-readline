@@ -19,6 +19,9 @@
  */
 package org.aesh.readline.terminal.impl;
 
+import static org.fusesource.jansi.internal.Kernel32.GetStdHandle;
+import static org.fusesource.jansi.internal.Kernel32.STD_OUTPUT_HANDLE;
+
 import java.io.IOException;
 import java.util.logging.Level;
 
@@ -26,11 +29,8 @@ import org.aesh.terminal.tty.Capability;
 import org.aesh.terminal.tty.Size;
 import org.fusesource.jansi.AnsiConsole;
 import org.fusesource.jansi.internal.Kernel32;
-import static org.fusesource.jansi.internal.Kernel32.GetStdHandle;
 import org.fusesource.jansi.internal.Kernel32.INPUT_RECORD;
 import org.fusesource.jansi.internal.Kernel32.KEY_EVENT_RECORD;
-
-import static org.fusesource.jansi.internal.Kernel32.STD_OUTPUT_HANDLE;
 
 public class WinSysTerminal extends AbstractWindowsTerminal {
 
@@ -51,7 +51,7 @@ public class WinSysTerminal extends AbstractWindowsTerminal {
     @Override
     protected int getConsoleMode() {
         long hConsole = Kernel32.GetStdHandle(Kernel32.STD_INPUT_HANDLE);
-        if (hConsole == (long)Kernel32.INVALID_HANDLE_VALUE) {
+        if (hConsole == (long) Kernel32.INVALID_HANDLE_VALUE) {
             return -1;
         } else {
             int[] mode = new int[1];
@@ -62,7 +62,7 @@ public class WinSysTerminal extends AbstractWindowsTerminal {
     @Override
     protected void setConsoleMode(int mode) {
         long hConsole = Kernel32.GetStdHandle(Kernel32.STD_INPUT_HANDLE);
-        if (hConsole != (long)Kernel32.INVALID_HANDLE_VALUE) {
+        if (hConsole != (long) Kernel32.INVALID_HANDLE_VALUE) {
             Kernel32.SetConsoleMode(hConsole, mode);
         }
     }
@@ -80,7 +80,8 @@ public class WinSysTerminal extends AbstractWindowsTerminal {
         INPUT_RECORD[] events = null;
         long hConsole = Kernel32.GetStdHandle(Kernel32.STD_INPUT_HANDLE);
         try {
-            events = hConsole == (long)Kernel32.INVALID_HANDLE_VALUE ? null : Kernel32.readConsoleInputHelper(hConsole, 1, false);
+            events = hConsole == (long) Kernel32.INVALID_HANDLE_VALUE ? null
+                    : Kernel32.readConsoleInputHelper(hConsole, 1, false);
         } catch (IOException e) {
             LOGGER.log(Level.INFO, "read Windows terminal input error: ", e);
         }
@@ -111,8 +112,7 @@ public class WinSysTerminal extends AbstractWindowsTerminal {
                         }
                         sb.append(keyEvent.uchar);
                     }
-                }
-                else {
+                } else {
                     // virtual keycodes: http://msdn.microsoft.com/en-us/library/windows/desktop/dd375731(v=vs.85).aspx
                     // TODO: numpad keys, modifiers
                     String escapeSequence = getEscapeSequence(keyEvent.keyCode);
@@ -128,7 +128,7 @@ public class WinSysTerminal extends AbstractWindowsTerminal {
             } else {
                 // key up event
                 // support ALT+NumPad input method
-                if (keyEvent.keyCode == 0x12/*VK_MENU ALT key*/ && keyEvent.uchar > 0) {
+                if (keyEvent.keyCode == 0x12/* VK_MENU ALT key */ && keyEvent.uchar > 0) {
                     sb.append(keyEvent.uchar);
                 }
             }

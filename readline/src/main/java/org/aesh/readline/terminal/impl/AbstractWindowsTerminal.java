@@ -19,15 +19,13 @@
  */
 package org.aesh.readline.terminal.impl;
 
-import org.aesh.terminal.Attributes;
-import org.aesh.terminal.utils.Curses;
-import org.aesh.readline.terminal.utils.ShutdownHooks;
-import org.aesh.readline.terminal.utils.Signals;
-import org.aesh.terminal.tty.Capability;
+import static org.fusesource.jansi.internal.Kernel32.GetStdHandle;
+import static org.fusesource.jansi.internal.Kernel32.STD_OUTPUT_HANDLE;
+import static org.fusesource.jansi.internal.Kernel32.WriteConsoleW;
 
 import java.io.FilterInputStream;
-import java.io.InputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PipedInputStream;
@@ -41,14 +39,16 @@ import java.util.Map;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import org.aesh.terminal.io.Encoder;
+
+import org.aesh.readline.terminal.utils.ShutdownHooks;
+import org.aesh.readline.terminal.utils.Signals;
 import org.aesh.readline.util.LoggerUtil;
+import org.aesh.terminal.Attributes;
+import org.aesh.terminal.io.Encoder;
+import org.aesh.terminal.tty.Capability;
 import org.aesh.terminal.tty.Signal;
 import org.aesh.terminal.tty.Size;
-import static org.fusesource.jansi.internal.Kernel32.GetStdHandle;
-import static org.fusesource.jansi.internal.Kernel32.STD_OUTPUT_HANDLE;
-import static org.fusesource.jansi.internal.Kernel32.WriteConsoleW;
-
+import org.aesh.terminal.utils.Curses;
 import org.fusesource.jansi.WindowsSupport;
 
 abstract class AbstractWindowsTerminal extends AbstractTerminal {
@@ -69,14 +69,15 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
         }
 
     }
+
     private static final int PIPE_SIZE = 1024;
 
     protected static final int ENABLE_PROCESSED_INPUT = 0x0001;
-    protected static final int ENABLE_LINE_INPUT      = 0x0002;
-    protected static final int ENABLE_ECHO_INPUT      = 0x0004;
-    protected static final int ENABLE_WINDOW_INPUT    = 0x0008;
-    protected static final int ENABLE_MOUSE_INPUT     = 0x0010;
-    protected static final int ENABLE_INSERT_MODE     = 0x0020;
+    protected static final int ENABLE_LINE_INPUT = 0x0002;
+    protected static final int ENABLE_ECHO_INPUT = 0x0004;
+    protected static final int ENABLE_WINDOW_INPUT = 0x0008;
+    protected static final int ENABLE_MOUSE_INPUT = 0x0010;
+    protected static final int ENABLE_INSERT_MODE = 0x0020;
     protected static final int ENABLE_QUICK_EDIT_MODE = 0x0040;
 
     protected final OutputStream slaveInputPipe;
@@ -91,11 +92,13 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
     private volatile boolean closing;
     private final ConsoleOutput cpConsumer;
 
-    AbstractWindowsTerminal(boolean consumeCP, OutputStream output, String name, boolean nativeSignals, SignalHandler signalHandler) throws IOException {
+    AbstractWindowsTerminal(boolean consumeCP, OutputStream output, String name, boolean nativeSignals,
+            SignalHandler signalHandler) throws IOException {
         super(name, "windows", signalHandler);
         PipedInputStream input = new PipedInputStream(PIPE_SIZE);
         this.slaveInputPipe = new PipedOutputStream(input);
-        this.input = new FilterInputStream(input) {};
+        this.input = new FilterInputStream(input) {
+        };
         this.cpConsumer = consumeCP ? new ConsoleOutput() : null;
         this.output = output;
         String encoding = getConsoleEncoding();
@@ -106,7 +109,7 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
         // Attributes
         attributes.setLocalFlag(Attributes.LocalFlag.ISIG, true);
         attributes.setControlChar(Attributes.ControlChar.VINTR, ctrl('C'));
-        attributes.setControlChar(Attributes.ControlChar.VEOF,  ctrl('D'));
+        attributes.setControlChar(Attributes.ControlChar.VEOF, ctrl('D'));
         attributes.setControlChar(Attributes.ControlChar.VSUSP, ctrl('Z'));
         // Handle signals
         if (nativeSignals) {
@@ -124,7 +127,7 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
 
     @Override
     public Consumer<int[]> getCodePointConsumer() {
-         return cpConsumer;
+        return cpConsumer;
     }
 
     @Override
@@ -307,43 +310,36 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
             }
         } catch (IOException e) {
             if (!closing) {
-                LOGGER.log(Level.WARNING,"Error in WindowsStreamPump", e);
+                LOGGER.log(Level.WARNING, "Error in WindowsStreamPump", e);
             }
         }
     }
 
     private void processInputByte(byte[] buf) throws IOException {
-        for(byte b : buf) {
+        for (byte b : buf) {
             int c = b;
             if (attributes.getLocalFlag(Attributes.LocalFlag.ISIG)) {
                 if (c == attributes.getControlChar(Attributes.ControlChar.VINTR)) {
                     raise(Signal.INT);
-                }
-                else if (c == attributes.getControlChar(Attributes.ControlChar.VQUIT)) {
+                } else if (c == attributes.getControlChar(Attributes.ControlChar.VQUIT)) {
                     raise(Signal.QUIT);
-                }
-                else if (c == attributes.getControlChar(Attributes.ControlChar.VSUSP)) {
+                } else if (c == attributes.getControlChar(Attributes.ControlChar.VSUSP)) {
                     raise(Signal.SUSP);
-                }
-                else if (c == attributes.getControlChar(Attributes.ControlChar.VSTATUS)) {
+                } else if (c == attributes.getControlChar(Attributes.ControlChar.VSTATUS)) {
                     raise(Signal.INFO);
                 }
             }
             if (c == '\r') {
                 if (attributes.getInputFlag(Attributes.InputFlag.ICRNL)) {
                     slaveInputPipe.write('\n');
-                }
-                else
+                } else
                     slaveInputPipe.write(c);
-            }
-            else if (c == '\n' && attributes.getInputFlag(Attributes.InputFlag.INLCR)) {
+            } else if (c == '\n' && attributes.getInputFlag(Attributes.InputFlag.INLCR)) {
                 slaveInputPipe.write('\r');
-            }
-            else {
+            } else {
                 slaveInputPipe.write(c);
             }
         }
         slaveInputPipe.flush();
     }
 }
-

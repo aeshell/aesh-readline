@@ -19,11 +19,11 @@
  */
 package org.aesh.readline.completion;
 
-import org.aesh.readline.util.Parser;
-import org.aesh.readline.terminal.formatting.TerminalString;
-
 import java.util.ArrayList;
 import java.util.List;
+
+import org.aesh.readline.terminal.formatting.TerminalString;
+import org.aesh.readline.util.Parser;
 
 /**
  * A payload object to store completion data
@@ -61,19 +61,19 @@ public class CompleteOperationImpl implements CompleteOperation {
         //if buffer is longer than cursor it means we try to complete
         //with the cursor not at the end of the buffer, if so we crop away
         //what is beyond the cursor
-        if(buffer != null && buffer.length() > cursor+1) {
+        if (buffer != null && buffer.length() > cursor + 1) {
             trimmed = true;
             nonTrimmedBuffer = buffer;
             this.buffer = buffer.substring(0, cursor);
         }
-        if(buffer != null && buffer.startsWith(" ")) {
+        if (buffer != null && buffer.startsWith(" ")) {
             trimmed = true;
             this.buffer = Parser.trimInFront(buffer);
             nonTrimmedBuffer = buffer;
             setCursor(cursor - getTrimmedSize());
         }
         //make sure we dont forget to set the buffer
-        if(this.buffer == null)
+        if (this.buffer == null)
             this.buffer = buffer;
     }
 
@@ -95,7 +95,7 @@ public class CompleteOperationImpl implements CompleteOperation {
     }
 
     private void setCursor(int cursor) {
-        if(cursor < 0)
+        if (cursor < 0)
             this.cursor = 0;
         else
             this.cursor = cursor;
@@ -120,7 +120,6 @@ public class CompleteOperationImpl implements CompleteOperation {
     public boolean doIgnoreOffset() {
         return ignoreOffset;
     }
-
 
     /**
      * Get the separator character, by default its space
@@ -198,8 +197,8 @@ public class CompleteOperationImpl implements CompleteOperation {
         this.completionCandidates.addAll(completionCandidates);
     }
 
-     @Override
-     public void removeEscapedSpacesFromCompletionCandidates() {
+    @Override
+    public void removeEscapedSpacesFromCompletionCandidates() {
         Parser.switchEscapedSpacesToSpacesInTerminalStringList(getCompletionCandidates());
     }
 
@@ -208,22 +207,21 @@ public class CompleteOperationImpl implements CompleteOperation {
     }
 
     private void addStringCandidates(List<String> completionCandidates) {
-        for(String s : completionCandidates)
+        for (String s : completionCandidates)
             addStringCandidate(s);
     }
 
     @Override
     public List<String> getFormattedCompletionCandidates() {
         List<String> fixedCandidates = new ArrayList<String>(completionCandidates.size());
-        for(TerminalString c : completionCandidates) {
-            if(!ignoreOffset && offset < cursor) {
+        for (TerminalString c : completionCandidates) {
+            if (!ignoreOffset && offset < cursor) {
                 int pos = cursor - offset;
-                if(c.getCharacters().length() >= pos)
+                if (c.getCharacters().length() >= pos)
                     fixedCandidates.add(c.getCharacters().substring(pos));
                 else
                     fixedCandidates.add("");
-            }
-            else {
+            } else {
                 fixedCandidates.add(c.getCharacters());
             }
         }
@@ -233,17 +231,15 @@ public class CompleteOperationImpl implements CompleteOperation {
     @Override
     public List<TerminalString> getFormattedCompletionCandidatesTerminalString() {
         List<TerminalString> fixedCandidates = new ArrayList<>(completionCandidates.size());
-        for(TerminalString c : completionCandidates) {
-            if(!ignoreOffset && offset < cursor) {
+        for (TerminalString c : completionCandidates) {
+            if (!ignoreOffset && offset < cursor) {
                 int pos = cursor - offset;
-                if(c.getCharacters().length() >= pos) {
+                if (c.getCharacters().length() >= pos) {
                     c.setCharacters(c.getCharacters().substring(pos));
                     fixedCandidates.add(c);
-                }
-                else
+                } else
                     fixedCandidates.add(new TerminalString("", true));
-            }
-            else {
+            } else {
                 fixedCandidates.add(c);
             }
         }
@@ -252,14 +248,13 @@ public class CompleteOperationImpl implements CompleteOperation {
 
     @Override
     public String getFormattedCompletion(String completion) {
-        if(offset < cursor) {
+        if (offset < cursor) {
             int pos = cursor - offset;
-            if(completion.length() > pos)
+            if (completion.length() > pos)
                 return completion.substring(pos);
             else
                 return "";
-        }
-        else
+        } else
             return completion;
     }
 

@@ -43,24 +43,22 @@ abstract class BackwardWord extends ChangeAction {
     public void accept(InputProcessor inputProcessor) {
         int cursor = inputProcessor.buffer().buffer().cursor();
         //the cursor position might be > the buffer
-        if(cursor > inputProcessor.buffer().buffer().length())
+        if (cursor > inputProcessor.buffer().buffer().length())
             cursor = inputProcessor.buffer().buffer().length() - 1;
 
-        if(viMode) {
+        if (viMode) {
             String buffer = inputProcessor.buffer().buffer().asString();
-            while(cursor > 0 && isSpace(buffer.charAt(cursor - 1)))
+            while (cursor > 0 && isSpace(buffer.charAt(cursor - 1)))
                 cursor--;
-            if(cursor > 0 && isDelimiter(buffer.charAt(cursor - 1))) {
-                while(cursor > 0 && isDelimiter(buffer.charAt(cursor - 1)) && !isSpace(buffer.charAt(cursor-1)))
+            if (cursor > 0 && isDelimiter(buffer.charAt(cursor - 1))) {
+                while (cursor > 0 && isDelimiter(buffer.charAt(cursor - 1)) && !isSpace(buffer.charAt(cursor - 1)))
                     cursor--;
-            }
-            else {
-                while(cursor > 0 && !isDelimiter(buffer.charAt(cursor - 1))) {
+            } else {
+                while (cursor > 0 && !isDelimiter(buffer.charAt(cursor - 1))) {
                     cursor--;
                 }
             }
-        }
-        else {
+        } else {
             String buffer = inputProcessor.buffer().buffer().asString();
             while (cursor > 0 && isDelimiter(buffer.charAt(cursor - 1)))
                 cursor--;

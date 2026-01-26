@@ -104,27 +104,6 @@
          <plugin>
             <artifactId>maven-compiler-plugin</artifactId>
          </plugin>
-         <plugin>
-           <groupId>org.apache.maven.plugins</groupId>
-           <artifactId>maven-checkstyle-plugin</artifactId>
-          <executions>
-             <execution>
-               <id>validate</id>
-               <phase>validate</phase>           
-               <configuration>
-                 <configLocation>config/checkstyle/checkstyle.xml</configLocation>                   
-                 <consoleOutput>true</consoleOutput>
-                 <failsOnError>true</failsOnError>
-                 <useFile/>
-                 <includeTestSourceDirectory>true</includeTestSourceDirectory>
-                 <excludes>**/module-info.java</excludes>
-               </configuration>
-               <goals>
-                 <goal>check</goal>
-               </goals>
-             </execution>
-           </executions>
-         </plugin>
        </plugins>
    </build>
 

@@ -19,10 +19,10 @@
  */
 package org.aesh.readline.util;
 
+import java.io.IOException;
+
 import org.aesh.readline.tty.terminal.TerminalConnection;
 import org.aesh.terminal.tty.Size;
-
-import java.io.IOException;
 
 /**
  * Utility class for retrieving terminal size and type information.
@@ -36,20 +36,20 @@ public class TerminalUtil {
     }
 
     public static int terminalHeight() {
-       return terminalSize().getHeight();
+        return terminalSize().getHeight();
     }
 
     public static Size terminalSize() {
         TerminalConnection connection = terminal();
-        if(connection != null)
+        if (connection != null)
             return connection.size();
         else
-            return new Size(-1,-1);
+            return new Size(-1, -1);
     }
 
     public static String terminalType() {
         TerminalConnection connection = terminal();
-        if(connection != null)
+        if (connection != null)
             return connection.device().type();
         else
             return "";
@@ -58,8 +58,7 @@ public class TerminalUtil {
     private static TerminalConnection terminal() {
         try {
             return new TerminalConnection();
-        }
-        catch (IOException e) {
+        } catch (IOException e) {
             return null;
         }
     }

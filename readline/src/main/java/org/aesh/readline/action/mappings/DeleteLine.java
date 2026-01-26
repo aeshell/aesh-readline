@@ -29,7 +29,6 @@ import org.aesh.readline.editing.EditMode;
  */
 public class DeleteLine extends ChangeAction {
 
-
     DeleteLine() {
         super(EditMode.Status.DELETE);
     }

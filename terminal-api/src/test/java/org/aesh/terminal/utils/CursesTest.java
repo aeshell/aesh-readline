@@ -19,11 +19,11 @@
  */
 package org.aesh.terminal.utils;
 
-import org.junit.Test;
+import static org.junit.Assert.assertEquals;
 
 import java.io.StringWriter;
 
-import static org.junit.Assert.assertEquals;
+import org.junit.Test;
 
 /**
  * @author <a href="mailto:gnodet@gmail.com">Guillaume Nodet</a>

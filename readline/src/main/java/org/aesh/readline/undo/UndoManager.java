@@ -40,20 +40,18 @@ public class UndoManager {
     }
 
     public UndoAction getNext() {
-        if(counter > 0) {
+        if (counter > 0) {
             counter--;
             return undoStack.pop();
-        }
-        else
+        } else
             return null;
     }
 
     public void addUndo(UndoAction u) {
-        if(counter <= UNDO_SIZE) {
+        if (counter <= UNDO_SIZE) {
             counter++;
             undoStack.push(u);
-        }
-        else {
+        } else {
             undoStack.remove(UNDO_SIZE);
             undoStack.push(u);
         }

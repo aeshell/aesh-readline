@@ -19,30 +19,30 @@
  */
 package org.aesh.terminal.telnet.tty;
 
-import org.aesh.terminal.telnet.TelnetHandler;
-import org.aesh.terminal.telnet.TelnetServerRule;
-
 import java.io.Closeable;
 import java.util.function.Function;
 import java.util.function.Supplier;
+
+import org.aesh.terminal.telnet.TelnetHandler;
+import org.aesh.terminal.telnet.TelnetServerRule;
 
 /**
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
  */
 public class NettyBinaryTelnetTtyTest extends TelnetTtyTestBase {
 
-  public NettyBinaryTelnetTtyTest() {
-    binary = true;
-  }
+    public NettyBinaryTelnetTtyTest() {
+        binary = true;
+    }
 
-  @Override
-  protected Function<Supplier<TelnetHandler>, Closeable> serverFactory() {
-    return TelnetServerRule.NETTY_SERVER;
-  }
+    @Override
+    protected Function<Supplier<TelnetHandler>, Closeable> serverFactory() {
+        return TelnetServerRule.NETTY_SERVER;
+    }
 
-  @Override
-  protected void assertThreading(Thread connThread, Thread schedulerThread) throws Exception {
-    assertTrue(connThread.getName().startsWith("nioEventLoopGroup"));
-    assertTrue(schedulerThread.getName().startsWith("nioEventLoopGroup"));
-  }
+    @Override
+    protected void assertThreading(Thread connThread, Thread schedulerThread) throws Exception {
+        assertTrue(connThread.getName().startsWith("nioEventLoopGroup"));
+        assertTrue(schedulerThread.getName().startsWith("nioEventLoopGroup"));
+    }
 }

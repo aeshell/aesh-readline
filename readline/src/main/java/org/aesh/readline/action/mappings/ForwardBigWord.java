@@ -39,18 +39,18 @@ abstract class ForwardBigWord extends ChangeAction {
     public void accept(InputProcessor inputProcessor) {
         int cursor = inputProcessor.buffer().buffer().cursor();
         String buffer = inputProcessor.buffer().buffer().asString();
-               //if cursor stand on a delimiter, move till its no more delimiters
-        if(cursor < buffer.length() && (isDelimiter(buffer.charAt(cursor))))
-            while(cursor < buffer.length() && (isDelimiter(buffer.charAt(cursor))))
+        //if cursor stand on a delimiter, move till its no more delimiters
+        if (cursor < buffer.length() && (isDelimiter(buffer.charAt(cursor))))
+            while (cursor < buffer.length() && (isDelimiter(buffer.charAt(cursor))))
                 cursor++;
-            //if we stand on a non-delimiter
+        //if we stand on a non-delimiter
         else {
-            while(cursor < buffer.length() && !isSpace(buffer.charAt(cursor)))
+            while (cursor < buffer.length() && !isSpace(buffer.charAt(cursor)))
                 cursor++;
 
             //if we end up on a space we move past that too
-            if(cursor < buffer.length() && isSpace(buffer.charAt(cursor)))
-                while(cursor < buffer.length() && isSpace(buffer.charAt(cursor)))
+            if (cursor < buffer.length() && isSpace(buffer.charAt(cursor)))
+                while (cursor < buffer.length() && isSpace(buffer.charAt(cursor)))
                     cursor++;
 
         }

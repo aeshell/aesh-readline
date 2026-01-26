@@ -19,9 +19,9 @@
  */
 package org.aesh.readline.action;
 
-import org.aesh.readline.InputProcessor;
-
 import java.util.function.Consumer;
+
+import org.aesh.readline.InputProcessor;
 
 /**
  * Base interface for all readline editing actions.

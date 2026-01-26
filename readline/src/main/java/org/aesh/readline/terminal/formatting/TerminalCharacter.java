@@ -46,12 +46,12 @@ public class TerminalCharacter {
     }
 
     public TerminalCharacter(char c, TerminalColor color,
-                             CharacterType type) {
+            CharacterType type) {
         this(c, color, new TerminalTextStyle(type));
     }
 
     public TerminalCharacter(char c, TerminalColor color,
-                             TerminalTextStyle style) {
+            TerminalTextStyle style) {
         this.character = c;
         this.style = style;
         this.color = color;
@@ -60,6 +60,7 @@ public class TerminalCharacter {
     public char getCharacter() {
         return character;
     }
+
     public void setCharacter(char c) {
         this.character = c;
         cache = null;
@@ -69,28 +70,26 @@ public class TerminalCharacter {
         return style;
     }
 
-
     /**
      * style, text color, background color
      */
     public String toString(TerminalCharacter prev) {
-        if(equalsIgnoreCharacter(prev))
+        if (equalsIgnoreCharacter(prev))
             return String.valueOf(character);
         else {
             StringBuilder builder = new StringBuilder();
             builder.append(ANSI.START);
-            if(!style.equals(prev.getStyle())) {
+            if (!style.equals(prev.getStyle())) {
                 builder.append(style.getValueComparedToPrev(prev.getStyle()));
             }
-            if(!this.color.equals(prev.color)) {
-                if(prev.getStyle().isInvert()) {
-                    if(builder.charAt(builder.length()-1) == '[')
+            if (!this.color.equals(prev.color)) {
+                if (prev.getStyle().isInvert()) {
+                    if (builder.charAt(builder.length() - 1) == '[')
                         builder.append(this.color.toString());
                     else
                         builder.append(';').append(this.color.toString());
-                }
-                else {
-                    if(builder.charAt(builder.length()-1) == '[')
+                } else {
+                    if (builder.charAt(builder.length() - 1) == '[')
                         builder.append(this.color.toString(prev.color));
                     else
                         builder.append(';').append(this.color.toString(prev.color));
@@ -105,7 +104,7 @@ public class TerminalCharacter {
 
     @Override
     public String toString() {
-        if(cache == null) {
+        if (cache == null) {
             cache = ANSI.START + style.toString() + ';' + this.color.toString() + 'm' + getCharacter();
         }
         return cache;
@@ -117,8 +116,10 @@ public class TerminalCharacter {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof TerminalCharacter)) return false;
+        if (this == o)
+            return true;
+        if (!(o instanceof TerminalCharacter))
+            return false;
 
         TerminalCharacter that = (TerminalCharacter) o;
 
@@ -135,4 +136,4 @@ public class TerminalCharacter {
         return result;
     }
 
- }
+}

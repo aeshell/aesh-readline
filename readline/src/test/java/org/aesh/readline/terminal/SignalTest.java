@@ -19,12 +19,12 @@
  */
 package org.aesh.readline.terminal;
 
+import static org.junit.Assert.assertEquals;
+
 import org.aesh.readline.tty.terminal.TestConnection;
 import org.aesh.terminal.Attributes;
 import org.aesh.terminal.tty.Signal;
 import org.junit.Test;
-
-import static org.junit.Assert.assertEquals;
 
 /**
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
@@ -37,9 +37,9 @@ public class SignalTest {
         TestConnection connection = new TestConnection(null, null, null, null, null, null, null);
 
         connection.setSignalHandler(signal -> {
-            if(signal == Signal.INT)
+            if (signal == Signal.INT)
                 connection.write("INTR");
-            else if(signal == Signal.EOF)
+            else if (signal == Signal.EOF)
                 connection.write("EOF");
         });
 
@@ -59,9 +59,9 @@ public class SignalTest {
         TestConnection connection = new TestConnection(null, null, null, null, null, attributes, null);
 
         connection.setSignalHandler(signal -> {
-            if(signal == Signal.INT)
+            if (signal == Signal.INT)
                 connection.write("INTR");
-            else if(signal == Signal.EOF)
+            else if (signal == Signal.EOF)
                 connection.write("EOF");
         });
 
@@ -72,6 +72,5 @@ public class SignalTest {
         connection.read(Key.CTRL_A);
         assertEquals(": fooINTREOF", connection.getOutputBuffer());
     }
-
 
 }

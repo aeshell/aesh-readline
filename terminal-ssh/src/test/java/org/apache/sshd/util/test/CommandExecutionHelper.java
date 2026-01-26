@@ -1,13 +1,14 @@
 package org.apache.sshd.util.test;
 
-import org.apache.sshd.server.command.AbstractCommandSupport;
-
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.InterruptedIOException;
 import java.io.OutputStream;
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+
+import org.apache.sshd.server.command.AbstractCommandSupport;
+
 /**
  * @author <a href="mailto:dev@mina.apache.org">Apache MINA SSHD Project</a>
  */
@@ -59,8 +60,8 @@ public abstract class CommandExecutionHelper extends AbstractCommandSupport {
     }
 
     /**
-     * @param  command   The command line
-     * @return           {@code true} if continue accepting command
+     * @param command The command line
+     * @return {@code true} if continue accepting command
      * @throws Exception If failed to handle the command line
      */
     protected abstract boolean handleCommandLine(String command) throws Exception;

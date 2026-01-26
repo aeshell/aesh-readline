@@ -19,24 +19,24 @@
  */
 package org.aesh.readline;
 
-import org.aesh.terminal.Attributes;
-import org.aesh.terminal.Device;
-import org.aesh.terminal.utils.ANSI;
-import org.aesh.readline.util.Parser;
-import org.aesh.readline.editing.EditModeBuilder;
-import org.aesh.readline.history.InMemoryHistory;
-import org.aesh.terminal.tty.Capability;
-import org.aesh.terminal.Connection;
-import org.junit.Test;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.function.Consumer;
+
+import org.aesh.readline.editing.EditModeBuilder;
+import org.aesh.readline.history.InMemoryHistory;
+import org.aesh.readline.util.Parser;
+import org.aesh.terminal.Attributes;
+import org.aesh.terminal.Connection;
+import org.aesh.terminal.Device;
+import org.aesh.terminal.tty.Capability;
 import org.aesh.terminal.tty.Signal;
 import org.aesh.terminal.tty.Size;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import org.aesh.terminal.utils.ANSI;
+import org.junit.Test;
 
 /**
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
@@ -44,12 +44,12 @@ import static org.junit.Assert.assertTrue;
 public class ConsoleBufferTest {
 
     private ConsoleBuffer createConsoleBuffer(Connection connection) {
-       return new AeshConsoleBuffer(connection, new Prompt("[aesh@rules]: "), EditModeBuilder.builder().create(),
+        return new AeshConsoleBuffer(connection, new Prompt("[aesh@rules]: "), EditModeBuilder.builder().create(),
                 new InMemoryHistory(50), null, true, null);
     }
 
     private ConsoleBuffer createConsoleBuffer(Connection connection, String prompt) {
-       return new AeshConsoleBuffer(connection, new Prompt(prompt), EditModeBuilder.builder().create(),
+        return new AeshConsoleBuffer(connection, new Prompt(prompt), EditModeBuilder.builder().create(),
                 new InMemoryHistory(50), null, true, null);
     }
 
@@ -66,16 +66,15 @@ public class ConsoleBufferTest {
         consoleBuffer.writeString("foo");
         assertEquals("foo", connection.bufferBuilder.toString());
 
-
         consoleBuffer.writeString("OOO");
         assertEquals("fooOOO", connection.bufferBuilder.toString());
     }
 
     @Test
-    public void testMovement()  throws IOException {
+    public void testMovement() throws IOException {
 
         SimpleConnection connection = new SimpleConnection();
-        ConsoleBuffer consoleBuffer = createConsoleBuffer(connection,"");
+        ConsoleBuffer consoleBuffer = createConsoleBuffer(connection, "");
 
         consoleBuffer.writeString("foo0");
         consoleBuffer.moveCursor(-1);

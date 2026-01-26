@@ -19,10 +19,10 @@
  */
 package org.aesh.terminal.telnet;
 
+import java.util.function.Consumer;
+
 import org.aesh.terminal.Device;
 import org.aesh.terminal.tty.Capability;
-
-import java.util.function.Consumer;
 
 /**
  * Device implementation for Telnet terminal connections.
@@ -33,14 +33,14 @@ public class TelnetDevice implements Device {
 
     private final String type;
 
-  /**
-   * Creates a new TelnetDevice with the specified terminal type.
-   *
-   * @param terminalType the terminal type string (e.g., "xterm", "vt100")
-   */
-  public TelnetDevice(String terminalType) {
-      type = terminalType;
-  }
+    /**
+     * Creates a new TelnetDevice with the specified terminal type.
+     *
+     * @param terminalType the terminal type string (e.g., "xterm", "vt100")
+     */
+    public TelnetDevice(String terminalType) {
+        type = terminalType;
+    }
 
     @Override
     public String type() {

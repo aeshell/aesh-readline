@@ -19,12 +19,12 @@
  */
 package org.aesh.readline.editing;
 
+import java.util.Arrays;
+
+import org.aesh.readline.action.Action;
 import org.aesh.readline.action.KeyAction;
 import org.aesh.readline.terminal.Key;
-import org.aesh.readline.action.Action;
 import org.aesh.terminal.Device;
-
-import java.util.Arrays;
 
 /**
  * Defines the interface for line editing modes such as Emacs and Vi.
@@ -61,7 +61,7 @@ public interface EditMode {
 
     default KeyAction createKeyEvent(int[] input) {
         Key key = Key.getKey(input);
-        if(key != null)
+        if (key != null)
             return key;
         else {
             return new KeyAction() {
@@ -119,6 +119,7 @@ public interface EditMode {
     }
 
     enum Mode {
-        EMACS, VI
+        EMACS,
+        VI
     }
 }

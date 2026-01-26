@@ -19,23 +19,24 @@
  */
 package org.aesh.terminal.http;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.aesh.terminal.io.Decoder;
-import org.aesh.terminal.io.Encoder;
-import org.aesh.terminal.Attributes;
-import org.aesh.terminal.Connection;
-import org.aesh.terminal.Device;
-import org.aesh.terminal.EventDecoder;
-import org.aesh.terminal.tty.Capability;
-import org.aesh.terminal.tty.Signal;
-import org.aesh.terminal.tty.Size;
-import org.aesh.terminal.tty.TtyOutputMode;
-
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.function.Consumer;
+
+import org.aesh.terminal.Attributes;
+import org.aesh.terminal.Connection;
+import org.aesh.terminal.Device;
+import org.aesh.terminal.EventDecoder;
+import org.aesh.terminal.io.Decoder;
+import org.aesh.terminal.io.Encoder;
+import org.aesh.terminal.tty.Capability;
+import org.aesh.terminal.tty.Signal;
+import org.aesh.terminal.tty.Size;
+import org.aesh.terminal.tty.TtyOutputMode;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * A connection to an http client, independent of the protocol, it could be straight WebSockets or
@@ -44,16 +45,16 @@ import java.util.function.Consumer;
  * The incoming protocol is based on json messages:
  *
  * {
- *   "action": "read",
- *   "data": "what the user typed"
+ * "action": "read",
+ * "data": "what the user typed"
  * }
  *
  * or
  *
  * {
- *   "action": "resize",
- *   "cols": 30,
- *   "rows: 50
+ * "action": "resize",
+ * "cols": 30,
+ * "rows: 50
  * }
  *
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>

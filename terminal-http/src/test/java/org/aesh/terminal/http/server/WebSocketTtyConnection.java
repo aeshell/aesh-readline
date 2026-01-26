@@ -19,14 +19,6 @@
  */
 package org.aesh.terminal.http.server;
 
-import io.undertow.websockets.core.AbstractReceiveListener;
-import io.undertow.websockets.core.BufferedBinaryMessage;
-import io.undertow.websockets.core.WebSocketChannel;
-import io.undertow.websockets.core.WebSockets;
-import org.aesh.terminal.http.HttpTtyConnection;
-import org.xnio.ChannelListener;
-import org.xnio.Pooled;
-
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashSet;
@@ -36,6 +28,15 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import org.aesh.terminal.http.HttpTtyConnection;
+import org.xnio.ChannelListener;
+import org.xnio.Pooled;
+
+import io.undertow.websockets.core.AbstractReceiveListener;
+import io.undertow.websockets.core.BufferedBinaryMessage;
+import io.undertow.websockets.core.WebSocketChannel;
+import io.undertow.websockets.core.WebSockets;
 
 /**
  * @author <a href="mailto:matejonnet@gmail.com">Matej Lazar</a>
@@ -86,10 +87,9 @@ public class WebSocketTtyConnection extends HttpTtyConnection {
                     ByteBuffer[] resource = pulledData.getResource();
                     ByteBuffer byteBuffer = WebSockets.mergeBuffers(resource);
                     String msg = new String(byteBuffer.array());
-                    log.log(Level.FINE, "Sending message to decoder: "+ msg);
+                    log.log(Level.FINE, "Sending message to decoder: " + msg);
                     writeToDecoder(msg);
-                }
-                finally {
+                } finally {
                     pulledData.discard();
                 }
             }

@@ -19,21 +19,21 @@
  */
 package org.aesh.parser;
 
-import org.aesh.readline.terminal.formatting.TerminalString;
-import org.aesh.terminal.utils.ANSI;
-import org.aesh.terminal.utils.Config;
-import org.aesh.readline.util.Parser;
-import org.junit.Assert;
-import org.junit.Test;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import org.aesh.readline.terminal.formatting.TerminalString;
+import org.aesh.readline.util.Parser;
+import org.aesh.terminal.utils.ANSI;
+import org.aesh.terminal.utils.Config;
+import org.junit.Assert;
+import org.junit.Test;
 
 /**
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
@@ -227,31 +227,35 @@ public class ParserTest {
         TerminalString terminalLonger3 = new TerminalString("longer3");
 
         assertEquals(
-            terminalLong.toString() + Config.getLineSeparator(),
-            Parser.formatDisplayCompactListTerminalString(Collections.singletonList(terminalLong), 10));
+                terminalLong.toString() + Config.getLineSeparator(),
+                Parser.formatDisplayCompactListTerminalString(Collections.singletonList(terminalLong), 10));
 
         assertEquals(
-            terminalShort1.toString() + "  " + terminalShort2.toString() + Config.getLineSeparator(),
-            Parser.formatDisplayCompactListTerminalString(Arrays.asList(terminalShort1, terminalShort2), 20));
+                terminalShort1.toString() + "  " + terminalShort2.toString() + Config.getLineSeparator(),
+                Parser.formatDisplayCompactListTerminalString(Arrays.asList(terminalShort1, terminalShort2), 20));
 
         assertEquals(
-            terminalShort1.toString() + Config.getLineSeparator() + terminalShort2.toString() + Config.getLineSeparator(),
-            Parser.formatDisplayCompactListTerminalString(Arrays.asList(terminalShort1, terminalShort2), 10));
+                terminalShort1.toString() + Config.getLineSeparator() + terminalShort2.toString() + Config.getLineSeparator(),
+                Parser.formatDisplayCompactListTerminalString(Arrays.asList(terminalShort1, terminalShort2), 10));
 
         assertEquals(
-            terminalShort1.toString() + "  " + terminalShort3.toString() + Config.getLineSeparator() + terminalShort2.toString() + Config.getLineSeparator(),
-            Parser.formatDisplayCompactListTerminalString(Arrays.asList(terminalShort1, terminalShort2, terminalShort3), 15));
+                terminalShort1.toString() + "  " + terminalShort3.toString() + Config.getLineSeparator()
+                        + terminalShort2.toString() + Config.getLineSeparator(),
+                Parser.formatDisplayCompactListTerminalString(Arrays.asList(terminalShort1, terminalShort2, terminalShort3),
+                        15));
 
         assertEquals(
-            terminalShort1.toString() + "  " + terminalShort3.toString() + Config.getLineSeparator() +
-                terminalShort2.toString() + "  " + terminalShort4.toString() + Config.getLineSeparator(),
-            Parser.formatDisplayCompactListTerminalString(Arrays.asList(terminalShort1, terminalShort2, terminalShort3, terminalShort4), 15));
+                terminalShort1.toString() + "  " + terminalShort3.toString() + Config.getLineSeparator() +
+                        terminalShort2.toString() + "  " + terminalShort4.toString() + Config.getLineSeparator(),
+                Parser.formatDisplayCompactListTerminalString(
+                        Arrays.asList(terminalShort1, terminalShort2, terminalShort3, terminalShort4), 15));
 
         assertEquals(
-            terminalLonger1.toString() + "  " + terminalShort1.toString() + Config.getLineSeparator() +
-                terminalLonger2.toString() + Config.getLineSeparator() + terminalLonger3.toString() + Config.getLineSeparator(),
-            Parser.formatDisplayCompactListTerminalString(
-                Arrays.asList(terminalLonger1, terminalLonger2, terminalLonger3, terminalShort1), 15));
+                terminalLonger1.toString() + "  " + terminalShort1.toString() + Config.getLineSeparator() +
+                        terminalLonger2.toString() + Config.getLineSeparator() + terminalLonger3.toString()
+                        + Config.getLineSeparator(),
+                Parser.formatDisplayCompactListTerminalString(
+                        Arrays.asList(terminalLonger1, terminalLonger2, terminalLonger3, terminalShort1), 15));
     }
 
     @Test
@@ -268,47 +272,47 @@ public class ParserTest {
     public void testIsTrimmedArrayEmpty() {
         int[] input = {};
         assertTrue(Parser.isTrimmedArrayEmpty(input));
-        input = new int[]{32,32};
+        input = new int[] { 32, 32 };
         assertTrue(Parser.isTrimmedArrayEmpty(input));
-        input = new int[]{32,32,68};
+        input = new int[] { 32, 32, 68 };
         assertFalse(Parser.isTrimmedArrayEmpty(input));
-        input = new int[]{68,32,32};
+        input = new int[] { 68, 32, 32 };
         assertFalse(Parser.isTrimmedArrayEmpty(input));
-        input = new int[]{70};
+        input = new int[] { 70 };
         assertFalse(Parser.isTrimmedArrayEmpty(input));
     }
 
     @Test
     public void testArrayContains() {
-        int[] source = new int[] {1,2,3,4,5,6,7,8};
-        int[] target = new int[] {7};
+        int[] source = new int[] { 1, 2, 3, 4, 5, 6, 7, 8 };
+        int[] target = new int[] { 7 };
         assertTrue(Parser.arrayContains(source, target));
-        target = new int[] {7,8};
+        target = new int[] { 7, 8 };
         assertTrue(Parser.arrayContains(source, target));
-        target = new int[] {7,8,9};
+        target = new int[] { 7, 8, 9 };
         assertFalse(Parser.arrayContains(source, target));
-        target = new int[] {1,2,3,4};
+        target = new int[] { 1, 2, 3, 4 };
         assertTrue(Parser.arrayContains(source, target));
-        target = new int[] {1,2,3,4,6};
+        target = new int[] { 1, 2, 3, 4, 6 };
         assertFalse(Parser.arrayContains(source, target));
-        target = new int[] {0,1,2,3,4};
+        target = new int[] { 0, 1, 2, 3, 4 };
         assertFalse(Parser.arrayContains(source, target));
     }
 
     @Test
     public void testArrayIndexOf() {
-        int[] source = new int[] {1,2,3,4,5,6,7,8};
-        int[] target = new int[] {7};
+        int[] source = new int[] { 1, 2, 3, 4, 5, 6, 7, 8 };
+        int[] target = new int[] { 7 };
         assertEquals(6, Parser.arrayIndexOf(source, target));
-        target = new int[] {7,8};
+        target = new int[] { 7, 8 };
         assertEquals(6, Parser.arrayIndexOf(source, target));
-        target = new int[] {7,8,9};
+        target = new int[] { 7, 8, 9 };
         assertEquals(-1, Parser.arrayIndexOf(source, target));
-        target = new int[] {1,2,3,4};
+        target = new int[] { 1, 2, 3, 4 };
         assertEquals(0, Parser.arrayIndexOf(source, target));
-        target = new int[] {1,2,3,4,6};
+        target = new int[] { 1, 2, 3, 4, 6 };
         assertEquals(-1, Parser.arrayIndexOf(source, target));
-        target = new int[] {0,1,2,3,4};
+        target = new int[] { 0, 1, 2, 3, 4 };
         assertEquals(-1, Parser.arrayIndexOf(source, target));
     }
 }

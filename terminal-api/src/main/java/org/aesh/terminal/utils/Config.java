@@ -74,10 +74,9 @@ public class Config {
     }
 
     private static boolean checkPosixCompability() {
-        if(isWindows()) {
+        if (isWindows()) {
             return OSUtils.IS_CYGWIN;
-        }
-        else
+        } else
             return !System.getProperty("os.name").startsWith("OS/2");
     }
 

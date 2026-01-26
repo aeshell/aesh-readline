@@ -19,14 +19,14 @@
  */
 package org.aesh.readline;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.aesh.readline.completion.Completion;
 import org.aesh.readline.terminal.Key;
 import org.aesh.readline.tty.terminal.TestConnection;
 import org.aesh.terminal.utils.Config;
 import org.junit.Test;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
@@ -37,19 +37,19 @@ public class CompletionReadlineTest {
     public void testCompletion() {
         List<Completion> completions = new ArrayList<>();
         completions.add(co -> {
-            if(co.getBuffer().equals("foo"))
+            if (co.getBuffer().equals("foo"))
                 co.addCompletionCandidate("foobar");
         });
 
         completions.add(co -> {
-            if(co.getBuffer().equals("bar")) {
+            if (co.getBuffer().equals("bar")) {
                 co.addCompletionCandidate("barfoo");
                 co.doAppendSeparator(false);
             }
         });
 
-        completions.add( co -> {
-            if(co.getBuffer().equals("le")) {
+        completions.add(co -> {
+            if (co.getBuffer().equals("le")) {
                 co.addCompletionCandidate("less");
                 co.setSeparator(':');
             }
@@ -79,7 +79,7 @@ public class CompletionReadlineTest {
     public void testMultipleCompletionsSorted() {
         List<Completion> completions = new ArrayList<>();
         completions.add(co -> {
-            if(co.getBuffer().trim().equals("")) {
+            if (co.getBuffer().trim().equals("")) {
                 co.addCompletionCandidate("foo");
                 co.addCompletionCandidate("arg");
                 co.addCompletionCandidate("Arg");
@@ -89,14 +89,14 @@ public class CompletionReadlineTest {
 
         TestConnection term = new TestConnection(completions);
         term.read(Key.CTRL_I);
-        term.assertOutputBuffer(": "+Config.getLineSeparator()+"arg  Arg  boo  foo  "+Config.getLineSeparator()+":");
-     }
+        term.assertOutputBuffer(": " + Config.getLineSeparator() + "arg  Arg  boo  foo  " + Config.getLineSeparator() + ":");
+    }
 
     @Test
     public void testCompletionEmptyLine() {
         List<Completion> completions = new ArrayList<>();
         completions.add(co -> {
-            if(co.getBuffer().trim().equals("")) {
+            if (co.getBuffer().trim().equals("")) {
                 co.addCompletionCandidate("bar");
                 co.addCompletionCandidate("foo");
             }
@@ -108,7 +108,7 @@ public class CompletionReadlineTest {
         term.read(Key.LEFT_2);
         term.read(Key.LEFT_2);
         term.read(Key.CTRL_I);
-        term.assertOutputBuffer(":   "+Config.getLineSeparator()+"bar  foo  "+Config.getLineSeparator()+":");
+        term.assertOutputBuffer(":   " + Config.getLineSeparator() + "bar  foo  " + Config.getLineSeparator() + ":");
         term.clearOutputBuffer();
         term.read("a");
         term.read(Config.getLineSeparator());
@@ -119,7 +119,7 @@ public class CompletionReadlineTest {
     public void testCompletionMidLine() {
         List<Completion> completions = new ArrayList<>();
         completions.add(co -> {
-            if(co.getBuffer().startsWith("1 ")) {
+            if (co.getBuffer().startsWith("1 ")) {
                 co.addCompletionCandidate("1 foo");
             }
         });
@@ -138,12 +138,11 @@ public class CompletionReadlineTest {
         term.assertLine("1 foo Abah");
     }
 
-
     @Test
     public void testCompletionsMidLine() {
         List<Completion> completions = new ArrayList<>();
         completions.add(co -> {
-            if(co.getBuffer().startsWith("1 ")) {
+            if (co.getBuffer().startsWith("1 ")) {
                 co.addCompletionCandidate("bar");
                 co.addCompletionCandidate("foo");
             }
@@ -156,7 +155,7 @@ public class CompletionReadlineTest {
         term.read(Key.LEFT_2);
         term.read(Key.LEFT_2);
         term.read(Key.CTRL_I);
-        term.assertOutputBuffer(": 1 bah"+Config.getLineSeparator()+"bar  foo  "+Config.getLineSeparator()+": 1 bah");
+        term.assertOutputBuffer(": 1 bah" + Config.getLineSeparator() + "bar  foo  " + Config.getLineSeparator() + ": 1 bah");
         term.clearOutputBuffer();
         term.read("A");
         term.read(Config.getLineSeparator());
@@ -169,12 +168,11 @@ public class CompletionReadlineTest {
         String completionWord = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy/";
         List<Completion> completions = new ArrayList<>();
         completions.add(co -> {
-            if(co.getBuffer().trim().endsWith("1")) {
+            if (co.getBuffer().trim().endsWith("1")) {
                 co.addCompletionCandidate(completionWord);
                 co.doAppendSeparator(false);
                 co.setIgnoreOffset(true);
-            }
-            else {
+            } else {
                 co.addCompletionCandidate(completionWord);
                 co.setIgnoreOffset(true);
                 co.doAppendSeparator(true);
@@ -185,10 +183,10 @@ public class CompletionReadlineTest {
 
         term.read("1 ".getBytes());
         term.read(Key.CTRL_I);
-        term.assertOutputBuffer(": 1 "+completionWord);
+        term.assertOutputBuffer(": 1 " + completionWord);
         term.read("/".getBytes());
         term.read(Key.CTRL_I);
-        term.assertOutputBuffer(": 1 "+completionWord+"/"+completionWord);
+        term.assertOutputBuffer(": 1 " + completionWord + "/" + completionWord);
         term.clearOutputBuffer();
         term.read(Config.getLineSeparator());
     }

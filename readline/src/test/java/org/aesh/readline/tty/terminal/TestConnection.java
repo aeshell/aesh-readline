@@ -19,22 +19,8 @@
  */
 package org.aesh.readline.tty.terminal;
 
-import org.aesh.readline.ReadlineFlag;
-import org.aesh.readline.terminal.DeviceBuilder;
-import org.aesh.terminal.Attributes;
-import org.aesh.terminal.Connection;
-import org.aesh.terminal.Device;
-import org.aesh.terminal.EventDecoder;
-import org.aesh.terminal.tty.Size;
-import org.aesh.terminal.tty.Capability;
-import org.aesh.terminal.io.Decoder;
-import org.aesh.readline.Prompt;
-import org.aesh.readline.TestReadline;
-import org.aesh.readline.completion.Completion;
-import org.aesh.readline.editing.EditMode;
-import org.aesh.readline.editing.EditModeBuilder;
-import org.aesh.readline.terminal.Key;
-import org.aesh.readline.util.Parser;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.nio.charset.Charset;
 import java.util.EnumMap;
@@ -42,10 +28,24 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
 import java.util.function.Consumer;
-import org.aesh.terminal.tty.Signal;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import org.aesh.readline.Prompt;
+import org.aesh.readline.ReadlineFlag;
+import org.aesh.readline.TestReadline;
+import org.aesh.readline.completion.Completion;
+import org.aesh.readline.editing.EditMode;
+import org.aesh.readline.editing.EditModeBuilder;
+import org.aesh.readline.terminal.DeviceBuilder;
+import org.aesh.readline.terminal.Key;
+import org.aesh.readline.util.Parser;
+import org.aesh.terminal.Attributes;
+import org.aesh.terminal.Connection;
+import org.aesh.terminal.Device;
+import org.aesh.terminal.EventDecoder;
+import org.aesh.terminal.io.Decoder;
+import org.aesh.terminal.tty.Capability;
+import org.aesh.terminal.tty.Signal;
+import org.aesh.terminal.tty.Size;
 
 /**
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
@@ -103,43 +103,46 @@ public class TestConnection implements Connection {
         this(editMode, completions, null, prompt);
     }
 
-     public TestConnection(EditMode editMode, List<Completion> completions, Size size) {
+    public TestConnection(EditMode editMode, List<Completion> completions, Size size) {
         this(editMode, completions, size, null);
     }
 
     public TestConnection(EditMode editMode, List<Completion> completions, Size size, Prompt prompt) {
         this(null, editMode, completions, size, prompt);
     }
+
     public TestConnection(TestReadline readline, EditMode editMode, List<Completion> completions, Size size, Prompt prompt) {
         this(readline, editMode, completions, size, prompt, null, new EnumMap<>(ReadlineFlag.class));
 
     }
+
     public TestConnection(TestReadline readline, EditMode editMode, List<Completion> completions, Size size, Prompt prompt,
-                          Attributes attributes, EnumMap<ReadlineFlag, Integer> flags) {
+            Attributes attributes, EnumMap<ReadlineFlag, Integer> flags) {
         this(readline, editMode, completions, size, prompt, attributes, flags, true);
     }
+
     public TestConnection(TestReadline readline, EditMode editMode, List<Completion> completions, Size size, Prompt prompt,
-                Attributes attributes, EnumMap<ReadlineFlag, Integer> flags, boolean stripAnsi) {
-        if(editMode == null)
+            Attributes attributes, EnumMap<ReadlineFlag, Integer> flags, boolean stripAnsi) {
+        if (editMode == null)
             editMode = EditModeBuilder.builder().create();
         bufferBuilder = new StringBuilder();
-        if(stripAnsi)
+        if (stripAnsi)
             stdOutHandler = ints -> bufferBuilder.append(Parser.stripAwayAnsiCodes(Parser.fromCodePoints(ints)));
         else
             stdOutHandler = ints -> bufferBuilder.append(Parser.fromCodePoints(ints));
 
-        if(size == null)
+        if (size == null)
             this.size = new Size(80, 20);
         else
             this.size = size;
 
-        if(prompt != null)
+        if (prompt != null)
             this.prompt = prompt;
 
-        if(attributes != null)
+        if (attributes != null)
             this.attributes = attributes;
 
-        if(this.attributes != null)
+        if (this.attributes != null)
             eventDecoder = new EventDecoder(this.attributes);
         else {
             eventDecoder = new EventDecoder();
@@ -149,20 +152,18 @@ public class TestConnection implements Connection {
         device = DeviceBuilder.builder().name("xterm-256color").build();
         decoder = new Decoder(512, Charset.defaultCharset(), eventDecoder);
 
-
         out = new LinkedList<>();
-        if(readline == null) {
+        if (readline == null) {
             this.readline = new TestReadline(editMode);
-            if(completions != null)
+            if (completions != null)
                 readline(completions);
-            else if(flags != null)
+            else if (flags != null)
                 readline(flags);
             else
                 readline();
-        }
-        else
+        } else
             this.readline = readline;
-   }
+    }
 
     public void readline() {
         clearOutputBuffer();
@@ -176,26 +177,26 @@ public class TestConnection implements Connection {
 
     public void readline(List<Completion> completions) {
         clearOutputBuffer();
-        readline.readline(this, prompt, out -> this.out.add(out), completions );
+        readline.readline(this, prompt, out -> this.out.add(out), completions);
     }
 
     public void readline(List<Completion> completions, Consumer<String> out) {
         clearOutputBuffer();
-        readline.readline(this, prompt, out, completions );
+        readline.readline(this, prompt, out, completions);
     }
 
     public void readline(EnumMap<ReadlineFlag, Integer> flags) {
         clearOutputBuffer();
-        readline.readline(this, prompt, out -> this.out.add(out), null, null, null, null, flags );
+        readline.readline(this, prompt, out -> this.out.add(out), null, null, null, null, flags);
     }
 
     public void clearOutputBuffer() {
-        if(bufferBuilder.length() > 0)
+        if (bufferBuilder.length() > 0)
             bufferBuilder.delete(0, bufferBuilder.length());
     }
 
     public void clearLineBuffer() {
-        if(out.size() > 0)
+        if (out.size() > 0)
             out.clear();
     }
 
@@ -208,7 +209,7 @@ public class TestConnection implements Connection {
     }
 
     public void setPrompt(Prompt prompt) {
-        if(prompt != null)
+        if (prompt != null)
             this.prompt = prompt;
     }
 
@@ -339,6 +340,7 @@ public class TestConnection implements Connection {
     public void read(byte[] data) {
         decoder.write(data);
     }
+
     public void read(Key key) {
 
         eventDecoder.accept(key.getKeyValues());

@@ -52,7 +52,7 @@ public final class Signals {
             Class<?> signalHandlerClass = Class.forName("sun.misc.SignalHandler");
             // Implement signal handler
             Object signalHandler = Proxy.newProxyInstance(loader,
-                    new Class<?>[]{signalHandlerClass}, new InvocationHandler() {
+                    new Class<?>[] { signalHandlerClass }, new InvocationHandler() {
                         public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
                             // only method we are proxying is handle()
                             handler.run();
@@ -92,8 +92,7 @@ public final class Signals {
             Class<?> signalHandlerClass = Class.forName("sun.misc.SignalHandler");
             Object signal = signalClass.getConstructor(String.class).newInstance(name);
             signalHandlerClass.getMethod("handle", signalClass).invoke(handler, signal);
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
         }
     }
 

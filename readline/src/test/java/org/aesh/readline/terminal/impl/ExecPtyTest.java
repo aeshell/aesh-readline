@@ -19,34 +19,36 @@
  */
 package org.aesh.readline.terminal.impl;
 
+import static org.junit.Assert.assertEquals;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.EnumSet;
+
 import org.aesh.terminal.Attributes;
 import org.aesh.terminal.Attributes.ControlChar;
 import org.aesh.terminal.Attributes.ControlFlag;
 import org.aesh.terminal.Attributes.InputFlag;
 import org.aesh.terminal.Attributes.LocalFlag;
 import org.aesh.terminal.Attributes.OutputFlag;
+import org.aesh.terminal.tty.Size;
 import org.aesh.terminal.utils.Config;
 import org.junit.Test;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.util.EnumSet;
-import org.aesh.terminal.tty.Size;
-
-import static org.junit.Assert.assertEquals;
 
 public class ExecPtyTest {
 
     private final String linuxSttySample = "speed 38400 baud; rows 85; columns 244; line = 0;\n" +
-            "intr = ^C; quit = ^\\; erase = ^?; kill = ^U; eof = ^D; eol = M-^?; eol2 = M-^?; swtch = M-^?; start = ^Q; stop = ^S; susp = ^Z; rprnt = ^R; werase = ^W; lnext = ^V; flush = ^O; min = 1; time = 0;\n" +
+            "intr = ^C; quit = ^\\; erase = ^?; kill = ^U; eof = ^D; eol = M-^?; eol2 = M-^?; swtch = M-^?; start = ^Q; stop = ^S; susp = ^Z; rprnt = ^R; werase = ^W; lnext = ^V; flush = ^O; min = 1; time = 0;\n"
+            +
             "-parenb -parodd cs8 hupcl -cstopb cread -clocal -crtscts\n" +
             "-ignbrk brkint -ignpar -parmrk -inpck -istrip -inlcr -igncr icrnl ixon -ixoff -iuclc ixany imaxbel iutf8\n" +
             "opost -olcuc -ocrnl onlcr -onocr -onlret -ofill -ofdel nl0 cr0 tab0 bs0 vt0 ff0\n" +
             "isig icanon iexten echo echoe echok -echonl -noflsh -xcase -tostop -echoprt echoctl echoke";
 
-    private final String ubuntuSttySample ="speed 38400 baud; rows 48; columns 160; line = 0;\n" +
-            "intr = ^C; quit = ^\\; erase = ^?; kill = ^U; eof = ^D; eol = <undef>; eol2 = <undef>; swtch = <undef>; start = ^Q; stop = ^S; susp = ^Z; rprnt = ^R; werase = ^W;\n" +
+    private final String ubuntuSttySample = "speed 38400 baud; rows 48; columns 160; line = 0;\n" +
+            "intr = ^C; quit = ^\\; erase = ^?; kill = ^U; eof = ^D; eol = <undef>; eol2 = <undef>; swtch = <undef>; start = ^Q; stop = ^S; susp = ^Z; rprnt = ^R; werase = ^W;\n"
+            +
             "lnext = ^V; discard = ^O; min = 1; time = 0;\n" +
             "-parenb -parodd -cmspar cs8 -hupcl -cstopb cread -clocal -crtscts\n" +
             "-ignbrk -brkint -ignpar -parmrk -inpck -istrip -inlcr -igncr icrnl ixon -ixoff -iuclc -ixany -imaxbel iutf8\n" +
@@ -136,7 +138,6 @@ public class ExecPtyTest {
             "-echoctl -echoprt -echoke -flusho -pendin\n" +
             "opost -olcuc onlcr -ocrnl -onocr -onlret -ofill -ofdel -tostop";
 
-
     @Test
     public void testParseSize() throws IOException {
         assertEquals(new Size(244, 85), ExecPty.doGetSize(linuxSttySample));
@@ -156,7 +157,7 @@ public class ExecPtyTest {
 
     @Test
     public void testOptimizedParseAttributesLinux() throws IOException {
-        if(Config.isOSPOSIXCompatible()) {
+        if (Config.isOSPOSIXCompatible()) {
             Attributes attributes = ExecPty.doGetLinuxAttr(linuxSttySample);
             checkAttributestLinux(attributes);
         }
@@ -164,7 +165,7 @@ public class ExecPtyTest {
 
     @Test
     public void testParseAttributesUbuntu() throws IOException {
-        if(Config.isOSPOSIXCompatible()) {
+        if (Config.isOSPOSIXCompatible()) {
             Attributes attributes = ExecPty.doGetAttr(ubuntuSttySample);
             checkAttributestUbuntu(attributes);
         }
@@ -172,22 +173,23 @@ public class ExecPtyTest {
 
     @Test
     public void testOptimizedParseAttributesUbuntu() throws IOException {
-        if(Config.isOSPOSIXCompatible()) {
+        if (Config.isOSPOSIXCompatible()) {
             Attributes attributes = ExecPty.doGetLinuxAttr(ubuntuSttySample);
             checkAttributestUbuntu(attributes);
         }
     }
 
-
     private void checkAttributestLinux(Attributes attributes) {
         // -ignbrk brkint -ignpar -parmrk -inpck -istrip -inlcr -igncr icrnl ixon -ixoff -iuclc ixany imaxbel iutf8
-        assertEquals(EnumSet.of(InputFlag.BRKINT, InputFlag.ICRNL, InputFlag.IXON, InputFlag.IXANY, InputFlag.IMAXBEL, InputFlag.IUTF8), attributes.getInputFlags());
+        assertEquals(EnumSet.of(InputFlag.BRKINT, InputFlag.ICRNL, InputFlag.IXON, InputFlag.IXANY, InputFlag.IMAXBEL,
+                InputFlag.IUTF8), attributes.getInputFlags());
         // opost -olcuc -ocrnl onlcr -onocr -onlret -ofill -ofdel nl0 cr0 tab0 bs0 vt0 ff0
         assertEquals(EnumSet.of(OutputFlag.OPOST, OutputFlag.ONLCR), attributes.getOutputFlags());
         // -parenb -parodd cs8 hupcl -cstopb cread -clocal -crtscts
         assertEquals(EnumSet.of(ControlFlag.CREAD, ControlFlag.HUPCL, ControlFlag.CS8), attributes.getControlFlags());
         // isig icanon iexten echo echoe echok -echonl -noflsh -xcase -tostop -echoprt echoctl echoke
-        assertEquals(EnumSet.of(LocalFlag.ISIG, LocalFlag.ICANON, LocalFlag.IEXTEN, LocalFlag.ECHO, LocalFlag.ECHOK, LocalFlag.ECHOCTL, LocalFlag.ECHOKE, LocalFlag.ECHOE), attributes.getLocalFlags());
+        assertEquals(EnumSet.of(LocalFlag.ISIG, LocalFlag.ICANON, LocalFlag.IEXTEN, LocalFlag.ECHO, LocalFlag.ECHOK,
+                LocalFlag.ECHOCTL, LocalFlag.ECHOKE, LocalFlag.ECHOE), attributes.getLocalFlags());
         // intr = ^C; quit = ^\; erase = ^?; kill = ^U; eof = ^D; eol = M-^?; eol2 = M-^?; swtch = M-^?; start = ^Q; stop = ^S; susp = ^Z; rprnt = ^R; werase = ^W; lnext = ^V; flush = ^O; min = 1; time = 0
         assertEquals(ExecPty.parseControlChar("^C"), attributes.getControlChar(ControlChar.VINTR));
         assertEquals(ExecPty.parseControlChar("^\\"), attributes.getControlChar(ControlChar.VQUIT));
@@ -214,7 +216,8 @@ public class ExecPtyTest {
         // -parenb -parodd cs8 -hupcl -cstopb cread -clocal -crtscts
         assertEquals(EnumSet.of(ControlFlag.CREAD, ControlFlag.CS8), attributes.getControlFlags());
         // isig icanon iexten echo echoe echok -echonl -noflsh -xcase -tostop -echoprt echoctl echoke
-        assertEquals(EnumSet.of(LocalFlag.ISIG, LocalFlag.ICANON, LocalFlag.IEXTEN, LocalFlag.ECHO, LocalFlag.ECHOK, LocalFlag.ECHOCTL, LocalFlag.ECHOKE, LocalFlag.ECHOE), attributes.getLocalFlags());
+        assertEquals(EnumSet.of(LocalFlag.ISIG, LocalFlag.ICANON, LocalFlag.IEXTEN, LocalFlag.ECHO, LocalFlag.ECHOK,
+                LocalFlag.ECHOCTL, LocalFlag.ECHOKE, LocalFlag.ECHOE), attributes.getLocalFlags());
         // intr = ^C; quit = ^\; erase = ^?; kill = ^U; eof = ^D; eol = <undef>; eol2 = <undef>; swtch = M-^?; start = ^Q; stop = ^S; susp = ^Z; rprnt = ^R; werase = ^W; lnext = ^V; flush = ^O; min = 1; time = 0
         assertEquals(ExecPty.parseControlChar("^C"), attributes.getControlChar(ControlChar.VINTR));
         assertEquals(ExecPty.parseControlChar("^\\"), attributes.getControlChar(ControlChar.VQUIT));
@@ -237,13 +240,15 @@ public class ExecPtyTest {
     public void testParseAttributesSolaris() throws IOException {
         Attributes attributes = ExecPty.doGetAttr(solarisSttySample);
         // -ignbrk brkint -ignpar -parmrk -inpck -istrip -inlcr -igncr icrnl -iuclc ixon ixany -ixoff imaxbel
-        assertEquals(EnumSet.of(InputFlag.BRKINT, InputFlag.ICRNL, InputFlag.IXON, InputFlag.IXANY, InputFlag.IMAXBEL), attributes.getInputFlags());
+        assertEquals(EnumSet.of(InputFlag.BRKINT, InputFlag.ICRNL, InputFlag.IXON, InputFlag.IXANY, InputFlag.IMAXBEL),
+                attributes.getInputFlags());
         // opost -olcuc onlcr -ocrnl -onocr -onlret -ofill -ofdel tab3
         assertEquals(EnumSet.of(OutputFlag.OPOST, OutputFlag.ONLCR), attributes.getOutputFlags());
         // -parenb -parodd cs8 -cstopb -hupcl cread -clocal -loblk -crtscts -crtsxoff -parext
         assertEquals(EnumSet.of(ControlFlag.CREAD, ControlFlag.CS8), attributes.getControlFlags());
         // isig icanon -xcase echo echoe echok -echonl -noflsh -tostop echoctl -echoprt echoke -defecho -flusho -pendin iexten
-        assertEquals(EnumSet.of(LocalFlag.ISIG, LocalFlag.ICANON, LocalFlag.IEXTEN, LocalFlag.ECHO, LocalFlag.ECHOK, LocalFlag.ECHOCTL, LocalFlag.ECHOKE, LocalFlag.ECHOE), attributes.getLocalFlags());
+        assertEquals(EnumSet.of(LocalFlag.ISIG, LocalFlag.ICANON, LocalFlag.IEXTEN, LocalFlag.ECHO, LocalFlag.ECHOK,
+                LocalFlag.ECHOCTL, LocalFlag.ECHOKE, LocalFlag.ECHOE), attributes.getLocalFlags());
         // intr = ^c; quit = ^\\; erase = ^?; kill = ^u; eof = ^d; eol = -^?; eol2 = -^?; swtch = <undef>; start = ^q; stop = ^s; susp = ^z; dsusp = ^y; rprnt = ^r; flush = ^o; werase = ^w; lnext = ^v;
         assertEquals(ExecPty.parseControlChar("^C"), attributes.getControlChar(ControlChar.VINTR));
         assertEquals(ExecPty.parseControlChar("^\\"), attributes.getControlChar(ControlChar.VQUIT));
@@ -266,7 +271,8 @@ public class ExecPtyTest {
     public void testParseAttributesHpux() throws IOException {
         Attributes attributes = ExecPty.doGetAttr(hpuxSttySample);
         // -ignbrk brkint ignpar -parmrk -inpck istrip -inlcr -igncr icrnl -iuclc ixon ixany -ixoff -imaxbel -rtsxoff -ctsxon -ienqak
-        assertEquals(EnumSet.of(InputFlag.BRKINT, InputFlag.IGNPAR, InputFlag.ISTRIP, InputFlag.ICRNL, InputFlag.IXON, InputFlag.IXANY), attributes.getInputFlags());
+        assertEquals(EnumSet.of(InputFlag.BRKINT, InputFlag.IGNPAR, InputFlag.ISTRIP, InputFlag.ICRNL, InputFlag.IXON,
+                InputFlag.IXANY), attributes.getInputFlags());
         // opost -olcuc onlcr -ocrnl -onocr -onlret -ofill -ofdel -tostop
         assertEquals(EnumSet.of(OutputFlag.OPOST, OutputFlag.ONLCR), attributes.getOutputFlags());
         // -parenb -parodd cs8 -cstopb hupcl cread -clocal -loblk -crts
@@ -293,11 +299,10 @@ public class ExecPtyTest {
 
     @Test
     public void testParseSizeHPUX() throws IOException {
-        if(Config.isOSPOSIXCompatible()) {
+        if (Config.isOSPOSIXCompatible()) {
             String input = new String(Files.readAllBytes(
-                    Config.isOSPOSIXCompatible() ?
-                            new File("src/test/resources/ttytype_hpux.txt").toPath() :
-                            new File("src\\test\\resources\\ttytype_hpux.txt").toPath()));
+                    Config.isOSPOSIXCompatible() ? new File("src/test/resources/ttytype_hpux.txt").toPath()
+                            : new File("src\\test\\resources\\ttytype_hpux.txt").toPath()));
 
             Size size = ExecPty.doGetHPUXSize(input);
 

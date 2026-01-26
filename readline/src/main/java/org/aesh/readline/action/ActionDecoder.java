@@ -19,12 +19,12 @@
  */
 package org.aesh.readline.action;
 
-import org.aesh.readline.terminal.Key;
-import org.aesh.readline.editing.EditMode;
-
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.Queue;
+
+import org.aesh.readline.editing.EditMode;
+import org.aesh.readline.terminal.Key;
 
 /**
  * Decodes input key sequences and maps them to corresponding actions.
@@ -70,7 +70,7 @@ public class ActionDecoder {
      */
     public void add(int input) {
         buffer = Arrays.copyOf(buffer, buffer.length + 1);
-        System.arraycopy(new int[]{input}, 0, buffer, buffer.length - 1, 1);
+        System.arraycopy(new int[] { input }, 0, buffer, buffer.length - 1, 1);
     }
 
     /**
@@ -124,11 +124,10 @@ public class ActionDecoder {
         if (buffer.length > 0) {
             KeyAction candidate = null;
             int prefixes = 0;
-            next:
-            for (KeyAction action : mappings) {
+            next: for (KeyAction action : mappings) {
                 if (action.length() > 0) {
                     if (action.length() <= buffer.length) {
-                        for (int i = 0;i < action.length();i++) {
+                        for (int i = 0; i < action.length(); i++) {
                             if (action.getCodePointAt(i) != buffer[i]) {
                                 continue next;
                             }
@@ -137,9 +136,8 @@ public class ActionDecoder {
                             continue;
                         }
                         candidate = action;
-                    }
-                    else {
-                        for (int i = 0;i < buffer.length;i++) {
+                    } else {
+                        for (int i = 0; i < buffer.length; i++) {
                             if (action.getCodePointAt(i) != buffer[i]) {
                                 continue next;
                             }
@@ -169,7 +167,7 @@ public class ActionDecoder {
 
         @Override
         public int getCodePointAt(int index) throws IndexOutOfBoundsException {
-            if(index != 0)
+            if (index != 0)
                 throw new IndexOutOfBoundsException("Index greater than 0");
             return code;
         }
@@ -181,7 +179,7 @@ public class ActionDecoder {
 
         @Override
         public String name() {
-            return "key: "+code;
+            return "key: " + code;
         }
     }
 }

@@ -19,14 +19,16 @@
  */
 package org.aesh.readline;
 
+import static org.junit.Assert.assertTrue;
+
 import java.io.IOException;
+
 import org.aesh.readline.cursor.CursorLocation;
 import org.aesh.readline.cursor.CursorLocator;
 import org.aesh.readline.cursor.Line;
 import org.aesh.readline.terminal.formatting.Color;
 import org.aesh.readline.tty.terminal.TerminalConnection;
 import org.junit.Assert;
-import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
 /**
@@ -38,6 +40,7 @@ public class CursorLocatorTest {
     private static final String PROMPT = "test> ";
     private static final String MULTI_LINE_PROMPT = "> ";
     private static final int WIDTH = 80;
+
     @Test
     public void test() {
 
@@ -79,7 +82,7 @@ public class CursorLocatorTest {
         }
 
         { // Nominal, retrieve index after the prompt inside a cmd longer than
-            // terminal width.
+          // terminal width.
             Buffer buffer = new Buffer(new Prompt(PROMPT));
             String cmd = "cmd --opt1";
             int width = PROMPT.length() + (cmd.length() / 2);

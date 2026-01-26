@@ -38,7 +38,7 @@ public abstract class History {
         this.enabled = true;
     }
 
-    public void disable(){
+    public void disable() {
         this.enabled = false;
     }
 

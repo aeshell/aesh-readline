@@ -19,16 +19,16 @@
  */
 package org.aesh.readline.editing;
 
-import org.aesh.readline.action.ActionDecoder;
-import org.aesh.terminal.utils.Config;
-import org.junit.Assert;
-import org.junit.Test;
+import static org.junit.Assert.assertEquals;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 
-import static org.junit.Assert.assertEquals;
+import org.aesh.readline.action.ActionDecoder;
+import org.aesh.terminal.utils.Config;
+import org.junit.Assert;
+import org.junit.Test;
 
 /**
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
@@ -39,8 +39,8 @@ public class InputrcParserTest {
     public void testParseInputrc() throws IOException {
         EditMode editMode = InputrcParser.parseInputrc(
                 new FileInputStream(
-                        Config.isOSPOSIXCompatible() ?
-                                new File("src/test/resources/inputrc1") : new File("src\\test\\resources\\inputrc1")));
+                        Config.isOSPOSIXCompatible() ? new File("src/test/resources/inputrc1")
+                                : new File("src\\test\\resources\\inputrc1")));
 
         assertEquals("vi", editMode.variableValue(Variable.EDITING_MODE));
 
@@ -54,26 +54,26 @@ public class InputrcParserTest {
 
     @Test
     public void testParseInputrc2() throws IOException {
-        if(Config.isOSPOSIXCompatible()) {  //TODO: must fix this for windows
+        if (Config.isOSPOSIXCompatible()) { //TODO: must fix this for windows
 
             EditMode editMode = EditModeBuilder.builder().create();
             ActionDecoder actionQueue = new ActionDecoder();
-            actionQueue.add(new int[]{27, 91, 68});
-            Assert.assertEquals("backward-char", editMode.parse( actionQueue.next()).name());
-            actionQueue.add(new int[]{27, 91, 66});
-            Assert.assertEquals("next-history", editMode.parse( actionQueue.next()).name());
+            actionQueue.add(new int[] { 27, 91, 68 });
+            Assert.assertEquals("backward-char", editMode.parse(actionQueue.next()).name());
+            actionQueue.add(new int[] { 27, 91, 66 });
+            Assert.assertEquals("next-history", editMode.parse(actionQueue.next()).name());
             actionQueue.add(1);
-            Assert.assertEquals("beginning-of-line", editMode.parse( actionQueue.next()).name());
+            Assert.assertEquals("beginning-of-line", editMode.parse(actionQueue.next()).name());
 
             editMode = InputrcParser.parseInputrc(
-                    new FileInputStream( Config.isOSPOSIXCompatible() ?
-                            new File("src/test/resources/inputrc2") : new File("src\\test\\resources\\inputrc2")));
+                    new FileInputStream(Config.isOSPOSIXCompatible() ? new File("src/test/resources/inputrc2")
+                            : new File("src\\test\\resources\\inputrc2")));
 
-            actionQueue.add(new int[]{27, 91, 68});
-            Assert.assertEquals("forward-char", editMode.parse( actionQueue.next()).name());
-            actionQueue.add(new int[]{27, 91, 66});
+            actionQueue.add(new int[] { 27, 91, 68 });
+            Assert.assertEquals("forward-char", editMode.parse(actionQueue.next()).name());
+            actionQueue.add(new int[] { 27, 91, 66 });
             Assert.assertEquals("previous-history", editMode.parse(actionQueue.next()).name());
-            actionQueue.add(new int[]{27,10});
+            actionQueue.add(new int[] { 27, 10 });
             Assert.assertEquals("backward-char", editMode.parse(actionQueue.next()).name());
             actionQueue.add(1);
             Assert.assertEquals("forward-word", editMode.parse(actionQueue.next()).name());

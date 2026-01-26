@@ -26,30 +26,30 @@ package org.aesh.terminal.http;
  */
 public enum Status {
 
-  /** Initial state before the process has started. */
-  NEW (false),
-  /** The process is currently executing. */
-  RUNNING (false),
-  /** The process has completed successfully. */
-  COMPLETED (true),
-  /** The process has failed. */
-  FAILED (true),
-  /** The process was interrupted before completion. */
-  INTERRUPTED (true);
+    /** Initial state before the process has started. */
+    NEW(false),
+    /** The process is currently executing. */
+    RUNNING(false),
+    /** The process has completed successfully. */
+    COMPLETED(true),
+    /** The process has failed. */
+    FAILED(true),
+    /** The process was interrupted before completion. */
+    INTERRUPTED(true);
 
-  private final boolean final_;
+    private final boolean final_;
 
-  Status(boolean finalFlag) {
-    this.final_ = finalFlag;
-  }
+    Status(boolean finalFlag) {
+        this.final_ = finalFlag;
+    }
 
-  /**
-   * Checks whether this status represents a final state where no further status changes will occur.
-   *
-   * @return true when master won't wait anymore for the process to end, the process may have terminated or not.
-   */
-  public boolean isFinal() {
-    return final_;
-  }
+    /**
+     * Checks whether this status represents a final state where no further status changes will occur.
+     *
+     * @return true when master won't wait anymore for the process to end, the process may have terminated or not.
+     */
+    public boolean isFinal() {
+        return final_;
+    }
 
 }

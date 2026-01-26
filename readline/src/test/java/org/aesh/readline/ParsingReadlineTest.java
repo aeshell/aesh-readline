@@ -19,10 +19,10 @@
  */
 package org.aesh.readline;
 
+import static org.junit.Assert.assertEquals;
+
 import org.aesh.readline.tty.terminal.TestConnection;
 import org.junit.Test;
-
-import static org.junit.Assert.assertEquals;
 
 /**
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
@@ -32,9 +32,9 @@ public class ParsingReadlineTest {
     @Test
     public void testParse() {
         TestConnection connection = new TestConnection();
-        connection.read(new byte[] {'3', '4', 1, 27});
+        connection.read(new byte[] { '3', '4', 1, 27 });
         assertEquals(": 34", connection.getOutputBuffer());
-        connection.read(new byte[]{91, 67, '1', '2', '\r'});
+        connection.read(new byte[] { 91, 67, '1', '2', '\r' });
         connection.assertLine("[C1234");
     }
 }

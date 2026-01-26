@@ -19,10 +19,10 @@
  */
 package org.aesh.readline.terminal.impl;
 
-import org.aesh.terminal.Attributes;
-
 import java.io.IOError;
 import java.io.IOException;
+
+import org.aesh.terminal.Attributes;
 import org.aesh.terminal.tty.Size;
 
 /**

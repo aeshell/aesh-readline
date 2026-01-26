@@ -19,17 +19,17 @@
  */
 package org.aesh.readline.completion;
 
-import org.aesh.readline.Buffer;
-import org.aesh.readline.InputProcessor;
-import org.aesh.readline.action.mappings.ActionMapper;
-import org.aesh.readline.terminal.formatting.TerminalString;
-import org.aesh.terminal.utils.Config;
-import org.aesh.readline.util.Parser;
-
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.function.Function;
+
+import org.aesh.readline.Buffer;
+import org.aesh.readline.InputProcessor;
+import org.aesh.readline.action.mappings.ActionMapper;
+import org.aesh.readline.terminal.formatting.TerminalString;
+import org.aesh.readline.util.Parser;
+import org.aesh.terminal.utils.Config;
 
 /**
  * Abstract handler that manages tab-completion for command line input.
@@ -81,7 +81,7 @@ public abstract class CompletionHandler<C extends CompleteOperation> {
     }
 
     public void addCompletions(List<Completion> completions) {
-        if(completions != null && completions.size() > 0)
+        if (completions != null && completions.size() > 0)
             this.completionList.addAll(completions);
     }
 
@@ -92,25 +92,25 @@ public abstract class CompletionHandler<C extends CompleteOperation> {
      * 1. Find all possible completions
      * 2. If we find only one, display it.
      * 3. If we find more than one, display them,
-     *    but not more than 100 at once
+     * but not more than 100 at once
      */
     public void complete(InputProcessor inputProcessor) {
-        if(completionList.size() == 0)
+        if (completionList.size() == 0)
             return;
         Buffer buffer = inputProcessor.buffer().buffer();
 
-        if(completionList.size() < 1)
+        if (completionList.size() < 1)
             return;
 
         List<C> possibleCompletions = createCompletionList(buffer);
 
         //LOGGER.info("Found completions: "+possibleCompletions);
 
-        if(possibleCompletions.size() == 0) {
+        if (possibleCompletions.size() == 0) {
             //do nothing
         }
         // only one hit, do a completion
-        else if(possibleCompletions.size() == 1 &&
+        else if (possibleCompletions.size() == 1 &&
                 possibleCompletions.get(0).getCompletionCandidates().size() == 1) {
             //some formatted completions might not be valid and should not be displayed
             displayCompletion(
@@ -127,16 +127,16 @@ public abstract class CompletionHandler<C extends CompleteOperation> {
 
     private List<C> createCompletionList(Buffer buffer) {
         List<C> possibleCompletions = new ArrayList<>();
-        for(int i=0; i < completionList.size(); i++) {
+        for (int i = 0; i < completionList.size(); i++) {
             final C co;
-            if(aliasHandler == null)
+            if (aliasHandler == null)
                 co = createCompleteOperation(buffer.asString(), buffer.multiCursor());
             else
                 co = aliasHandler.apply(buffer);
 
             completionList.get(i).complete(co);
 
-            if(co.getCompletionCandidates() != null && co.getCompletionCandidates().size() > 0)
+            if (co.getCompletionCandidates() != null && co.getCompletionCandidates().size() > 0)
                 possibleCompletions.add(co);
         }
         return possibleCompletions;
@@ -145,11 +145,11 @@ public abstract class CompletionHandler<C extends CompleteOperation> {
     private void processMultipleCompletions(List<C> possibleCompletions, Buffer buffer, InputProcessor inputProcessor) {
         String startsWith = "";
 
-        if(!possibleCompletions.get(0).isIgnoreStartsWith())
+        if (!possibleCompletions.get(0).isIgnoreStartsWith())
             startsWith = Parser.findStartsWithOperation(possibleCompletions);
 
-        if(startsWith.length() > 0 ) {
-            if(startsWith.contains(" ") && !possibleCompletions.get(0).doIgnoreNonEscapedSpace())
+        if (startsWith.length() > 0) {
+            if (startsWith.contains(" ") && !possibleCompletions.get(0).doIgnoreNonEscapedSpace())
                 displayCompletion(new TerminalString(Parser.switchSpacesToEscapedSpacesInWord(startsWith), true),
                         buffer, inputProcessor,
                         false, possibleCompletions.get(0).getSeparator());
@@ -161,15 +161,14 @@ public abstract class CompletionHandler<C extends CompleteOperation> {
         // check size
         else {
             List<TerminalString> completions = new ArrayList<>();
-            for(int i=0; i < possibleCompletions.size(); i++)
+            for (int i = 0; i < possibleCompletions.size(); i++)
                 completions.addAll(possibleCompletions.get(i).getCompletionCandidates());
 
-            if(completions.size() > 100) {
-                if(status == CompletionStatus.ASKING_FOR_COMPLETIONS) {
+            if (completions.size() > 100) {
+                if (status == CompletionStatus.ASKING_FOR_COMPLETIONS) {
                     displayCompletions(completions, buffer, inputProcessor);
                     status = CompletionStatus.COMPLETE;
-                }
-                else {
+                } else {
                     status = CompletionStatus.ASKING_FOR_COMPLETIONS;
                     inputProcessor.buffer().writeOut(Config.CR);
                     inputProcessor.buffer().writeOut("Display all " + completions.size() + " possibilities? (y or n)");
@@ -191,15 +190,14 @@ public abstract class CompletionHandler<C extends CompleteOperation> {
      * @param appendSpace if its an actual complete
      */
     private void displayCompletion(TerminalString completion, Buffer buffer, InputProcessor inputProcessor,
-                                   boolean appendSpace, char separator) {
-        if(completion.getCharacters().startsWith(buffer.asString())) {
+            boolean appendSpace, char separator) {
+        if (completion.getCharacters().startsWith(buffer.asString())) {
             ActionMapper.mapToAction("backward-kill-word").accept(inputProcessor);
             inputProcessor.buffer().writeString(completion.toString());
-        }
-        else {
+        } else {
             inputProcessor.buffer().writeString(completion.toString());
         }
-        if(appendSpace) {
+        if (appendSpace) {
             inputProcessor.buffer().writeChar(separator);
         }
     }
@@ -210,16 +208,16 @@ public abstract class CompletionHandler<C extends CompleteOperation> {
      * @param completions all completion items
      */
     private void displayCompletions(List<TerminalString> completions, Buffer buffer,
-                                    InputProcessor inputProcessor) {
+            InputProcessor inputProcessor) {
         completions.sort(new CaseInsensitiveComparator());
 
         //if the buffer is longer than one line, we need to move the cursor down the number of lines
         //before we continue
-        if(inputProcessor.buffer().buffer().length() > inputProcessor.buffer().size().getWidth()) {
+        if (inputProcessor.buffer().buffer().length() > inputProcessor.buffer().size().getWidth()) {
             int numRows = inputProcessor.buffer().buffer().length() / inputProcessor.buffer().size().getWidth();
             int cursorRow = inputProcessor.buffer().buffer().cursor() / inputProcessor.buffer().size().getWidth();
-            for(; cursorRow < numRows; cursorRow++)
-                inputProcessor.buffer().writeOut(new int[] {27, '[', 'B' });
+            for (; cursorRow < numRows; cursorRow++)
+                inputProcessor.buffer().writeOut(new int[] { 27, '[', 'B' });
         }
         //finally move to a new line
         inputProcessor.buffer().writeOut(Config.CR);
@@ -231,7 +229,8 @@ public abstract class CompletionHandler<C extends CompleteOperation> {
     }
 
     public enum CompletionStatus {
-        ASKING_FOR_COMPLETIONS, COMPLETE;
+        ASKING_FOR_COMPLETIONS,
+        COMPLETE;
     }
 
     private static class CaseInsensitiveComparator implements Comparator<TerminalString> {

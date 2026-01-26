@@ -19,11 +19,11 @@
  */
 package org.aesh.readline.terminal.impl;
 
-import org.aesh.terminal.Attributes;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+
+import org.aesh.terminal.Attributes;
 
 /**
  * Windows-specific external terminal implementation with CR/LF handling.
@@ -32,7 +32,8 @@ import java.io.OutputStream;
  */
 public class WinExternalTerminal extends ExternalTerminal {
 
-    public WinExternalTerminal(String name, String type, InputStream masterInput, OutputStream masterOutput) throws IOException {
+    public WinExternalTerminal(String name, String type, InputStream masterInput, OutputStream masterOutput)
+            throws IOException {
         super(name, type, masterInput, masterOutput);
         Attributes attributes = new Attributes();
         attributes.setInputFlag(Attributes.InputFlag.IGNCR, true);

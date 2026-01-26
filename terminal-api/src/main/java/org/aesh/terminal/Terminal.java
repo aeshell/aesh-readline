@@ -23,9 +23,9 @@ import java.io.Closeable;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.function.Consumer;
+
 import org.aesh.terminal.tty.Signal;
 import org.aesh.terminal.tty.Size;
-
 
 public interface Terminal extends Closeable {
 

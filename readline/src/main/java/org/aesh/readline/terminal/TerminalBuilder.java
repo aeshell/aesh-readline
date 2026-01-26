@@ -19,16 +19,6 @@
  */
 package org.aesh.readline.terminal;
 
-import org.aesh.readline.terminal.impl.CygwinPty;
-import org.aesh.readline.terminal.impl.ExecPty;
-import org.aesh.readline.terminal.impl.ExternalTerminal;
-import org.aesh.readline.terminal.impl.PosixSysTerminal;
-import org.aesh.readline.terminal.impl.Pty;
-import org.aesh.readline.terminal.impl.WinExternalTerminal;
-import org.aesh.readline.terminal.impl.WinSysTerminal;
-import org.aesh.terminal.utils.OSUtils;
-import org.aesh.readline.util.LoggerUtil;
-
 import java.io.Console;
 import java.io.IOException;
 import java.io.InputStream;
@@ -37,7 +27,17 @@ import java.lang.reflect.Method;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import org.aesh.readline.terminal.impl.CygwinPty;
+import org.aesh.readline.terminal.impl.ExecPty;
+import org.aesh.readline.terminal.impl.ExternalTerminal;
+import org.aesh.readline.terminal.impl.PosixSysTerminal;
+import org.aesh.readline.terminal.impl.Pty;
+import org.aesh.readline.terminal.impl.WinExternalTerminal;
+import org.aesh.readline.terminal.impl.WinSysTerminal;
+import org.aesh.readline.util.LoggerUtil;
 import org.aesh.terminal.Terminal;
+import org.aesh.terminal.utils.OSUtils;
 
 public final class TerminalBuilder {
 
@@ -61,7 +61,7 @@ public final class TerminalBuilder {
     private TerminalBuilder() {
     }
 
-    private TerminalBuilder apply(Consumer<TerminalBuilder> consumer)  {
+    private TerminalBuilder apply(Consumer<TerminalBuilder> consumer) {
         consumer.accept(this);
         return this;
     }
@@ -97,8 +97,8 @@ public final class TerminalBuilder {
         }
         if ((system != null && system)
                 || (system == null
-                    && (in == null || in == System.in)
-                    && (out == null || out == System.out))) {
+                        && (in == null || in == System.in)
+                        && (out == null || out == System.out))) {
 
             // Cygwin support
             if (OSUtils.IS_CYGWIN) {
@@ -109,16 +109,13 @@ public final class TerminalBuilder {
                 try {
                     Pty pty = CygwinPty.current();
                     return new PosixSysTerminal(name, type, pty, nativeSignals);
-                }
-                catch(IOException ioe) {
+                } catch (IOException ioe) {
                     //we might have a windows terminal created from cygwin..
                     return createWindowsTerminal(name);
                 }
-            }
-            else if (OSUtils.IS_WINDOWS) {
+            } else if (OSUtils.IS_WINDOWS) {
                 return createWindowsTerminal(name);
-            }
-            else {
+            } else {
                 String type = this.type;
                 if (type == null) {
                     type = System.getenv("TERM");
@@ -126,8 +123,7 @@ public final class TerminalBuilder {
                 Pty pty = null;
                 try {
                     pty = ExecPty.current();
-                }
-                catch (IOException e) {
+                } catch (IOException e) {
                     LOGGER.log(Level.FINE, "Failed to get a local tty", e);
                 }
                 if (pty != null) {
@@ -136,8 +132,7 @@ public final class TerminalBuilder {
                     return new ExternalTerminal(name, type, (in == null) ? System.in : in, (out == null) ? System.out : out);
                 }
             }
-        }
-        else {
+        } else {
             return new ExternalTerminal(name, type, (in == null) ? System.in : in,
                     (out == null) ? System.out : out);
         }
@@ -152,8 +147,7 @@ public final class TerminalBuilder {
                 return new WinExternalTerminal(name, type, (in == null) ? System.in : in,
                         (out == null) ? System.out : out);
             }
-        }
-        catch(IOException e) {
+        } catch (IOException e) {
             return new WinExternalTerminal(name, type, (in == null) ? System.in : in,
                     (out == null) ? System.out : out);
         }

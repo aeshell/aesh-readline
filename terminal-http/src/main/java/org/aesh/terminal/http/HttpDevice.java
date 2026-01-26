@@ -19,14 +19,14 @@
  */
 package org.aesh.terminal.http;
 
-import org.aesh.terminal.BaseDevice;
-import org.aesh.terminal.tty.Capability;
-import org.aesh.terminal.utils.InfoCmp;
-
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+
+import org.aesh.terminal.BaseDevice;
+import org.aesh.terminal.tty.Capability;
+import org.aesh.terminal.utils.InfoCmp;
 
 /**
  * Device implementation for HTTP-based terminal connections.

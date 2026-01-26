@@ -19,17 +19,17 @@
  */
 package org.aesh.readline.terminal;
 
-import org.aesh.terminal.utils.InfoCmp;
-import org.aesh.terminal.tty.Capability;
-import org.aesh.terminal.utils.Config;
-import org.aesh.readline.util.LoggerUtil;
-
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import org.aesh.readline.util.LoggerUtil;
+import org.aesh.terminal.tty.Capability;
+import org.aesh.terminal.utils.Config;
+import org.aesh.terminal.utils.InfoCmp;
 
 /**
  * Builder for creating TerminalDevice instances with terminal capabilities.
@@ -54,17 +54,17 @@ public class DeviceBuilder {
     }
 
     public TerminalDevice build() {
-        if(name == null)
+        if (name == null)
             name = Config.isOSPOSIXCompatible() ? "ansi" : "windows";
         String data = getCapabilityFromType();
         TerminalDevice device = new TerminalDevice(name);
 
-        if(data != null) {
+        if (data != null) {
             Set<Capability> bools = new HashSet<>();
             Map<Capability, Integer> ints = new HashMap<>();
             Map<Capability, String> strings = new HashMap<>();
 
-            InfoCmp.parseInfoCmp(data, bools,ints, strings);
+            InfoCmp.parseInfoCmp(data, bools, ints, strings);
             device.addAllCapabilityBooleans(bools);
             device.addAllCapabilityInts(ints);
             device.addAllCapabilityStrings(strings);
@@ -76,8 +76,7 @@ public class DeviceBuilder {
     private String getCapabilityFromType() {
         try {
             return InfoCmp.getDefaultInfoCmp(name);
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             LOGGER.log(Level.WARNING, "Unable to retrieve infocmp for type " + name, e);
             return null;
         }

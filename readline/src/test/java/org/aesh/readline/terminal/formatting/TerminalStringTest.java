@@ -1,11 +1,11 @@
 package org.aesh.readline.terminal.formatting;
 
-import org.aesh.terminal.utils.ANSI;
-import org.junit.Test;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+
+import org.aesh.terminal.utils.ANSI;
+import org.junit.Test;
 
 public class TerminalStringTest {
 
@@ -23,7 +23,7 @@ public class TerminalStringTest {
         assertEquals("foo bar", string.getCharacters());
         string.switchSpacesToEscapedSpaces();
         assertEquals("foo\\ bar", string.getCharacters());
-        assertEquals(ANSI.START+";30;47mfoo\\ bar"+ANSI.RESET, string.toString());
+        assertEquals(ANSI.START + ";30;47mfoo\\ bar" + ANSI.RESET, string.toString());
 
         string = new TerminalString("foo bar", true);
         assertTrue(string.containSpaces());
@@ -31,5 +31,5 @@ public class TerminalStringTest {
         assertEquals("foo bar", string.getCharacters());
 
         assertEquals(0, string.getANSILength());
-     }
+    }
 }

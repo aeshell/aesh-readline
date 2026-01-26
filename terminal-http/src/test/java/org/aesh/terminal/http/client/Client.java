@@ -19,11 +19,15 @@
  */
 package org.aesh.terminal.http.client;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.aesh.terminal.http.server.TaskStatusUpdateEvent;
-import org.aesh.terminal.http.utils.ObjectWrapper;
-import org.aesh.terminal.http.utils.Wait;
+import java.io.IOException;
+import java.net.URI;
+import java.nio.ByteBuffer;
+import java.time.temporal.ChronoUnit;
+import java.util.Optional;
+import java.util.concurrent.TimeoutException;
+import java.util.function.Consumer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import javax.websocket.ClientEndpointConfig;
 import javax.websocket.CloseReason;
@@ -33,15 +37,13 @@ import javax.websocket.EndpointConfig;
 import javax.websocket.MessageHandler;
 import javax.websocket.RemoteEndpoint;
 import javax.websocket.Session;
-import java.io.IOException;
-import java.net.URI;
-import java.nio.ByteBuffer;
-import java.time.temporal.ChronoUnit;
-import java.util.Optional;
-import java.util.concurrent.TimeoutException;
-import java.util.function.Consumer;
-import java.util.logging.Logger;
-import java.util.logging.Level;
+
+import org.aesh.terminal.http.server.TaskStatusUpdateEvent;
+import org.aesh.terminal.http.utils.ObjectWrapper;
+import org.aesh.terminal.http.utils.Wait;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * @author <a href="mailto:matejonnet@gmail.com">Matej Lazar</a>
@@ -70,7 +72,7 @@ public class Client {
     public void close() throws Exception {
         LOGGER.log(Level.INFO, "Client is closing connection.");
         endpoint.session.close();
-//        endpoint.closeLatch.await(10, TimeUnit.SECONDS);
+        //        endpoint.closeLatch.await(10, TimeUnit.SECONDS);
     }
 
     public void onOpen(Consumer<Session> onOpen) {
@@ -161,7 +163,6 @@ public class Client {
         return client;
     }
 
-
     public static Client connectStatusListenerClient(String webSocketUrl, Consumer<TaskStatusUpdateEvent> onStatusUpdate) {
         Client client = Client.initializeDefault();
         Consumer<String> responseConsumer = (text) -> {
@@ -175,7 +176,8 @@ public class Client {
                 LOGGER.log(Level.SEVERE, "Cannot read JSON string: " + text, e);
             }
             try {
-                TaskStatusUpdateEvent taskStatusUpdateEvent = TaskStatusUpdateEvent.fromJson(jsonObject.get("event").toString());
+                TaskStatusUpdateEvent taskStatusUpdateEvent = TaskStatusUpdateEvent
+                        .fromJson(jsonObject.get("event").toString());
                 onStatusUpdate.accept(taskStatusUpdateEvent);
             } catch (IOException e) {
                 LOGGER.log(Level.SEVERE, "Cannot deserialize TaskStatusUpdateEvent.", e);
@@ -194,7 +196,8 @@ public class Client {
         return client;
     }
 
-    public static Client connectCommandExecutingClient(String webSocketUrl, Optional<Consumer<String>> responseDataConsumer) throws InterruptedException, TimeoutException {
+    public static Client connectCommandExecutingClient(String webSocketUrl, Optional<Consumer<String>> responseDataConsumer)
+            throws InterruptedException, TimeoutException {
         ObjectWrapper<Boolean> connected = new ObjectWrapper<>(false);
 
         Client client = Client.initializeDefault();

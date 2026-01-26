@@ -30,20 +30,19 @@ public class EndOfFile implements Action {
     @Override
     public void accept(InputProcessor inputProcessor) {
         //always do this first
-        if(ignoreEOFSize < 0) {
+        if (ignoreEOFSize < 0) {
             ignoreEOFSize = inputProcessor.flags().getOrDefault(ReadlineFlag.IGNORE_EOF, 0);
         }
         //if buffer.length > 0 delete-char
-        if(inputProcessor.buffer().buffer().length() > 0) {
+        if (inputProcessor.buffer().buffer().length() > 0) {
             new DeleteChar().accept(inputProcessor);
-        }
-        else {
+        } else {
             //reset EOFCounter if prev key != ctrl-d
-            if(EOFCounter > 0 && inputProcessor.editMode().prevKey() != null &&
+            if (EOFCounter > 0 && inputProcessor.editMode().prevKey() != null &&
                     inputProcessor.editMode().prevKey().getCodePointAt(0) != Key.CTRL_D.getFirstValue())
                 EOFCounter = 0;
 
-            if(ignoreEOFSize > EOFCounter)
+            if (ignoreEOFSize > EOFCounter)
                 EOFCounter++;
             else {
                 //we got a eof, close the connection and call finish

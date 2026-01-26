@@ -19,13 +19,13 @@
  */
 package org.aesh.terminal;
 
-import org.aesh.terminal.tty.Capability;
-import org.aesh.terminal.utils.Curses;
-
 import java.util.ArrayList;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import org.aesh.terminal.tty.Capability;
+import org.aesh.terminal.utils.Curses;
 
 /**
  * Abstract base implementation of the Device interface providing common
@@ -41,19 +41,18 @@ public abstract class BaseDevice implements Device {
     @Override
     public int[] getStringCapabilityAsInts(Capability capability, Object... params) {
         String str = getStringCapability(capability);
-        if(str != null) {
+        if (str != null) {
             StringBuilder sb = new StringBuilder();
             Curses.tputs(sb, str, params);
             return sb.toString().codePoints().toArray();
-        }
-        else
+        } else
             return null;
     }
 
     @Override
     public boolean puts(Consumer<int[]> output, Capability capability, Object... params) {
         int[] seq = getStringCapabilityAsInts(capability, params);
-        if(seq != null) {
+        if (seq != null) {
             output.accept(seq);
             return true;
         }
@@ -63,7 +62,7 @@ public abstract class BaseDevice implements Device {
     @Override
     public boolean puts(Consumer<int[]> output, String capability, Object... params) {
         int[] seq = getStringCapabilityAsInts(Capability.byName(capability), params);
-        if(seq != null) {
+        if (seq != null) {
             output.accept(seq);
             return true;
         }
@@ -82,23 +81,21 @@ public abstract class BaseDevice implements Device {
                 builder.add(27);
                 builder.add(c);
                 keyseq = keyseq.substring(4);
-            }
-            else if(keyseq.startsWith("^") && keyseq.length() > 1) {
+            } else if (keyseq.startsWith("^") && keyseq.length() > 1) {
                 int c = (Character.toUpperCase(keyseq.charAt(1)) - '@') & 0x7F;
                 builder.add(c);
                 keyseq = keyseq.substring(2);
-            }
-            else if (keyseq.startsWith("\\e") || keyseq.startsWith("\\E")) {
+            } else if (keyseq.startsWith("\\e") || keyseq.startsWith("\\E")) {
                 builder.add(27);
                 keyseq = keyseq.substring(2);
             } else if (keyseq.startsWith("\\\\")) {
-                builder.add((int)'\\');
+                builder.add((int) '\\');
                 keyseq = keyseq.substring(2);
             } else if (keyseq.startsWith("\\\"")) {
-                builder.add((int)'"');
+                builder.add((int) '"');
                 keyseq = keyseq.substring(2);
             } else if (keyseq.startsWith("\\'")) {
-                builder.add((int)'\'');
+                builder.add((int) '\'');
                 keyseq = keyseq.substring(2);
             } else if (keyseq.startsWith("\\a")) {
                 builder.add(7);
@@ -142,7 +139,7 @@ public abstract class BaseDevice implements Device {
             }
         }
         int[] f = new int[builder.size()];
-        for (int i = 0;i < builder.size();i++) {
+        for (int i = 0; i < builder.size(); i++) {
             f[i] = builder.get(i);
         }
         return f;

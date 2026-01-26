@@ -20,32 +20,31 @@
 package org.aesh.readline;
 
 import java.util.EnumMap;
+import java.util.List;
+import java.util.Optional;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.logging.Logger;
 
-import org.aesh.readline.cursor.CursorListener;
 import org.aesh.readline.action.Action;
 import org.aesh.readline.action.ActionDecoder;
 import org.aesh.readline.action.KeyAction;
 import org.aesh.readline.completion.Completion;
 import org.aesh.readline.completion.CompletionHandler;
 import org.aesh.readline.completion.SimpleCompletionHandler;
+import org.aesh.readline.cursor.CursorListener;
 import org.aesh.readline.editing.EditMode;
 import org.aesh.readline.editing.EditModeBuilder;
 import org.aesh.readline.history.History;
 import org.aesh.readline.history.InMemoryHistory;
 import org.aesh.readline.terminal.Key;
-import org.aesh.terminal.Attributes;
-import org.aesh.terminal.utils.Config;
-import org.aesh.readline.util.Parser;
-import org.aesh.terminal.Connection;
 import org.aesh.readline.util.LoggerUtil;
-
-import java.util.List;
-import java.util.Optional;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.logging.Logger;
+import org.aesh.readline.util.Parser;
+import org.aesh.terminal.Attributes;
+import org.aesh.terminal.Connection;
 import org.aesh.terminal.tty.Signal;
 import org.aesh.terminal.tty.Size;
+import org.aesh.terminal.utils.Config;
 
 /**
  * Readline is a simple way to read a single input line from the terminal/shell/console.
@@ -77,7 +76,7 @@ public class Readline {
     public Readline(EditMode editMode, History history, CompletionHandler completionHandler) {
         this.editMode = editMode;
         this.history = history;
-        if(completionHandler == null)
+        if (completionHandler == null)
             this.completionHandler = new SimpleCompletionHandler();
         else
             this.completionHandler = completionHandler;
@@ -105,7 +104,7 @@ public class Readline {
     }
 
     public void readline(Connection conn, String prompt, Consumer<String> requestHandler,
-                         List<Completion> completions) {
+            List<Completion> completions) {
         readline(conn, new Prompt(prompt), requestHandler, completions);
     }
 
@@ -114,35 +113,35 @@ public class Readline {
     }
 
     public void readline(Connection conn, Prompt prompt, Consumer<String> requestHandler,
-                         List<Completion> completions) {
+            List<Completion> completions) {
         readline(conn, prompt, requestHandler, completions, null);
     }
 
     public void readline(Connection conn, Prompt prompt, Consumer<String> requestHandler,
-                         List<Completion> completions,
-                         List<Function<String,Optional<String>>> preProcessors ) {
+            List<Completion> completions,
+            List<Function<String, Optional<String>>> preProcessors) {
         readline(conn, prompt, requestHandler, completions, preProcessors, null);
     }
 
     public void readline(Connection conn, Prompt prompt, Consumer<String> requestHandler,
-                         List<Completion> completions,
-                         List<Function<String,Optional<String>>> preProcessors, History history) {
+            List<Completion> completions,
+            List<Function<String, Optional<String>>> preProcessors, History history) {
         readline(conn, prompt, requestHandler, completions, preProcessors, history, null);
     }
 
     public void readline(Connection conn, Prompt prompt, Consumer<String> requestHandler,
-                         List<Completion> completions,
-                         List<Function<String,Optional<String>>> preProcessors,
-                         History history, CursorListener listener) {
-         readline(conn, prompt, requestHandler, completions, preProcessors, history, listener,
+            List<Completion> completions,
+            List<Function<String, Optional<String>>> preProcessors,
+            History history, CursorListener listener) {
+        readline(conn, prompt, requestHandler, completions, preProcessors, history, listener,
                 new EnumMap<>(ReadlineFlag.class));
     }
 
     public void readline(Connection conn, Prompt prompt, Consumer<String> requestHandler,
-                         List<Completion> completions,
-                         List<Function<String,Optional<String>>> preProcessors,
-                         History history, CursorListener listener, EnumMap<ReadlineFlag, Integer> flags) {
-        synchronized(this) {
+            List<Completion> completions,
+            List<Function<String, Optional<String>>> preProcessors,
+            History history, CursorListener listener, EnumMap<ReadlineFlag, Integer> flags) {
+        synchronized (this) {
             if (inputProcessor != null) {
                 throw new IllegalStateException("Already reading a line");
             }
@@ -150,7 +149,7 @@ public class Readline {
                     completions, preProcessors, history, listener, flags);
             inputProcessor.start();
             //inputProcessor can be set to null from the start() method
-            if(inputProcessor != null)
+            if (inputProcessor != null)
                 processInput();
         }
     }
@@ -159,8 +158,7 @@ public class Readline {
         synchronized (this) {
             if (inputProcessor == null) {
                 LOGGER.warning("No inputprocessor in Readline.processInput");
-            }
-            else if (decoder.hasNext()) {
+            } else if (decoder.hasNext()) {
                 readInput();
             }
         }
@@ -180,7 +178,7 @@ public class Readline {
         private boolean paused;
         private final ConsoleBuffer consoleBuffer;
         private String returnValue;
-        private List<Function<String,Optional<String>>> preProcessors;
+        private List<Function<String, Optional<String>>> preProcessors;
         private Attributes attributes;
         private final EnumMap<ReadlineFlag, Integer> flags;
 
@@ -189,16 +187,15 @@ public class Readline {
                 Prompt prompt,
                 Consumer<String> requestHandler,
                 List<Completion> completions,
-                List<Function<String,Optional<String>>> preProcessors,
+                List<Function<String, Optional<String>>> preProcessors,
                 History newHistory, CursorListener listener, EnumMap<ReadlineFlag, Integer> flags) {
 
             completionHandler.clear();
             completionHandler.addCompletions(completions);
-            consoleBuffer =
-                    new AeshConsoleBuffer(conn, prompt, editMode,
-                            //use newHistory if its not null
-                            newHistory != null ? newHistory : history,
-                            completionHandler, true, listener);
+            consoleBuffer = new AeshConsoleBuffer(conn, prompt, editMode,
+                    //use newHistory if its not null
+                    newHistory != null ? newHistory : history,
+                    completionHandler, true, listener);
 
             this.conn = conn;
             this.requestHandler = requestHandler;
@@ -224,6 +221,7 @@ public class Readline {
 
         /**
          * Parse the event given
+         *
          * @param event event
          */
         private void parse(KeyAction event) {
@@ -234,21 +232,19 @@ public class Readline {
                 }
                 action.accept(this);
                 editMode.setPrevKey(event);
-                if(this.returnValue() != null) {
+                if (this.returnValue() != null) {
                     conn.stdoutHandler().accept(Config.CR);
                     finish(this.returnValue());
-                }
-                else {
+                } else {
                     synchronized (Readline.this) {
                         paused = false;
                     }
                     //some actions might call finish
-                    if(inputProcessor != null)
+                    if (inputProcessor != null)
                         processInput();
                 }
-            }
-            else {
-                if(Key.isPrintable(event.buffer()) && notInCommandNode())
+            } else {
+                if (Key.isPrintable(event.buffer()) && notInCommandNode())
                     this.buffer().writeChar((char) event.buffer().array()[0]);
             }
         }
@@ -274,10 +270,9 @@ public class Readline {
                             if (editMode.isInChainedAction()) {
                                 parse(Key.CTRL_C);
                                 break;
-                            }
-                            else {
+                            } else {
                                 if (attributes.getLocalFlag(Attributes.LocalFlag.ECHOCTL)) {
-                                    conn.stdoutHandler().accept(new int[]{'^', 'C'});
+                                    conn.stdoutHandler().accept(new int[] { '^', 'C' });
                                 }
                                 if (!flags.containsKey(ReadlineFlag.NO_PROMPT_REDRAW_ON_INTR)) {
                                     conn.stdoutHandler().accept(Config.CR);
@@ -297,10 +292,10 @@ public class Readline {
                             parse(Key.CTRL_D);
                             //if inputHandler is null we send a signal to the previous handler)
                             /*
-                            if (prevSignalHandler != null) {
-                                prevSignalHandler.accept(signal);
-                            }
-                            */
+                             * if (prevSignalHandler != null) {
+                             * prevSignalHandler.accept(signal);
+                             * }
+                             */
                             break;
                         default:
                             break;
@@ -318,7 +313,7 @@ public class Readline {
             //last process input, the readInput() can read/finish in one go
             //since EventDecoder might have queued up data
             conn.setStdinHandler(data -> {
-                synchronized(Readline.this) {
+                synchronized (Readline.this) {
                     decoder.add(data);
                 }
                 readInput();
@@ -327,12 +322,11 @@ public class Readline {
 
         private void resize(Size size) {
             //redraw the buffer when we resize
-            if(inputProcessor.consoleBuffer.buffer().length() > 0) {
+            if (inputProcessor.consoleBuffer.buffer().length() > 0) {
                 int[] buffer = inputProcessor.buffer().buffer().multiLine();
                 inputProcessor.consoleBuffer.setSize(size);
                 inputProcessor.consoleBuffer.replace(buffer);
-            }
-            else
+            } else
                 inputProcessor.consoleBuffer.setSize(size);
         }
 
@@ -349,10 +343,10 @@ public class Readline {
         @Override
         public void setReturnValue(int[] in) {
             String input = Parser.fromCodePoints(in);
-            if(preProcessors != null && preProcessors.size() > 0) {
+            if (preProcessors != null && preProcessors.size() > 0) {
                 preProcessors.forEach(pre -> pre.apply(input).ifPresent(v -> returnValue = v));
             }
-            if(returnValue == null)
+            if (returnValue == null)
                 returnValue = input;
         }
 
@@ -363,7 +357,7 @@ public class Readline {
 
         @Override
         public void setEditMode(EditMode edit) {
-            if(edit != null) {
+            if (edit != null) {
                 editMode = edit;
                 decoder.setMappings(editMode);
             }

@@ -19,11 +19,11 @@
  */
 package org.aesh.readline.terminal.formatting;
 
-import org.aesh.terminal.utils.ANSI;
-import org.junit.Test;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+
+import org.aesh.terminal.utils.ANSI;
+import org.junit.Test;
 
 /**
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
@@ -36,10 +36,10 @@ public class TerminalCharacterTest {
     public void testTerminalCharacterAsString() {
         TerminalCharacter character = new TerminalCharacter('c', new TerminalTextStyle(CharacterType.BOLD));
 
-        assertEquals(ANSI.START+
-                CharacterType.BOLD.getValue()+";"+
-                3+ Color.DEFAULT.getValue()+";"+
-                4+Color.DEFAULT.getValue()+
+        assertEquals(ANSI.START +
+                CharacterType.BOLD.getValue() + ";" +
+                3 + Color.DEFAULT.getValue() + ";" +
+                4 + Color.DEFAULT.getValue() +
                 "mc",
                 character.toString());
     }
@@ -50,29 +50,29 @@ public class TerminalCharacterTest {
 
         assertEquals(ANSI.START +
                 CharacterType.BOLD.getValue() + ";" +
-                3+Color.DEFAULT.getValue() + ";" +
-                4+Color.DEFAULT.getValue() +
+                3 + Color.DEFAULT.getValue() + ";" +
+                4 + Color.DEFAULT.getValue() +
                 "mc",
                 c1.toString());
 
         TerminalCharacter c2 = new TerminalCharacter('f', new TerminalColor(Color.DEFAULT, Color.BLUE),
                 new TerminalTextStyle(CharacterType.CROSSED_OUT));
 
-         assertEquals(ANSI.START +
-                 BOLD_OFF + ";" +
+        assertEquals(ANSI.START +
+                BOLD_OFF + ";" +
                 CharacterType.CROSSED_OUT.getValue() + ";" +
-                4+Color.BLUE.getValue() +
+                4 + Color.BLUE.getValue() +
                 "mf",
                 c2.toString(c1));
 
         TerminalCharacter c3 = new TerminalCharacter('f', new TerminalColor(Color.RED, Color.BLUE));
         TerminalCharacter c4 = new TerminalCharacter('f', new TerminalColor(Color.RED, Color.BLUE));
 
-         assertEquals("f", c4.toString(c3));
+        assertEquals("f", c4.toString(c3));
 
         c4 = new TerminalCharacter('g', new TerminalColor(Color.RED, Color.BLUE), new TerminalTextStyle(CharacterType.BOLD));
 
-         assertEquals(ANSI.START + CharacterType.BOLD.getValue() + "mg", c4.toString(c3));
+        assertEquals(ANSI.START + CharacterType.BOLD.getValue() + "mg", c4.toString(c3));
 
         c3 = new TerminalCharacter('f', new TerminalColor(Color.RED, Color.BLUE), new TerminalTextStyle(CharacterType.BOLD));
         c4 = new TerminalCharacter('g');
@@ -92,6 +92,5 @@ public class TerminalCharacterTest {
         assertTrue(c1.equalsIgnoreCharacter(c2));
 
     }
-
 
 }

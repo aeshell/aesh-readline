@@ -27,73 +27,91 @@ package org.aesh.terminal.telnet;
  */
 public class TelnetHandler {
 
-  /**
-   * The telnet connection opened.
-   *
-   * @param conn the connection
-   */
-  protected void onOpen(TelnetConnection conn) {}
+    /**
+     * The telnet connection opened.
+     *
+     * @param conn the connection
+     */
+    protected void onOpen(TelnetConnection conn) {
+    }
 
-  /**
-   * The telnet connection closed.
-   */
-  protected void onClose() {}
+    /**
+     * The telnet connection closed.
+     */
+    protected void onClose() {
+    }
 
-  /**
-   * Process data sent by the client.
-   *
-   * @param data the data
-   */
-  protected void onData(byte[] data) {}
+    /**
+     * Process data sent by the client.
+     *
+     * @param data the data
+     */
+    protected void onData(byte[] data) {
+    }
 
-  /**
-   * Called when the terminal window size changes.
-   *
-   * @param width the new terminal width in columns
-   * @param height the new terminal height in rows
-   */
-  protected void onSize(int width, int height) {}
-  /**
-   * Called when the terminal type is received from the client.
-   *
-   * @param terminalType the terminal type string (e.g., "xterm", "vt100")
-   */
-  protected void onTerminalType(String terminalType) {}
-  /**
-   * Called when a telnet command is received.
-   *
-   * @param command the command byte
-   */
-  protected void onCommand(byte command) {}
-  /**
-   * Called when the NAWS (Negotiate About Window Size) option state changes.
-   *
-   * @param naws true if the client supports NAWS, false otherwise
-   */
-  protected void onNAWS(boolean naws) {}
-  /**
-   * Called when the ECHO option state changes.
-   *
-   * @param echo true if echo is enabled, false otherwise
-   */
-  protected void onEcho(boolean echo) {}
-  /**
-   * Called when the SGA (Suppress Go Ahead) option state changes.
-   *
-   * @param sga true if SGA is enabled, false otherwise
-   */
-  protected void onSGA(boolean sga) {}
-  /**
-   * Called when the send binary mode state changes.
-   *
-   * @param binary true if binary mode is enabled for sending, false otherwise
-   */
-  protected void onSendBinary(boolean binary) { }
-  /**
-   * Called when the receive binary mode state changes.
-   *
-   * @param binary true if binary mode is enabled for receiving, false otherwise
-   */
-  protected void onReceiveBinary(boolean binary) { }
+    /**
+     * Called when the terminal window size changes.
+     *
+     * @param width the new terminal width in columns
+     * @param height the new terminal height in rows
+     */
+    protected void onSize(int width, int height) {
+    }
+
+    /**
+     * Called when the terminal type is received from the client.
+     *
+     * @param terminalType the terminal type string (e.g., "xterm", "vt100")
+     */
+    protected void onTerminalType(String terminalType) {
+    }
+
+    /**
+     * Called when a telnet command is received.
+     *
+     * @param command the command byte
+     */
+    protected void onCommand(byte command) {
+    }
+
+    /**
+     * Called when the NAWS (Negotiate About Window Size) option state changes.
+     *
+     * @param naws true if the client supports NAWS, false otherwise
+     */
+    protected void onNAWS(boolean naws) {
+    }
+
+    /**
+     * Called when the ECHO option state changes.
+     *
+     * @param echo true if echo is enabled, false otherwise
+     */
+    protected void onEcho(boolean echo) {
+    }
+
+    /**
+     * Called when the SGA (Suppress Go Ahead) option state changes.
+     *
+     * @param sga true if SGA is enabled, false otherwise
+     */
+    protected void onSGA(boolean sga) {
+    }
+
+    /**
+     * Called when the send binary mode state changes.
+     *
+     * @param binary true if binary mode is enabled for sending, false otherwise
+     */
+    protected void onSendBinary(boolean binary) {
+    }
+
+    /**
+     * Called when the receive binary mode state changes.
+     *
+     * @param binary true if binary mode is enabled for receiving, false otherwise
+     */
+    protected void onReceiveBinary(boolean binary) {
+    }
 
 }

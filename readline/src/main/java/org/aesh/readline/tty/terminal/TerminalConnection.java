@@ -19,18 +19,6 @@
  */
 package org.aesh.readline.tty.terminal;
 
-import org.aesh.terminal.io.Decoder;
-import org.aesh.terminal.io.Encoder;
-import org.aesh.readline.terminal.impl.ExternalTerminal;
-import org.aesh.terminal.Device;
-import org.aesh.terminal.Attributes;
-import org.aesh.terminal.EventDecoder;
-import org.aesh.terminal.Terminal;
-import org.aesh.readline.terminal.TerminalBuilder;
-import org.aesh.terminal.tty.Capability;
-import org.aesh.terminal.Connection;
-import org.aesh.readline.util.LoggerUtil;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -41,6 +29,18 @@ import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import org.aesh.readline.terminal.TerminalBuilder;
+import org.aesh.readline.terminal.impl.ExternalTerminal;
+import org.aesh.readline.util.LoggerUtil;
+import org.aesh.terminal.Attributes;
+import org.aesh.terminal.Connection;
+import org.aesh.terminal.Device;
+import org.aesh.terminal.EventDecoder;
+import org.aesh.terminal.Terminal;
+import org.aesh.terminal.io.Decoder;
+import org.aesh.terminal.io.Encoder;
+import org.aesh.terminal.tty.Capability;
 import org.aesh.terminal.tty.Signal;
 import org.aesh.terminal.tty.Size;
 
@@ -73,26 +73,26 @@ public class TerminalConnection implements Connection {
     private boolean ansi = true;
 
     public TerminalConnection(Charset inputCharset, Charset outputCharset, InputStream inputStream,
-                              OutputStream outputStream, Consumer<Connection> handler) throws IOException {
-        if(inputCharset != null)
+            OutputStream outputStream, Consumer<Connection> handler) throws IOException {
+        if (inputCharset != null)
             this.inputCharset = inputCharset;
         else
             this.inputCharset = Charset.defaultCharset();
-        if(outputCharset != null)
+        if (outputCharset != null)
             this.outputCharset = outputCharset;
         else
             this.outputCharset = Charset.defaultCharset();
         this.handler = handler;
-            init(TerminalBuilder.builder()
-                    .input(inputStream)
-                    .output(outputStream)
-                    .nativeSignals(true)
-                    .name("Aesh console")
-                    .build());
+        init(TerminalBuilder.builder()
+                .input(inputStream)
+                .output(outputStream)
+                .nativeSignals(true)
+                .name("Aesh console")
+                .build());
     }
 
     public TerminalConnection(Charset charset, InputStream inputStream,
-                              OutputStream outputStream, Consumer<Connection> handler) throws IOException {
+            OutputStream outputStream, Consumer<Connection> handler) throws IOException {
         this(charset, charset, inputStream, outputStream, handler);
     }
 
@@ -119,21 +119,20 @@ public class TerminalConnection implements Connection {
         attributes = this.terminal.getAttributes();
         //interrupt signal
         prevIntrHandler = this.terminal.handle(Signal.INT, s -> {
-            if(getSignalHandler() != null) {
+            if (getSignalHandler() != null) {
                 getSignalHandler().accept(s);
-            }
-            else {
+            } else {
                 LOGGER.log(Level.FINE, "No signal handler is registered, lets stop");
                 close();
             }
         });
         prevContHandler = this.terminal.handle(Signal.CONT, s -> {
-            if(getSignalHandler() != null)
+            if (getSignalHandler() != null)
                 getSignalHandler().accept(s);
         });
         //window resize signal
         prevWincHandler = this.terminal.handle(Signal.WINCH, s -> {
-            if(getSizeHandler() != null) {
+            if (getSizeHandler() != null) {
                 getSizeHandler().accept(size());
             }
         });
@@ -141,15 +140,15 @@ public class TerminalConnection implements Connection {
         eventDecoder = new EventDecoder(attributes);
         decoder = new Decoder(512, inputEncoding(), eventDecoder);
 
-        if(terminal.getCodePointConsumer() == null) {
+        if (terminal.getCodePointConsumer() == null) {
             stdOut = new Encoder(outputEncoding(), this::write);
         } else {
             stdOut = terminal.getCodePointConsumer();
         }
-        if(terminal instanceof ExternalTerminal)
+        if (terminal instanceof ExternalTerminal)
             ansi = false;
 
-        if(handler != null)
+        if (handler != null)
             handler.accept(this);
     }
 
@@ -214,40 +213,37 @@ public class TerminalConnection implements Connection {
                 int read = terminal.input().read(bBuf);
                 if (read > 0) {
                     decoder.write(bBuf, 0, read);
-                    if(waiting && reading) {
+                    if (waiting && reading) {
                         try {
                             latch.await();
-                        }
-                        catch(InterruptedException e) {
+                        } catch (InterruptedException e) {
                             Thread.currentThread().interrupt();
                             LOGGER.log(Level.WARNING,
                                     "Reader thread was interrupted while waiting on the latch", e);
                             close();
                         }
                     }
-                }
-                else if (read < 0) {
+                } else if (read < 0) {
                     close();
                 }
             }
-        }
-        catch (IOException ioe) {
+        } catch (IOException ioe) {
             LOGGER.log(Level.WARNING, "Failed while reading, exiting", ioe);
             close();
         }
     }
 
     public void suspend() {
-        if(!waiting) {
+        if (!waiting) {
             latch = new CountDownLatch(1);
             waiting = true;
         }
     }
 
     public void awake() {
-        if(waiting) {
+        if (waiting) {
             waiting = false;
-            if(latch != null)
+            if (latch != null)
                 latch.countDown();
         }
     }
@@ -260,7 +256,7 @@ public class TerminalConnection implements Connection {
         return reading;
     }
 
-     public void stopReading() {
+    public void stopReading() {
         reading = false;
         awake();
     }
@@ -268,9 +264,8 @@ public class TerminalConnection implements Connection {
     private void write(byte[] data) {
         try {
             terminal.output().write(data);
-        }
-        catch(IOException e) {
-            LOGGER.log(Level.WARNING, "Failed to write out.",e);
+        } catch (IOException e) {
+            LOGGER.log(Level.WARNING, "Failed to write out.", e);
         }
     }
 
@@ -316,7 +311,7 @@ public class TerminalConnection implements Connection {
     @Override
     public void setStdinHandler(Consumer<int[]> handler) {
         eventDecoder.setInputHandler(handler);
-        if(handler == null)
+        if (handler == null)
             suspend();
         else
             awake();
@@ -342,7 +337,7 @@ public class TerminalConnection implements Connection {
         try {
             reading = false;
             //call closeHandler before we close the terminal stream
-            if(getCloseHandler() != null)
+            if (getCloseHandler() != null)
                 getCloseHandler().accept(null);
             //reset signal/size handlers
             terminal.handle(Signal.INT, prevIntrHandler);
@@ -354,10 +349,9 @@ public class TerminalConnection implements Connection {
                 terminal.setAttributes(attributes);
                 terminal.close();
             }
-            if(latch != null)
+            if (latch != null)
                 latch.countDown();
-        }
-        catch(IOException e) {
+        } catch (IOException e) {
             LOGGER.log(Level.WARNING, "Failed to close the terminal correctly", e);
         }
     }

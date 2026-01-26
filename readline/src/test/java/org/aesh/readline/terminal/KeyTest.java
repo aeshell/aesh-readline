@@ -19,18 +19,17 @@
  */
 package org.aesh.readline.terminal;
 
-import org.aesh.readline.action.mappings.ActionMapper;
-import org.aesh.terminal.utils.Config;
-import org.aesh.readline.action.Action;
-import org.aesh.readline.action.ActionDecoder;
-import org.aesh.readline.editing.EditMode;
-import org.aesh.readline.editing.EditModeBuilder;
-import org.junit.Test;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import org.aesh.readline.action.Action;
+import org.aesh.readline.action.ActionDecoder;
+import org.aesh.readline.action.mappings.ActionMapper;
+import org.aesh.readline.editing.EditMode;
+import org.aesh.readline.editing.EditModeBuilder;
+import org.aesh.terminal.utils.Config;
+import org.junit.Test;
 
 /**
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
@@ -39,7 +38,7 @@ public class KeyTest {
 
     @Test
     public void testContain() {
-        assertTrue(Key.ESC.containKey(new int[]{27, 10}));
+        assertTrue(Key.ESC.containKey(new int[] { 27, 10 }));
     }
 
     @Test
@@ -73,7 +72,7 @@ public class KeyTest {
 
     @Test
     public void testFindStartKey() {
-        int[] input = new int[]{2, 27, 65};
+        int[] input = new int[] { 2, 27, 65 };
         Key inc = Key.findStartKey(input);
         assertEquals(Key.CTRL_B, inc);
         System.arraycopy(input, inc.getKeyValues().length, input, 0, input.length - inc.getKeyValues().length);
@@ -84,7 +83,7 @@ public class KeyTest {
         assertEquals(Key.A, inc);
 
         if (Config.isOSPOSIXCompatible()) {
-            input = new int[]{32, 27, 91, 65, 10};
+            input = new int[] { 32, 27, 91, 65, 10 };
             inc = Key.findStartKey(input);
             assertEquals(Key.SPACE, inc);
             System.arraycopy(input, inc.getKeyValues().length, input, 0, input.length - inc.getKeyValues().length);
@@ -99,7 +98,7 @@ public class KeyTest {
 
     @Test
     public void testFindStartKeyPosition() {
-        int[] input = new int[]{2, 27, 65};
+        int[] input = new int[] { 2, 27, 65 };
         Key inc = Key.findStartKey(input, 0);
         assertEquals(Key.CTRL_B, inc);
         inc = Key.findStartKey(input, 1);
@@ -109,7 +108,7 @@ public class KeyTest {
         assertEquals(Key.A, inc);
 
         if (Config.isOSPOSIXCompatible()) {
-            input = new int[]{32, 27, 91, 65, 10};
+            input = new int[] { 32, 27, 91, 65, 10 };
             inc = Key.findStartKey(input, 0);
             assertEquals(Key.SPACE, inc);
             inc = Key.findStartKey(input, 1);
@@ -117,7 +116,7 @@ public class KeyTest {
             inc = Key.findStartKey(input, 4);
             assertEquals(Key.ENTER, inc);
 
-            input = new int[]{10};
+            input = new int[] { 10 };
             inc = Key.findStartKey(input, 0);
             assertEquals(Key.ENTER, inc);
 
@@ -132,10 +131,10 @@ public class KeyTest {
 
         assertFalse(Key.BACKSPACE.isPrintable());
 
-        assertTrue(Key.isPrintable(new int[]{197}));
-        assertTrue(Key.isPrintable(new int[]{229}));
+        assertTrue(Key.isPrintable(new int[] { 197 }));
+        assertTrue(Key.isPrintable(new int[] { 229 }));
         if (!Config.isOSPOSIXCompatible())
-            assertFalse(Key.isPrintable(new int[]{Key.WINDOWS_ESC.getFirstValue()}));
+            assertFalse(Key.isPrintable(new int[] { Key.WINDOWS_ESC.getFirstValue() }));
     }
 
     @Test

@@ -19,9 +19,10 @@
  */
 package org.aesh.readline.util;
 
+import static org.junit.Assert.assertEquals;
+
 import org.junit.Test;
 
-import static org.junit.Assert.assertEquals;
 /**
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */

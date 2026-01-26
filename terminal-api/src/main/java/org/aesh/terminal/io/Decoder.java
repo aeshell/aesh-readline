@@ -56,7 +56,7 @@ public class Decoder {
         if (initialSize < 2) {
             throw new IllegalArgumentException("Initial size must be at least 2");
         }
-        if(charset != null)
+        if (charset != null)
             decoder = charset.newDecoder();
         else
             decoder = Charset.defaultCharset().newDecoder();
@@ -76,7 +76,7 @@ public class Decoder {
     public void write(byte[] data, int start, int len) {
 
         //if we have some leftovers, we use them first
-        if(leftOverCodePoints != null && leftOverCodePoints.length > 0 &&
+        if (leftOverCodePoints != null && leftOverCodePoints.length > 0 &&
                 onChar != null) {
             onChar.accept(leftOverCodePoints);
             leftOverCodePoints = null;
@@ -129,7 +129,7 @@ public class Decoder {
             iBuf.flip();
             int[] codePoints = new int[iBuf.limit()];
             iBuf.get(codePoints);
-            if(onChar != null)
+            if (onChar != null)
                 onChar.accept(codePoints);
             else {
                 LOGGER.log(Level.WARNING, "InputHandler is set to null, will ignore input: " + fromCodePoints(codePoints));

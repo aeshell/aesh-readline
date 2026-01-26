@@ -34,19 +34,20 @@ abstract class BackwardBigWord extends ChangeAction {
     BackwardBigWord(boolean viMode, EditMode.Status status) {
         super(viMode, status);
     }
+
     @Override
     public void accept(InputProcessor inputProcessor) {
         int cursor = inputProcessor.buffer().buffer().cursor();
         String buffer = inputProcessor.buffer().buffer().asString();
 
-        if(cursor > buffer.length())
-            cursor = buffer.length()-1;
+        if (cursor > buffer.length())
+            cursor = buffer.length() - 1;
 
         //move back every potential space first
-        while(cursor > 0 && isSpace(buffer.charAt(cursor-1)))
+        while (cursor > 0 && isSpace(buffer.charAt(cursor - 1)))
             cursor--;
 
-        while(cursor > 0 && !isSpace(buffer.charAt(cursor-1)))
+        while (cursor > 0 && !isSpace(buffer.charAt(cursor - 1)))
             cursor--;
 
         apply(cursor, inputProcessor);

@@ -24,5 +24,9 @@ out
 classes
 /bin/
 
-#ignore checkstile files
-.checkstyle
+# ignore formatter cache
+.cache/
+
+# ignore maven backup files
+*.versionsBackup
+dependency-reduced-pom.xml

@@ -19,17 +19,17 @@
  */
 package org.aesh.readline.terminal.impl;
 
-import org.aesh.readline.terminal.DeviceBuilder;
-import org.aesh.terminal.Attributes;
-import org.aesh.terminal.Device;
-import org.aesh.terminal.Terminal;
-import org.aesh.readline.util.LoggerUtil;
-
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import org.aesh.readline.terminal.DeviceBuilder;
+import org.aesh.readline.util.LoggerUtil;
+import org.aesh.terminal.Attributes;
+import org.aesh.terminal.Device;
+import org.aesh.terminal.Terminal;
 import org.aesh.terminal.tty.Signal;
 
 /**
@@ -90,8 +90,7 @@ public abstract class AbstractTerminal implements Terminal {
         SignalHandler handler = handlers.get(signal);
         if (handler == SignalHandlers.SIG_DFL) {
             handleDefaultSignal(signal);
-        }
-        else if (handler != SignalHandlers.SIG_IGN) {
+        } else if (handler != SignalHandlers.SIG_IGN) {
             handler.handle(signal);
         }
     }
@@ -128,9 +127,8 @@ public abstract class AbstractTerminal implements Terminal {
             int vcc = getAttributes().getControlChar(cc);
             if (vcc > 0 && vcc < 32) {
                 try {
-                    output().write(new String(new char[]{'^', (char) (vcc + '@')}).getBytes());
-                }
-                catch (IOException e) {
+                    output().write(new String(new char[] { '^', (char) (vcc + '@') }).getBytes());
+                } catch (IOException e) {
                     LOGGER.log(Level.WARNING, "Failed to write out ^(C) - or other signals", e);
                 }
             }
@@ -168,4 +166,3 @@ public abstract class AbstractTerminal implements Terminal {
         return device;
     }
 }
-

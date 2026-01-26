@@ -24,6 +24,7 @@ import org.aesh.readline.editing.EditMode;
 
 /**
  * TODO: change boolean params in constructors to objects/enum
+ *
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 abstract class ForwardWord extends ChangeAction {
@@ -39,7 +40,7 @@ abstract class ForwardWord extends ChangeAction {
     ForwardWord(boolean viMode, EditMode.Status status) {
         super(status);
         this.viMode = viMode;
-        if(status == EditMode.Status.CHANGE)
+        if (status == EditMode.Status.CHANGE)
             removeTrailingSpaces = false;
         else
             removeTrailingSpaces = true;
@@ -50,22 +51,21 @@ abstract class ForwardWord extends ChangeAction {
         int cursor = inputProcessor.buffer().buffer().cursor();
         String buffer = inputProcessor.buffer().buffer().asString();
 
-        if(viMode) {
-            if(cursor < buffer.length() && (isDelimiter(buffer.charAt(cursor))))
-                while(cursor < buffer.length() && (isDelimiter(buffer.charAt(cursor))))
+        if (viMode) {
+            if (cursor < buffer.length() && (isDelimiter(buffer.charAt(cursor))))
+                while (cursor < buffer.length() && (isDelimiter(buffer.charAt(cursor))))
                     cursor++;
-                //if we stand on a non-delimiter
+            //if we stand on a non-delimiter
             else {
-                while(cursor < buffer.length() && !isDelimiter(buffer.charAt(cursor)))
+                while (cursor < buffer.length() && !isDelimiter(buffer.charAt(cursor)))
                     cursor++;
                 //if we end up on a space we move past that too
-                if(removeTrailingSpaces)
-                    if(cursor < buffer.length() && isSpace(buffer.charAt(cursor)))
-                        while(cursor < buffer.length() && isSpace(buffer.charAt(cursor)))
+                if (removeTrailingSpaces)
+                    if (cursor < buffer.length() && isSpace(buffer.charAt(cursor)))
+                        while (cursor < buffer.length() && isSpace(buffer.charAt(cursor)))
                             cursor++;
             }
-        }
-        else {
+        } else {
             while (cursor < buffer.length() && (isDelimiter(buffer.charAt(cursor))))
                 cursor++;
             while (cursor < buffer.length() && !isDelimiter(buffer.charAt(cursor)))
@@ -73,9 +73,9 @@ abstract class ForwardWord extends ChangeAction {
         }
 
         //if we end up on a space we move past that too
-        if(removeTrailingSpaces)
-            if(cursor < buffer.length() && isSpace(buffer.charAt(cursor)))
-                while(cursor < buffer.length() && isSpace(buffer.charAt(cursor)))
+        if (removeTrailingSpaces)
+            if (cursor < buffer.length() && isSpace(buffer.charAt(cursor)))
+                while (cursor < buffer.length() && isSpace(buffer.charAt(cursor)))
                     cursor++;
 
         apply(cursor, inputProcessor);

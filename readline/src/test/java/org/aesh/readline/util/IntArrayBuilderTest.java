@@ -19,9 +19,9 @@
  */
 package org.aesh.readline.util;
 
-import org.junit.Test;
-
 import static org.junit.Assert.assertArrayEquals;
+
+import org.junit.Test;
 
 /**
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
@@ -32,34 +32,34 @@ public class IntArrayBuilderTest {
     public void appendInts() {
         IntArrayBuilder builder = new IntArrayBuilder();
         builder.append(1);
-        assertArrayEquals(new int[] {1}, builder.toArray());
+        assertArrayEquals(new int[] { 1 }, builder.toArray());
         builder.append(2);
         builder.append(3);
-        assertArrayEquals(new int[] {1,2,3}, builder.toArray());
+        assertArrayEquals(new int[] { 1, 2, 3 }, builder.toArray());
 
         builder = new IntArrayBuilder(3);
         builder.append(3);
-        assertArrayEquals(new int[] {3}, builder.toArray());
+        assertArrayEquals(new int[] { 3 }, builder.toArray());
         builder.append(2);
         builder.append(1);
-        assertArrayEquals(new int[] {3,2,1}, builder.toArray());
+        assertArrayEquals(new int[] { 3, 2, 1 }, builder.toArray());
     }
 
     @Test
     public void appentIntArray() {
         IntArrayBuilder builder = new IntArrayBuilder();
-        builder.append(new int[]{1,2,3});
-        assertArrayEquals(new int[] {1,2,3}, builder.toArray());
-        builder.append(new int[]{1,2,3});
-        assertArrayEquals(new int[] {1,2,3,1,2,3}, builder.toArray());
+        builder.append(new int[] { 1, 2, 3 });
+        assertArrayEquals(new int[] { 1, 2, 3 }, builder.toArray());
+        builder.append(new int[] { 1, 2, 3 });
+        assertArrayEquals(new int[] { 1, 2, 3, 1, 2, 3 }, builder.toArray());
         builder.append(1);
-        assertArrayEquals(new int[] {1,2,3,1,2,3,1}, builder.toArray());
+        assertArrayEquals(new int[] { 1, 2, 3, 1, 2, 3, 1 }, builder.toArray());
         builder.append(2);
         builder.append(3);
-        assertArrayEquals(new int[] {1,2,3,1,2,3,1,2,3}, builder.toArray());
+        assertArrayEquals(new int[] { 1, 2, 3, 1, 2, 3, 1, 2, 3 }, builder.toArray());
 
-        builder = new IntArrayBuilder(new int[]{1,2,3});
-        assertArrayEquals(new int[] {1,2,3}, builder.toArray());
+        builder = new IntArrayBuilder(new int[] { 1, 2, 3 });
+        assertArrayEquals(new int[] { 1, 2, 3 }, builder.toArray());
 
     }
 }

@@ -43,8 +43,8 @@ public class IntArrayBuilder {
     }
 
     public int[] toArray() {
-        if(size == 0)
-            return new int[]{};
+        if (size == 0)
+            return new int[] {};
         else
             return Arrays.copyOf(data, size);
     }
@@ -54,7 +54,7 @@ public class IntArrayBuilder {
     }
 
     public void deleteLastEntry() {
-        if(size > 0)
+        if (size > 0)
             size--;
     }
 
@@ -75,6 +75,5 @@ public class IntArrayBuilder {
         }
         data = Arrays.copyOf(data, newCapacity);
     }
-
 
 }

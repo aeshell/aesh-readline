@@ -19,11 +19,7 @@
  */
 package org.aesh.readline.alias;
 
-import org.aesh.terminal.utils.Config;
-import org.aesh.readline.Prompt;
-import org.aesh.readline.Readline;
-import org.aesh.readline.tty.terminal.TerminalConnection;
-import org.junit.Test;
+import static org.junit.Assert.assertEquals;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -35,7 +31,11 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
 
-import static org.junit.Assert.assertEquals;
+import org.aesh.readline.Prompt;
+import org.aesh.readline.Readline;
+import org.aesh.readline.tty.terminal.TerminalConnection;
+import org.aesh.terminal.utils.Config;
+import org.junit.Test;
 
 /**
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
@@ -50,8 +50,8 @@ public class ReadlineAliasTest {
         TerminalConnection connection = new TerminalConnection(Charset.defaultCharset(), pipedInputStream, out);
         Readline readline = new Readline();
 
-        File aliasFile = Config.isOSPOSIXCompatible() ?
-                new File("src/test/resources/alias1") : new File("src\\test\\resources\\alias1");
+        File aliasFile = Config.isOSPOSIXCompatible() ? new File("src/test/resources/alias1")
+                : new File("src\\test\\resources\\alias1");
         AliasManager aliasManager = new AliasManager(aliasFile, false);
         AliasPreProcessor aliasPreProcessor = new AliasPreProcessor(aliasManager);
         List<Function<String, Optional<String>>> preProcessors = new ArrayList<>();
@@ -65,10 +65,10 @@ public class ReadlineAliasTest {
                     readline.readline(connection, new Prompt(""),
                             t -> assertEquals("grep --color=auto -l", t),
                             null, preProcessors);
-                } , null, preProcessors);
+                }, null, preProcessors);
 
-        outputStream.write(("ll"+Config.getLineSeparator()).getBytes());
-        outputStream.write(("grep -l"+Config.getLineSeparator()).getBytes());
+        outputStream.write(("ll" + Config.getLineSeparator()).getBytes());
+        outputStream.write(("grep -l" + Config.getLineSeparator()).getBytes());
         outputStream.flush();
         connection.openNonBlocking();
         Thread.sleep(200);

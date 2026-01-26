@@ -27,31 +27,31 @@ import java.nio.IntBuffer;
  */
 public interface KeyAction {
 
-  default IntBuffer buffer() {
-    int length = length();
-    IntBuffer buf = IntBuffer.allocate(length);
-    for (int i = 0;i < length;i++) {
-      buf.put(getCodePointAt(i));
+    default IntBuffer buffer() {
+        int length = length();
+        IntBuffer buf = IntBuffer.allocate(length);
+        for (int i = 0; i < length; i++) {
+            buf.put(getCodePointAt(i));
+        }
+        buf.flip();
+        return buf;
     }
-    buf.flip();
-    return buf;
-  }
 
-  int getCodePointAt(int index) throws IndexOutOfBoundsException;
+    int getCodePointAt(int index) throws IndexOutOfBoundsException;
 
-  int length();
+    int length();
 
-  String name();
+    String name();
 
-  default boolean bufferEquals(KeyAction otherAction) {
-      if(length() == otherAction.length()) {
-          for(int i=0; i<length(); i++)
-              if(getCodePointAt(i) != otherAction.getCodePointAt(i))
-                  return false;
+    default boolean bufferEquals(KeyAction otherAction) {
+        if (length() == otherAction.length()) {
+            for (int i = 0; i < length(); i++)
+                if (getCodePointAt(i) != otherAction.getCodePointAt(i))
+                    return false;
 
-          return true;
-      }
-      return false;
-  }
+            return true;
+        }
+        return false;
+    }
 
 }

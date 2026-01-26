@@ -19,6 +19,13 @@
  */
 package org.aesh.terminal.http.netty;
 
+import java.io.InputStream;
+import java.net.URL;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+import org.aesh.terminal.http.HttpTtyConnection;
+
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
@@ -32,12 +39,6 @@ import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
 import io.netty.handler.codec.http.LastHttpContent;
-import org.aesh.terminal.http.HttpTtyConnection;
-
-import java.io.InputStream;
-import java.net.URL;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * Netty channel handler for processing HTTP requests and serving static resources.
@@ -68,7 +69,8 @@ public class HttpRequestHandler extends SimpleChannelInboundHandler<FullHttpRequ
                 send100Continue(ctx);
             }
 
-            HttpResponse response = new DefaultHttpResponse(request.getProtocolVersion(), HttpResponseStatus.INTERNAL_SERVER_ERROR);
+            HttpResponse response = new DefaultHttpResponse(request.getProtocolVersion(),
+                    HttpResponseStatus.INTERNAL_SERVER_ERROR);
 
             String path = request.getUri();
             if ("/".equals(path)) {
@@ -77,7 +79,8 @@ public class HttpRequestHandler extends SimpleChannelInboundHandler<FullHttpRequ
             URL res = HttpTtyConnection.class.getResource("/org/aesh/terminal/http" + path);
             try {
                 if (res != null) {
-                    DefaultFullHttpResponse fullResp = new DefaultFullHttpResponse(request.getProtocolVersion(), HttpResponseStatus.OK);
+                    DefaultFullHttpResponse fullResp = new DefaultFullHttpResponse(request.getProtocolVersion(),
+                            HttpResponseStatus.OK);
                     InputStream in = res.openStream();
                     byte[] tmp = new byte[256];
                     for (int l = 0; l != -1; l = in.read(tmp)) {

@@ -19,9 +19,9 @@
  */
 package org.aesh.terminal.utils;
 
-import org.aesh.terminal.tty.Point;
-
 import java.util.Arrays;
+
+import org.aesh.terminal.tty.Point;
 
 /**
  * Utility class to provide ANSI codes for different operations
@@ -72,60 +72,50 @@ public class ANSI {
     /** ANSI escape code for default background color. */
     public static final String DEFAULT_BG = "\u001B[0;49m";
     /** ANSI escape code to switch to alternate screen buffer. */
-    public static final String ALTERNATE_BUFFER =
-            InfoCmpHelper.getCurrentTranslatedCapability("smcup","\u001B[?1049h");
+    public static final String ALTERNATE_BUFFER = InfoCmpHelper.getCurrentTranslatedCapability("smcup", "\u001B[?1049h");
     /** ANSI escape code to switch back to main screen buffer. */
-    public static final String MAIN_BUFFER =
-            InfoCmpHelper.getCurrentTranslatedCapability("rmcup","\u001B[?1049l");
+    public static final String MAIN_BUFFER = InfoCmpHelper.getCurrentTranslatedCapability("rmcup", "\u001B[?1049l");
     /** ANSI escape code to invert foreground and background colors. */
-    public static final String INVERT_BACKGROUND =
-            InfoCmpHelper.getCurrentTranslatedCapability("smso","\u001B[7m");
+    public static final String INVERT_BACKGROUND = InfoCmpHelper.getCurrentTranslatedCapability("smso", "\u001B[7m");
     /** ANSI escape code to restore normal foreground and background colors. */
-    public static final String NORMAL_BACKGROUND =
-            InfoCmpHelper.getCurrentTranslatedCapability("rmso","\u001B[27m");
+    public static final String NORMAL_BACKGROUND = InfoCmpHelper.getCurrentTranslatedCapability("rmso", "\u001B[27m");
     /** ANSI escape code to reset all text attributes to default. */
     public static final String RESET = "\u001B[0m";
     /** ANSI escape code to enable bold text. */
-    public static final String BOLD =
-            InfoCmpHelper.getCurrentTranslatedCapability("bold","\u001B[0;1m");
+    public static final String BOLD = InfoCmpHelper.getCurrentTranslatedCapability("bold", "\u001B[0;1m");
     /** ANSI escape code to disable bold text. */
     public static final String BOLD_OFF = "\u001B[0;22m";
     /** ANSI escape code to enable underlined text. */
-    public static final String UNDERLINE =
-            InfoCmpHelper.getCurrentTranslatedCapability("smul","\u001B[0;4m");
+    public static final String UNDERLINE = InfoCmpHelper.getCurrentTranslatedCapability("smul", "\u001B[0;4m");
     /** ANSI escape code to disable underlined text. */
-    public static final String UNDERLINE_OFF =
-            InfoCmpHelper.getCurrentTranslatedCapability("rmul","\u001B[0;24m");
+    public static final String UNDERLINE_OFF = InfoCmpHelper.getCurrentTranslatedCapability("rmul", "\u001B[0;24m");
     /** ANSI escape code to enable blinking text. */
-    public static final String BLINK =
-            InfoCmpHelper.getCurrentTranslatedCapability("blink","\u001B[5m");
+    public static final String BLINK = InfoCmpHelper.getCurrentTranslatedCapability("blink", "\u001B[5m");
     /** ANSI escape code to disable blinking text. */
     public static final String BLINK_OFF = "\u001B[25m";
     /** ANSI escape sequence to move cursor to start of line. */
-    public static final int[] CURSOR_START = new int[]{ 27, '[', 'G'};
+    public static final int[] CURSOR_START = new int[] { 27, '[', 'G' };
     /** ANSI escape sequence to erase the entire current line. */
-    public static final int[] ERASE_WHOLE_LINE = new int[]{ 27, '[', '2', 'K'};
+    public static final int[] ERASE_WHOLE_LINE = new int[] { 27, '[', '2', 'K' };
     /** ANSI escape code to query cursor row position. */
     public static final String CURSOR_ROW = "\u001B[6n";
     /** ANSI escape sequence to clear the entire screen. */
-    public static final int[] CLEAR_SCREEN =
-            InfoCmpHelper.getCurrentTranslatedCapability("clear","\u001B[2J").codePoints().toArray();
+    public static final int[] CLEAR_SCREEN = InfoCmpHelper.getCurrentTranslatedCapability("clear", "\u001B[2J").codePoints()
+            .toArray();
     /** ANSI escape code to save current cursor position. */
-    public static final String CURSOR_SAVE =
-            InfoCmpHelper.getCurrentTranslatedCapability("sc","\u001B[s");
+    public static final String CURSOR_SAVE = InfoCmpHelper.getCurrentTranslatedCapability("sc", "\u001B[s");
     /** ANSI escape code to restore previously saved cursor position. */
-    public static final String CURSOR_RESTORE =
-            InfoCmpHelper.getCurrentTranslatedCapability("rc","\u001B[u");
+    public static final String CURSOR_RESTORE = InfoCmpHelper.getCurrentTranslatedCapability("rc", "\u001B[u");
     /** ANSI escape code to hide the cursor. */
     public static final String CURSOR_HIDE = "\u001B[?25l";
     /** ANSI escape code to show the cursor. */
     public static final String CURSOR_SHOW = "\u001B[?25h";
     /** ANSI escape sequence to erase from cursor to end of line. */
-    public static final int[] ERASE_LINE_FROM_CURSOR = new int[]{ 27, '[', 'K'};
+    public static final int[] ERASE_LINE_FROM_CURSOR = new int[] { 27, '[', 'K' };
     /** ANSI escape sequence to move cursor up one line. */
-    public static final int[] MOVE_LINE_UP = new int[]{ 27, '[', '1', 'A'};
+    public static final int[] MOVE_LINE_UP = new int[] { 27, '[', '1', 'A' };
     /** ANSI escape sequence to move cursor down one line. */
-    public static final int[] MOVE_LINE_DOWN = new int[]{ 27, '[', '1', 'B'};
+    public static final int[] MOVE_LINE_DOWN = new int[] { 27, '[', '1', 'B' };
 
     /** ANSI escape code to enable light (reverse video) background mode. */
     public static final String LIGHT_BG = "\u001B[?5h";
@@ -135,7 +125,7 @@ public class ANSI {
     private ANSI() {
     }
 
-       /**
+    /**
      * Return a ansified string based on param
      *
      * @param out string
@@ -152,7 +142,7 @@ public class ANSI {
      * @return ansified string
      */
     public static int[] printAnsi(char... out) {
-        int[] ansi = new int[out.length+2];
+        int[] ansi = new int[out.length + 2];
         ansi[0] = 27;
         ansi[1] = '[';
         int counter = 0;
@@ -160,8 +150,7 @@ public class ANSI {
             if (anOut == '\t') {
                 Arrays.fill(ansi, counter + 2, counter + 2 + TAB, ' ');
                 counter += TAB - 1;
-            }
-            else
+            } else
                 ansi[counter + 2] = anOut;
 
             counter++;
@@ -182,27 +171,26 @@ public class ANSI {
         int row = 0;
 
         //read until we get a 'R'
-        for(int i=0; i < input.length-1; i++) {
-            if(started) {
-                if(input[i] == 82)
+        for (int i = 0; i < input.length - 1; i++) {
+            if (started) {
+                if (input[i] == 82)
                     break;
-                else if(input[i] == 59) // we got a ';' which is the separator
+                else if (input[i] == 59) // we got a ';' which is the separator
                     gotSep = true;
                 else {
-                    if(gotSep) {
+                    if (gotSep) {
                         char c = (char) input[i];
                         col *= 10;
-                        col += ((int)c & 0xF);
-                    }
-                    else {
+                        col += ((int) c & 0xF);
+                    } else {
                         char c = (char) input[i];
                         row *= 10;
-                        row += ((int)c & 0xF);
+                        row += ((int) c & 0xF);
                     }
                 }
             }
             //search for the beginning which starts with esc,[
-            else if(input[i] == 27 && i < input.length-1 && input[i+1] == 91) {
+            else if (input[i] == 27 && i < input.length - 1 && input[i + 1] == 91) {
                 started = true;
                 i++;
             }
@@ -252,21 +240,20 @@ public class ANSI {
     }
 
     private static int[] moveInDirection(int value, char direction) {
-        if(value < 10) {
+        if (value < 10) {
             int[] out = new int[4];
             out[0] = 27; // esc
             out[1] = '['; // [
             out[2] = 48 + value;
             out[3] = direction;
             return out;
-        }
-        else {
+        } else {
             int[] asciiColumn = intToAsciiInts(value);
-            int[] out = new int[3+asciiColumn.length];
+            int[] out = new int[3 + asciiColumn.length];
             out[0] = 27; // esc
             out[1] = '['; // [
             System.arraycopy(asciiColumn, 0, out, 2, asciiColumn.length);
-            out[out.length-1] = direction;
+            out[out.length - 1] = direction;
             return out;
         }
     }
@@ -281,14 +268,13 @@ public class ANSI {
         int length = getAsciiSize(value);
         int[] asciiValue = new int[length];
 
-        if(length == 1) {
-            asciiValue[0] = 48+value;
-        }
-        else {
-            while(length > 0) {
+        if (length == 1) {
+            asciiValue[0] = 48 + value;
+        } else {
+            while (length > 0) {
                 length--;
                 int num = value % 10;
-                asciiValue[length] = 48+num;
+                asciiValue[length] = 48 + num;
                 value = value / 10;
             }
         }
@@ -296,14 +282,14 @@ public class ANSI {
     }
 
     private static int getAsciiSize(int value) {
-        if(value < 10)
+        if (value < 10)
             return 1;
         //very simple way of getting the length
-        if(value > 9 && value < 99)
+        if (value > 9 && value < 99)
             return 2;
-        else if(value > 99 && value < 999)
+        else if (value > 99 && value < 999)
             return 3;
-        else if(value > 999 && value < 9999)
+        else if (value > 999 && value < 9999)
             return 4;
         else
             return 5;

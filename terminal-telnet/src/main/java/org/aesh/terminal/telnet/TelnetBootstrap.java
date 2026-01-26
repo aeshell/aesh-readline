@@ -19,11 +19,11 @@
  */
 package org.aesh.terminal.telnet;
 
-import org.aesh.terminal.utils.Helper;
-
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+
+import org.aesh.terminal.utils.Helper;
 
 /**
  * Abstract base class for bootstrapping a Telnet server.
@@ -33,85 +33,85 @@ import java.util.function.Supplier;
  */
 public abstract class TelnetBootstrap {
 
-  private String host = "localhost";
-  private int port = 4000;
+    private String host = "localhost";
+    private int port = 4000;
 
-  /**
-   * Returns the host address the server will bind to.
-   *
-   * @return the host address
-   */
-  public String getHost() {
-    return host;
-  }
+    /**
+     * Returns the host address the server will bind to.
+     *
+     * @return the host address
+     */
+    public String getHost() {
+        return host;
+    }
 
-  /**
-   * Sets the host address the server will bind to.
-   *
-   * @param host the host address
-   * @return this bootstrap instance for method chaining
-   */
-  public TelnetBootstrap setHost(String host) {
-    this.host = host;
-    return this;
-  }
+    /**
+     * Sets the host address the server will bind to.
+     *
+     * @param host the host address
+     * @return this bootstrap instance for method chaining
+     */
+    public TelnetBootstrap setHost(String host) {
+        this.host = host;
+        return this;
+    }
 
-  /**
-   * Returns the port number the server will listen on.
-   *
-   * @return the port number
-   */
-  public int getPort() {
-    return port;
-  }
+    /**
+     * Returns the port number the server will listen on.
+     *
+     * @return the port number
+     */
+    public int getPort() {
+        return port;
+    }
 
-  /**
-   * Sets the port number the server will listen on.
-   *
-   * @param port the port number
-   * @return this bootstrap instance for method chaining
-   */
-  public TelnetBootstrap setPort(int port) {
-    this.port = port;
-    return this;
-  }
+    /**
+     * Sets the port number the server will listen on.
+     *
+     * @param port the port number
+     * @return this bootstrap instance for method chaining
+     */
+    public TelnetBootstrap setPort(int port) {
+        this.port = port;
+        return this;
+    }
 
-  /**
-   * Starts the telnet server asynchronously.
-   *
-   * @param factory the factory to create telnet handlers for each connection
-   * @return a future that completes when the server has started
-   */
-  public CompletableFuture<?> start(Supplier<TelnetHandler> factory) {
-    CompletableFuture<?> fut = new CompletableFuture<>();
-    start(factory, Helper.startedHandler(fut));
-    return fut;
-  }
+    /**
+     * Starts the telnet server asynchronously.
+     *
+     * @param factory the factory to create telnet handlers for each connection
+     * @return a future that completes when the server has started
+     */
+    public CompletableFuture<?> start(Supplier<TelnetHandler> factory) {
+        CompletableFuture<?> fut = new CompletableFuture<>();
+        start(factory, Helper.startedHandler(fut));
+        return fut;
+    }
 
-  /**
-   * Stops the telnet server asynchronously.
-   *
-   * @return a future that completes when the server has stopped
-   */
-  public CompletableFuture<?> stop() {
-    CompletableFuture<?> fut = new CompletableFuture<>();
-    stop(Helper.stoppedHandler(fut));
-    return fut;
-  }
+    /**
+     * Stops the telnet server asynchronously.
+     *
+     * @return a future that completes when the server has stopped
+     */
+    public CompletableFuture<?> stop() {
+        CompletableFuture<?> fut = new CompletableFuture<>();
+        stop(Helper.stoppedHandler(fut));
+        return fut;
+    }
 
-  /**
-   * Start the telnet server
-   *
-   * @param factory the telnet handler factory
-   * @param doneHandler the done handler
-   */
-  public abstract void start(Supplier<TelnetHandler> factory, Consumer<Throwable> doneHandler);
+    /**
+     * Start the telnet server
+     *
+     * @param factory the telnet handler factory
+     * @param doneHandler the done handler
+     */
+    public abstract void start(Supplier<TelnetHandler> factory, Consumer<Throwable> doneHandler);
 
-  /**
-   * Stops the telnet server with a callback handler.
-   *
-   * @param doneHandler the handler called when stop completes (with null on success, or an exception on failure)
-   */
-  public abstract void stop(Consumer<Throwable> doneHandler);
+    /**
+     * Stops the telnet server with a callback handler.
+     *
+     * @param doneHandler the handler called when stop completes (with null on success, or an exception on failure)
+     */
+    public abstract void stop(Consumer<Throwable> doneHandler);
 
 }

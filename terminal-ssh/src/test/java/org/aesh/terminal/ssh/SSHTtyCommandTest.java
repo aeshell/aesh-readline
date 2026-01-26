@@ -1,5 +1,13 @@
 package org.aesh.terminal.ssh;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+
+import java.io.ByteArrayOutputStream;
+import java.io.OutputStream;
+import java.util.Arrays;
+import java.util.concurrent.TimeUnit;
+
 import org.aesh.terminal.ssh.netty.NettySshTtyBootstrap;
 import org.apache.sshd.client.SshClient;
 import org.apache.sshd.client.channel.ChannelShell;
@@ -9,14 +17,6 @@ import org.apache.sshd.common.util.io.output.NoCloseOutputStream;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-
-import java.io.ByteArrayOutputStream;
-import java.io.OutputStream;
-import java.util.Arrays;
-import java.util.concurrent.TimeUnit;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 
 @RunWith(Parameterized.class)
 public class SSHTtyCommandTest {
@@ -28,7 +28,6 @@ public class SSHTtyCommandTest {
     public static Object[][] data() {
         return new Object[REPETITIONS][0];
     }
-
 
     @Test
     public void runCommandViaSSHTest() {
@@ -55,8 +54,7 @@ public class SSHTtyCommandTest {
                 session.addPasswordIdentity("password");
                 session.auth().verify(TIMEOUT_SECS, TimeUnit.SECONDS);
                 try (
-                        ByteArrayOutputStream outputStream = new ByteArrayOutputStream()
-                ) {
+                        ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
                     try (ChannelShell channel = session.createShellChannel()) {
                         channel.setOut(outputStream);
 
@@ -77,8 +75,7 @@ public class SSHTtyCommandTest {
                             pipedIn.flush();
                             channel.waitFor(Arrays.asList(
                                     ClientChannelEvent.STDOUT_DATA,
-                                    ClientChannelEvent.EOF
-                            ), TimeUnit.SECONDS.toMillis(2L));
+                                    ClientChannelEvent.EOF), TimeUnit.SECONDS.toMillis(2L));
 
                             result = outputStream.toString();
                             expected.append("echo ").append(expectedRes).append("\n").append(expectedRes).append("\n");

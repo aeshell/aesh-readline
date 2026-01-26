@@ -19,21 +19,21 @@
  */
 package org.aesh.readline;
 
+import static org.junit.Assert.assertEquals;
+
+import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.List;
+
 import org.aesh.readline.completion.Completion;
 import org.aesh.readline.cursor.Line;
 import org.aesh.readline.editing.EditModeBuilder;
 import org.aesh.readline.terminal.Key;
 import org.aesh.readline.tty.terminal.TestConnection;
+import org.aesh.terminal.tty.Size;
 import org.aesh.terminal.utils.Config;
 import org.junit.Ignore;
 import org.junit.Test;
-
-import java.util.ArrayList;
-import java.util.List;
-import org.aesh.terminal.tty.Size;
-
-import static org.junit.Assert.assertEquals;
 
 /**
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
@@ -95,7 +95,7 @@ public class ReadlineTest {
     public void testEmptyPrompt() {
         TestConnection term = new TestConnection(new Prompt(""));
         term.read("foo");
-        term.getSizeHandler().accept(new Size(80,80));
+        term.getSizeHandler().accept(new Size(80, 80));
 
         assertEquals("foofoo", term.getOutputBuffer());
     }
@@ -107,7 +107,7 @@ public class ReadlineTest {
         term.clearOutputBuffer();
         term.read(Key.ENTER);
         term.assertLine(null);
-        assertEquals(Config.getLineSeparator()+"> ", term.getOutputBuffer());
+        assertEquals(Config.getLineSeparator() + "> ", term.getOutputBuffer());
         term.read("bar\n");
         term.assertLine("foo bar");
     }
@@ -119,9 +119,9 @@ public class ReadlineTest {
         term.clearOutputBuffer();
         term.read(Key.ENTER);
         term.assertLine(null);
-        assertEquals(Config.getLineSeparator()+"> ", term.getOutputBuffer());
+        assertEquals(Config.getLineSeparator() + "> ", term.getOutputBuffer());
         term.read("bar\"\n");
-        term.assertLine("\"foo "+Config.getLineSeparator()+"bar\"");
+        term.assertLine("\"foo " + Config.getLineSeparator() + "bar\"");
     }
 
     @Test
@@ -132,7 +132,7 @@ public class ReadlineTest {
         term.read(Key.ENTER);
         term.assertBuffer("foo ");
         term.assertLine(null);
-        assertEquals(Config.getLineSeparator()+"> ", term.getOutputBuffer());
+        assertEquals(Config.getLineSeparator() + "> ", term.getOutputBuffer());
         term.read("bar");
         term.read(Key.BACKSPACE);
         term.read(Key.BACKSPACE);
@@ -146,9 +146,9 @@ public class ReadlineTest {
     public void testSingleCompleteResult() {
         List<Completion> completions = new ArrayList<>();
         completions.add(completeOperation -> {
-            if(completeOperation.getBuffer().equals("f"))
+            if (completeOperation.getBuffer().equals("f"))
                 completeOperation.addCompletionCandidate("foo");
-            else if(completeOperation.getBuffer().equals("b"))
+            else if (completeOperation.getBuffer().equals("b"))
                 completeOperation.addCompletionCandidate("bar");
         });
 
@@ -170,15 +170,13 @@ public class ReadlineTest {
     public void testMultipleCompleteResults() {
         List<Completion> completions = new ArrayList<>();
         completions.add(completeOperation -> {
-            if(completeOperation.getBuffer().equals("f")) {
+            if (completeOperation.getBuffer().equals("f")) {
                 completeOperation.addCompletionCandidate("foo");
                 completeOperation.addCompletionCandidate("foo bar");
-            }
-            else if(completeOperation.getBuffer().equals("foo")) {
+            } else if (completeOperation.getBuffer().equals("foo")) {
                 completeOperation.addCompletionCandidate("foo");
                 completeOperation.addCompletionCandidate("foo bar");
-            }
-            else if(completeOperation.getBuffer().equals("b")) {
+            } else if (completeOperation.getBuffer().equals("b")) {
                 completeOperation.addCompletionCandidate("bar bar");
                 completeOperation.addCompletionCandidate("bar baar");
             }
@@ -191,8 +189,8 @@ public class ReadlineTest {
         term.assertBuffer("foo");
         term.clearOutputBuffer();
         term.read(Key.CTRL_I);
-        assertEquals(Config.getLineSeparator()+"foo  foo bar  "+
-                Config.getLineSeparator()+term.getPrompt()+"foo", term.getOutputBuffer());
+        assertEquals(Config.getLineSeparator() + "foo  foo bar  " +
+                Config.getLineSeparator() + term.getPrompt() + "foo", term.getOutputBuffer());
         term.read(Key.ENTER);
         term.readline(completions);
         term.read("b");
@@ -204,25 +202,21 @@ public class ReadlineTest {
     public void testCompleteResultsMultipleLines() {
         List<Completion> completions = new ArrayList<>();
         completions.add(completeOperation -> {
-            if(completeOperation.getBuffer().equals("ff")) {
+            if (completeOperation.getBuffer().equals("ff")) {
                 completeOperation.addCompletionCandidate("ffoo");
-            }
-            else if(completeOperation.getBuffer().endsWith("f")) {
-                completeOperation.addCompletionCandidate(completeOperation.getBuffer()+"oo");
-            }
-            else if(completeOperation.getBuffer().endsWith("foo")) {
-                completeOperation.addCompletionCandidate(completeOperation.getBuffer()+"foo");
-                completeOperation.addCompletionCandidate(completeOperation.getBuffer()+"foo bar");
-            }
-            else if(completeOperation.getBuffer().endsWith("b")) {
-                completeOperation.addCompletionCandidate(completeOperation.getBuffer()+"bar bar");
-                completeOperation.addCompletionCandidate(completeOperation.getBuffer()+"bar baar");
+            } else if (completeOperation.getBuffer().endsWith("f")) {
+                completeOperation.addCompletionCandidate(completeOperation.getBuffer() + "oo");
+            } else if (completeOperation.getBuffer().endsWith("foo")) {
+                completeOperation.addCompletionCandidate(completeOperation.getBuffer() + "foo");
+                completeOperation.addCompletionCandidate(completeOperation.getBuffer() + "foo bar");
+            } else if (completeOperation.getBuffer().endsWith("b")) {
+                completeOperation.addCompletionCandidate(completeOperation.getBuffer() + "bar bar");
+                completeOperation.addCompletionCandidate(completeOperation.getBuffer() + "bar baar");
             }
         });
 
         Size termSize = new Size(10, 10);
-        TestConnection term =
-                new TestConnection(EditModeBuilder.builder().create(), completions, termSize);
+        TestConnection term = new TestConnection(EditModeBuilder.builder().create(), completions, termSize);
 
         term.read("ff");
         term.read(Key.CTRL_I);
@@ -238,18 +232,16 @@ public class ReadlineTest {
     public void testCompletionDoNotMatchBuffer() {
         List<Completion> completions = new ArrayList<>();
         completions.add(completeOperation -> {
-            if(completeOperation.getBuffer().endsWith("f")) {
+            if (completeOperation.getBuffer().endsWith("f")) {
                 completeOperation.addCompletionCandidate("foo");
                 completeOperation.setOffset(2);
-            }
-            else if(completeOperation.getBuffer().endsWith("foo")) {
+            } else if (completeOperation.getBuffer().endsWith("foo")) {
                 completeOperation.addCompletionCandidate("foo bar");
-                completeOperation.setOffset(completeOperation.getCursor()-3);
-            }
-            else if(completeOperation.getBuffer().endsWith("b")) {
+                completeOperation.setOffset(completeOperation.getCursor() - 3);
+            } else if (completeOperation.getBuffer().endsWith("b")) {
                 completeOperation.addCompletionCandidate("bar bar");
                 completeOperation.addCompletionCandidate("bar baar");
-                completeOperation.setOffset(completeOperation.getCursor()-1);
+                completeOperation.setOffset(completeOperation.getCursor() - 1);
             }
         });
 
@@ -274,18 +266,16 @@ public class ReadlineTest {
     public void testCompletionOnMultiline() {
         List<Completion> completions = new ArrayList<>();
         completions.add(completeOperation -> {
-            if(completeOperation.getBuffer().endsWith("f")) {
+            if (completeOperation.getBuffer().endsWith("f")) {
                 completeOperation.addCompletionCandidate("foo");
-                completeOperation.setOffset(completeOperation.getCursor()-1);
-            }
-            else if(completeOperation.getBuffer().endsWith("foo")) {
+                completeOperation.setOffset(completeOperation.getCursor() - 1);
+            } else if (completeOperation.getBuffer().endsWith("foo")) {
                 completeOperation.addCompletionCandidate("foo bar");
-                completeOperation.setOffset(completeOperation.getCursor()-3);
-            }
-            else if(completeOperation.getBuffer().endsWith("b")) {
+                completeOperation.setOffset(completeOperation.getCursor() - 3);
+            } else if (completeOperation.getBuffer().endsWith("b")) {
                 completeOperation.addCompletionCandidate("bar bar");
                 completeOperation.addCompletionCandidate("bar baar");
-                completeOperation.setOffset(completeOperation.getCursor()-1);
+                completeOperation.setOffset(completeOperation.getCursor() - 1);
             }
         });
 
@@ -313,8 +303,10 @@ public class ReadlineTest {
         term.read("12345");
         int termWidth = term.size().getWidth();
         Buffer buffer = new Buffer();
-        buffer.insert((c) -> {}, term.getOutputBuffer(), term.getOutputBuffer().length());
-        buffer.move((c) -> {}, -3, termWidth);
+        buffer.insert((c) -> {
+        }, term.getOutputBuffer(), term.getOutputBuffer().length());
+        buffer.move((c) -> {
+        }, -3, termWidth);
         Line line = new Line(buffer, term, termWidth);
 
         String s = line.getLineFromCursor();

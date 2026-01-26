@@ -19,11 +19,11 @@
  */
 package org.aesh.terminal;
 
-import org.aesh.terminal.tty.Signal;
-
 import java.util.ArrayDeque;
 import java.util.Queue;
 import java.util.function.Consumer;
+
+import org.aesh.terminal.tty.Signal;
 
 /**
  * Decodes terminal input events, separating signals (INT, SUSP, EOF) from regular input.
@@ -54,9 +54,15 @@ public class EventDecoder implements Consumer<int[]> {
     }
 
     public EventDecoder(Attributes attributes) {
-        this.intr = attributes.getControlChar(Attributes.ControlChar.VINTR) > 0 ? attributes.getControlChar(Attributes.ControlChar.VINTR) : 3;
-        this.eof = attributes.getControlChar(Attributes.ControlChar.VEOF) > 0 ? attributes.getControlChar(Attributes.ControlChar.VEOF) : 4;
-        this.susp = attributes.getControlChar(Attributes.ControlChar.VSUSP) > 0 ? attributes.getControlChar(Attributes.ControlChar.VSUSP) : 26;
+        this.intr = attributes.getControlChar(Attributes.ControlChar.VINTR) > 0
+                ? attributes.getControlChar(Attributes.ControlChar.VINTR)
+                : 3;
+        this.eof = attributes.getControlChar(Attributes.ControlChar.VEOF) > 0
+                ? attributes.getControlChar(Attributes.ControlChar.VEOF)
+                : 4;
+        this.susp = attributes.getControlChar(Attributes.ControlChar.VSUSP) > 0
+                ? attributes.getControlChar(Attributes.ControlChar.VSUSP)
+                : 26;
     }
 
     public Consumer<Signal> getSignalHandler() {
@@ -74,12 +80,12 @@ public class EventDecoder implements Consumer<int[]> {
     public void setInputHandler(Consumer<int[]> inputHandler) {
         this.inputHandler = inputHandler;
         checkQueue();
-     }
+    }
 
-     private void checkQueue() {
-         while(inputHandler != null && !inputQueue.isEmpty())
-             inputHandler.accept(inputQueue.poll());
-     }
+    private void checkQueue() {
+        while (inputHandler != null && !inputQueue.isEmpty())
+            inputHandler.accept(inputQueue.poll());
+    }
 
     @Override
     public void accept(int[] input) {
@@ -116,7 +122,7 @@ public class EventDecoder implements Consumer<int[]> {
             }
         }
         if (input.length > 0) {
-            if(inputHandler != null)
+            if (inputHandler != null)
                 inputHandler.accept(input);
             else
                 inputQueue.add(input);

@@ -19,12 +19,12 @@
  */
 package org.aesh.readline.terminal.impl;
 
-import org.aesh.terminal.Attributes;
-
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+
+import org.aesh.terminal.Attributes;
 import org.aesh.terminal.tty.Size;
 
 public interface Pty extends Closeable {

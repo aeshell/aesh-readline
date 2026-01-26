@@ -19,11 +19,6 @@
  */
 package org.aesh.readline.terminal.impl;
 
-import org.aesh.terminal.Attributes;
-import org.aesh.terminal.utils.ExecHelper;
-import org.aesh.terminal.utils.OSUtils;
-import org.aesh.readline.util.LoggerUtil;
-
 import java.io.FileDescriptor;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -38,8 +33,12 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import org.aesh.terminal.tty.Size;
 
+import org.aesh.readline.util.LoggerUtil;
+import org.aesh.terminal.Attributes;
+import org.aesh.terminal.tty.Size;
+import org.aesh.terminal.utils.ExecHelper;
+import org.aesh.terminal.utils.OSUtils;
 
 public class CygwinPty implements Pty {
 
@@ -132,11 +131,9 @@ public class CygwinPty implements Pty {
                 commands.add(cchar.name().toLowerCase().substring(1));
                 if (cchar == Attributes.ControlChar.VMIN || cchar == Attributes.ControlChar.VTIME) {
                     commands.add(Integer.toBinaryString(v));
-                }
-                else if (v == 0) {
+                } else if (v == 0) {
                     commands.add(undef);
-                }
-                else {
+                } else {
                     if (v >= 128) {
                         v -= 128;
                         str += "M-";

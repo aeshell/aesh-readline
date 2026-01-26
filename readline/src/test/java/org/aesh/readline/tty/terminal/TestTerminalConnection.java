@@ -19,13 +19,8 @@
  */
 package org.aesh.readline.tty.terminal;
 
-import org.aesh.terminal.Attributes;
-import org.aesh.terminal.utils.Config;
-import org.aesh.readline.Prompt;
-import org.aesh.readline.Readline;
-import org.aesh.readline.TestTerminal;
-import org.junit.Assert;
-import org.junit.Test;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -33,10 +28,15 @@ import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
-import org.aesh.terminal.tty.Signal;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
+import org.aesh.readline.Prompt;
+import org.aesh.readline.Readline;
+import org.aesh.readline.TestTerminal;
+import org.aesh.terminal.Attributes;
+import org.aesh.terminal.tty.Signal;
+import org.aesh.terminal.utils.Config;
+import org.junit.Assert;
+import org.junit.Test;
 
 /**
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
@@ -49,7 +49,8 @@ public class TestTerminalConnection {
         PipedInputStream pipedInputStream = new PipedInputStream(outputStream);
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
 
-        TerminalConnection connection = new TerminalConnection(Charset.defaultCharset(), pipedInputStream, byteArrayOutputStream);
+        TerminalConnection connection = new TerminalConnection(Charset.defaultCharset(), pipedInputStream,
+                byteArrayOutputStream);
 
         final ArrayList<int[]> result = new ArrayList<>();
         connection.setStdinHandler(result::add);
@@ -60,13 +61,13 @@ public class TestTerminalConnection {
         Thread.sleep(150);
         connection.openBlocking();
 
-        assertArrayEquals(result.get(0), new int[] {70,79,79});
+        assertArrayEquals(result.get(0), new int[] { 70, 79, 79 });
     }
 
     @Test
     public void testTestConnection() {
         TestTerminal testConnection = new TestTerminal();
-        testConnection.read( read -> {
+        testConnection.read(read -> {
             assertEquals("foo", read);
         });
 
@@ -97,7 +98,8 @@ public class TestTerminalConnection {
         connection.setAttributes(attributes);
 
         Readline readline = new Readline();
-        readline.readline(connection, new Prompt(""), s -> {  });
+        readline.readline(connection, new Prompt(""), s -> {
+        });
 
         connection.openNonBlocking();
         outputStream.write(("FOO").getBytes());
@@ -106,7 +108,7 @@ public class TestTerminalConnection {
         connection.getTerminal().raise(Signal.INT);
         connection.close();
 
-        Assert.assertEquals("FOO^C"+ Config.getLineSeparator(), new String(out.toByteArray()));
+        Assert.assertEquals("FOO^C" + Config.getLineSeparator(), new String(out.toByteArray()));
     }
 
     @Test
@@ -118,7 +120,8 @@ public class TestTerminalConnection {
         TerminalConnection connection = new TerminalConnection(Charset.defaultCharset(), pipedInputStream, out);
 
         Readline readline = new Readline();
-        readline.readline(connection, new Prompt(""), s -> {  });
+        readline.readline(connection, new Prompt(""), s -> {
+        });
 
         connection.openNonBlocking();
         outputStream.write(("FOO").getBytes());
@@ -127,10 +130,8 @@ public class TestTerminalConnection {
         connection.getTerminal().raise(Signal.INT);
         connection.close();
 
-        Assert.assertEquals(new String(out.toByteArray()), "FOO"+ Config.getLineSeparator());
+        Assert.assertEquals(new String(out.toByteArray()), "FOO" + Config.getLineSeparator());
     }
-
-
 
     @Test
     public void testCustomSignal() throws IOException, InterruptedException {
@@ -139,8 +140,8 @@ public class TestTerminalConnection {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
 
         TerminalConnection connection = new TerminalConnection(Charset.defaultCharset(), pipedInputStream, out);
-        connection.setSignalHandler( signal -> {
-            if(signal == Signal.INT) {
+        connection.setSignalHandler(signal -> {
+            if (signal == Signal.INT) {
                 connection.write("BAR");
                 connection.stdoutHandler().accept(Config.CR);
                 connection.close();
@@ -148,21 +149,23 @@ public class TestTerminalConnection {
         });
 
         Readline readline = new Readline();
-        readline.readline(connection, new Prompt(""), s -> {  });
+        readline.readline(connection, new Prompt(""), s -> {
+        });
 
         connection.openNonBlocking();
-        outputStream.write(("GAH"+Config.getLineSeparator()).getBytes());
+        outputStream.write(("GAH" + Config.getLineSeparator()).getBytes());
         outputStream.flush();
         Thread.sleep(250);
-        assertEquals(new String(out.toByteArray()), "GAH"+Config.getLineSeparator());
+        assertEquals(new String(out.toByteArray()), "GAH" + Config.getLineSeparator());
 
-        readline.readline(connection, new Prompt(""), s -> {  });
+        readline.readline(connection, new Prompt(""), s -> {
+        });
         outputStream.write(("FOO").getBytes());
         outputStream.flush();
         connection.getTerminal().raise(Signal.INT);
         Thread.sleep(250);
 
-        assertEquals(new String(out.toByteArray()), "GAH"+Config.getLineSeparator()+"FOOBAR"+ Config.getLineSeparator());
+        assertEquals(new String(out.toByteArray()), "GAH" + Config.getLineSeparator() + "FOOBAR" + Config.getLineSeparator());
     }
 
 }

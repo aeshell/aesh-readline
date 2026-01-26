@@ -19,6 +19,9 @@
  */
 package org.aesh.readline;
 
+import java.io.File;
+import java.util.function.Consumer;
+
 import org.aesh.readline.completion.CompletionHandler;
 import org.aesh.readline.completion.SimpleCompletionHandler;
 import org.aesh.readline.editing.EditMode;
@@ -26,9 +29,6 @@ import org.aesh.readline.editing.EditModeBuilder;
 import org.aesh.readline.history.FileHistory;
 import org.aesh.readline.history.History;
 import org.aesh.readline.history.InMemoryHistory;
-
-import java.io.File;
-import java.util.function.Consumer;
 
 /**
  * Builder for creating and configuring Readline instances.
@@ -72,8 +72,8 @@ public class ReadlineBuilder {
         return apply(c -> c.historySize = historySize);
     }
 
-     public ReadlineBuilder historyFile(String historyFile) {
-         return apply(c -> c.historyFile = historyFile);
+    public ReadlineBuilder historyFile(String historyFile) {
+        return apply(c -> c.historyFile = historyFile);
     }
 
     public ReadlineBuilder completionHandler(CompletionHandler completionHandler) {
@@ -81,20 +81,19 @@ public class ReadlineBuilder {
     }
 
     public Readline build() {
-        if(editMode == null)
+        if (editMode == null)
             editMode = EditModeBuilder.builder().create();
-        if(!enableHistory) {
+        if (!enableHistory) {
             history = null;
-        }
-        else if(history == null) {
-            if(historyFile == null || !new File(historyFile).isFile())
+        } else if (history == null) {
+            if (historyFile == null || !new File(historyFile).isFile())
                 history = new InMemoryHistory(historySize);
             else
                 history = new FileHistory(new File(historyFile), historySize);
         }
-        if(completionHandler == null)
+        if (completionHandler == null)
             completionHandler = new SimpleCompletionHandler();
 
-       return new Readline(editMode, history, completionHandler);
+        return new Readline(editMode, history, completionHandler);
     }
 }

@@ -19,11 +19,11 @@
  */
 package org.aesh.readline.action.mappings;
 
+import java.util.Arrays;
+
 import org.aesh.readline.ConsoleBuffer;
 import org.aesh.readline.InputProcessor;
 import org.aesh.readline.action.Action;
-
-import java.util.Arrays;
 
 /**
  * Action that deletes the character before the cursor (backspace).
@@ -38,8 +38,8 @@ public class DeletePrevChar implements Action {
 
     @Override
     public void accept(InputProcessor inputProcessor) {
-        if(inputProcessor.buffer().buffer().isMasking()) {
-            if(inputProcessor.buffer().buffer().prompt().getMask() == 0) {
+        if (inputProcessor.buffer().buffer().isMasking()) {
+            if (inputProcessor.buffer().buffer().prompt().getMask() == 0) {
                 deleteWithMaskEnabled(inputProcessor.buffer());
                 return;
             }
@@ -50,19 +50,19 @@ public class DeletePrevChar implements Action {
     private void deleteNoMasking(ConsoleBuffer consoleBuffer) {
         //int cursor = consoleBuffer.buffer().multiCursor();
         int cursor = consoleBuffer.buffer().cursor();
-        if(cursor > 0) {
+        if (cursor > 0) {
             int lineSize = consoleBuffer.buffer().length();
-            if(cursor > lineSize)
+            if (cursor > lineSize)
                 cursor = lineSize;
 
             consoleBuffer.addActionToUndoStack();
-            consoleBuffer.pasteManager().addText(Arrays.copyOfRange(consoleBuffer.buffer().multiLine(), cursor-1, cursor));
+            consoleBuffer.pasteManager().addText(Arrays.copyOfRange(consoleBuffer.buffer().multiLine(), cursor - 1, cursor));
             consoleBuffer.delete(-1);
         }
     }
 
     private void deleteWithMaskEnabled(ConsoleBuffer consoleBuffer) {
-        if(consoleBuffer.buffer().length() > 0) {
+        if (consoleBuffer.buffer().length() > 0) {
             consoleBuffer.delete(-1);
             consoleBuffer.moveCursor(consoleBuffer.buffer().length());
         }

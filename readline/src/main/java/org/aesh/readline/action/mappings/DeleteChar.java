@@ -19,11 +19,11 @@
  */
 package org.aesh.readline.action.mappings;
 
+import java.util.Arrays;
+
 import org.aesh.readline.ConsoleBuffer;
 import org.aesh.readline.InputProcessor;
 import org.aesh.readline.action.Action;
-
-import java.util.Arrays;
 
 /**
  * Action that deletes the character at the cursor position.
@@ -48,9 +48,9 @@ public class DeleteChar implements Action {
     private void deleteNoMasking(ConsoleBuffer consoleBuffer) {
         int cursor = consoleBuffer.buffer().cursor();
         int lineSize = consoleBuffer.buffer().length();
-        if(cursor < lineSize) {
+        if (cursor < lineSize) {
             consoleBuffer.addActionToUndoStack();
-            consoleBuffer.pasteManager().addText(Arrays.copyOfRange(consoleBuffer.buffer().multiLine(), cursor, cursor+1));
+            consoleBuffer.pasteManager().addText(Arrays.copyOfRange(consoleBuffer.buffer().multiLine(), cursor, cursor + 1));
             consoleBuffer.delete(1);
         }
     }

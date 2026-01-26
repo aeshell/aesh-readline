@@ -35,7 +35,7 @@ public final class ExecHelper {
     private ExecHelper() {
     }
 
-     public static String waitAndCapture(Process p) throws IOException, InterruptedException {
+    public static String waitAndCapture(Process p) throws IOException, InterruptedException {
         ByteArrayOutputStream bout = new ByteArrayOutputStream();
         InputStream in = null;
         InputStream err = null;
@@ -52,8 +52,7 @@ public final class ExecHelper {
             }
             out = p.getOutputStream();
             p.waitFor();
-        }
-        finally {
+        } finally {
             close(in, out, err);
         }
 
@@ -72,4 +71,3 @@ public final class ExecHelper {
         }
     }
 }
-

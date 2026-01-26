@@ -19,10 +19,10 @@
  */
 package org.aesh.readline;
 
+import java.util.EnumMap;
+
 import org.aesh.readline.editing.EditMode;
 import org.aesh.terminal.Connection;
-
-import java.util.EnumMap;
 
 /**
  * InputProcessor is used by {@link org.aesh.readline.Readline} to process the input.
@@ -37,6 +37,7 @@ public interface InputProcessor {
 
     /**
      * The value thats returned after a readline
+     *
      * @return value
      */
     String returnValue();
@@ -48,6 +49,7 @@ public interface InputProcessor {
 
     /**
      * Specify the return value
+     *
      * @param value return value
      */
     void setReturnValue(int[] value);
@@ -59,6 +61,7 @@ public interface InputProcessor {
 
     /**
      * Update the current edit mode
+     *
      * @param mode edit mode
      */
     void setEditMode(EditMode mode);

@@ -41,23 +41,20 @@ public class YankAfter extends ChangeAction {
     @Override
     public void accept(InputProcessor inputProcessor) {
         int[] pasteBuffer = inputProcessor.buffer().pasteManager().get(0);
-        if(pasteBuffer != null) {
+        if (pasteBuffer != null) {
 
-            if(inputProcessor.buffer().buffer().cursor() <=
-                    inputProcessor.buffer().buffer().length()) {
+            if (inputProcessor.buffer().buffer().cursor() <= inputProcessor.buffer().buffer().length()) {
                 inputProcessor.buffer().addActionToUndoStack();
                 //if we're at the end, we need to do some magic in vi-mode
-                if(inputProcessor.editMode().mode() == EditMode.Mode.VI &&
+                if (inputProcessor.editMode().mode() == EditMode.Mode.VI &&
                         inputProcessor.editMode().status() == EditMode.Status.COMMAND &&
-                        inputProcessor.buffer().buffer().cursor() ==
-                        inputProcessor.buffer().buffer().length()-1) {
+                        inputProcessor.buffer().buffer().cursor() == inputProcessor.buffer().buffer().length() - 1) {
                     inputProcessor.editMode().setStatus(EditMode.Status.EDIT);
                     inputProcessor.buffer().moveCursor(1);
                     inputProcessor.buffer().insert(pasteBuffer);
                     inputProcessor.buffer().moveCursor(-1);
                     inputProcessor.editMode().setStatus(EditMode.Status.COMMAND);
-                }
-                else {
+                } else {
                     inputProcessor.buffer().moveCursor(1);
                     inputProcessor.buffer().insert(pasteBuffer);
                     inputProcessor.buffer().moveCursor(-1);

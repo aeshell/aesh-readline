@@ -19,11 +19,11 @@
  */
 package org.aesh.terminal.ssh;
 
+import java.util.Map;
+
 import org.aesh.terminal.Attributes;
 import org.apache.sshd.common.channel.PtyMode;
 import org.apache.sshd.server.Environment;
-
-import java.util.Map;
 
 /**
  * Builder for creating terminal Attributes from an SSH environment.
@@ -150,6 +150,5 @@ public class SSHAttributesBuilder {
 
         return attr;
     }
-
 
 }

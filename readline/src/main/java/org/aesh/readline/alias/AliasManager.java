@@ -19,10 +19,6 @@
  */
 package org.aesh.readline.alias;
 
-import org.aesh.terminal.utils.Config;
-import org.aesh.readline.util.Parser;
-import org.aesh.readline.util.LoggerUtil;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -38,6 +34,10 @@ import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
+import org.aesh.readline.util.LoggerUtil;
+import org.aesh.readline.util.Parser;
+import org.aesh.terminal.utils.Config;
 
 /**
  * Manages Aliases
@@ -62,9 +62,9 @@ public class AliasManager {
     public AliasManager(File aliasFile, boolean persistAlias) throws IOException {
         this.persistAlias = persistAlias;
         aliases = new ArrayList<>();
-        if(aliasFile != null) {
+        if (aliasFile != null) {
             this.aliasFile = aliasFile;
-            if(this.aliasFile.isFile())
+            if (this.aliasFile.isFile())
                 readAliasesFromFile();
         }
     }
@@ -73,7 +73,7 @@ public class AliasManager {
      * It is not allowed to create an alias if it conflicts with a command already present
      *
      * @param aliasName name of the alias
-     * @return  true if there is no conflict
+     * @return true if there is no conflict
      */
     public boolean verifyNoNewAliasConflict(String aliasName) throws AliasConflictException {
         //default impl just returns true, designed to be overridden
@@ -83,32 +83,31 @@ public class AliasManager {
     private void readAliasesFromFile() {
         try (BufferedReader br = new BufferedReader(new FileReader(aliasFile))) {
             String line;
-            while((line = br.readLine()) != null) {
-                if(line.startsWith(ALIAS)) {
+            while ((line = br.readLine()) != null) {
+                if (line.startsWith(ALIAS)) {
                     try {
                         parseAlias(line);
-                    }
-                    catch (Exception ignored) {
+                    } catch (Exception ignored) {
                     }
                 }
             }
         } catch (FileNotFoundException e) {
-          LOGGER.warning("Could not find alias file: "+ e);
+            LOGGER.warning("Could not find alias file: " + e);
         } catch (IOException e) {
-          LOGGER.warning("Could not read alias file: "+ e);
+            LOGGER.warning("Could not read alias file: " + e);
         }
     }
 
     public void persist() {
-        if(persistAlias && aliasFile != null) {
+        if (persistAlias && aliasFile != null) {
 
             try {
-            //just do it easily and remove the current file
+                //just do it easily and remove the current file
                 boolean keepGoing = true;
-                if(aliasFile.isFile())
+                if (aliasFile.isFile())
                     keepGoing = aliasFile.delete();
 
-                if(keepGoing) {
+                if (keepGoing) {
                     File parentFile = aliasFile.getParentFile();
                     if (parentFile != null) {
                         parentFile.mkdirs();
@@ -116,17 +115,16 @@ public class AliasManager {
                     keepGoing = aliasFile.createNewFile();
                 }
 
-                if(keepGoing) {
+                if (keepGoing) {
                     FileWriter fw = new FileWriter(aliasFile);
                     Collections.sort(aliases); // not very efficient, but it'll do for now...
-                    for(Alias a : aliases) {
+                    for (Alias a : aliases) {
                         fw.write(ALIAS_SPACE + a.toString() + Config.getLineSeparator());
                     }
                     fw.flush();
                     fw.close();
                 }
-            }
-            catch(IOException e) {
+            } catch (IOException e) {
                 LOGGER.log(Level.WARNING, "Could not persist to alias file:", e);
             }
         }
@@ -134,7 +132,7 @@ public class AliasManager {
 
     void addAlias(String name, String value) {
         Alias alias = new Alias(name, value);
-        if(aliases.contains(alias)) {
+        if (aliases.contains(alias)) {
             aliases.remove(alias);
         }
         aliases.add(alias);
@@ -144,12 +142,12 @@ public class AliasManager {
     public String printAllAliases() {
         StringBuilder sb = new StringBuilder();
         /*
-        Collections.sort(aliases); // not very efficient, but it'll do for now...
-        for(Alias a : aliases)
-            sb.append(ALIAS_SPACE).append(a.toString()).append(Config.getLineSeparator());
-
-        return sb.toString();
-        */
+         * Collections.sort(aliases); // not very efficient, but it'll do for now...
+         * for(Alias a : aliases)
+         * sb.append(ALIAS_SPACE).append(a.toString()).append(Config.getLineSeparator());
+         *
+         * return sb.toString();
+         */
         aliases.stream()
                 .sorted()
                 .forEach(a -> sb
@@ -188,72 +186,68 @@ public class AliasManager {
     }
 
     public String removeAlias(String buffer) {
-        if(buffer.trim().equals(UNALIAS))
+        if (buffer.trim().equals(UNALIAS))
             return unaliasUsage();
         if (unaliasHelpPattern.matcher(buffer).matches())
             return unaliasUsage();
 
         buffer = buffer.substring(UNALIAS.length()).trim();
 
-        for(String s : buffer.split(" ")) {
-            if(s != null) {
+        for (String s : buffer.split(" ")) {
+            if (s != null) {
                 Optional<Alias> a = getAlias(s.trim());
-                if(a.isPresent()) {
+                if (a.isPresent()) {
                     aliases.remove(a.get());
-                }
-                else
-                    return "unalias: "+s+": not found" +Config.getLineSeparator();
+                } else
+                    return "unalias: " + s + ": not found" + Config.getLineSeparator();
             }
         }
         return null;
     }
 
     public String parseAlias(String buffer) {
-        if(buffer.trim().equals(ALIAS))
+        if (buffer.trim().equals(ALIAS))
             return printAllAliases();
         if (aliasHelpPattern.matcher(buffer).matches())
             return aliasUsage();
         Matcher aliasMatcher = aliasPattern.matcher(buffer);
         boolean aliasMatched = false;
-        if(aliasMatcher.matches()) {
+        if (aliasMatcher.matches()) {
             aliasMatched = true;
             String name = aliasMatcher.group(2);
             String value = aliasMatcher.group(3);
-            if(value.startsWith("'")) {
-                if(value.endsWith("'"))
-                    value = value.substring(1,value.length()-1);
+            if (value.startsWith("'")) {
+                if (value.endsWith("'"))
+                    value = value.substring(1, value.length() - 1);
+                else
+                    return aliasUsage();
+            } else if (value.startsWith("\"")) {
+                if (value.endsWith("\""))
+                    value = value.substring(1, value.length() - 1);
                 else
                     return aliasUsage();
             }
-            else if(value.startsWith("\"")) {
-                if(value.endsWith("\""))
-                    value = value.substring(1,value.length()-1);
-                else
-                    return aliasUsage();
-            }
-            if(name.contains(" "))
+            if (name.contains(" "))
                 return aliasUsage();
 
             try {
-                if(verifyNoNewAliasConflict(name)) {
+                if (verifyNoNewAliasConflict(name)) {
                     addAlias(name, value);
                     return null;
-                }
-                else
-                    return "Alias "+name+" is in conflict with an existing command";
-            }
-            catch(AliasConflictException ace) {
+                } else
+                    return "Alias " + name + " is in conflict with an existing command";
+            } catch (AliasConflictException ace) {
                 return ace.getMessage();
             }
         }
 
         Matcher listMatcher = listAliasPattern.matcher(buffer);
-        if(listMatcher.matches()) {
+        if (listMatcher.matches()) {
             StringBuilder sb = new StringBuilder();
-                for(String s : listMatcher.group(2).trim().split(" ")) {
-                if(s != null) {
+            for (String s : listMatcher.group(2).trim().split(" ")) {
+                if (s != null) {
                     Optional<Alias> a = getAlias(s.trim());
-                    if(a.isPresent())
+                    if (a.isPresent())
                         sb.append(ALIAS_SPACE).append(a.get().getName()).append("='")
                                 .append(a.get().getValue()).append("'").append(Config.getLineSeparator());
                     else
@@ -265,18 +259,19 @@ public class AliasManager {
         }
         if (!aliasMatched) {
             StringBuilder sb = new StringBuilder();
-            sb.append(buffer).append(" is not valid command, make sure alias name is among of [a-zA-Z0-9_]").append(Config.getLineSeparator());
+            sb.append(buffer).append(" is not valid command, make sure alias name is among of [a-zA-Z0-9_]")
+                    .append(Config.getLineSeparator());
             return sb.toString();
         }
         return null;
     }
 
     public String aliasUsage() {
-        return "alias: usage: alias [name[=value] ... ]"+Config.getLineSeparator();
+        return "alias: usage: alias [name[=value] ... ]" + Config.getLineSeparator();
     }
 
     public String unaliasUsage() {
-        return "unalias: usage: unalias name [name ...]"+Config.getLineSeparator();
+        return "unalias: usage: unalias name [name ...]" + Config.getLineSeparator();
     }
 
 }

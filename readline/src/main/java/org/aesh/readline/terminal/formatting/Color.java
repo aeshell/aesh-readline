@@ -51,17 +51,16 @@ public enum Color {
         BRIGHT;
 
         public int getValue(Type type) {
-            if(this == NORMAL) {
-                if(type == Type.FOREGROUND)
+            if (this == NORMAL) {
+                if (type == Type.FOREGROUND)
                     return 3;
                 else
                     return 4;
-            }
-            else {
-               if(type == Type.FOREGROUND)
-                   return 9;
+            } else {
+                if (type == Type.FOREGROUND)
+                    return 9;
                 else
-                   return 10;
+                    return 10;
             }
         }
     }

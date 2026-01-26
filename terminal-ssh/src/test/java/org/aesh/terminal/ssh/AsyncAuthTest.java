@@ -19,9 +19,11 @@
  */
 package org.aesh.terminal.ssh;
 
-import com.jcraft.jsch.JSchException;
+import java.io.File;
+import java.util.Arrays;
+import java.util.concurrent.TimeUnit;
+
 import org.aesh.terminal.TestBase;
-import org.apache.sshd.util.test.EchoShellFactory;
 import org.apache.sshd.client.SshClient;
 import org.apache.sshd.client.session.ClientSession;
 import org.apache.sshd.core.CoreModuleProperties;
@@ -31,13 +33,12 @@ import org.apache.sshd.server.auth.password.PasswordAuthenticator;
 import org.apache.sshd.server.keyprovider.SimpleGeneratorHostKeyProvider;
 import org.apache.sshd.server.session.ServerConnectionServiceFactory;
 import org.apache.sshd.server.session.ServerUserAuthServiceFactory;
+import org.apache.sshd.util.test.EchoShellFactory;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.io.File;
-import java.util.Arrays;
-import java.util.concurrent.TimeUnit;
+import com.jcraft.jsch.JSchException;
 
 /**
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
@@ -64,7 +65,8 @@ public class AsyncAuthTest extends TestBase {
         server.setKeyPairProvider(new SimpleGeneratorHostKeyProvider(new File("hostkey.ser").toPath()));
         server.setPasswordAuthenticator((username, password, sess) -> authenticator.authenticate(username, password, sess));
         server.setShellFactory(new EchoShellFactory());
-        server.setServiceFactories(Arrays.asList(ServerConnectionServiceFactory.INSTANCE, ServerUserAuthServiceFactory.INSTANCE));
+        server.setServiceFactories(
+                Arrays.asList(ServerConnectionServiceFactory.INSTANCE, ServerUserAuthServiceFactory.INSTANCE));
         server.start();
     }
 

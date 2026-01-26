@@ -1,5 +1,15 @@
 package org.aesh.terminal.ssh;
 
+import java.io.InterruptedIOException;
+import java.util.ArrayList;
+import java.util.Formatter;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.function.Consumer;
+import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import org.aesh.readline.Prompt;
 import org.aesh.readline.Readline;
 import org.aesh.readline.completion.Completion;
@@ -12,17 +22,7 @@ import org.aesh.terminal.tty.Point;
 import org.aesh.terminal.tty.Signal;
 import org.aesh.terminal.utils.Config;
 
-import java.io.InterruptedIOException;
-import java.util.ArrayList;
-import java.util.Formatter;
-import java.util.List;
-import java.util.concurrent.CountDownLatch;
-import java.util.function.Consumer;
-import java.util.logging.Logger;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-public class ShellExample implements Consumer<Connection>{
+public class ShellExample implements Consumer<Connection> {
 
     private static final Pattern splitter = Pattern.compile("\\w+");
 
@@ -32,12 +32,12 @@ public class ShellExample implements Consumer<Connection>{
 
     @Override
     public void accept(Connection connection) {
-        connection.setSignalHandler( signal -> {
+        connection.setSignalHandler(signal -> {
             connection.write("\nlets quit\n");
             connection.close();
         });
 
-        connection.setCloseHandler(close->{
+        connection.setCloseHandler(close -> {
             stopped = true;
         });
 
@@ -87,30 +87,29 @@ public class ShellExample implements Consumer<Connection>{
     }
 
     private List<Completion> getCompletions() {
-        List<Completion> completions =  new ArrayList<>();
+        List<Completion> completions = new ArrayList<>();
         completions.add(completeOperation -> {
-            if("exit".startsWith(completeOperation.getBuffer()))
+            if ("exit".startsWith(completeOperation.getBuffer()))
                 completeOperation.addCompletionCandidate("exit");
-            if("sleep".startsWith(completeOperation.getBuffer()))
+            if ("sleep".startsWith(completeOperation.getBuffer()))
                 completeOperation.addCompletionCandidate("sleep");
-            if("echo".startsWith(completeOperation.getBuffer()))
+            if ("echo".startsWith(completeOperation.getBuffer()))
                 completeOperation.addCompletionCandidate("echo");
-            if("window".startsWith(completeOperation.getBuffer()))
+            if ("window".startsWith(completeOperation.getBuffer()))
                 completeOperation.addCompletionCandidate("window");
-            if("help".startsWith(completeOperation.getBuffer()))
+            if ("help".startsWith(completeOperation.getBuffer()))
                 completeOperation.addCompletionCandidate("help");
-            if("keyscan".startsWith(completeOperation.getBuffer()))
+            if ("keyscan".startsWith(completeOperation.getBuffer()))
                 completeOperation.addCompletionCandidate("keyscan");
-            if("linescan".startsWith(completeOperation.getBuffer()))
+            if ("linescan".startsWith(completeOperation.getBuffer()))
                 completeOperation.addCompletionCandidate("linescan");
-            if("top".startsWith(completeOperation.getBuffer()))
+            if ("top".startsWith(completeOperation.getBuffer()))
                 completeOperation.addCompletionCandidate("top");
-            if("cursor".startsWith(completeOperation.getBuffer()))
+            if ("cursor".startsWith(completeOperation.getBuffer()))
                 completeOperation.addCompletionCandidate("cursor");
         });
         return completions;
     }
-
 
     /**
      * A blocking interruptable task.
@@ -145,17 +144,14 @@ public class ShellExample implements Consumer<Connection>{
             conn.setSignalHandler(this);
             try {
                 command.execute(conn, args);
-            }
-            catch (InterruptedException | InterruptedIOException e) {
+            } catch (InterruptedException | InterruptedIOException e) {
                 // Ctlr-C interrupt
-            }
-            catch (Exception e) {
+            } catch (Exception e) {
                 e.printStackTrace();
-            }
-            finally {
+            } finally {
                 conn.setSignalHandler(null);
                 // Readline again
-                if(!stopped)
+                if (!stopped)
                     read(conn, readline);
             }
         }
@@ -192,11 +188,10 @@ public class ShellExample implements Consumer<Connection>{
             }
         },
 
-
         echo() {
             @Override
             public void execute(Connection conn, List<String> args) throws Exception {
-                for (int i = 0;i < args.size();i++) {
+                for (int i = 0; i < args.size(); i++) {
                     if (i > 0) {
                         conn.write(" ");
                     }
@@ -230,7 +225,7 @@ public class ShellExample implements Consumer<Connection>{
             public void execute(Connection conn, List<String> args) throws Exception {
                 StringBuilder msg = new StringBuilder("Demo term, try commands: ");
                 Command[] commands = Command.values();
-                for (int i = 0;i < commands.length;i++) {
+                for (int i = 0; i < commands.length; i++) {
                     if (i > 0) {
                         msg.append(",");
                     }
@@ -255,8 +250,7 @@ public class ShellExample implements Consumer<Connection>{
                 try {
                     // Wait until interrupted
                     new CountDownLatch(1).await();
-                }
-                finally {
+                } finally {
                     conn.setStdinHandler(null);
                     conn.setAttributes(attributes);
                 }
@@ -268,7 +262,7 @@ public class ShellExample implements Consumer<Connection>{
             public void execute(Connection conn, List<String> args) throws Exception {
                 String line = readLine("[myprompt]", conn);
 
-                conn.write("we got: "+line+Config.getLineSeparator());
+                conn.write("we got: " + line + Config.getLineSeparator());
             }
 
             private String readLine(String prompt, Connection conn) throws InterruptedException {
@@ -282,8 +276,7 @@ public class ShellExample implements Consumer<Connection>{
                 try {
                     // Wait until interrupted
                     latch.await();
-                }
-                finally {
+                } finally {
                     conn.setStdinHandler(null);
                 }
 
@@ -301,7 +294,7 @@ public class ShellExample implements Consumer<Connection>{
                     Formatter formatter = new Formatter(buf);
 
                     List<Thread> threads = new ArrayList<>(Thread.getAllStackTraces().keySet());
-                    for (int i = 1;i <= conn.size().getHeight();i++) {
+                    for (int i = 1; i <= conn.size().getHeight(); i++) {
 
                         // Change cursor position and erase line with ANSI escape code magic
                         buf.append("\033[").append(i).append(";1H\033[K");
@@ -319,7 +312,7 @@ public class ShellExample implements Consumer<Connection>{
                             if (index < threads.size()) {
                                 Thread thread = threads.get(index);
                                 formatter.format(format,
-                                        thread.threadId(),
+                                        thread.getId(),
                                         thread.getState().name(),
                                         thread.getName(),
                                         thread.getThreadGroup().getName());
@@ -340,7 +333,7 @@ public class ShellExample implements Consumer<Connection>{
             public void execute(Connection conn, List<String> args) throws Exception {
                 conn.write("cursor position is: ");
                 Point p = conn.getCursorPosition();
-                conn.write(p.toString()+Config.getLineSeparator());
+                conn.write(p.toString() + Config.getLineSeparator());
             }
 
         };

@@ -28,8 +28,8 @@ public class OSUtils {
     public static final boolean IS_WINDOWS = System.getProperty("os.name").toLowerCase().contains("win");
 
     public static final boolean IS_CYGWIN = IS_WINDOWS
-        && System.getenv("PWD") != null
-        && System.getenv("PWD").startsWith("/");
+            && System.getenv("PWD") != null
+            && System.getenv("PWD").startsWith("/");
 
     public static final boolean IS_OSX = System.getProperty("os.name").toLowerCase().contains("mac");
 
@@ -67,18 +67,15 @@ public class OSUtils {
                     }
                 }
             }
-        }
-        else {
+        } else {
             tty = "tty";
             stty = "stty";
             infocmp = "infocmp";
             if (IS_OSX) {
                 sttyfopt = "-f";
-            }
-            else if(IS_HPUX || IS_SUNOS) {
-               sttyfopt = "";
-            }
-            else {
+            } else if (IS_HPUX || IS_SUNOS) {
+                sttyfopt = "";
+            } else {
                 sttyfopt = "-F";
             }
         }

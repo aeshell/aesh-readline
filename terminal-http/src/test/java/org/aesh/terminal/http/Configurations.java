@@ -23,7 +23,7 @@ package org.aesh.terminal.http;
  * @author <a href="mailto:matejonnet@gmail.com">Matej Lazar</a>
  */
 public class Configurations {
-  public static final String HOST = "localhost";
-  public static final String TERM_PATH = "/term";
-  public static final String PROCESS_UPDATES_PATH = "/process-status-updates";
+    public static final String HOST = "localhost";
+    public static final String TERM_PATH = "/term";
+    public static final String PROCESS_UPDATES_PATH = "/process-status-updates";
 }

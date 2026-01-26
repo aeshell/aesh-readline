@@ -20,6 +20,16 @@
 
 package org.aesh.terminal.telnet;
 
+import java.io.Closeable;
+import java.io.IOException;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
+import java.util.function.Supplier;
+
+import org.aesh.terminal.TestBase;
+import org.aesh.terminal.telnet.netty.TelnetChannelHandler;
+import org.junit.rules.ExternalResource;
+
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
@@ -31,76 +41,67 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.util.concurrent.Future;
-import org.aesh.terminal.TestBase;
-import org.aesh.terminal.telnet.netty.TelnetChannelHandler;
-import org.junit.rules.ExternalResource;
-
-import java.io.Closeable;
-import java.io.IOException;
-import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
-import java.util.function.Supplier;
 
 /**
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
  */
 public class TelnetServerRule extends ExternalResource {
 
-  public static final Function<Supplier<TelnetHandler>, Closeable> NETTY_SERVER = handlerFactory -> {
-    EventLoopGroup bossGroup = new NioEventLoopGroup(1);
-    EventLoopGroup workerGroup = new NioEventLoopGroup();
-    ServerBootstrap b = new ServerBootstrap();
-    b.group(bossGroup, workerGroup)
-        .channel(NioServerSocketChannel.class)
-        .option(ChannelOption.SO_BACKLOG, 100)
-        .handler(new LoggingHandler(LogLevel.INFO))
-        .childHandler(new ChannelInitializer<SocketChannel>() {
-          @Override
-          public void initChannel(SocketChannel ch) throws Exception {
-            ChannelPipeline p = ch.pipeline();
-            TelnetChannelHandler handler = new TelnetChannelHandler(handlerFactory);
-            p.addLast(handler);
-          }
-        });
-    try {
-      b.bind("localhost", 4000).sync();
-      return () -> {
-        Future<?> future = bossGroup.shutdownGracefully();
+    public static final Function<Supplier<TelnetHandler>, Closeable> NETTY_SERVER = handlerFactory -> {
+        EventLoopGroup bossGroup = new NioEventLoopGroup(1);
+        EventLoopGroup workerGroup = new NioEventLoopGroup();
+        ServerBootstrap b = new ServerBootstrap();
+        b.group(bossGroup, workerGroup)
+                .channel(NioServerSocketChannel.class)
+                .option(ChannelOption.SO_BACKLOG, 100)
+                .handler(new LoggingHandler(LogLevel.INFO))
+                .childHandler(new ChannelInitializer<SocketChannel>() {
+                    @Override
+                    public void initChannel(SocketChannel ch) throws Exception {
+                        ChannelPipeline p = ch.pipeline();
+                        TelnetChannelHandler handler = new TelnetChannelHandler(handlerFactory);
+                        p.addLast(handler);
+                    }
+                });
         try {
-          if (!future.await(30, TimeUnit.SECONDS)) {
-            throw TestBase.failure("bossGroup not finished in timeout");
-          }
+            b.bind("localhost", 4000).sync();
+            return () -> {
+                Future<?> future = bossGroup.shutdownGracefully();
+                try {
+                    if (!future.await(30, TimeUnit.SECONDS)) {
+                        throw TestBase.failure("bossGroup not finished in timeout");
+                    }
+                } catch (InterruptedException e) {
+                    throw TestBase.failure(e);
+                }
+            };
         } catch (InterruptedException e) {
-          throw TestBase.failure(e);
+            throw TestBase.failure(e);
         }
-      };
-    } catch (InterruptedException e) {
-      throw TestBase.failure(e);
+    };
+
+    private final Function<Supplier<TelnetHandler>, Closeable> serverFactory;
+    protected Closeable server;
+
+    public TelnetServerRule(Function<Supplier<TelnetHandler>, Closeable> serverFactory) {
+        this.serverFactory = serverFactory;
     }
-  };
 
-  private final Function<Supplier<TelnetHandler>, Closeable> serverFactory;
-  protected Closeable server;
-
-  public TelnetServerRule(Function<Supplier<TelnetHandler>, Closeable> serverFactory) {
-    this.serverFactory = serverFactory;
-  }
-
-  @Override
-  protected void after() {
-    if (server != null) {
-      try {
-        server.close();
-      } catch (IOException e) {
-        e.printStackTrace();
-      }
+    @Override
+    protected void after() {
+        if (server != null) {
+            try {
+                server.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
-  }
 
-  public final void start(Supplier<TelnetHandler> telnetFactory) {
-    if (server != null) {
-      throw TestBase.failure("Already a server");
+    public final void start(Supplier<TelnetHandler> telnetFactory) {
+        if (server != null) {
+            throw TestBase.failure("Already a server");
+        }
+        server = serverFactory.apply(telnetFactory);
     }
-    server = serverFactory.apply(telnetFactory);
-  }
 }

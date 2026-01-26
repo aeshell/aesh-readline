@@ -19,6 +19,12 @@
  */
 package org.aesh.terminal.telnet.netty;
 
+import java.util.function.Consumer;
+import java.util.function.Supplier;
+
+import org.aesh.terminal.telnet.TelnetBootstrap;
+import org.aesh.terminal.telnet.TelnetHandler;
+
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
@@ -34,11 +40,6 @@ import io.netty.handler.logging.LoggingHandler;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
 import io.netty.util.concurrent.ImmediateEventExecutor;
-import org.aesh.terminal.telnet.TelnetBootstrap;
-import org.aesh.terminal.telnet.TelnetHandler;
-
-import java.util.function.Consumer;
-import java.util.function.Supplier;
 
 /**
  * Netty-based implementation of the TelnetBootstrap for starting a Telnet server.
@@ -47,69 +48,69 @@ import java.util.function.Supplier;
  */
 public class NettyTelnetBootstrap extends TelnetBootstrap {
 
-  private EventLoopGroup group;
-  private ChannelGroup channelGroup;
+    private EventLoopGroup group;
+    private ChannelGroup channelGroup;
 
-  /**
-   * Creates a new NettyTelnetBootstrap with default NIO event loop group.
-   */
-  public NettyTelnetBootstrap() {
-    this.group = new NioEventLoopGroup();
-    this.channelGroup = new DefaultChannelGroup(ImmediateEventExecutor.INSTANCE);
-  }
+    /**
+     * Creates a new NettyTelnetBootstrap with default NIO event loop group.
+     */
+    public NettyTelnetBootstrap() {
+        this.group = new NioEventLoopGroup();
+        this.channelGroup = new DefaultChannelGroup(ImmediateEventExecutor.INSTANCE);
+    }
 
-  /**
-   * Sets the host address the server will bind to.
-   *
-   * @param host the host address
-   * @return this bootstrap instance for method chaining
-   */
-  public NettyTelnetBootstrap setHost(String host) {
-    return (NettyTelnetBootstrap) super.setHost(host);
-  }
+    /**
+     * Sets the host address the server will bind to.
+     *
+     * @param host the host address
+     * @return this bootstrap instance for method chaining
+     */
+    public NettyTelnetBootstrap setHost(String host) {
+        return (NettyTelnetBootstrap) super.setHost(host);
+    }
 
-  /**
-   * Sets the port number the server will listen on.
-   *
-   * @param port the port number
-   * @return this bootstrap instance for method chaining
-   */
-  public NettyTelnetBootstrap setPort(int port) {
-    return (NettyTelnetBootstrap) super.setPort(port);
-  }
+    /**
+     * Sets the port number the server will listen on.
+     *
+     * @param port the port number
+     * @return this bootstrap instance for method chaining
+     */
+    public NettyTelnetBootstrap setPort(int port) {
+        return (NettyTelnetBootstrap) super.setPort(port);
+    }
 
-  @Override
-  public void start(Supplier<TelnetHandler> factory, Consumer<Throwable> doneHandler) {
-    ServerBootstrap boostrap = new ServerBootstrap();
-    boostrap.group(group)
-        .channel(NioServerSocketChannel.class)
-        .option(ChannelOption.SO_BACKLOG, 100)
-        .handler(new LoggingHandler(LogLevel.INFO))
-        .childHandler(new ChannelInitializer<SocketChannel>() {
-          @Override
-          public void initChannel(SocketChannel ch) throws Exception {
-            channelGroup.add(ch);
-            ChannelPipeline p = ch.pipeline();
-            TelnetChannelHandler handler = new TelnetChannelHandler(factory);
-            p.addLast(handler);
-          }
+    @Override
+    public void start(Supplier<TelnetHandler> factory, Consumer<Throwable> doneHandler) {
+        ServerBootstrap boostrap = new ServerBootstrap();
+        boostrap.group(group)
+                .channel(NioServerSocketChannel.class)
+                .option(ChannelOption.SO_BACKLOG, 100)
+                .handler(new LoggingHandler(LogLevel.INFO))
+                .childHandler(new ChannelInitializer<SocketChannel>() {
+                    @Override
+                    public void initChannel(SocketChannel ch) throws Exception {
+                        channelGroup.add(ch);
+                        ChannelPipeline p = ch.pipeline();
+                        TelnetChannelHandler handler = new TelnetChannelHandler(factory);
+                        p.addLast(handler);
+                    }
+                });
+
+        boostrap.bind(getHost(), getPort()).addListener(fut -> {
+            if (fut.isSuccess()) {
+                doneHandler.accept(null);
+            } else {
+                doneHandler.accept(fut.cause());
+            }
         });
+    }
 
-    boostrap.bind(getHost(), getPort()).addListener(fut -> {
-      if (fut.isSuccess()) {
-        doneHandler.accept(null);
-      } else {
-        doneHandler.accept(fut.cause());
-      }
-    });
-  }
-
-  @Override
-  public void stop(Consumer<Throwable> doneHandler) {
-    GenericFutureListener<Future<Object>> adapter = (Future<Object> future) -> {
-      doneHandler.accept(future.cause());
-    };
-    channelGroup.close().addListener(adapter);
-    group.shutdownGracefully();
-  }
+    @Override
+    public void stop(Consumer<Throwable> doneHandler) {
+        GenericFutureListener<Future<Object>> adapter = (Future<Object> future) -> {
+            doneHandler.accept(future.cause());
+        };
+        channelGroup.close().addListener(adapter);
+        group.shutdownGracefully();
+    }
 }

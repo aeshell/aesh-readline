@@ -19,18 +19,18 @@
  */
 package org.aesh.readline.alias;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+
+import java.io.File;
+import java.io.IOException;
+
 import org.aesh.terminal.utils.Config;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.io.File;
-import java.io.IOException;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
 
 /**
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
@@ -63,11 +63,11 @@ public class AliasManagerTest {
         assertNull(manager.parseAlias("alias foo3=bar --help"));
 
         String out = manager.parseAlias("alias foo");
-        Assert.assertEquals("alias foo='bar'"+ Config.getLineSeparator(), out);
+        Assert.assertEquals("alias foo='bar'" + Config.getLineSeparator(), out);
         out = manager.parseAlias("alias foo2");
-        assertEquals("alias foo2='bar -s -h'"+ Config.getLineSeparator(), out);
+        assertEquals("alias foo2='bar -s -h'" + Config.getLineSeparator(), out);
         out = manager.parseAlias("alias foo3");
-        assertEquals("alias foo3='bar --help'"+ Config.getLineSeparator(), out);
+        assertEquals("alias foo3='bar --help'" + Config.getLineSeparator(), out);
         out = manager.parseAlias("alias");
         StringBuilder sb = new StringBuilder();
         sb.append("alias foo='bar'").append(Config.getLineSeparator())
@@ -91,7 +91,7 @@ public class AliasManagerTest {
         manager.parseAlias("alias foo3=bar --help");
 
         manager.removeAlias("unalias foo3");
-        assertEquals("unalias: foo3: not found"+Config.getLineSeparator(), manager.removeAlias("unalias foo3"));
+        assertEquals("unalias: foo3: not found" + Config.getLineSeparator(), manager.removeAlias("unalias foo3"));
 
         String out = manager.removeAlias("unalias --help");
         assertEquals("unalias: usage: unalias name [name ...]" + Config.getLineSeparator(), out);

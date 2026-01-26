@@ -32,37 +32,38 @@ import java.util.List;
 public enum VariableValues {
 
     BELL_STYLE(Variable.BELL_STYLE, Arrays.asList("none", "visible", "audible")),
-    BIND_TTY_SPECIAL_CHARS(Variable.BIND_TTY_SPECIAL_CHARS, Arrays.asList("on","off")),
+    BIND_TTY_SPECIAL_CHARS(Variable.BIND_TTY_SPECIAL_CHARS, Arrays.asList("on", "off")),
     COMMENT_BEGIN(Variable.COMMENT_BEGIN, new ArrayList<String>()),
     COMPLETION_DISPLAY_WIDTH(Variable.COMPLETION_DISPLAY_WIDTH, new ArrayList<String>()),
-    COMPLETION_IGNORE_CASE(Variable.COMPLETION_IGNORE_CASE, Arrays.asList("on","off")),
-    COMPLETION_MAP_CASE(Variable.COMPLETION_MAP_CASE, Arrays.asList("on","off")),
+    COMPLETION_IGNORE_CASE(Variable.COMPLETION_IGNORE_CASE, Arrays.asList("on", "off")),
+    COMPLETION_MAP_CASE(Variable.COMPLETION_MAP_CASE, Arrays.asList("on", "off")),
     COMPLETION_PREFIX_DISPLAY_LENGTH(Variable.COMPLETION_PREFIX_DISPLAY_LENGTH, new ArrayList<String>()),
     COMPLETION_QUERY_ITEMS(Variable.COMPLETION_QUERY_ITEMS, new ArrayList<String>()),
-    CONVERT_META(Variable.CONVERT_META, Arrays.asList("on","off")),
-    DISABLE_COMPLETION(Variable.DISABLE_COMPLETION, Arrays.asList("on","off")),
-    EDITING_MODE(Variable.EDITING_MODE, Arrays.asList("vi","emacs")),
-    ECHO_CONTROL_CHARACTERS(Variable.ECHO_CONTROL_CHARACTERS, Arrays.asList("on","off")),
-    ENABLE_KEYPAD(Variable.ENABLE_KEYPAD, Arrays.asList("on","off")),
-    EXPAND_TILDE(Variable.EXPAND_TILDE, Arrays.asList("on","off")),
-    HISTORY_PRESERVE_POINT(Variable.HISTORY_PRESERVE_POINT, Arrays.asList("on","off")),
+    CONVERT_META(Variable.CONVERT_META, Arrays.asList("on", "off")),
+    DISABLE_COMPLETION(Variable.DISABLE_COMPLETION, Arrays.asList("on", "off")),
+    EDITING_MODE(Variable.EDITING_MODE, Arrays.asList("vi", "emacs")),
+    ECHO_CONTROL_CHARACTERS(Variable.ECHO_CONTROL_CHARACTERS, Arrays.asList("on", "off")),
+    ENABLE_KEYPAD(Variable.ENABLE_KEYPAD, Arrays.asList("on", "off")),
+    EXPAND_TILDE(Variable.EXPAND_TILDE, Arrays.asList("on", "off")),
+    HISTORY_PRESERVE_POINT(Variable.HISTORY_PRESERVE_POINT, Arrays.asList("on", "off")),
     HISTORY_SIZE(Variable.HISTORY_SIZE, new ArrayList<String>()),
-    HISTORY_SCROLL_MODE(Variable.HISTORY_SCROLL_MODE, Arrays.asList("on","off")),
-    INPUT_META(Variable.INPUT_META, Arrays.asList("on","off")),
+    HISTORY_SCROLL_MODE(Variable.HISTORY_SCROLL_MODE, Arrays.asList("on", "off")),
+    INPUT_META(Variable.INPUT_META, Arrays.asList("on", "off")),
     ISEARCH_TERMINATORS(Variable.ISEARCH_TERMINATORS, new ArrayList<String>()),
-    KEYMAP(Variable.KEYMAP, Arrays.asList("emacs","vi","emacs-standard","emacs-meta","emacs-ctlx","vi-move","vi-command","vi-insert")),
-    MARK_DIRECTORIES(Variable.MARK_DIRECTORIES, Arrays.asList("on","off")),
-    MARK_MODIFIED_LINES(Variable.MARK_MODIFIED_LINES, Arrays.asList("on","off")),
-    MARK_SYMLINKED_DIRECTORIES(Variable.MARK_SYMLINKED_DIRECTORIES, Arrays.asList("on","off")),
-    MATCH_HIDDEN_FILES(Variable.MATCH_HIDDEN_FILES, Arrays.asList("on","off")),
-    MENU_COMPLETE_DISPLAY_PREFIX(Variable.MENU_COMPLETE_DISPLAY_PREFIX, Arrays.asList("on","off")),
-    OUTPUT_META(Variable.OUTPUT_META, Arrays.asList("on","off")),
-    PAGE_COMPLETIONS(Variable.PAGE_COMPLETIONS, Arrays.asList("on","off")),
-    PRINT_COMPLETIONS_HORIZONTALLY(Variable.PRINT_COMPLETIONS_HORIZONTALLY, Arrays.asList("on","off")),
-    REVERT_ALL_AT_NEWLINE(Variable.REVERT_ALL_AT_NEWLINE, Arrays.asList("on","off")),
-    SHOW_ALL_IF_AMBIGUOUS(Variable.SHOW_ALL_IF_AMBIGUOUS, Arrays.asList("on","off")),
-    SHOW_ALL_IF_UNMODIFIED(Variable.SHOW_ALL_IF_UNMODIFIED, Arrays.asList("on","off")),
-    SKIP_COMPLETED_TEXT(Variable.SKIP_COMPLETED_TEXT, Arrays.asList("on","off")),
+    KEYMAP(Variable.KEYMAP,
+            Arrays.asList("emacs", "vi", "emacs-standard", "emacs-meta", "emacs-ctlx", "vi-move", "vi-command", "vi-insert")),
+    MARK_DIRECTORIES(Variable.MARK_DIRECTORIES, Arrays.asList("on", "off")),
+    MARK_MODIFIED_LINES(Variable.MARK_MODIFIED_LINES, Arrays.asList("on", "off")),
+    MARK_SYMLINKED_DIRECTORIES(Variable.MARK_SYMLINKED_DIRECTORIES, Arrays.asList("on", "off")),
+    MATCH_HIDDEN_FILES(Variable.MATCH_HIDDEN_FILES, Arrays.asList("on", "off")),
+    MENU_COMPLETE_DISPLAY_PREFIX(Variable.MENU_COMPLETE_DISPLAY_PREFIX, Arrays.asList("on", "off")),
+    OUTPUT_META(Variable.OUTPUT_META, Arrays.asList("on", "off")),
+    PAGE_COMPLETIONS(Variable.PAGE_COMPLETIONS, Arrays.asList("on", "off")),
+    PRINT_COMPLETIONS_HORIZONTALLY(Variable.PRINT_COMPLETIONS_HORIZONTALLY, Arrays.asList("on", "off")),
+    REVERT_ALL_AT_NEWLINE(Variable.REVERT_ALL_AT_NEWLINE, Arrays.asList("on", "off")),
+    SHOW_ALL_IF_AMBIGUOUS(Variable.SHOW_ALL_IF_AMBIGUOUS, Arrays.asList("on", "off")),
+    SHOW_ALL_IF_UNMODIFIED(Variable.SHOW_ALL_IF_UNMODIFIED, Arrays.asList("on", "off")),
+    SKIP_COMPLETED_TEXT(Variable.SKIP_COMPLETED_TEXT, Arrays.asList("on", "off")),
     VISIBLE_STATS(Variable.VISIBLE_STATS, Arrays.asList("on", "off"));
 
     private Variable variable;
@@ -74,8 +75,8 @@ public enum VariableValues {
     }
 
     public static List<String> getValuesByVariable(Variable variable) {
-        for(VariableValues value : values()) {
-            if(value.variable == variable)
+        for (VariableValues value : values()) {
+            if (value.variable == variable)
                 return value.values;
         }
         return new ArrayList<>();

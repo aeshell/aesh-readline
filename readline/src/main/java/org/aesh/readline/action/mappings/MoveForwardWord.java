@@ -19,7 +19,6 @@
  */
 package org.aesh.readline.action.mappings;
 
-
 import org.aesh.readline.editing.EditMode;
 
 /**

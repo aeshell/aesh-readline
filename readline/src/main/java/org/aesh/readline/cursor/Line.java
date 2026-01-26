@@ -23,13 +23,14 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.logging.Logger;
+
 import org.aesh.readline.Buffer;
 import org.aesh.readline.terminal.formatting.Color;
 import org.aesh.readline.terminal.formatting.TerminalCharacter;
 import org.aesh.readline.terminal.formatting.TerminalColor;
+import org.aesh.readline.util.Parser;
 import org.aesh.terminal.Connection;
 import org.aesh.terminal.utils.ANSI;
-import org.aesh.readline.util.Parser;
 
 /**
  * A command line. This line abstract commands spread-out on multiple lines.
@@ -69,7 +70,7 @@ public class Line {
             }
             CursorLocation cursorLoc = buffer.getCursorLocator().locate(buffer.multiCursor(), width);
             int num = cursorLoc.getRow() - loc.getRow();
-            if(num > 0) {
+            if (num > 0) {
                 moveUp(num);
             } else {
                 moveDown(-num);

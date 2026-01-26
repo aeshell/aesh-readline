@@ -23,8 +23,8 @@ package org.aesh.terminal.telnet;
 /**
  * A telnet option.
  *
-* @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
-*/
+ * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
+ */
 public enum Option {
 
     /**
@@ -65,6 +65,7 @@ public enum Option {
         void handleDo(TelnetConnection session) {
             session.handler.onEcho(true);
         }
+
         void handleDont(TelnetConnection session) {
             session.handler.onEcho(false);
         }
@@ -77,6 +78,7 @@ public enum Option {
         void handleDo(TelnetConnection session) {
             session.handler.onSGA(true);
         }
+
         void handleDont(TelnetConnection session) {
             session.handler.onSGA(false);
         }
@@ -91,8 +93,10 @@ public enum Option {
 
         @Override
         void handleWill(TelnetConnection session) {
-            session.send(new byte[]{TelnetConnection.BYTE_IAC, TelnetConnection.BYTE_SB, code, BYTE_SEND, TelnetConnection.BYTE_IAC, TelnetConnection.BYTE_SE});
+            session.send(new byte[] { TelnetConnection.BYTE_IAC, TelnetConnection.BYTE_SB, code, BYTE_SEND,
+                    TelnetConnection.BYTE_IAC, TelnetConnection.BYTE_SE });
         }
+
         @Override
         void handleWont(TelnetConnection session) {
         }
@@ -114,10 +118,12 @@ public enum Option {
         void handleWill(TelnetConnection session) {
             session.handler.onNAWS(true);
         }
+
         @Override
         void handleWont(TelnetConnection session) {
             session.handler.onNAWS(false);
         }
+
         @Override
         void handleParameters(TelnetConnection session, byte[] parameters) {
             if (parameters.length == 4) {
@@ -144,28 +150,32 @@ public enum Option {
      *
      * @param session the session
      */
-    void handleDo(TelnetConnection session) { }
+    void handleDo(TelnetConnection session) {
+    }
 
     /**
      * Handle a <code>DON'T</code> message.
      *
      * @param session the session
      */
-    void handleDont(TelnetConnection session) { }
+    void handleDont(TelnetConnection session) {
+    }
 
     /**
      * Handle a <code>WILL</code> message.
      *
      * @param session the session
      */
-    void handleWill(TelnetConnection session) { }
+    void handleWill(TelnetConnection session) {
+    }
 
     /**
      * Handle a <code>WON'T</code> message.
      *
      * @param session the session
      */
-    void handleWont(TelnetConnection session) { }
+    void handleWont(TelnetConnection session) {
+    }
 
     /**
      * Handle a parameters message.
@@ -173,6 +183,7 @@ public enum Option {
      * @param session the session
      * @param parameters the parameters
      */
-    void handleParameters(TelnetConnection session, byte[] parameters) { }
+    void handleParameters(TelnetConnection session, byte[] parameters) {
+    }
 
 }

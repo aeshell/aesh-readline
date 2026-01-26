@@ -21,6 +21,7 @@ package org.aesh.readline.cursor;
 
 import java.util.ArrayList;
 import java.util.List;
+
 import org.aesh.readline.Buffer;
 
 /**
