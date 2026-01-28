@@ -19,8 +19,8 @@
  */
 package org.aesh.readline.editing;
 
-import org.aesh.readline.terminal.Key;
-import org.aesh.readline.tty.terminal.TestConnection;
+import org.aesh.readline.tty.terminal.TestReadlineConnection;
+import org.aesh.terminal.Key;
 import org.junit.Test;
 
 /**
@@ -30,7 +30,7 @@ public class EmacsModeTest {
 
     @Test
     public void testSimpleMovementAndEdit() {
-        TestConnection term = new TestConnection();
+        TestReadlineConnection term = new TestReadlineConnection();
         term.setSignalHandler(null);
         term.read("1234");
         term.read(Key.CTRL_D);
@@ -50,7 +50,7 @@ public class EmacsModeTest {
 
     @Test
     public void testWordMovementAndEdit() throws Exception {
-        TestConnection term = new TestConnection();
+        TestReadlineConnection term = new TestReadlineConnection();
         term.read("foo  bar...  Foo-Bar.");
         term.read(Key.META_b);
         term.read(Key.META_d);
@@ -71,7 +71,7 @@ public class EmacsModeTest {
 
     @Test
     public void testWordMovementWithEndAndHome() throws Exception {
-        TestConnection term = new TestConnection();
+        TestReadlineConnection term = new TestReadlineConnection();
         term.read("o  ba");
         term.read(Key.HOME);
         term.read("o");
@@ -87,7 +87,7 @@ public class EmacsModeTest {
 
     @Test
     public void testSwitchingEditModes() throws Exception {
-        TestConnection term = new TestConnection();
+        TestReadlineConnection term = new TestReadlineConnection();
         term.read("foo  bar...  Foo-Bar.");
         term.read(Key.CTRL_A);
         term.read("A ");
@@ -110,7 +110,7 @@ public class EmacsModeTest {
 
     @Test
     public void testWordMovementWithArrows() {
-        TestConnection term = new TestConnection();
+        TestReadlineConnection term = new TestReadlineConnection();
         term.read("/subsyste=fo/ba:add(pro=abc)");
         term.read(Key.CTRL_LEFT);
         term.read(Key.LEFT_2);
@@ -132,7 +132,7 @@ public class EmacsModeTest {
 
     @Test
     public void testCharMovementWithArrows() {
-        TestConnection term = new TestConnection();
+        TestReadlineConnection term = new TestReadlineConnection();
         term.read("foobarfoobarfoo");
         term.read(Key.LEFT_2);
         term.read(Key.LEFT_2);

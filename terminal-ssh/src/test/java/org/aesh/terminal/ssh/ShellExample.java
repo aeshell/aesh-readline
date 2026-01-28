@@ -15,12 +15,12 @@ import org.aesh.readline.Readline;
 import org.aesh.readline.completion.Completion;
 import org.aesh.readline.editing.EditMode;
 import org.aesh.readline.editing.EditModeBuilder;
-import org.aesh.readline.util.LoggerUtil;
 import org.aesh.terminal.Attributes;
 import org.aesh.terminal.Connection;
 import org.aesh.terminal.tty.Point;
 import org.aesh.terminal.tty.Signal;
 import org.aesh.terminal.utils.Config;
+import org.aesh.terminal.utils.LoggerUtil;
 
 public class ShellExample implements Consumer<Connection> {
 

@@ -23,14 +23,14 @@ import java.util.logging.Logger;
 
 import org.aesh.readline.InputProcessor;
 import org.aesh.readline.action.Action;
-import org.aesh.readline.action.KeyAction;
 import org.aesh.readline.action.SearchAction;
 import org.aesh.readline.history.SearchDirection;
-import org.aesh.readline.terminal.Key;
-import org.aesh.readline.util.IntArrayBuilder;
-import org.aesh.readline.util.LoggerUtil;
-import org.aesh.readline.util.Parser;
+import org.aesh.terminal.Key;
+import org.aesh.terminal.KeyAction;
 import org.aesh.terminal.utils.ANSI;
+import org.aesh.terminal.utils.IntArrayBuilder;
+import org.aesh.terminal.utils.LoggerUtil;
+import org.aesh.terminal.utils.Parser;
 
 /**
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>

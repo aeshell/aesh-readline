@@ -51,9 +51,9 @@ import org.aesh.readline.action.mappings.NextHistory;
 import org.aesh.readline.action.mappings.NoAction;
 import org.aesh.readline.action.mappings.PrevHistory;
 import org.aesh.readline.action.mappings.Undo;
-import org.aesh.readline.terminal.DeviceBuilder;
-import org.aesh.readline.terminal.Key;
 import org.aesh.terminal.Device;
+import org.aesh.terminal.Key;
+import org.aesh.terminal.tty.DeviceBuilder;
 
 /**
  * Builder for creating and configuring EditMode instances with key bindings and variables.

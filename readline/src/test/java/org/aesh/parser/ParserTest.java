@@ -28,10 +28,10 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import org.aesh.readline.terminal.formatting.TerminalString;
-import org.aesh.readline.util.Parser;
+import org.aesh.terminal.formatting.TerminalString;
 import org.aesh.terminal.utils.ANSI;
 import org.aesh.terminal.utils.Config;
+import org.aesh.terminal.utils.Parser;
 import org.junit.Assert;
 import org.junit.Test;
 

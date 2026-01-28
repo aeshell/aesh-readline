@@ -19,8 +19,8 @@
  */
 package org.aesh.readline.editing;
 
-import org.aesh.readline.terminal.Key;
-import org.aesh.readline.tty.terminal.TestConnection;
+import org.aesh.readline.tty.terminal.TestReadlineConnection;
+import org.aesh.terminal.Key;
 import org.junit.Test;
 
 /**
@@ -31,7 +31,7 @@ public class ViModeTest {
 
     @Test
     public void testSimpleMovementAndEdit() {
-        TestConnection term = new TestConnection(EditModeBuilder.builder(EditMode.Mode.VI).create());
+        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI).create());
         term.read("abcd");
         term.read(Key.ESC);
         term.read(Key.x);
@@ -63,7 +63,7 @@ public class ViModeTest {
 
     @Test
     public void testWordMovementAndEdit() throws Exception {
-        TestConnection term = new TestConnection(EditModeBuilder.builder(EditMode.Mode.VI).create());
+        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI).create());
         term.read("  ..");
         term.read(Key.ESC);
         term.read(Key.b);
@@ -84,7 +84,7 @@ public class ViModeTest {
 
     @Test
     public void testWordMovementAndEdit2() throws Exception {
-        TestConnection term = new TestConnection(EditModeBuilder.builder(EditMode.Mode.VI).create());
+        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI).create());
         term.read("foo  bar...  Foo-Bar.");
         term.read(Key.ESC);
         term.read(Key.B);
@@ -106,7 +106,7 @@ public class ViModeTest {
 
     @Test
     public void testWordMovementAndEdit3() throws Exception {
-        TestConnection term = new TestConnection(EditModeBuilder.builder(EditMode.Mode.VI).create());
+        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI).create());
         term.read("foo bar... Bar");
         term.read(Key.ESC);
         term.read(Key.ZERO);
@@ -121,12 +121,12 @@ public class ViModeTest {
 
     @Test
     public void testEnter() throws Exception {
-        TestConnection term = new TestConnection(EditModeBuilder.builder(EditMode.Mode.VI).create());
+        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI).create());
         term.read("foo bar");
         term.read(Key.ENTER);
         term.assertLine("foo bar");
 
-        term = new TestConnection(EditModeBuilder.builder(EditMode.Mode.VI).create());
+        term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI).create());
         term.read("bar");
         term.read(Key.ESC);
         term.read(Key.CTRL_M);
@@ -136,7 +136,7 @@ public class ViModeTest {
 
     @Test
     public void testRepeatAndEdit() throws Exception {
-        TestConnection term = new TestConnection(EditModeBuilder.builder(EditMode.Mode.VI).create());
+        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI).create());
 
         term.read("/cd /home/foo/ ls/ cd Desktop/ ls ../");
         term.read(Key.ESC);
@@ -182,7 +182,7 @@ public class ViModeTest {
 
     @Test
     public void testTildeAndEdit() throws Exception {
-        TestConnection term = new TestConnection(EditModeBuilder.builder(EditMode.Mode.VI).create());
+        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI).create());
 
         term.read("apt-get install vIM");
         term.read(Key.ESC);
@@ -215,7 +215,7 @@ public class ViModeTest {
 
     @Test
     public void testPasteAndEdit() {
-        TestConnection term = new TestConnection(EditModeBuilder.builder(EditMode.Mode.VI).create());
+        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI).create());
         term.read("apt-get install vIM");
         term.read(Key.ESC);
         term.read(Key.ZERO);
@@ -235,7 +235,7 @@ public class ViModeTest {
 
     @Test
     public void testSearch() {
-        TestConnection term = new TestConnection(EditModeBuilder.builder(EditMode.Mode.VI).create());
+        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI).create());
         term.read("asdf jkl\n");
         term.readline();
         term.read("footing\n");
@@ -249,7 +249,7 @@ public class ViModeTest {
 
     @Test
     public void testSearchWithArrownRight() {
-        TestConnection term = new TestConnection(EditModeBuilder.builder(EditMode.Mode.VI).create());
+        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI).create());
         term.read("asdf jkl\n");
         term.readline();
         term.read("footing\n");
@@ -267,7 +267,7 @@ public class ViModeTest {
 
     @Test
     public void testSearchWithArrownLeft() {
-        TestConnection term = new TestConnection(EditModeBuilder.builder(EditMode.Mode.VI).create());
+        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI).create());
         term.read("asdf jkl\n");
         term.readline();
         term.read("footing\n");
@@ -282,7 +282,7 @@ public class ViModeTest {
 
     @Test
     public void testSearchWithArrownUp() {
-        TestConnection term = new TestConnection(EditModeBuilder.builder(EditMode.Mode.VI).create());
+        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI).create());
         term.read("footing\n");
         term.readline();
         term.read("asdf jkl\n");
@@ -297,7 +297,7 @@ public class ViModeTest {
 
     @Test
     public void testSearchWithArrownDown() {
-        TestConnection term = new TestConnection(EditModeBuilder.builder(EditMode.Mode.VI).create());
+        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI).create());
         term.read("asdf jkl\n");
         term.readline();
         term.read("footing\n");

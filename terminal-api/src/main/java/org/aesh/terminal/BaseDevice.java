@@ -20,6 +20,10 @@
 package org.aesh.terminal;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -33,10 +37,42 @@ import org.aesh.terminal.utils.Curses;
  *
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
-public abstract class BaseDevice implements Device {
+public class BaseDevice implements Device {
 
     private static final Pattern A = Pattern.compile("^\\\\([0-9]{1,3})");
     private static final Pattern B = Pattern.compile("^\\\\x([0-9,A-F,a-f]{1,2})");
+    protected final Set<Capability> bools = new HashSet<>();
+    protected final Map<Capability, Integer> ints = new HashMap<>();
+    protected final Map<Capability, String> strings = new HashMap<>();
+    protected String type;
+
+    public BaseDevice() {
+        this.type = "ansi";
+    }
+
+    public BaseDevice(String type) {
+        this.type = type;
+    }
+
+    @Override
+    public String type() {
+        return type;
+    }
+
+    @Override
+    public boolean getBooleanCapability(Capability capability) {
+        return bools.contains(capability);
+    }
+
+    @Override
+    public Integer getNumericCapability(Capability capability) {
+        return ints.get(capability);
+    }
+
+    @Override
+    public String getStringCapability(Capability capability) {
+        return strings.get(capability);
+    }
 
     @Override
     public int[] getStringCapabilityAsInts(Capability capability, Object... params) {

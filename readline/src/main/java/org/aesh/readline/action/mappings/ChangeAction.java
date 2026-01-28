@@ -23,7 +23,7 @@ import java.util.Arrays;
 
 import org.aesh.readline.InputProcessor;
 import org.aesh.readline.editing.EditMode;
-import org.aesh.readline.util.Parser;
+import org.aesh.terminal.utils.Parser;
 
 /**
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>

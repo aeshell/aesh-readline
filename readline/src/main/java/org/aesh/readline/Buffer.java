@@ -24,13 +24,13 @@ import java.util.function.Consumer;
 import java.util.logging.Logger;
 
 import org.aesh.readline.cursor.CursorLocator;
-import org.aesh.readline.terminal.impl.WinSysTerminal;
-import org.aesh.readline.util.IntArrayBuilder;
-import org.aesh.readline.util.LoggerUtil;
-import org.aesh.readline.util.Parser;
-import org.aesh.readline.util.WcWidth;
+import org.aesh.terminal.tty.impl.WinSysTerminal;
 import org.aesh.terminal.utils.ANSI;
 import org.aesh.terminal.utils.Config;
+import org.aesh.terminal.utils.IntArrayBuilder;
+import org.aesh.terminal.utils.LoggerUtil;
+import org.aesh.terminal.utils.Parser;
+import org.aesh.terminal.utils.WcWidth;
 
 /**
  * Buffer to keep track of text and cursor position in the console.

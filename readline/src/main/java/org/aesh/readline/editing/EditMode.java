@@ -22,9 +22,9 @@ package org.aesh.readline.editing;
 import java.util.Arrays;
 
 import org.aesh.readline.action.Action;
-import org.aesh.readline.action.KeyAction;
-import org.aesh.readline.terminal.Key;
 import org.aesh.terminal.Device;
+import org.aesh.terminal.Key;
+import org.aesh.terminal.KeyAction;
 
 /**
  * Defines the interface for line editing modes such as Emacs and Vi.

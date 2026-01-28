@@ -23,7 +23,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import org.aesh.readline.util.Parser;
+import org.aesh.terminal.utils.Parser;
 
 /**
  * A simple in-memory history implementation

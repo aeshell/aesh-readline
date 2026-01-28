@@ -23,8 +23,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.aesh.readline.completion.Completion;
-import org.aesh.readline.terminal.Key;
 import org.aesh.readline.tty.terminal.TestConnection;
+import org.aesh.readline.tty.terminal.TestReadlineConnection;
+import org.aesh.terminal.Key;
 import org.aesh.terminal.utils.Config;
 import org.junit.Test;
 
@@ -55,7 +56,7 @@ public class CompletionReadlineTest {
             }
         });
 
-        TestConnection term = new TestConnection(completions);
+        TestReadlineConnection term = new TestReadlineConnection(completions);
 
         term.read("foo".getBytes());
         term.read(Key.CTRL_I);
@@ -87,7 +88,7 @@ public class CompletionReadlineTest {
             }
         });
 
-        TestConnection term = new TestConnection(completions);
+        TestConnection term = new TestReadlineConnection(completions);
         term.read(Key.CTRL_I);
         term.assertOutputBuffer(": " + Config.getLineSeparator() + "arg  Arg  boo  foo  " + Config.getLineSeparator() + ":");
     }
@@ -102,7 +103,7 @@ public class CompletionReadlineTest {
             }
         });
 
-        TestConnection term = new TestConnection(completions);
+        TestReadlineConnection term = new TestReadlineConnection(completions);
 
         term.read("  ".getBytes());
         term.read(Key.LEFT_2);
@@ -124,7 +125,7 @@ public class CompletionReadlineTest {
             }
         });
 
-        TestConnection term = new TestConnection(completions);
+        TestReadlineConnection term = new TestReadlineConnection(completions);
 
         term.read("1 bah".getBytes());
         term.read(Key.LEFT_2);
@@ -148,7 +149,7 @@ public class CompletionReadlineTest {
             }
         });
 
-        TestConnection term = new TestConnection(completions);
+        TestReadlineConnection term = new TestReadlineConnection(completions);
 
         term.read("1 bah".getBytes());
         term.read(Key.LEFT_2);
@@ -179,7 +180,7 @@ public class CompletionReadlineTest {
             }
         });
 
-        TestConnection term = new TestConnection(completions);
+        TestReadlineConnection term = new TestReadlineConnection(completions);
 
         term.read("1 ".getBytes());
         term.read(Key.CTRL_I);

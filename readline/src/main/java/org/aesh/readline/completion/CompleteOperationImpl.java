@@ -22,8 +22,8 @@ package org.aesh.readline.completion;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.aesh.readline.terminal.formatting.TerminalString;
-import org.aesh.readline.util.Parser;
+import org.aesh.terminal.formatting.TerminalString;
+import org.aesh.terminal.utils.Parser;
 
 /**
  * A payload object to store completion data

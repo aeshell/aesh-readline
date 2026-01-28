@@ -27,9 +27,9 @@ import java.util.function.Function;
 import org.aesh.readline.Buffer;
 import org.aesh.readline.InputProcessor;
 import org.aesh.readline.action.mappings.ActionMapper;
-import org.aesh.readline.terminal.formatting.TerminalString;
-import org.aesh.readline.util.Parser;
+import org.aesh.terminal.formatting.TerminalString;
 import org.aesh.terminal.utils.Config;
+import org.aesh.terminal.utils.Parser;
 
 /**
  * Abstract handler that manages tab-completion for command line input.
@@ -146,7 +146,7 @@ public abstract class CompletionHandler<C extends CompleteOperation> {
         String startsWith = "";
 
         if (!possibleCompletions.get(0).isIgnoreStartsWith())
-            startsWith = Parser.findStartsWithOperation(possibleCompletions);
+            startsWith = findStartsWithOperation(possibleCompletions);
 
         if (startsWith.length() > 0) {
             if (startsWith.contains(" ") && !possibleCompletions.get(0).doIgnoreNonEscapedSpace())
@@ -200,6 +200,24 @@ public abstract class CompletionHandler<C extends CompleteOperation> {
         if (appendSpace) {
             inputProcessor.buffer().writeChar(separator);
         }
+    }
+
+    /**
+     * If there is any common start string in the completion list, return it
+     *
+     * @param coList completion list
+     * @return common start string
+     */
+    public static String findStartsWithOperation(List<? extends CompleteOperation> coList) {
+        List<String> tmpList = new ArrayList<>();
+        for (CompleteOperation co : coList) {
+            String s = Parser.findStartsWith(co.getFormattedCompletionCandidates());
+            if (s.length() > 0)
+                tmpList.add(s);
+            else
+                return "";
+        }
+        return Parser.findStartsWith(tmpList);
     }
 
     /**

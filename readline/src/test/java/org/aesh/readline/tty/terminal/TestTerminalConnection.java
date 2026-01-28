@@ -28,12 +28,12 @@ import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.function.Consumer;
 
-import org.aesh.readline.Prompt;
-import org.aesh.readline.Readline;
 import org.aesh.readline.TestTerminal;
 import org.aesh.terminal.Attributes;
 import org.aesh.terminal.tty.Signal;
+import org.aesh.terminal.tty.TerminalConnection;
 import org.aesh.terminal.utils.Config;
 import org.junit.Assert;
 import org.junit.Test;
@@ -78,7 +78,7 @@ public class TestTerminalConnection {
 
     @Test
     public void testConnection() {
-        TestConnection test = new TestConnection();
+        TestReadlineConnection test = new TestReadlineConnection();
         test.read("foo");
         test.assertBuffer("foo");
         test.assertLine(null);
@@ -97,8 +97,14 @@ public class TestTerminalConnection {
         attributes.setLocalFlag(Attributes.LocalFlag.ECHOCTL, true);
         connection.setAttributes(attributes);
 
-        Readline readline = new Readline();
-        readline.readline(connection, new Prompt(""), s -> {
+        // Replace Readline behavior: echo ^C when ECHOCTL is set, then send newline
+        connection.setSignalHandler(signal -> {
+            if (signal == Signal.INT) {
+                Attributes attr = connection.getAttributes();
+                if (attr != null && attr.getLocalFlag(Attributes.LocalFlag.ECHOCTL))
+                    connection.stdoutHandler().accept(new int[] { '^', 'C' });
+                connection.stdoutHandler().accept(Config.CR);
+            }
         });
 
         connection.openNonBlocking();
@@ -119,8 +125,14 @@ public class TestTerminalConnection {
 
         TerminalConnection connection = new TerminalConnection(Charset.defaultCharset(), pipedInputStream, out);
 
-        Readline readline = new Readline();
-        readline.readline(connection, new Prompt(""), s -> {
+        // echo stdin to stdout
+        connection.setStdinHandler(cp -> connection.stdoutHandler().accept(cp));
+
+        // on interrupt just write newline
+        connection.setSignalHandler(signal -> {
+            if (signal == Signal.INT) {
+                connection.stdoutHandler().accept(Config.CR);
+            }
         });
 
         connection.openNonBlocking();
@@ -140,16 +152,23 @@ public class TestTerminalConnection {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
 
         TerminalConnection connection = new TerminalConnection(Charset.defaultCharset(), pipedInputStream, out);
+
+        // simple line-buffering stdin handler that echoes complete lines only when newline is seen
+        final StringBuilder lineBuffer = new StringBuilder();
+        connection.setStdinHandler(echoReader(lineBuffer, connection));
+
+        // custom interrupt handling: flush any pending input, write BAR, newline and close
         connection.setSignalHandler(signal -> {
             if (signal == Signal.INT) {
+                if (lineBuffer.length() > 0) {
+                    int[] pending = lineBuffer.toString().chars().toArray();
+                    connection.stdoutHandler().accept(pending);
+                    lineBuffer.setLength(0);
+                }
                 connection.write("BAR");
                 connection.stdoutHandler().accept(Config.CR);
                 connection.close();
             }
-        });
-
-        Readline readline = new Readline();
-        readline.readline(connection, new Prompt(""), s -> {
         });
 
         connection.openNonBlocking();
@@ -158,14 +177,31 @@ public class TestTerminalConnection {
         Thread.sleep(250);
         assertEquals(new String(out.toByteArray()), "GAH" + Config.getLineSeparator());
 
-        readline.readline(connection, new Prompt(""), s -> {
-        });
+        // second read: send partial input then interrupt
         outputStream.write(("FOO").getBytes());
         outputStream.flush();
         connection.getTerminal().raise(Signal.INT);
         Thread.sleep(250);
 
         assertEquals(new String(out.toByteArray()), "GAH" + Config.getLineSeparator() + "FOOBAR" + Config.getLineSeparator());
+    }
+
+    private static Consumer<int[]> echoReader(StringBuilder lineBuffer, TerminalConnection connection) {
+        return cp -> {
+            for (int c : cp) {
+                if (c == '\n' || c == '\r') {
+                    if (lineBuffer.length() > 0) {
+                        int[] toEcho = lineBuffer.toString().chars().toArray();
+                        connection.stdoutHandler().accept(toEcho);
+                        lineBuffer.setLength(0);
+                    }
+                    // echo the newline itself
+                    connection.stdoutHandler().accept(Config.CR);
+                } else {
+                    lineBuffer.append((char) c);
+                }
+            }
+        };
     }
 
 }

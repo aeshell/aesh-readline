@@ -29,9 +29,9 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.aesh.readline.util.FileAccessPermission;
-import org.aesh.readline.util.LoggerUtil;
-import org.aesh.readline.util.Parser;
 import org.aesh.terminal.utils.Config;
+import org.aesh.terminal.utils.LoggerUtil;
+import org.aesh.terminal.utils.Parser;
 
 /**
  * Read the history file at init and writeToStdOut to it at shutdown

@@ -1,0 +1,4 @@
+TERM='vt200'; export TERM;
+LINES=47; export LINES;
+COLUMNS=112; export COLUMNS;
+ERASE='^?'; export ERASE;

@@ -29,7 +29,7 @@ import org.aesh.readline.action.mappings.ForwardChar;
 import org.aesh.readline.action.mappings.NextHistory;
 import org.aesh.readline.action.mappings.NoAction;
 import org.aesh.readline.action.mappings.PrevHistory;
-import org.aesh.readline.terminal.Key;
+import org.aesh.terminal.Key;
 import org.aesh.terminal.utils.Config;
 import org.junit.Test;
 

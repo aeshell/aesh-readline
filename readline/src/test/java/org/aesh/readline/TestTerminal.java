@@ -25,9 +25,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
-import org.aesh.readline.terminal.impl.LineDisciplineTerminal;
-import org.aesh.readline.tty.terminal.TerminalConnection;
 import org.aesh.terminal.Terminal;
+import org.aesh.terminal.tty.TerminalConnection;
+import org.aesh.terminal.tty.impl.LineDisciplineTerminal;
 
 /**
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>

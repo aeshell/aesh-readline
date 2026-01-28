@@ -1,220 +1,49 @@
-/*
- * JBoss, Home of Professional Open Source
- * Copyright 2014 Red Hat Inc. and/or its affiliates and other contributors
- * as indicated by the @authors tag. All rights reserved.
- * See the copyright.txt in the distribution for a
- * full listing of individual contributors.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package org.aesh.readline.tty.terminal;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.nio.charset.Charset;
-import java.util.EnumMap;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.Queue;
 import java.util.function.Consumer;
 
-import org.aesh.readline.Prompt;
-import org.aesh.readline.ReadlineFlag;
-import org.aesh.readline.TestReadline;
-import org.aesh.readline.completion.Completion;
-import org.aesh.readline.editing.EditMode;
-import org.aesh.readline.editing.EditModeBuilder;
-import org.aesh.readline.terminal.DeviceBuilder;
-import org.aesh.readline.terminal.Key;
-import org.aesh.readline.util.Parser;
-import org.aesh.terminal.Attributes;
-import org.aesh.terminal.Connection;
-import org.aesh.terminal.Device;
-import org.aesh.terminal.EventDecoder;
+import org.aesh.terminal.*;
 import org.aesh.terminal.io.Decoder;
 import org.aesh.terminal.tty.Capability;
 import org.aesh.terminal.tty.Signal;
 import org.aesh.terminal.tty.Size;
+import org.aesh.terminal.utils.Parser;
 
-/**
- * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
- */
 public class TestConnection implements Connection {
-
-    private final Decoder decoder;
+    protected Decoder decoder;
+    protected Consumer<int[]> stdOutHandler;
+    protected EventDecoder eventDecoder;
+    protected StringBuilder bufferBuilder;
+    protected Queue<String> out;
+    protected Size size;
+    protected Device device;
+    protected Attributes attributes;
     private Consumer<Size> sizeHandler;
-    private Consumer<int[]> stdOutHandler;
     private Consumer<Void> closeHandler;
-    private EventDecoder eventDecoder;
-
-    private StringBuilder bufferBuilder;
-    private Queue<String> out;
-    private TestReadline readline;
-    private Size size;
-    private Device device;
-    private Attributes attributes;
     private boolean stripAnsi = true;
 
-    private Prompt prompt = new Prompt(": ");
-
-    public TestConnection() {
-        //default emacs mode
-        this(EditModeBuilder.builder().create(), null);
+    public TestConnection(Size size) {
+        this(size, null);
     }
 
-    public TestConnection(boolean stripAnsi) {
-        //default emacs mode
-        this(null, null, null, null, null, null, null, stripAnsi);
-    }
-
-    public TestConnection(Prompt prompt) {
-        //default emacs mode
-        this(EditModeBuilder.builder().create(), null, prompt);
-    }
-
-    public TestConnection(EditMode editMode) {
-        this(editMode, null);
-    }
-
-    public TestConnection(EnumMap<ReadlineFlag, Integer> flags) {
-        this(null, null, null, null, null, null, flags);
-    }
-
-    public TestConnection(List<Completion> completions) {
-        this(EditModeBuilder.builder().create(), completions);
-    }
-
-    public TestConnection(EditMode editMode, List<Completion> completions) {
-        this(editMode, completions, null, null);
-    }
-
-    public TestConnection(EditMode editMode, List<Completion> completions, Prompt prompt) {
-        this(editMode, completions, null, prompt);
-    }
-
-    public TestConnection(EditMode editMode, List<Completion> completions, Size size) {
-        this(editMode, completions, size, null);
-    }
-
-    public TestConnection(EditMode editMode, List<Completion> completions, Size size, Prompt prompt) {
-        this(null, editMode, completions, size, prompt);
-    }
-
-    public TestConnection(TestReadline readline, EditMode editMode, List<Completion> completions, Size size, Prompt prompt) {
-        this(readline, editMode, completions, size, prompt, null, new EnumMap<>(ReadlineFlag.class));
-
-    }
-
-    public TestConnection(TestReadline readline, EditMode editMode, List<Completion> completions, Size size, Prompt prompt,
-            Attributes attributes, EnumMap<ReadlineFlag, Integer> flags) {
-        this(readline, editMode, completions, size, prompt, attributes, flags, true);
-    }
-
-    public TestConnection(TestReadline readline, EditMode editMode, List<Completion> completions, Size size, Prompt prompt,
-            Attributes attributes, EnumMap<ReadlineFlag, Integer> flags, boolean stripAnsi) {
-        if (editMode == null)
-            editMode = EditModeBuilder.builder().create();
+    public TestConnection(Size size, Device device) {
         bufferBuilder = new StringBuilder();
-        if (stripAnsi)
-            stdOutHandler = ints -> bufferBuilder.append(Parser.stripAwayAnsiCodes(Parser.fromCodePoints(ints)));
-        else
-            stdOutHandler = ints -> bufferBuilder.append(Parser.fromCodePoints(ints));
-
+        out = new LinkedList<>();
         if (size == null)
             this.size = new Size(80, 20);
         else
             this.size = size;
-
-        if (prompt != null)
-            this.prompt = prompt;
-
-        if (attributes != null)
-            this.attributes = attributes;
-
-        if (this.attributes != null)
-            eventDecoder = new EventDecoder(this.attributes);
-        else {
-            eventDecoder = new EventDecoder();
-            this.attributes = new Attributes();
+        if (device == null) {
+            this.device = new BaseDevice("ansi");
+        } else {
+            this.device = device;
         }
-
-        device = DeviceBuilder.builder().name("xterm-256color").build();
-        decoder = new Decoder(512, Charset.defaultCharset(), eventDecoder);
-
-        out = new LinkedList<>();
-        if (readline == null) {
-            this.readline = new TestReadline(editMode);
-            if (completions != null)
-                readline(completions);
-            else if (flags != null)
-                readline(flags);
-            else
-                readline();
-        } else
-            this.readline = readline;
-    }
-
-    public void readline() {
-        clearOutputBuffer();
-        readline.readline(this, prompt, out -> this.out.add(out));
-    }
-
-    public void readline(Consumer<String> out) {
-        clearOutputBuffer();
-        readline.readline(this, prompt, out);
-    }
-
-    public void readline(List<Completion> completions) {
-        clearOutputBuffer();
-        readline.readline(this, prompt, out -> this.out.add(out), completions);
-    }
-
-    public void readline(List<Completion> completions, Consumer<String> out) {
-        clearOutputBuffer();
-        readline.readline(this, prompt, out, completions);
-    }
-
-    public void readline(EnumMap<ReadlineFlag, Integer> flags) {
-        clearOutputBuffer();
-        readline.readline(this, prompt, out -> this.out.add(out), null, null, null, null, flags);
-    }
-
-    public void clearOutputBuffer() {
-        if (bufferBuilder.length() > 0)
-            bufferBuilder.delete(0, bufferBuilder.length());
-    }
-
-    public void clearLineBuffer() {
-        if (out.size() > 0)
-            out.clear();
-    }
-
-    public String getOutputBuffer() {
-        return bufferBuilder.toString();
-    }
-
-    public String getPrompt() {
-        return Parser.fromCodePoints(prompt.getPromptAsString());
-    }
-
-    public void setPrompt(Prompt prompt) {
-        if (prompt != null)
-            this.prompt = prompt;
-    }
-
-    public String getLine() {
-        return out.poll();
     }
 
     @Override
@@ -325,10 +154,6 @@ public class TestConnection implements Connection {
         assertTrue(bufferBuilder.toString().trim().endsWith(input));
     }
 
-    public void assertBuffer(String expected) {
-        assertEquals(expected, Parser.stripAwayAnsiCodes(readline.getBuffer()));
-    }
-
     public void assertLine(String expected) {
         assertEquals(expected, out.poll());
     }
@@ -349,5 +174,4 @@ public class TestConnection implements Connection {
     public void read(String data) {
         eventDecoder.getInputHandler().accept(Parser.toCodePoints(data));
     }
-
 }

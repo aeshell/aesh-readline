@@ -21,7 +21,7 @@ package org.aesh.readline;
 
 import static org.junit.Assert.assertEquals;
 
-import org.aesh.readline.tty.terminal.TestConnection;
+import org.aesh.readline.tty.terminal.TestReadlineConnection;
 import org.junit.Test;
 
 /**
@@ -31,7 +31,7 @@ public class ParsingReadlineTest {
 
     @Test
     public void testParse() {
-        TestConnection connection = new TestConnection();
+        TestReadlineConnection connection = new TestReadlineConnection();
         connection.read(new byte[] { '3', '4', 1, 27 });
         assertEquals(": 34", connection.getOutputBuffer());
         connection.read(new byte[] { 91, 67, '1', '2', '\r' });

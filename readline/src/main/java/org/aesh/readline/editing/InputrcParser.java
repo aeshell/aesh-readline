@@ -25,8 +25,8 @@ import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.aesh.readline.util.LoggerUtil;
 import org.aesh.terminal.utils.Config;
+import org.aesh.terminal.utils.LoggerUtil;
 
 /**
  * Map key bindings to specified operation.

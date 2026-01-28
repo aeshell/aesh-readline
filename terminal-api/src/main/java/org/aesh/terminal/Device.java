@@ -25,7 +25,7 @@ import org.aesh.terminal.tty.Capability;
 import org.aesh.terminal.utils.ColorDepth;
 
 /**
- * Contains info regarding the current device connected to readline
+ * Contains info and capabilities for the device we are connected to.
  *
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */

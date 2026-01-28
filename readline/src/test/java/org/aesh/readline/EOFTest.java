@@ -10,8 +10,8 @@ import static org.junit.Assert.assertEquals;
 
 import java.util.EnumMap;
 
-import org.aesh.readline.terminal.Key;
-import org.aesh.readline.tty.terminal.TestConnection;
+import org.aesh.readline.tty.terminal.TestReadlineConnection;
+import org.aesh.terminal.Key;
 import org.junit.Test;
 
 /**
@@ -25,7 +25,7 @@ public class EOFTest {
         final int[] closeCalled = { 0 };
 
         EnumMap<ReadlineFlag, Integer> flags = new EnumMap<>(ReadlineFlag.class);
-        TestConnection term = new TestConnection(flags);
+        TestReadlineConnection term = new TestReadlineConnection(flags);
 
         term.setCloseHandler(v -> {
             closeCalled[0]++;
@@ -52,7 +52,7 @@ public class EOFTest {
 
         EnumMap<ReadlineFlag, Integer> flags = new EnumMap<>(ReadlineFlag.class);
         flags.put(ReadlineFlag.IGNORE_EOF, 2);
-        TestConnection term = new TestConnection(flags);
+        TestReadlineConnection term = new TestReadlineConnection(flags);
 
         term.setCloseHandler(v -> {
             closeCalled[0]++;
@@ -82,7 +82,7 @@ public class EOFTest {
 
         EnumMap<ReadlineFlag, Integer> flags = new EnumMap<>(ReadlineFlag.class);
         flags.put(ReadlineFlag.IGNORE_EOF, 2);
-        TestConnection term = new TestConnection(flags);
+        TestReadlineConnection term = new TestReadlineConnection(flags);
 
         term.setCloseHandler(v -> {
             closeCalled[0]++;

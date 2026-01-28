@@ -25,12 +25,12 @@ import java.util.List;
 import java.util.logging.Logger;
 
 import org.aesh.readline.Buffer;
-import org.aesh.readline.terminal.formatting.Color;
-import org.aesh.readline.terminal.formatting.TerminalCharacter;
-import org.aesh.readline.terminal.formatting.TerminalColor;
-import org.aesh.readline.util.Parser;
 import org.aesh.terminal.Connection;
+import org.aesh.terminal.formatting.Color;
+import org.aesh.terminal.formatting.TerminalCharacter;
+import org.aesh.terminal.formatting.TerminalColor;
 import org.aesh.terminal.utils.ANSI;
+import org.aesh.terminal.utils.Parser;
 
 /**
  * A command line. This line abstract commands spread-out on multiple lines.

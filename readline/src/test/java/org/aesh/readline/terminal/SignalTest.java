@@ -21,8 +21,9 @@ package org.aesh.readline.terminal;
 
 import static org.junit.Assert.assertEquals;
 
-import org.aesh.readline.tty.terminal.TestConnection;
+import org.aesh.readline.tty.terminal.TestReadlineConnection;
 import org.aesh.terminal.Attributes;
+import org.aesh.terminal.Key;
 import org.aesh.terminal.tty.Signal;
 import org.junit.Test;
 
@@ -34,7 +35,7 @@ public class SignalTest {
     @Test
     public void testSignals() {
 
-        TestConnection connection = new TestConnection(null, null, null, null, null, null, null);
+        TestReadlineConnection connection = new TestReadlineConnection(null, null, null, null, null, null, null);
 
         connection.setSignalHandler(signal -> {
             if (signal == Signal.INT)
@@ -56,7 +57,7 @@ public class SignalTest {
         Attributes attributes = new Attributes();
         attributes.setControlChar(Attributes.ControlChar.VEOF, Key.CTRL_A.getFirstValue());
         attributes.setControlChar(Attributes.ControlChar.VINTR, Key.CTRL_B.getFirstValue());
-        TestConnection connection = new TestConnection(null, null, null, null, null, attributes, null);
+        TestReadlineConnection connection = new TestReadlineConnection(null, null, null, null, null, attributes, null);
 
         connection.setSignalHandler(signal -> {
             if (signal == Signal.INT)

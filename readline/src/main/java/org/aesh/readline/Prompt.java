@@ -22,9 +22,9 @@ package org.aesh.readline;
 import java.util.Arrays;
 import java.util.List;
 
-import org.aesh.readline.terminal.formatting.TerminalCharacter;
-import org.aesh.readline.terminal.formatting.TerminalString;
-import org.aesh.readline.util.Parser;
+import org.aesh.terminal.formatting.TerminalCharacter;
+import org.aesh.terminal.formatting.TerminalString;
+import org.aesh.terminal.utils.Parser;
 
 /**
  * The Prompt:

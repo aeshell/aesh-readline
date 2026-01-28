@@ -27,10 +27,10 @@ import java.util.Map;
 
 import org.aesh.readline.action.Action;
 import org.aesh.readline.action.ActionEvent;
-import org.aesh.readline.action.KeyAction;
 import org.aesh.readline.action.mappings.ActionMapper;
-import org.aesh.readline.terminal.Key;
 import org.aesh.terminal.Device;
+import org.aesh.terminal.Key;
+import org.aesh.terminal.KeyAction;
 import org.aesh.terminal.tty.Capability;
 
 /**

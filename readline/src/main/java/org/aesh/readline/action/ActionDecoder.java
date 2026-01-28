@@ -24,7 +24,8 @@ import java.util.LinkedList;
 import java.util.Queue;
 
 import org.aesh.readline.editing.EditMode;
-import org.aesh.readline.terminal.Key;
+import org.aesh.terminal.Key;
+import org.aesh.terminal.KeyAction;
 
 /**
  * Decodes input key sequences and maps them to corresponding actions.

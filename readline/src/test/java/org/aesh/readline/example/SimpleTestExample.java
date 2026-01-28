@@ -23,8 +23,8 @@ import java.io.IOException;
 
 import org.aesh.readline.Readline;
 import org.aesh.readline.ReadlineBuilder;
-import org.aesh.readline.tty.terminal.TerminalConnection;
 import org.aesh.terminal.tty.Capability;
+import org.aesh.terminal.tty.TerminalConnection;
 
 /**
  * Used by TestReadlineInSeparateProcess test

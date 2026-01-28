@@ -21,8 +21,8 @@ package org.aesh.readline.util;
 
 import java.io.IOException;
 
-import org.aesh.readline.tty.terminal.TerminalConnection;
 import org.aesh.terminal.tty.Size;
+import org.aesh.terminal.tty.TerminalConnection;
 
 /**
  * Utility class for retrieving terminal size and type information.

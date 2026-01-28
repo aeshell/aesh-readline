@@ -25,7 +25,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.aesh.readline.tty.terminal.TestConnection;
+import org.aesh.readline.tty.terminal.TestReadlineConnection;
 import org.aesh.terminal.utils.Config;
 import org.junit.Assume;
 import org.junit.Test;
@@ -46,7 +46,7 @@ public class ThreadSafetyTest {
         for (int i = 'a'; i <= 'f'; i++) {
             final char finalI = (char) i;
             threads.add(new Thread() {
-                TestConnection connection = new TestConnection(readline, null, null, null, null);
+                TestReadlineConnection connection = new TestReadlineConnection(readline, null, null, null, null);
 
                 @Override
                 public void run() {

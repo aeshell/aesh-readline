@@ -28,8 +28,9 @@ import java.util.List;
 import org.aesh.readline.completion.Completion;
 import org.aesh.readline.cursor.Line;
 import org.aesh.readline.editing.EditModeBuilder;
-import org.aesh.readline.terminal.Key;
 import org.aesh.readline.tty.terminal.TestConnection;
+import org.aesh.readline.tty.terminal.TestReadlineConnection;
+import org.aesh.terminal.Key;
 import org.aesh.terminal.tty.Size;
 import org.aesh.terminal.utils.Config;
 import org.junit.Ignore;
@@ -43,7 +44,7 @@ public class ReadlineTest {
     @Ignore
     @Test
     public void testArrowsThroughSsh() {
-        TestConnection term = new TestConnection();
+        TestConnection term = new TestReadlineConnection();
         term.read("1234");
         for (int c : Key.LEFT.getKeyValues()) {
             term.read(c);
@@ -58,7 +59,7 @@ public class ReadlineTest {
 
     @Test
     public void testPaste() {
-        TestConnection term = new TestConnection();
+        TestReadlineConnection term = new TestReadlineConnection();
         term.read("1234\nfoo bar\ngah bah");
         term.assertLine("1234");
         term.readline();
@@ -70,7 +71,7 @@ public class ReadlineTest {
     @Test
     public void testMasking() {
         Prompt prompt = new Prompt(": ", '#');
-        TestConnection term = new TestConnection(null, null, null, prompt);
+        TestReadlineConnection term = new TestReadlineConnection(null, null, null, prompt);
         term.setSignalHandler(null);
         term.read("foo bar");
         assertEquals(": #######", term.getOutputBuffer());
@@ -93,7 +94,7 @@ public class ReadlineTest {
 
     @Test
     public void testEmptyPrompt() {
-        TestConnection term = new TestConnection(new Prompt(""));
+        TestReadlineConnection term = new TestReadlineConnection(new Prompt(""));
         term.read("foo");
         term.getSizeHandler().accept(new Size(80, 80));
 
@@ -102,7 +103,7 @@ public class ReadlineTest {
 
     @Test
     public void testMultiLine() {
-        TestConnection term = new TestConnection();
+        TestReadlineConnection term = new TestReadlineConnection();
         term.read("foo \\");
         term.clearOutputBuffer();
         term.read(Key.ENTER);
@@ -114,7 +115,7 @@ public class ReadlineTest {
 
     @Test
     public void testMultiLineQuote() {
-        TestConnection term = new TestConnection();
+        TestReadlineConnection term = new TestReadlineConnection();
         term.read("\"foo ");
         term.clearOutputBuffer();
         term.read(Key.ENTER);
@@ -126,7 +127,7 @@ public class ReadlineTest {
 
     @Test
     public void testMultiLineDelete() {
-        TestConnection term = new TestConnection();
+        TestReadlineConnection term = new TestReadlineConnection();
         term.read("foo \\");
         term.clearOutputBuffer();
         term.read(Key.ENTER);
@@ -152,7 +153,7 @@ public class ReadlineTest {
                 completeOperation.addCompletionCandidate("bar");
         });
 
-        TestConnection term = new TestConnection(completions);
+        TestReadlineConnection term = new TestReadlineConnection(completions);
 
         term.read("fo");
         term.read(Key.CTRL_I);
@@ -182,7 +183,7 @@ public class ReadlineTest {
             }
         });
 
-        TestConnection term = new TestConnection(completions);
+        TestReadlineConnection term = new TestReadlineConnection(completions);
 
         term.read("f");
         term.read(Key.CTRL_I);
@@ -216,7 +217,7 @@ public class ReadlineTest {
         });
 
         Size termSize = new Size(10, 10);
-        TestConnection term = new TestConnection(EditModeBuilder.builder().create(), completions, termSize);
+        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder().create(), completions, termSize);
 
         term.read("ff");
         term.read(Key.CTRL_I);
@@ -245,7 +246,7 @@ public class ReadlineTest {
             }
         });
 
-        TestConnection term = new TestConnection(completions);
+        TestReadlineConnection term = new TestReadlineConnection(completions);
 
         term.read("oof");
         term.read(Key.CTRL_I);
@@ -279,7 +280,7 @@ public class ReadlineTest {
             }
         });
 
-        TestConnection term = new TestConnection(completions);
+        TestReadlineConnection term = new TestReadlineConnection(completions);
 
         term.read("fooish \\\noof");
         term.read(Key.CTRL_I);
@@ -299,7 +300,7 @@ public class ReadlineTest {
 
     @Test
     public void testLineContentsAfterCursorMovement() {
-        TestConnection term = new TestConnection();
+        TestReadlineConnection term = new TestReadlineConnection();
         term.read("12345");
         int termWidth = term.size().getWidth();
         Buffer buffer = new Buffer();
@@ -320,7 +321,7 @@ public class ReadlineTest {
     public void testMultiLineDisableForSingleQuote() {
         EnumMap<ReadlineFlag, Integer> flags = new EnumMap<>(ReadlineFlag.class);
         flags.put(ReadlineFlag.NO_MULTI_LINE_ON_QUOTE, 2);
-        TestConnection term = new TestConnection(flags);
+        TestReadlineConnection term = new TestReadlineConnection(flags);
         term.read("'foo ");
         term.clearOutputBuffer();
         term.read(Key.ENTER);
@@ -331,7 +332,7 @@ public class ReadlineTest {
     public void testMultiLineDisableForDoubleQuote() {
         EnumMap<ReadlineFlag, Integer> flags = new EnumMap<>(ReadlineFlag.class);
         flags.put(ReadlineFlag.NO_MULTI_LINE_ON_QUOTE, 1);
-        TestConnection term = new TestConnection(flags);
+        TestReadlineConnection term = new TestReadlineConnection(flags);
         term.read("\"foo ");
         term.clearOutputBuffer();
         term.read(Key.ENTER);
@@ -341,14 +342,14 @@ public class ReadlineTest {
     @Test
     public void testNoDiscardOfComment() {
         EnumMap<ReadlineFlag, Integer> flags = new EnumMap<>(ReadlineFlag.class);
-        TestConnection term;
-        term = new TestConnection(); // default behavior, discard comment
+        TestReadlineConnection term;
+        term = new TestReadlineConnection(); // default behavior, discard comment
         term.read("# this is a comment");
         term.clearOutputBuffer();
         term.read(Key.ENTER);
         term.assertLine(null);
         flags.put(ReadlineFlag.NO_COMMENT_DISCARD, 1);
-        term = new TestConnection(flags); // do not discard comment
+        term = new TestReadlineConnection(flags); // do not discard comment
         term.read("# this is not a comment");
         term.clearOutputBuffer();
         term.read(Key.ENTER);

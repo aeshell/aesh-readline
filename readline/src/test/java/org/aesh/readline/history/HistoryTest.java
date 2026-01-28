@@ -29,11 +29,11 @@ import java.io.IOException;
 
 import org.aesh.readline.editing.EditMode;
 import org.aesh.readline.editing.EditModeBuilder;
-import org.aesh.readline.terminal.Key;
-import org.aesh.readline.tty.terminal.TestConnection;
+import org.aesh.readline.tty.terminal.TestReadlineConnection;
 import org.aesh.readline.util.FileAccessPermission;
-import org.aesh.readline.util.Parser;
+import org.aesh.terminal.Key;
 import org.aesh.terminal.utils.Config;
+import org.aesh.terminal.utils.Parser;
 import org.junit.Test;
 
 /**
@@ -44,7 +44,7 @@ public class HistoryTest {
     @Test
     public void testHistory() throws Exception {
 
-        TestConnection term = new TestConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).create());
+        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).create());
         term.read("1234" + Config.getLineSeparator());
         term.readline();
         term.read("567" + Config.getLineSeparator());
@@ -63,16 +63,16 @@ public class HistoryTest {
     @Test
     public void testEmptyHistory() {
 
-        TestConnection term = new TestConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).create());
+        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).create());
         term.read(Key.UP);
         term.read(Key.ENTER);
         term.assertLine("");
 
-        term = new TestConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).create());
+        term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).create());
         term.read(Key.CTRL_R);
         term.assertBuffer("(reverse-i-search) `': ");
 
-        term = new TestConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).create());
+        term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).create());
         term.read(Key.CTRL_S);
         term.assertBuffer("(forward-i-search) `': ");
 
@@ -81,7 +81,7 @@ public class HistoryTest {
     @Test
     public void testHistoryMultiLine1() throws Exception {
 
-        TestConnection term = new TestConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).create());
+        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).create());
         term.read("1234 \\" + Config.getLineSeparator());
         term.read("567" + Config.getLineSeparator());
         term.readline();
@@ -93,7 +93,7 @@ public class HistoryTest {
     @Test
     public void testHistoryMultiLine2() throws Exception {
 
-        TestConnection term = new TestConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).create());
+        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).create());
         term.read("1234\\" + Config.getLineSeparator());
         term.read("567" + Config.getLineSeparator());
         term.readline();
@@ -105,7 +105,7 @@ public class HistoryTest {
     @Test
     public void testReverseSearch() throws Exception {
 
-        TestConnection term = new TestConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).create());
+        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).create());
         term.read("1234" + Config.getLineSeparator());
         term.readline();
         term.read("567" + Config.getLineSeparator());
@@ -126,7 +126,7 @@ public class HistoryTest {
     @Test
     public void testForwardSearch() throws Exception {
 
-        TestConnection term = new TestConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).create());
+        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).create());
         term.read("1234" + Config.getLineSeparator());
         term.readline();
         term.read("567" + Config.getLineSeparator());
@@ -147,7 +147,7 @@ public class HistoryTest {
     @Test
     public void testReverseSearchEscape() throws Exception {
 
-        TestConnection term = new TestConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).create());
+        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).create());
         term.read("1234" + Config.getLineSeparator());
         term.readline();
         term.read("567" + Config.getLineSeparator());

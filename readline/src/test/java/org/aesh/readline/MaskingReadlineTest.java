@@ -19,9 +19,9 @@
  */
 package org.aesh.readline;
 
-import org.aesh.readline.terminal.Key;
-import org.aesh.readline.tty.terminal.TestConnection;
-import org.aesh.readline.util.Parser;
+import org.aesh.readline.tty.terminal.TestReadlineConnection;
+import org.aesh.terminal.Key;
+import org.aesh.terminal.utils.Parser;
 import org.junit.Test;
 
 /**
@@ -31,7 +31,7 @@ public class MaskingReadlineTest {
 
     @Test
     public void maskingTest() {
-        TestConnection term = new TestConnection(new Prompt("", '\u0000'));
+        TestReadlineConnection term = new TestReadlineConnection(new Prompt("", '\u0000'));
 
         term.read("MMyPassword");
         term.assertOutputBuffer("");
@@ -39,7 +39,7 @@ public class MaskingReadlineTest {
         term.read(Key.ENTER);
         term.assertLine("MMyPasswor");
 
-        term = new TestConnection(new Prompt(Parser.toCodePoints("[foo] "), '%'));
+        term = new TestReadlineConnection(new Prompt(Parser.toCodePoints("[foo] "), '%'));
         term.read("MMyPassword");
         term.assertOutputBuffer("[foo] %%%%%%%%%%%");
         term.clearOutputBuffer();

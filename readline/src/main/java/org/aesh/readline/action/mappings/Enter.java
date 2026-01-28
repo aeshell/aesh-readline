@@ -23,8 +23,8 @@ import org.aesh.readline.ConsoleBuffer;
 import org.aesh.readline.InputProcessor;
 import org.aesh.readline.ReadlineFlag;
 import org.aesh.readline.action.Action;
-import org.aesh.readline.util.Parser;
 import org.aesh.terminal.utils.Config;
+import org.aesh.terminal.utils.Parser;
 
 /**
  * Action that accepts the current input line and processes it.

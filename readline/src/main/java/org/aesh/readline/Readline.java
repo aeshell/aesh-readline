@@ -28,7 +28,6 @@ import java.util.logging.Logger;
 
 import org.aesh.readline.action.Action;
 import org.aesh.readline.action.ActionDecoder;
-import org.aesh.readline.action.KeyAction;
 import org.aesh.readline.completion.Completion;
 import org.aesh.readline.completion.CompletionHandler;
 import org.aesh.readline.completion.SimpleCompletionHandler;
@@ -37,14 +36,15 @@ import org.aesh.readline.editing.EditMode;
 import org.aesh.readline.editing.EditModeBuilder;
 import org.aesh.readline.history.History;
 import org.aesh.readline.history.InMemoryHistory;
-import org.aesh.readline.terminal.Key;
-import org.aesh.readline.util.LoggerUtil;
-import org.aesh.readline.util.Parser;
 import org.aesh.terminal.Attributes;
 import org.aesh.terminal.Connection;
+import org.aesh.terminal.Key;
+import org.aesh.terminal.KeyAction;
 import org.aesh.terminal.tty.Signal;
 import org.aesh.terminal.tty.Size;
 import org.aesh.terminal.utils.Config;
+import org.aesh.terminal.utils.LoggerUtil;
+import org.aesh.terminal.utils.Parser;
 
 /**
  * Readline is a simple way to read a single input line from the terminal/shell/console.

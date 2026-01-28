@@ -35,9 +35,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import org.aesh.readline.util.LoggerUtil;
-import org.aesh.readline.util.Parser;
 import org.aesh.terminal.utils.Config;
+import org.aesh.terminal.utils.LoggerUtil;
+import org.aesh.terminal.utils.Parser;
 
 /**
  * Manages Aliases

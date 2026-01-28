@@ -21,7 +21,7 @@ package org.aesh.readline;
 
 import static org.junit.Assert.assertEquals;
 
-import org.aesh.readline.tty.terminal.TestConnection;
+import org.aesh.readline.tty.terminal.TestReadlineConnection;
 import org.aesh.terminal.utils.Config;
 import org.junit.Test;
 
@@ -32,7 +32,7 @@ public class PasteReadlineTest {
 
     @Test
     public void paste() throws Exception {
-        TestConnection connection = new TestConnection();
+        TestReadlineConnection connection = new TestReadlineConnection();
         connection.read("connect" + Config.getLineSeparator() +
                 "admin" + Config.getLineSeparator() +
                 "admin!");

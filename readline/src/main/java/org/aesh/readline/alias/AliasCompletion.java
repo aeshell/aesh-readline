@@ -21,7 +21,7 @@ package org.aesh.readline.alias;
 
 import org.aesh.readline.completion.CompleteOperation;
 import org.aesh.readline.completion.Completion;
-import org.aesh.readline.util.Parser;
+import org.aesh.terminal.utils.Parser;
 
 /**
  * Completion provider for alias and unalias commands.

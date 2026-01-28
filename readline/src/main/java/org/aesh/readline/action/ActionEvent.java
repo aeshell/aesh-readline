@@ -19,6 +19,8 @@
  */
 package org.aesh.readline.action;
 
+import org.aesh.terminal.KeyAction;
+
 /**
  * An action that can receive input events and maintain focus state.
  *
