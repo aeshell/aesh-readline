@@ -19,18 +19,18 @@
  */
 package org.aesh.terminal.tty.impl;
 
-import static org.fusesource.jansi.internal.Kernel32.GetStdHandle;
-import static org.fusesource.jansi.internal.Kernel32.STD_OUTPUT_HANDLE;
+import static org.jline.nativ.Kernel32.GetStdHandle;
+import static org.jline.nativ.Kernel32.STD_OUTPUT_HANDLE;
 
 import java.io.IOException;
 import java.util.logging.Level;
 
 import org.aesh.terminal.tty.Capability;
 import org.aesh.terminal.tty.Size;
-import org.fusesource.jansi.AnsiConsole;
-import org.fusesource.jansi.internal.Kernel32;
-import org.fusesource.jansi.internal.Kernel32.INPUT_RECORD;
-import org.fusesource.jansi.internal.Kernel32.KEY_EVENT_RECORD;
+import org.jline.jansi.AnsiConsole;
+import org.jline.nativ.Kernel32;
+import org.jline.nativ.Kernel32.INPUT_RECORD;
+import org.jline.nativ.Kernel32.KEY_EVENT_RECORD;
 
 public class WinSysTerminal extends AbstractWindowsTerminal {
 

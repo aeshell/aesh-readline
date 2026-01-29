@@ -19,9 +19,9 @@
  */
 package org.aesh.terminal.tty.impl;
 
-import static org.fusesource.jansi.internal.Kernel32.GetStdHandle;
-import static org.fusesource.jansi.internal.Kernel32.STD_OUTPUT_HANDLE;
-import static org.fusesource.jansi.internal.Kernel32.WriteConsoleW;
+import static org.jline.nativ.Kernel32.GetStdHandle;
+import static org.jline.nativ.Kernel32.STD_OUTPUT_HANDLE;
+import static org.jline.nativ.Kernel32.WriteConsoleW;
 
 import java.io.FilterInputStream;
 import java.io.IOException;
@@ -49,7 +49,7 @@ import org.aesh.terminal.tty.utils.ShutdownHooks;
 import org.aesh.terminal.tty.utils.Signals;
 import org.aesh.terminal.utils.Curses;
 import org.aesh.terminal.utils.LoggerUtil;
-import org.fusesource.jansi.WindowsSupport;
+import org.jline.jansi.WindowsSupport;
 
 abstract class AbstractWindowsTerminal extends AbstractTerminal {
 
