@@ -21,6 +21,8 @@ package org.aesh.terminal;
 
 import java.util.function.Consumer;
 
+import org.aesh.terminal.image.ImageProtocol;
+import org.aesh.terminal.image.ImageProtocolDetector;
 import org.aesh.terminal.tty.Capability;
 import org.aesh.terminal.utils.ColorDepth;
 
@@ -115,5 +117,31 @@ public interface Device {
         }
         String typeLower = termType.toLowerCase();
         return typeLower.startsWith("screen") || typeLower.startsWith("tmux");
+    }
+
+    /**
+     * Check if this device supports displaying images.
+     *
+     * @return true if images can be displayed
+     */
+    default boolean supportsImages() {
+        return getImageProtocol() != ImageProtocol.NONE;
+    }
+
+    /**
+     * Get the image protocol supported by this device.
+     * <p>
+     * Detection is based on terminal type and environment variables.
+     * Supported protocols (in priority order):
+     * <ul>
+     * <li>KITTY - Kitty, Ghostty, Konsole</li>
+     * <li>ITERM2 - iTerm2, WezTerm, Mintty, VSCode, Tabby, Hyper</li>
+     * <li>SIXEL - mlterm, foot, contour (fallback)</li>
+     * </ul>
+     *
+     * @return the detected image protocol, or NONE if not supported
+     */
+    default ImageProtocol getImageProtocol() {
+        return ImageProtocolDetector.detectFromTermType(type());
     }
 }
