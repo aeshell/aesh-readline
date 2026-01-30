@@ -64,15 +64,30 @@ public class Readline {
     private EditMode editMode;
     private History history;
 
+    /**
+     * Creates a new Readline instance with default edit mode, in-memory history, and simple completion handler.
+     */
     public Readline() {
         this(EditModeBuilder.builder().create());
     }
 
+    /**
+     * Creates a new Readline instance with the specified edit mode and in-memory history.
+     *
+     * @param editMode the edit mode to use (e.g., Emacs or Vi mode)
+     */
     public Readline(EditMode editMode) {
         this(editMode, new InMemoryHistory(), null);
         history.enable();
     }
 
+    /**
+     * Creates a new Readline instance with the specified edit mode, history, and completion handler.
+     *
+     * @param editMode the edit mode to use (e.g., Emacs or Vi mode)
+     * @param history the history implementation to use for command history
+     * @param completionHandler the completion handler for tab completion, or null for default
+     */
     public Readline(EditMode editMode, History history, CompletionHandler completionHandler) {
         this.editMode = editMode;
         this.history = history;
@@ -83,10 +98,18 @@ public class Readline {
         this.decoder = new ActionDecoder(this.editMode);
     }
 
+    /**
+     * Returns the current input processor.
+     *
+     * @return the input processor, or null if not currently reading input
+     */
     protected InputProcessor getInputProcessor() {
         return inputProcessor;
     }
 
+    /**
+     * Reads and processes input from the decoder until no more actions are available.
+     */
     private void readInput() {
         synchronized (this) {
             while (true) {
@@ -99,36 +122,96 @@ public class Readline {
         }
     }
 
+    /**
+     * Reads a line of input from the connection with a string prompt.
+     *
+     * @param conn the terminal connection to read from
+     * @param prompt the prompt string to display
+     * @param requestHandler the callback to receive the completed input line
+     */
     public void readline(Connection conn, String prompt, Consumer<String> requestHandler) {
         readline(conn, new Prompt(prompt), requestHandler, null);
     }
 
+    /**
+     * Reads a line of input from the connection with a string prompt and completions.
+     *
+     * @param conn the terminal connection to read from
+     * @param prompt the prompt string to display
+     * @param requestHandler the callback to receive the completed input line
+     * @param completions the list of completions for tab completion
+     */
     public void readline(Connection conn, String prompt, Consumer<String> requestHandler,
             List<Completion> completions) {
         readline(conn, new Prompt(prompt), requestHandler, completions);
     }
 
+    /**
+     * Reads a line of input from the connection with a Prompt object.
+     *
+     * @param conn the terminal connection to read from
+     * @param prompt the prompt to display
+     * @param requestHandler the callback to receive the completed input line
+     */
     public void readline(Connection conn, Prompt prompt, Consumer<String> requestHandler) {
         readline(conn, prompt, requestHandler, null);
     }
 
+    /**
+     * Reads a line of input from the connection with a Prompt object and completions.
+     *
+     * @param conn the terminal connection to read from
+     * @param prompt the prompt to display
+     * @param requestHandler the callback to receive the completed input line
+     * @param completions the list of completions for tab completion
+     */
     public void readline(Connection conn, Prompt prompt, Consumer<String> requestHandler,
             List<Completion> completions) {
         readline(conn, prompt, requestHandler, completions, null);
     }
 
+    /**
+     * Reads a line of input from the connection with completions and pre-processors.
+     *
+     * @param conn the terminal connection to read from
+     * @param prompt the prompt to display
+     * @param requestHandler the callback to receive the completed input line
+     * @param completions the list of completions for tab completion
+     * @param preProcessors the list of input pre-processors
+     */
     public void readline(Connection conn, Prompt prompt, Consumer<String> requestHandler,
             List<Completion> completions,
             List<Function<String, Optional<String>>> preProcessors) {
         readline(conn, prompt, requestHandler, completions, preProcessors, null);
     }
 
+    /**
+     * Reads a line of input from the connection with completions, pre-processors, and custom history.
+     *
+     * @param conn the terminal connection to read from
+     * @param prompt the prompt to display
+     * @param requestHandler the callback to receive the completed input line
+     * @param completions the list of completions for tab completion
+     * @param preProcessors the list of input pre-processors
+     * @param history the history instance to use for this readline operation
+     */
     public void readline(Connection conn, Prompt prompt, Consumer<String> requestHandler,
             List<Completion> completions,
             List<Function<String, Optional<String>>> preProcessors, History history) {
         readline(conn, prompt, requestHandler, completions, preProcessors, history, null);
     }
 
+    /**
+     * Reads a line of input from the connection with completions, pre-processors, custom history, and cursor listener.
+     *
+     * @param conn the terminal connection to read from
+     * @param prompt the prompt to display
+     * @param requestHandler the callback to receive the completed input line
+     * @param completions the list of completions for tab completion
+     * @param preProcessors the list of input pre-processors
+     * @param history the history instance to use for this readline operation
+     * @param listener the cursor listener to receive cursor movement events
+     */
     public void readline(Connection conn, Prompt prompt, Consumer<String> requestHandler,
             List<Completion> completions,
             List<Function<String, Optional<String>>> preProcessors,
@@ -137,6 +220,19 @@ public class Readline {
                 new EnumMap<>(ReadlineFlag.class));
     }
 
+    /**
+     * Reads a line of input from the connection with all configuration options.
+     *
+     * @param conn the terminal connection to read from
+     * @param prompt the prompt to display
+     * @param requestHandler the callback to receive the completed input line
+     * @param completions the list of completions for tab completion
+     * @param preProcessors the list of input pre-processors
+     * @param history the history instance to use for this readline operation
+     * @param listener the cursor listener to receive cursor movement events
+     * @param flags the readline flags controlling behavior
+     * @throws IllegalStateException if already reading a line
+     */
     public void readline(Connection conn, Prompt prompt, Consumer<String> requestHandler,
             List<Completion> completions,
             List<Function<String, Optional<String>>> preProcessors,
@@ -154,6 +250,9 @@ public class Readline {
         }
     }
 
+    /**
+     * Processes pending input from the decoder if an input processor is available.
+     */
     private void processInput() {
         synchronized (this) {
             if (inputProcessor == null) {

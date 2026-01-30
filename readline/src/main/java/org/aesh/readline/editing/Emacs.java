@@ -53,12 +53,18 @@ public class Emacs implements EditMode {
     private boolean ctrlX;
     private KeyAction prevKey;
 
+    /**
+     * Constructs a new Emacs editing mode with empty action and variable maps.
+     */
     Emacs() {
         actions = new EnumMap<>(Key.class);
         variables = new EnumMap<>(Variable.class);
         keyEventActions = new HashMap<>();
     }
 
+    /**
+     * Clears all default key actions and key event actions.
+     */
     protected void clearDefaultActions() {
         actions.clear();
         keyEventActions.clear();
@@ -97,6 +103,12 @@ public class Emacs implements EditMode {
         prevKey = event;
     }
 
+    /**
+     * Remaps a key to a new key mapping if the key exists in the actions map.
+     *
+     * @param key the key to remap
+     * @param newMapping the new key mapping
+     */
     private void remap(Key key, int[] newMapping) {
         if (newMapping != null && actions.containsKey(key) && !key.equalTo(newMapping)) {
             Action homeAction = actions.remove(key);
@@ -104,15 +116,34 @@ public class Emacs implements EditMode {
         }
     }
 
+    /**
+     * Adds a key binding with the specified action name.
+     *
+     * @param input the key to bind
+     * @param action the action name to bind to the key
+     */
     public void addAction(Key input, String action) {
         actions.put(input, ActionMapper.mapToAction(action));
     }
 
+    /**
+     * Adds a key binding with the specified action.
+     *
+     * @param input the key to bind
+     * @param action the action to bind to the key
+     * @return this Emacs instance for method chaining
+     */
     public Emacs addAction(Key input, Action action) {
         actions.put(input, action);
         return this;
     }
 
+    /**
+     * Parses key event actions to find a matching action for the given event.
+     *
+     * @param event the key event to parse
+     * @return the matching action, or null if no match is found
+     */
     private Action parseKeyEventActions(KeyAction event) {
         for (KeyAction key : keyEventActions.keySet()) {
             boolean isEquals = true;
@@ -172,10 +203,18 @@ public class Emacs implements EditMode {
         ignoreEOFSize = eof;
     }
 
+    /**
+     * Resets the EOF counter to zero.
+     */
     protected void resetEOF() {
         eofCounter = 0;
     }
 
+    /**
+     * Gets the current EOF counter value.
+     *
+     * @return the EOF counter value
+     */
     protected int getEofCounter() {
         return eofCounter;
     }
@@ -227,6 +266,12 @@ public class Emacs implements EditMode {
         return variables.get(variable);
     }
 
+    /**
+     * Gets the action associated with the given key event.
+     *
+     * @param event the key event
+     * @return the action associated with the event, or null if none found
+     */
     private Action getAction(KeyAction event) {
         Action action;
         if (event instanceof Key && actions.containsKey(event)) {

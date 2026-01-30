@@ -22,14 +22,28 @@ package org.aesh.readline.action.mappings;
 import org.aesh.readline.action.Action;
 
 /**
+ * Abstract base class for cursor movement actions.
+ *
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 abstract class MovementAction implements Action {
 
+    /**
+     * Check if the character is a whitespace.
+     *
+     * @param c the character to check
+     * @return true if the character is whitespace
+     */
     protected boolean isSpace(char c) {
         return Character.isWhitespace(c);
     }
 
+    /**
+     * Check if the character is a delimiter (non-alphanumeric).
+     *
+     * @param c the character to check
+     * @return true if the character is a delimiter
+     */
     protected boolean isDelimiter(char c) {
         return !Character.isLetterOrDigit(c);
     }

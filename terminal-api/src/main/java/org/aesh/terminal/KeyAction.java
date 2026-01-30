@@ -27,6 +27,11 @@ import java.nio.IntBuffer;
  */
 public interface KeyAction {
 
+    /**
+     * Get the key values as an IntBuffer.
+     *
+     * @return the key values as an IntBuffer
+     */
     default IntBuffer buffer() {
         int length = length();
         IntBuffer buf = IntBuffer.allocate(length);
@@ -37,12 +42,35 @@ public interface KeyAction {
         return buf;
     }
 
+    /**
+     * Get the code point at the specified index.
+     *
+     * @param index the index of the code point
+     * @return the code point at the given index
+     * @throws IndexOutOfBoundsException if the index is out of range
+     */
     int getCodePointAt(int index) throws IndexOutOfBoundsException;
 
+    /**
+     * Get the number of code points in this key action.
+     *
+     * @return the length
+     */
     int length();
 
+    /**
+     * Get the name of this key action.
+     *
+     * @return the name
+     */
     String name();
 
+    /**
+     * Check if this key action equals another based on buffer contents.
+     *
+     * @param otherAction the other key action to compare
+     * @return true if the buffers are equal
+     */
     default boolean bufferEquals(KeyAction otherAction) {
         if (length() == otherAction.length()) {
             for (int i = 0; i < length(); i++)

@@ -68,6 +68,11 @@ public class EditModeBuilder {
 
     private Device device;
 
+    /**
+     * Creates a new EditModeBuilder with the specified editing mode.
+     *
+     * @param mode the editing mode (EMACS or VI)
+     */
     private EditModeBuilder(EditMode.Mode mode) {
         this();
         if (mode == EditMode.Mode.EMACS)
@@ -76,43 +81,94 @@ public class EditModeBuilder {
             variables.put(Variable.EDITING_MODE, "vi");
     }
 
+    /**
+     * Creates a new EditModeBuilder with default settings.
+     */
     private EditModeBuilder() {
         actions = new HashMap<>();
         variables = new EnumMap<>(Variable.class);
     }
 
+    /**
+     * Creates a new EditModeBuilder instance with default settings.
+     *
+     * @return a new EditModeBuilder instance
+     */
     public static EditModeBuilder builder() {
         return new EditModeBuilder();
     }
 
+    /**
+     * Creates a new EditModeBuilder instance with the specified editing mode.
+     *
+     * @param mode the editing mode (EMACS or VI)
+     * @return a new EditModeBuilder instance configured with the specified mode
+     */
     public static EditModeBuilder builder(EditMode.Mode mode) {
         return new EditModeBuilder(mode);
     }
 
+    /**
+     * Adds a key binding action to the builder.
+     *
+     * @param input the key input sequence
+     * @param action the action name to bind to the input
+     * @return this builder instance for method chaining
+     */
     public EditModeBuilder addAction(int[] input, String action) {
         actions.put(input, action);
         return this;
     }
 
+    /**
+     * Adds a variable with its value to the builder.
+     *
+     * @param variable the variable to set
+     * @param value the value for the variable
+     * @return this builder instance for method chaining
+     */
     public EditModeBuilder addVariable(Variable variable, String value) {
         variables.put(variable, value);
         return this;
     }
 
+    /**
+     * Parses an inputrc file from the given input stream and applies the settings to this builder.
+     *
+     * @param inputStream the input stream containing inputrc configuration
+     * @return this builder instance for method chaining
+     */
     public EditModeBuilder parseInputrc(InputStream inputStream) {
         InputrcParser.parseInputrc(inputStream, this);
         return this;
     }
 
+    /**
+     * Sets the terminal device for the builder.
+     *
+     * @param device the terminal device
+     * @return this builder instance for method chaining
+     */
     public EditModeBuilder device(Device device) {
         this.device = device;
         return this;
     }
 
+    /**
+     * Gets the value of a variable.
+     *
+     * @param variable the variable to retrieve
+     * @return the value of the variable, or null if not set
+     */
     public String getVariableValue(Variable variable) {
         return variables.get(variable);
     }
 
+    /**
+     * Creates a simple EditMode with minimal key bindings (only accept-line).
+     *
+     * @return a simple EditMode instance
+     */
     public EditMode createSimple() {
         Emacs simpleEmacs = new Emacs();
         simpleEmacs.clearDefaultActions();
@@ -125,6 +181,11 @@ public class EditModeBuilder {
         return simpleEmacs;
     }
 
+    /**
+     * Creates an EditMode instance with all configured actions, variables, and device mappings.
+     *
+     * @return a fully configured EditMode instance (either Emacs or Vi based on the editing-mode variable)
+     */
     public EditMode create() {
         String mode = variables.getOrDefault(Variable.EDITING_MODE, "emacs");
         if (device == null)
@@ -146,6 +207,11 @@ public class EditModeBuilder {
         }
     }
 
+    /**
+     * Creates an EditMode with default Emacs key bindings.
+     *
+     * @return an Emacs EditMode with default key bindings configured
+     */
     private EditMode createDefaultEmacsMode() {
         Emacs emacs = new Emacs();
 
@@ -216,6 +282,11 @@ public class EditModeBuilder {
         return emacs;
     }
 
+    /**
+     * Creates an EditMode with default Vi key bindings.
+     *
+     * @return a Vi EditMode with default key bindings configured
+     */
     private EditMode createDefaultViMode() {
         Vi vi = new Vi();
 

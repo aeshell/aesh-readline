@@ -29,6 +29,12 @@ import org.aesh.readline.action.Action;
  */
 public class UpCaseChar implements Action {
 
+    /**
+     * Creates a new UpCaseChar action.
+     */
+    public UpCaseChar() {
+    }
+
     @Override
     public String name() {
         return "upcase-char";

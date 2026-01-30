@@ -28,6 +28,9 @@ import org.aesh.readline.editing.EditMode;
  */
 public class ChangeBackwardBigWord extends BackwardBigWord {
 
+    /**
+     * Creates a new change backward big word action.
+     */
     public ChangeBackwardBigWord() {
         super(EditMode.Status.CHANGE);
     }

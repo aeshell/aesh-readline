@@ -29,6 +29,18 @@ import java.util.function.Consumer;
  */
 public class Helper {
 
+    private Helper() {
+        // utility class
+    }
+
+    /**
+     * Create a handler that completes a future when a start operation finishes.
+     * If the operation succeeds (null error), the future completes normally.
+     * If the operation fails, the future completes exceptionally.
+     *
+     * @param fut the future to complete
+     * @return a consumer that handles the completion result
+     */
     public static Consumer<Throwable> startedHandler(CompletableFuture<?> fut) {
         return err -> {
             if (err == null) {
@@ -39,6 +51,13 @@ public class Helper {
         };
     }
 
+    /**
+     * Create a handler that completes a future when a stop operation finishes.
+     * The future always completes normally, regardless of any error.
+     *
+     * @param fut the future to complete
+     * @return a consumer that handles the completion result
+     */
     public static Consumer<Throwable> stoppedHandler(CompletableFuture<?> fut) {
         return err -> {
             fut.complete(null);

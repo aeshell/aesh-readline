@@ -29,15 +29,31 @@ public final class Point {
     private final int x;
     private final int y;
 
+    /**
+     * Creates a new point with the specified coordinates.
+     *
+     * @param x the x coordinate (column)
+     * @param y the y coordinate (row)
+     */
     public Point(int x, int y) {
         this.x = x;
         this.y = y;
     }
 
+    /**
+     * Get the x coordinate (column).
+     *
+     * @return the x coordinate
+     */
     public int x() {
         return x;
     }
 
+    /**
+     * Get the y coordinate (row).
+     *
+     * @return the y coordinate
+     */
     public int y() {
         return y;
     }

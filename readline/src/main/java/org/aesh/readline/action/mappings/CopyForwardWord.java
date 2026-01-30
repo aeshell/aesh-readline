@@ -28,10 +28,18 @@ import org.aesh.readline.editing.EditMode;
  */
 public class CopyForwardWord extends ForwardWord {
 
+    /**
+     * Creates a new copy forward word action.
+     */
     public CopyForwardWord() {
         super(false, EditMode.Status.YANK);
     }
 
+    /**
+     * Creates a new copy forward word action.
+     *
+     * @param viMode whether vi mode is enabled
+     */
     public CopyForwardWord(boolean viMode) {
         super(viMode, EditMode.Status.YANK);
     }

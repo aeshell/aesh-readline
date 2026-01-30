@@ -31,14 +31,26 @@ import org.aesh.terminal.formatting.TerminalString;
  *
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
-public class Parser {
+public final class Parser {
+
+    /**
+     * Private constructor to prevent instantiation.
+     */
+    private Parser() {
+    }
 
     private static final String spaceEscapedMatcher = "\\ ";
+    /** Space string constant. */
     public static final String SPACE = " ";
+    /** Space character constant. */
     public static final char SPACE_CHAR = ' ';
+    /** Backslash character constant. */
     public static final char BACK_SLASH = '\\';
+    /** Single quote character constant. */
     public static final char SINGLE_QUOTE = '\'';
+    /** Double quote character constant. */
     public static final char DOUBLE_QUOTE = '\"';
+    /** Dollar sign character constant. */
     public static final char DOLLAR = '$';
     private static final Pattern spaceEscapedPattern = Pattern.compile("\\\\ ");
     private static final Pattern spacePattern = Pattern.compile("(?<!\\\\)\\s");
@@ -275,14 +287,35 @@ public class Parser {
         return columnSizes;
     }
 
+    /**
+     * Pad a string to the right with spaces.
+     *
+     * @param n the total width
+     * @param s the string to pad
+     * @return the padded string
+     */
     public static String padRight(int n, String s) {
         return String.format("%1$-" + n + "s", s);
     }
 
+    /**
+     * Pad a string to the left with spaces.
+     *
+     * @param n the total width
+     * @param s the string to pad
+     * @return the padded string
+     */
     public static String padLeft(int n, String s) {
         return String.format("%1$" + n + "s", s);
     }
 
+    /**
+     * Split a string by size while keeping words intact.
+     *
+     * @param words the string to split
+     * @param size the maximum line size
+     * @return list of split strings
+     */
     public static List<String> splitBySizeKeepWords(String words, int size) {
         List<String> out = new ArrayList<>();
         if (words.length() <= size) {
@@ -306,7 +339,10 @@ public class Parser {
     }
 
     /**
-     * remove leading dashes from word
+     * Remove leading dashes from an option name.
+     *
+     * @param word the option name to trim
+     * @return the option name without leading dashes
      */
     public static String trimOptionName(String word) {
         if (word.startsWith("--"))
@@ -317,6 +353,12 @@ public class Parser {
             return word;
     }
 
+    /**
+     * Check if a word ends with a non-escaped space.
+     *
+     * @param word the word to check
+     * @return true if the word ends with a space that is not escaped
+     */
     public static boolean findIfWordEndWithSpace(String word) {
         return !word.isEmpty() && word.endsWith(" ") && !word.endsWith("\\ ");
     }
@@ -369,6 +411,13 @@ public class Parser {
         return true;
     }
 
+    /**
+     * Find the word closest to the cursor position.
+     *
+     * @param text the text to search in
+     * @param cursor the cursor position
+     * @return the word closest to the cursor
+     */
     public static String findWordClosestToCursor(String text, int cursor) {
         boolean startOutsideText = false;
         if (cursor >= text.length()) {
@@ -533,14 +582,32 @@ public class Parser {
         return doubleQuote || singleQuote;
     }
 
+    /**
+     * Check if a string contains open quotes, checking for both single and double quotes.
+     *
+     * @param text the text to check
+     * @return true if the text contains unclosed quotes
+     */
     public static boolean doesStringContainOpenQuote(String text) {
         return doesStringContainOpenQuote(text, -1);
     }
 
+    /**
+     * Check if a word contains only escaped spaces (no regular spaces).
+     *
+     * @param word the word to check
+     * @return true if all spaces in the word are escaped
+     */
     public static boolean doWordContainOnlyEscapedSpace(String word) {
         return (findAllOccurrences(word, spaceEscapedMatcher) == findAllOccurrences(word, SPACE));
     }
 
+    /**
+     * Check if a word contains any escaped spaces.
+     *
+     * @param word the word to check
+     * @return true if the word contains at least one escaped space
+     */
     public static boolean doWordContainEscapedSpace(String word) {
         return spaceEscapedPattern.matcher(word).find();
     }
@@ -560,6 +627,13 @@ public class Parser {
         return count;
     }
 
+    /**
+     * Find the number of occurrences of a pattern in a word.
+     *
+     * @param word the word to search in
+     * @param pattern the pattern to search for
+     * @return the number of occurrences
+     */
     public static int findAllOccurrences(String word, String pattern) {
         int count = 0;
         while (word.contains(pattern)) {
@@ -569,6 +643,12 @@ public class Parser {
         return count;
     }
 
+    /**
+     * Convert escaped spaces to regular spaces in all strings in a list.
+     *
+     * @param list the list of strings to convert
+     * @return a new list with escaped spaces converted
+     */
     public static List<String> switchEscapedSpacesToSpacesInList(List<String> list) {
         List<String> newList = new ArrayList<String>(list.size());
         for (String s : list)
@@ -576,15 +656,32 @@ public class Parser {
         return newList;
     }
 
+    /**
+     * Convert escaped spaces to regular spaces in all terminal strings in a list.
+     *
+     * @param list the list of terminal strings to modify
+     */
     public static void switchEscapedSpacesToSpacesInTerminalStringList(List<TerminalString> list) {
         for (TerminalString ts : list)
             ts.setCharacters(switchEscapedSpacesToSpacesInWord(ts.getCharacters()));
     }
 
+    /**
+     * Convert regular spaces to escaped spaces in a word.
+     *
+     * @param word the word to convert
+     * @return the word with spaces escaped
+     */
     public static String switchSpacesToEscapedSpacesInWord(String word) {
         return spacePattern.matcher(word).replaceAll("\\\\ ");
     }
 
+    /**
+     * Convert escaped spaces to regular spaces in a word.
+     *
+     * @param word the word to convert
+     * @return the word with escaped spaces converted to regular spaces
+     */
     public static String switchEscapedSpacesToSpacesInWord(String word) {
         return spaceEscapedPattern.matcher(word).replaceAll(SPACE);
     }
@@ -662,6 +759,12 @@ public class Parser {
         }
     }
 
+    /**
+     * Check if a string contains a non-escaped dollar sign.
+     *
+     * @param buffer the string to check
+     * @return true if it contains a non-escaped dollar sign
+     */
     public static boolean containsNonEscapedDollar(String buffer) {
         int startIndex = 0;
         while ((startIndex = buffer.indexOf(DOLLAR, startIndex)) > -1) {
@@ -675,6 +778,12 @@ public class Parser {
         return false;
     }
 
+    /**
+     * Check if a string contains a non-escaped space.
+     *
+     * @param buffer the string to check
+     * @return true if it contains a non-escaped space
+     */
     public static boolean containsNonEscapedSpace(String buffer) {
         int startIndex = 0;
         while ((startIndex = buffer.indexOf(SPACE_CHAR, startIndex)) > -1) {
@@ -688,18 +797,42 @@ public class Parser {
         return false;
     }
 
+    /**
+     * Remove all ANSI escape codes from a string.
+     *
+     * @param text the text containing ANSI codes
+     * @return the text with ANSI codes removed
+     */
     public static String stripAwayAnsiCodes(String text) {
         return ansiPattern.matcher(text).replaceAll("");
     }
 
+    /**
+     * Convert a string to an array of code points.
+     *
+     * @param s the string to convert
+     * @return array of code points
+     */
     public static int[] toCodePoints(String s) {
         return s.codePoints().toArray();
     }
 
+    /**
+     * Convert an array of code points to a string.
+     *
+     * @param input the code points to convert
+     * @return the resulting string
+     */
     public static String fromCodePoints(int[] input) {
         return new String(input, 0, input.length);
     }
 
+    /**
+     * Check if an array contains only space characters (code point 32).
+     *
+     * @param input the array to check
+     * @return true if the array is empty or contains only spaces
+     */
     public static boolean isTrimmedArrayEmpty(int[] input) {
         for (int i : input) {
             if (i != 32)
@@ -708,11 +841,30 @@ public class Parser {
         return true;
     }
 
+    /**
+     * Find the index of a target array within a source array.
+     *
+     * @param source the source array to search in
+     * @param target the target array to find
+     * @return the index of the target in source, or -1 if not found
+     */
     public static int arrayIndexOf(int[] source, int[] target) {
         return arrayIndexOf(source, 0, source.length, target, 0, target.length, 0);
 
     }
 
+    /**
+     * Find the index of a target array within a source array with offsets.
+     *
+     * @param source the source array to search in
+     * @param sourceOffset the starting offset in the source array
+     * @param sourceCount the number of elements to search in source
+     * @param target the target array to find
+     * @param targetOffset the starting offset in the target array
+     * @param targetCount the number of elements to match from target
+     * @param fromIndex the index to start searching from
+     * @return the index of the target in source, or -1 if not found
+     */
     public static int arrayIndexOf(int[] source, int sourceOffset, int sourceCount,
             int[] target, int targetOffset, int targetCount, int fromIndex) {
         if (fromIndex >= sourceCount) {
@@ -751,6 +903,13 @@ public class Parser {
         return -1;
     }
 
+    /**
+     * Check if a source array contains a target array.
+     *
+     * @param source the source array to search in
+     * @param target the target array to find
+     * @return true if source contains target
+     */
     public static boolean arrayContains(int[] source, int[] target) {
         return arrayIndexOf(source, target) > -1;
 

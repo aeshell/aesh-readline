@@ -32,14 +32,35 @@ public class LinePipedInputStream extends PipedInputStream {
 
     private static final int NEW_LINE = 10;
 
+    /**
+     * Creates a new LinePipedInputStream with the specified pipe size.
+     *
+     * @param pipeSize the size of the pipe buffer
+     */
     public LinePipedInputStream(int pipeSize) {
         super(pipeSize);
     }
 
+    /**
+     * Creates a new LinePipedInputStream connected to the specified PipedOutputStream.
+     *
+     * @param src the piped output stream to connect to
+     * @throws IOException if an I/O error occurs
+     */
     public LinePipedInputStream(PipedOutputStream src) throws IOException {
         super(src);
     }
 
+    /**
+     * Reads up to len bytes of data from this input stream into an array of bytes.
+     * This method reads one line at a time, stopping when a newline character is encountered.
+     *
+     * @param b the buffer into which the data is read
+     * @param off the start offset in array b at which the data is written
+     * @param len the maximum number of bytes to read
+     * @return the total number of bytes read into the buffer, or -1 if there is no more data
+     * @throws IOException if an I/O error occurs
+     */
     public synchronized int read(byte[] b, int off, int len) throws IOException {
         /* possibly wait on the first character */
         int c = read();

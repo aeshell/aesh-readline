@@ -34,11 +34,23 @@ import org.aesh.terminal.tty.Capability;
  */
 public class InfoCmpHelper {
 
+    private InfoCmpHelper() {
+        // utility class
+    }
+
     private static boolean initialized = false;
     private static Set<Capability> bools = new HashSet<>();
     private static Map<Capability, Integer> ints = new HashMap<>();
     private static Map<Capability, String> strings = new HashMap<>();
 
+    /**
+     * Get a terminal capability as an array of code points.
+     * The capability is looked up from the terminfo database for the current terminal.
+     *
+     * @param cap the capability name to look up
+     * @param defaultValue the default value to return if the capability is not found
+     * @return the capability value as an int array, or the default value
+     */
     public static int[] getCurrentTranslatedCapabilityAsInts(String cap, int[] defaultValue) {
         String s = getCurrentTranslatedCapability(cap, new String(defaultValue, 0, defaultValue.length));
         if (s.length() == 0)
@@ -46,6 +58,15 @@ public class InfoCmpHelper {
         return s.codePoints().toArray();
     }
 
+    /**
+     * Get a terminal capability as a string.
+     * The capability is looked up from the terminfo database for the current terminal,
+     * which is determined by the TERM environment variable (defaults to xterm-256color).
+     *
+     * @param cap the capability name to look up
+     * @param defaultValue the default value to return if the capability is not found
+     * @return the capability value as a string, or the default value
+     */
     public static String getCurrentTranslatedCapability(String cap, String defaultValue) {
         try {
             if (!initialized) {

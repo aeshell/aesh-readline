@@ -19,6 +19,12 @@ import org.aesh.terminal.utils.Config;
  */
 public class EndOfFile implements Action {
 
+    /**
+     * Creates a new EndOfFile action.
+     */
+    public EndOfFile() {
+    }
+
     private int EOFCounter = 0;
     private int ignoreEOFSize = -1;
 

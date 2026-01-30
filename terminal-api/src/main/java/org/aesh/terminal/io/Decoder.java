@@ -31,8 +31,12 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Had to revert back to reading char by char.
- * Code is taken from Julien Viet's BinaryDecoder in termd.
+ * Decodes byte arrays into Unicode code point arrays using a specified charset.
+ * <p>
+ * This decoder handles multi-byte character sequences and surrogate pairs,
+ * converting raw bytes from terminal input into code points for processing.
+ * <p>
+ * Code is based on Julien Viet's BinaryDecoder in termd.
  *
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
@@ -48,10 +52,24 @@ public class Decoder {
 
     private int[] leftOverCodePoints;
 
+    /**
+     * Create a new Decoder with the specified charset and consumer.
+     *
+     * @param charset the charset to use for decoding, or null for the default charset
+     * @param onChar the consumer to receive decoded code point arrays
+     */
     public Decoder(Charset charset, Consumer<int[]> onChar) {
         this(4, charset, onChar);
     }
 
+    /**
+     * Create a new Decoder with the specified initial buffer size, charset, and consumer.
+     *
+     * @param initialSize the initial size of the character buffer (must be at least 2)
+     * @param charset the charset to use for decoding, or null for the default charset
+     * @param onChar the consumer to receive decoded code point arrays
+     * @throws IllegalArgumentException if initialSize is less than 2
+     */
     public Decoder(int initialSize, Charset charset, Consumer<int[]> onChar) {
         if (initialSize < 2) {
             throw new IllegalArgumentException("Initial size must be at least 2");
@@ -65,14 +83,31 @@ public class Decoder {
         this.onChar = onChar;
     }
 
+    /**
+     * Set the charset to use for decoding.
+     *
+     * @param charset the charset to use
+     */
     public void setCharset(Charset charset) {
         decoder = charset.newDecoder();
     }
 
+    /**
+     * Decode a byte array and send the resulting code points to the consumer.
+     *
+     * @param data the bytes to decode
+     */
     public void write(byte[] data) {
         write(data, 0, data.length);
     }
 
+    /**
+     * Decode a portion of a byte array and send the resulting code points to the consumer.
+     *
+     * @param data the byte array containing data to decode
+     * @param start the starting offset in the array
+     * @param len the number of bytes to decode
+     */
     public void write(byte[] data, int start, int len) {
 
         //if we have some leftovers, we use them first
@@ -153,6 +188,11 @@ public class Decoder {
         bBuf.compact();
     }
 
+    /**
+     * Set the consumer that will receive decoded code point arrays.
+     *
+     * @param inputHandler the consumer to receive decoded output
+     */
     public void setConsumer(Consumer<int[]> inputHandler) {
         onChar = inputHandler;
     }

@@ -25,13 +25,21 @@ package org.aesh.terminal.formatting;
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public enum CharacterType {
+    /** Bold or increased intensity text. */
     BOLD(1),
+    /** Faint or decreased intensity text. */
     FAINT(2),
+    /** Italic text style. */
     ITALIC(3),
+    /** Underlined text. */
     UNDERLINE(4),
+    /** Blinking text. */
     BLINK(5),
+    /** Inverted foreground and background colors. */
     INVERT(7),
+    /** Hidden or concealed text. */
     CONCEAL(8),
+    /** Crossed-out or strikethrough text. */
     CROSSED_OUT(9);
 
     private final int value;
@@ -40,6 +48,11 @@ public enum CharacterType {
         this.value = c;
     }
 
+    /**
+     * Returns the ANSI escape code value for this character type.
+     *
+     * @return the ANSI escape code value
+     */
     public int getValue() {
         return value;
     }

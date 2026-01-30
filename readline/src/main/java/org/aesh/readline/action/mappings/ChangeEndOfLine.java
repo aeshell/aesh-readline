@@ -29,6 +29,9 @@ import org.aesh.readline.editing.EditMode;
  */
 public class ChangeEndOfLine extends ChangeAction {
 
+    /**
+     * Creates a new change end of line action.
+     */
     public ChangeEndOfLine() {
         super(EditMode.Status.CHANGE);
     }

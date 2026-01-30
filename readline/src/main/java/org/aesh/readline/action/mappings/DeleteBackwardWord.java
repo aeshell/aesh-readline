@@ -28,10 +28,18 @@ import org.aesh.readline.editing.EditMode;
  */
 public class DeleteBackwardWord extends BackwardWord {
 
+    /**
+     * Creates a new DeleteBackwardWord action in emacs mode.
+     */
     public DeleteBackwardWord() {
         super(false, EditMode.Status.DELETE);
     }
 
+    /**
+     * Creates a new DeleteBackwardWord action.
+     *
+     * @param viMode true for vi mode, false for emacs mode
+     */
     public DeleteBackwardWord(boolean viMode) {
         super(viMode, EditMode.Status.DELETE);
     }

@@ -44,47 +44,100 @@ public abstract class CompletionHandler<C extends CompleteOperation> {
     private final List<Completion> completionList;
     private Function<Buffer, C> aliasHandler;
 
+    /**
+     * Creates a new CompletionHandler with an empty completion list.
+     */
     public CompletionHandler() {
         completionList = new ArrayList<>();
     }
 
+    /**
+     * Adds a completion to the completion list.
+     *
+     * @param completion the completion to add
+     */
     public void addCompletion(Completion completion) {
         completionList.add(completion);
     }
 
+    /**
+     * Removes a completion from the completion list.
+     *
+     * @param completion the completion to remove
+     */
     public void removeCompletion(Completion completion) {
         completionList.remove(completion);
     }
 
+    /**
+     * Clears all completions from the completion list.
+     */
     public void clear() {
         completionList.clear();
     }
 
+    /**
+     * Returns the current completion status.
+     *
+     * @return the current completion status
+     */
     public CompletionStatus completionStatus() {
         return status;
     }
 
+    /**
+     * Sets the completion status.
+     *
+     * @param status the completion status to set
+     */
     public void setCompletionStatus(CompletionStatus status) {
         this.status = status;
     }
 
+    /**
+     * Sets the size threshold for asking before displaying completions.
+     *
+     * @param size the number of completions that triggers confirmation
+     */
     public void setAskCompletionSize(int size) {
         displayCompletionSize = size;
     }
 
+    /**
+     * Returns the size threshold for asking before displaying completions.
+     *
+     * @return the completion size threshold
+     */
     public int getAskCompletionSize() {
         return displayCompletionSize;
     }
 
+    /**
+     * Sets the alias handler function for buffer completion.
+     *
+     * @param aliasHandler the function to handle alias expansion
+     */
     public void setAliasHandler(Function<Buffer, C> aliasHandler) {
         this.aliasHandler = aliasHandler;
     }
 
+    /**
+     * Adds a list of completions to the completion list.
+     *
+     * @param completions the list of completions to add
+     */
     public void addCompletions(List<Completion> completions) {
         if (completions != null && completions.size() > 0)
             this.completionList.addAll(completions);
     }
 
+    /**
+     * Creates a complete operation for the given buffer and cursor position.
+     *
+     * @param buffer the input buffer string
+     * @param cursor the cursor position in the buffer
+     * @return the complete operation instance
+     */
     public abstract C createCompleteOperation(String buffer, int cursor);
 
     /**
@@ -93,6 +146,8 @@ public abstract class CompletionHandler<C extends CompleteOperation> {
      * 2. If we find only one, display it.
      * 3. If we find more than one, display them,
      * but not more than 100 at once
+     *
+     * @param inputProcessor the input processor handling the completion
      */
     public void complete(InputProcessor inputProcessor) {
         if (completionList.size() == 0)
@@ -246,8 +301,13 @@ public abstract class CompletionHandler<C extends CompleteOperation> {
         inputProcessor.buffer().drawLineForceDisplay();
     }
 
+    /**
+     * Represents the current status of the completion process.
+     */
     public enum CompletionStatus {
+        /** Waiting for user confirmation to display all completions */
         ASKING_FOR_COMPLETIONS,
+        /** Completion process is finished */
         COMPLETE;
     }
 

@@ -41,6 +41,13 @@ import org.aesh.terminal.utils.ANSI;
  */
 public class AsciiArtExample {
 
+    /**
+     * Creates a new AsciiArtExample instance.
+     */
+    public AsciiArtExample() {
+        // Default constructor
+    }
+
     private static final String[] AESH_LOGO = {
             "     _    _____ ____  _   _ ",
             "    / \\  | ____/ ___|| | | |",
@@ -60,6 +67,11 @@ public class AsciiArtExample {
             ""
     };
 
+    /**
+     * Main entry point for the ASCII art example.
+     *
+     * @param args command line arguments (not used)
+     */
     public static void main(String[] args) {
         try {
             TerminalConnection conn = new TerminalConnection();
@@ -146,6 +158,14 @@ public class AsciiArtExample {
         }
     }
 
+    /**
+     * Prints a line of text with the specified color and optional bold styling.
+     *
+     * @param connection the terminal connection to write to
+     * @param text the text to print
+     * @param color the foreground color to use
+     * @param bold if true, the text will be printed in bold
+     */
     private static void printColoredLine(Connection connection, String text, Color color, boolean bold) {
         TerminalString ts = new TerminalString(text,
                 new TerminalColor(color, Color.DEFAULT, Color.Intensity.BRIGHT));

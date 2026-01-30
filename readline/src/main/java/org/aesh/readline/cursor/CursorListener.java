@@ -25,5 +25,10 @@ package org.aesh.readline.cursor;
  * @author jdenise@redhat.com
  */
 public interface CursorListener {
+    /**
+     * Called when the cursor has moved to a new position.
+     *
+     * @param line the line information associated with the cursor movement
+     */
     void moved(Line line);
 }

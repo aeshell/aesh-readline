@@ -26,20 +26,37 @@ package org.aesh.readline.action;
  */
 public interface SearchAction extends ActionEvent {
 
+    /**
+     * Enumeration of possible search operation statuses.
+     */
     enum Status {
+        /** Search has not been initiated yet. */
         SEARCH_NOT_STARTED,
+        /** Search has been exited. */
         SEARCH_EXIT,
+        /** Search is accepting input. */
         SEARCH_INPUT,
+        /** Search was interrupted. */
         SEARCH_INTERRUPT,
+        /** Search has ended. */
         SEARCH_END,
+        /** Search for previous match. */
         SEARCH_PREV,
+        /** Search for next match. */
         SEARCH_NEXT,
+        /** Delete character during search. */
         SEARCH_DELETE,
+        /** Move to previous search result. */
         SEARCH_MOVE_PREV,
+        /** Move to next search result. */
         SEARCH_MOVE_NEXT,
+        /** Move cursor right during search. */
         SEARCH_MOVE_RIGHT,
+        /** Move cursor left during search. */
         SEARCH_MOVE_LEFT,
+        /** Move cursor to beginning of line during search. */
         SEARCH_MOVE_BEGINNING_OF_LINE,
+        /** Move cursor to end of line during search. */
         SEARCH_MOVE_END_OF_LINE,
     }
 }

@@ -28,10 +28,21 @@ import org.aesh.readline.editing.EditMode;
  */
 public class ChangeBackwardWord extends BackwardWord {
 
+    /**
+     * Creates a new change backward word action.
+     *
+     * @param status the edit mode status
+     */
     public ChangeBackwardWord(EditMode.Status status) {
         super(false, status);
     }
 
+    /**
+     * Creates a new change backward word action.
+     *
+     * @param viMode whether vi mode is enabled
+     * @param status the edit mode status
+     */
     public ChangeBackwardWord(boolean viMode, EditMode.Status status) {
         super(viMode, status);
     }

@@ -29,6 +29,13 @@ import org.aesh.readline.editing.EditMode;
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public class PrevHistory implements Action {
+
+    /**
+     * Creates a new PrevHistory action.
+     */
+    public PrevHistory() {
+    }
+
     @Override
     public String name() {
         return "previous-history";

@@ -26,6 +26,18 @@ package org.aesh.terminal.utils;
  */
 public class ShortHelper {
 
+    /**
+     * Private constructor to prevent instantiation.
+     */
+    private ShortHelper() {
+    }
+
+    /**
+     * Convert a string to an array of short code points.
+     *
+     * @param input the string to convert
+     * @return the short array representation
+     */
     public static short[] toShortPoints(String input) {
         short[] out = new short[input.length()];
         final int[] counter = { 0 };
@@ -36,6 +48,12 @@ public class ShortHelper {
         return out;
     }
 
+    /**
+     * Convert an array of short code points to a string.
+     *
+     * @param input the short array to convert
+     * @return the string representation
+     */
     public static String fromShortPoints(short[] input) {
         char[] output = new char[input.length];
         for (int i = 0; i < input.length; i++)

@@ -48,7 +48,7 @@ public enum Signal {
      */
     CONT,
     /**
-     *
+     * Request for status information about the process.
      */
     INFO,
     /**

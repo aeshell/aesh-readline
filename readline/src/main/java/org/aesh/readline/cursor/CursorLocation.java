@@ -29,20 +29,30 @@ public class CursorLocation {
     private final int column;
     private final int row;
 
+    /**
+     * Creates a new cursor location with the specified row and column.
+     *
+     * @param row the row position of the cursor (0-indexed)
+     * @param column the column position of the cursor (0-indexed)
+     */
     public CursorLocation(int row, int column) {
         this.row = row;
         this.column = column;
     }
 
     /**
-     * @return the column
+     * Returns the column position of the cursor.
+     *
+     * @return the column position (0-indexed)
      */
     public int getColumn() {
         return column;
     }
 
     /**
-     * @return the row
+     * Returns the row position of the cursor.
+     *
+     * @return the row position (0-indexed)
      */
     public int getRow() {
         return row;

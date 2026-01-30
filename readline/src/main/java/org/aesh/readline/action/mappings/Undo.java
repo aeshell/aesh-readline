@@ -30,6 +30,12 @@ import org.aesh.readline.undo.UndoAction;
  */
 public class Undo implements Action {
 
+    /**
+     * Creates a new Undo action.
+     */
+    public Undo() {
+    }
+
     @Override
     public String name() {
         return "undo";

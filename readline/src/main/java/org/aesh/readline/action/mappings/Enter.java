@@ -33,6 +33,12 @@ import org.aesh.terminal.utils.Parser;
  */
 public class Enter implements Action {
 
+    /**
+     * Creates a new Enter action.
+     */
+    public Enter() {
+    }
+
     private static final String ENDS_WITH_BACKSLASH = "\\";
     private static final String HASHTAG = "#";
 

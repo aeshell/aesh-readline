@@ -25,6 +25,8 @@ package org.aesh.readline.history;
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public enum SearchDirection {
+    /** Search backward through history (from newest to oldest). */
     REVERSE,
+    /** Search forward through history (from oldest to newest). */
     FORWARD
 }

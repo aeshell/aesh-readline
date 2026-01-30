@@ -34,6 +34,7 @@ public final class Signals {
     }
 
     /**
+     * Registers a signal handler for the specified signal.
      *
      * @param name the signal, CONT, STOP, etc...
      * @param handler the callback to run
@@ -47,6 +48,15 @@ public final class Signals {
         return register(name, handler, handler.getClass().getClassLoader());
     }
 
+    /**
+     * Registers a signal handler using the specified class loader.
+     *
+     * @param name the signal name (e.g., CONT, STOP)
+     * @param handler the callback to run when the signal is received
+     * @param loader the class loader to use for creating the signal handler proxy
+     * @return an object that needs to be passed to {@link #unregister(String, Object)}
+     *         to unregister the handler, or null if registration failed
+     */
     public static Object register(String name, final Runnable handler, ClassLoader loader) {
         try {
             Class<?> signalHandlerClass = Class.forName("sun.misc.SignalHandler");
@@ -66,6 +76,13 @@ public final class Signals {
         return null;
     }
 
+    /**
+     * Registers the default signal handler for the specified signal.
+     *
+     * @param name the signal name (e.g., CONT, STOP)
+     * @return an object that needs to be passed to {@link #unregister(String, Object)}
+     *         to unregister the handler, or null if registration failed
+     */
     public static Object registerDefault(String name) {
         try {
             Class<?> signalHandlerClass = Class.forName("sun.misc.SignalHandler");
@@ -76,6 +93,13 @@ public final class Signals {
         return null;
     }
 
+    /**
+     * Registers an ignore handler for the specified signal, causing the signal to be ignored.
+     *
+     * @param name the signal name (e.g., CONT, STOP)
+     * @return an object that needs to be passed to {@link #unregister(String, Object)}
+     *         to unregister the handler, or null if registration failed
+     */
     public static Object registerIgnore(String name) {
         try {
             Class<?> signalHandlerClass = Class.forName("sun.misc.SignalHandler");
@@ -86,6 +110,12 @@ public final class Signals {
         return null;
     }
 
+    /**
+     * Invokes a signal handler directly for the specified signal.
+     *
+     * @param name the signal name (e.g., CONT, STOP)
+     * @param handler the signal handler to invoke
+     */
     public static void invokeHandler(String name, Object handler) {
         try {
             Class<?> signalClass = Class.forName("sun.misc.Signal");
@@ -96,6 +126,12 @@ public final class Signals {
         }
     }
 
+    /**
+     * Unregisters a signal handler by restoring the previous handler.
+     *
+     * @param name the signal name (e.g., CONT, STOP)
+     * @param previous the previous handler returned by a register method
+     */
     public static void unregister(String name, Object previous) {
         try {
             // We should make sure the current signal is the one we registered

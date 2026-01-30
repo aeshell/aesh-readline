@@ -48,6 +48,18 @@ import org.aesh.terminal.utils.TerminalColorCapability;
  */
 public class TerminalColorExample {
 
+    /**
+     * Creates a new TerminalColorExample instance.
+     */
+    public TerminalColorExample() {
+        // Default constructor
+    }
+
+    /**
+     * Main entry point for the terminal color example.
+     *
+     * @param args command line arguments; use {@code -v} or {@code --verbose} to enable debug logging
+     */
     public static void main(String[] args) {
         boolean verbose = false;
         for (String arg : args) {
@@ -71,6 +83,11 @@ public class TerminalColorExample {
         }
     }
 
+    /**
+     * Runs the terminal color detection example.
+     *
+     * @param connection the terminal connection to use for output
+     */
     private static void runExample(TerminalConnection connection) {
         connection.write("\n");
         connection.write(ANSIBuilder.builder().bold("=== Terminal Color Detection Example ===").toString() + "\n");
@@ -114,6 +131,13 @@ public class TerminalColorExample {
         connection.write("\n");
     }
 
+    /**
+     * Prints the terminal color capability information.
+     *
+     * @param connection the terminal connection to use for output
+     * @param indent the indentation string to prefix each line
+     * @param cap the terminal color capability to print
+     */
     private static void printCapability(TerminalConnection connection, String indent, TerminalColorCapability cap) {
         connection.write(indent + "Color Depth: " + cap.getColorDepth() +
                 " (" + cap.getColorDepth().getColorCount() + " colors)\n");
@@ -139,11 +163,23 @@ public class TerminalColorExample {
         }
     }
 
+    /**
+     * Formats a color swatch using 24-bit color escape sequences.
+     *
+     * @param rgb the RGB color values as an array of three integers
+     * @return an ANSI escape sequence that displays a colored block
+     */
     private static String formatColorSwatch(int[] rgb) {
         // Create a colored block using 24-bit color if available
         return "\u001B[48;2;" + rgb[0] + ";" + rgb[1] + ";" + rgb[2] + "m    " + ANSI.RESET;
     }
 
+    /**
+     * Demonstrates suggested colors for various message types based on terminal theme.
+     *
+     * @param connection the terminal connection to use for output
+     * @param cap the terminal color capability containing theme information
+     */
     private static void demonstrateColors(TerminalConnection connection, TerminalColorCapability cap) {
         String indent = "   ";
 
@@ -168,6 +204,12 @@ public class TerminalColorExample {
         connection.write(indent + "\u001B[" + info + "mInfo message (code " + info + ")" + ANSI.RESET + "\n");
     }
 
+    /**
+     * Demonstrates the color depth capabilities of the terminal.
+     *
+     * @param connection the terminal connection to use for output
+     * @param depth the color depth capability of the terminal
+     */
     private static void demonstrateColorDepth(TerminalConnection connection, ColorDepth depth) {
         String indent = "   ";
 
@@ -204,6 +246,11 @@ public class TerminalColorExample {
         }
     }
 
+    /**
+     * Prints relevant environment variables used for terminal detection.
+     *
+     * @param connection the terminal connection to use for output
+     */
     private static void printEnvironmentVariables(TerminalConnection connection) {
         String indent = "   ";
 

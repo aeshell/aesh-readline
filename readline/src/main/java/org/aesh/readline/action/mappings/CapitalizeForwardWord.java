@@ -28,10 +28,18 @@ import org.aesh.readline.editing.EditMode;
  */
 public class CapitalizeForwardWord extends ForwardWord {
 
+    /**
+     * Creates a new capitalize forward word action in emacs mode.
+     */
     public CapitalizeForwardWord() {
         super(false, EditMode.Status.CAPITALIZE);
     }
 
+    /**
+     * Creates a new capitalize forward word action.
+     *
+     * @param viMode whether vi mode is enabled
+     */
     public CapitalizeForwardWord(boolean viMode) {
         super(viMode, EditMode.Status.CAPITALIZE);
     }

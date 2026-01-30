@@ -28,14 +28,28 @@ import org.aesh.readline.editing.EditMode;
  */
 public class DeleteForwardWord extends ForwardWord {
 
+    /**
+     * Creates a new DeleteForwardWord action in emacs mode.
+     */
     public DeleteForwardWord() {
         super(false, EditMode.Status.DELETE);
     }
 
+    /**
+     * Creates a new DeleteForwardWord action with delete status.
+     *
+     * @param viMode true for vi mode, false for emacs mode
+     */
     public DeleteForwardWord(boolean viMode) {
         super(viMode, EditMode.Status.DELETE);
     }
 
+    /**
+     * Creates a new DeleteForwardWord action with the specified status.
+     *
+     * @param viMode true for vi mode, false for emacs mode
+     * @param status the edit mode status
+     */
     public DeleteForwardWord(boolean viMode, EditMode.Status status) {
         super(viMode, status);
     }

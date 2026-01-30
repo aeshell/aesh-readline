@@ -40,6 +40,17 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
     private static final Logger LOGGER = LoggerUtil.getLogger(AeshConsoleBuffer.class.getName());
     private final CursorListener cursorListener;
 
+    /**
+     * Creates a new AeshConsoleBuffer.
+     *
+     * @param connection the terminal connection
+     * @param prompt the initial prompt
+     * @param editMode the editing mode (vi or emacs)
+     * @param history the command history, or null to use a new in-memory history
+     * @param completionHandler the tab completion handler
+     * @param ansi whether ANSI mode is enabled
+     * @param listener the cursor movement listener, or null
+     */
     public AeshConsoleBuffer(Connection connection, Prompt prompt,
             EditMode editMode, History history,
             CompletionHandler completionHandler,

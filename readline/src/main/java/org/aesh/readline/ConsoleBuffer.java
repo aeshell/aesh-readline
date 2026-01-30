@@ -33,32 +33,44 @@ import org.aesh.terminal.tty.Size;
 public interface ConsoleBuffer {
 
     /**
-     * @return history
+     * Get the command history manager.
+     *
+     * @return the history manager
      */
     History history();
 
     /**
-     * @return CompletionHandler
+     * Get the completion handler for tab completion.
+     *
+     * @return the completion handler
      */
     CompletionHandler completer();
 
     /**
-     * @param size specify new size
+     * Set the terminal size.
+     *
+     * @param size the new terminal size
      */
     void setSize(Size size);
 
     /**
-     * @return size
+     * Get the current terminal size.
+     *
+     * @return the terminal size
      */
     Size size();
 
     /**
-     * @return buffer
+     * Get the input buffer containing the current line being edited.
+     *
+     * @return the input buffer
      */
     Buffer buffer();
 
     /**
-     * @return UndoManager
+     * Get the undo manager for undo/redo operations.
+     *
+     * @return the undo manager
      */
     UndoManager undoManager();
 
@@ -68,7 +80,9 @@ public interface ConsoleBuffer {
     void addActionToUndoStack();
 
     /**
-     * @return PasteManager
+     * Get the paste manager for copy/paste operations.
+     *
+     * @return the paste manager
      */
     PasteManager pasteManager();
 
@@ -91,27 +105,37 @@ public interface ConsoleBuffer {
     void drawLineForceDisplay();
 
     /**
-     * @param input char to write to the Buffer
+     * Write a single character to the buffer.
+     *
+     * @param input the character to write
      */
     void writeChar(char input);
 
     /**
-     * @param out write directly to the Connection output stream
+     * Write a string directly to the connection output stream.
+     *
+     * @param out the string to write
      */
     void writeOut(String out);
 
     /**
-     * @param out write directly to the Connection output stream
+     * Write code points directly to the connection output stream.
+     *
+     * @param out the code points to write
      */
     void writeOut(int[] out);
 
     /**
-     * @param input write to the Buffer
+     * Write code points to the buffer.
+     *
+     * @param input the code points to write
      */
     void writeChars(int[] input);
 
     /**
-     * @param input write to the Buffer
+     * Write a string to the buffer.
+     *
+     * @param input the string to write
      */
     void writeString(String input);
 

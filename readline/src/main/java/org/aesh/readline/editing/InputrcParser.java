@@ -41,6 +41,12 @@ import org.aesh.terminal.utils.LoggerUtil;
  */
 public class InputrcParser {
 
+    /**
+     * Private constructor to prevent instantiation of this utility class.
+     */
+    private InputrcParser() {
+    }
+
     private static final Pattern quotePattern = Pattern.compile("^\"");
     private static final Pattern metaPattern = Pattern.compile("^(\\\\M|M|Meta)-"); // "M-
     private static final Pattern controlPattern = Pattern.compile("^(\\\\C|C|Control)-"); // "M-
@@ -51,6 +57,7 @@ public class InputrcParser {
     private static final Pattern keyNamePattern = Pattern.compile("(^\\S+)(:\\s+)(\\S+)");
 
     /**
+     * Parses an inputrc file from the given input stream.
      * Must be able to parse:
      * set variablename value
      * keyname: function-name or macro
@@ -59,11 +66,20 @@ public class InputrcParser {
      * Lines starting with # are comments
      * Lines starting with $ are conditional init constructs
      *
+     * @param inputStream the input stream containing inputrc configuration
+     * @return the EditMode created from the inputrc configuration
      */
     protected static EditMode parseInputrc(InputStream inputStream) {
         return parseInputrc(inputStream, EditModeBuilder.builder());
     }
 
+    /**
+     * Parses an inputrc file from the given input stream using the provided EditModeBuilder.
+     *
+     * @param inputStream the input stream containing inputrc configuration
+     * @param editMode the EditModeBuilder to configure with parsed settings
+     * @return the EditMode created from the inputrc configuration
+     */
     protected static EditMode parseInputrc(InputStream inputStream, EditModeBuilder editMode) {
         if (inputStream == null) {
             LOGGER.warning("input stream is null, defaulting to emacs mode");
@@ -119,6 +135,12 @@ public class InputrcParser {
         return editMode.create();
     }
 
+    /**
+     * Parses a single line from an inputrc file and applies it to the EditModeBuilder.
+     *
+     * @param line the line to parse
+     * @param editMode the EditModeBuilder to configure
+     */
     protected static void parseLine(String line, EditModeBuilder editMode) {
         Matcher variableMatcher = variablePattern.matcher(line);
         if (variableMatcher.matches()) {
@@ -140,6 +162,13 @@ public class InputrcParser {
         }
     }
 
+    /**
+     * Parses and sets a variable value in the EditModeBuilder.
+     *
+     * @param variable the variable to set
+     * @param value the value to set for the variable
+     * @param editMode the EditModeBuilder to configure
+     */
     private static void parseVariables(Variable variable, String value, EditModeBuilder editMode) {
 
         if (VariableValues.getValuesByVariable(variable).size() > 0) {
@@ -151,6 +180,12 @@ public class InputrcParser {
             editMode.addVariable(variable, value);
     }
 
+    /**
+     * Maps a key string (e.g., "M-C-a" for Meta-Control-a) to its integer array representation.
+     *
+     * @param keys the key string to map
+     * @return the integer array representation of the key sequence
+     */
     public static int[] mapKeys(String keys) {
         boolean meta = false;
         boolean control = false;
@@ -234,6 +269,12 @@ public class InputrcParser {
         return out;
     }
 
+    /**
+     * Converts a string of characters to their integer code point values.
+     *
+     * @param random the string of characters to convert
+     * @return the integer array of code point values
+     */
     private static int[] convertRandomKeys(String random) {
         int[] converted = new int[random.length()];
         for (int i = 0; i < random.length(); i++)
@@ -242,6 +283,12 @@ public class InputrcParser {
         return converted;
     }
 
+    /**
+     * Converts a string of control key characters to their integer control code values.
+     *
+     * @param random the string of control key characters to convert
+     * @return the integer array of control code values
+     */
     private static int[] convertRandomControlKeys(String random) {
         final int length = random.length();
         final int[] tmpArray = new int[length];
@@ -266,6 +313,12 @@ public class InputrcParser {
         }
     }
 
+    /**
+     * Looks up the control code value for a given character.
+     *
+     * @param c the character to look up (should be lowercase)
+     * @return the control code value, or -1 if the character is not a valid control key
+     */
     private static int lookupControlKey(char c) {
         switch (c) {
             case '@':

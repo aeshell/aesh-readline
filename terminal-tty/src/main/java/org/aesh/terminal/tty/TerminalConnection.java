@@ -68,6 +68,16 @@ public class TerminalConnection implements Connection {
     private Terminal.SignalHandler prevContHandler;
     private boolean ansi = true;
 
+    /**
+     * Creates a new TerminalConnection with the specified charsets, streams, and handler.
+     *
+     * @param inputCharset the charset for input encoding, or null to use the default charset
+     * @param outputCharset the charset for output encoding, or null to use the default charset
+     * @param inputStream the input stream for the terminal
+     * @param outputStream the output stream for the terminal
+     * @param handler the connection handler to be called when the connection is initialized
+     * @throws IOException if an I/O error occurs
+     */
     public TerminalConnection(Charset inputCharset, Charset outputCharset, InputStream inputStream,
             OutputStream outputStream, Consumer<Connection> handler) throws IOException {
         if (inputCharset != null)
@@ -87,23 +97,56 @@ public class TerminalConnection implements Connection {
                 .build());
     }
 
+    /**
+     * Creates a new TerminalConnection with the specified charset, streams, and handler.
+     *
+     * @param charset the charset for both input and output encoding
+     * @param inputStream the input stream for the terminal
+     * @param outputStream the output stream for the terminal
+     * @param handler the connection handler to be called when the connection is initialized
+     * @throws IOException if an I/O error occurs
+     */
     public TerminalConnection(Charset charset, InputStream inputStream,
             OutputStream outputStream, Consumer<Connection> handler) throws IOException {
         this(charset, charset, inputStream, outputStream, handler);
     }
 
+    /**
+     * Creates a new TerminalConnection with the specified charset and streams.
+     *
+     * @param charset the charset for both input and output encoding
+     * @param inputStream the input stream for the terminal
+     * @param outputStream the output stream for the terminal
+     * @throws IOException if an I/O error occurs
+     */
     public TerminalConnection(Charset charset, InputStream inputStream, OutputStream outputStream) throws IOException {
         this(charset, charset, inputStream, outputStream, null);
     }
 
+    /**
+     * Creates a new TerminalConnection using system default charset and standard I/O streams.
+     *
+     * @throws IOException if an I/O error occurs
+     */
     public TerminalConnection() throws IOException {
         this(Charset.defaultCharset(), System.in, System.out);
     }
 
+    /**
+     * Creates a new TerminalConnection using system defaults with a connection handler.
+     *
+     * @param handler the connection handler to be called when the connection is initialized
+     * @throws IOException if an I/O error occurs
+     */
     public TerminalConnection(Consumer<Connection> handler) throws IOException {
         this(Charset.defaultCharset(), Charset.defaultCharset(), System.in, System.out, handler);
     }
 
+    /**
+     * Creates a new TerminalConnection wrapping an existing Terminal.
+     *
+     * @param terminal the terminal to wrap
+     */
     public TerminalConnection(Terminal terminal) {
         this.inputCharset = Charset.defaultCharset();
         this.outputCharset = Charset.defaultCharset();
@@ -198,6 +241,11 @@ public class TerminalConnection implements Connection {
         openBlocking(null);
     }
 
+    /**
+     * Opens the Connection stream with an initial buffer. This method will block and wait for input.
+     *
+     * @param buffer initial data to process before reading from the terminal input
+     */
     public void openBlocking(String buffer) {
         try {
             reading = true;
@@ -229,6 +277,10 @@ public class TerminalConnection implements Connection {
         }
     }
 
+    /**
+     * Suspends reading from the terminal input stream.
+     * The reading thread will wait until {@link #awake()} is called.
+     */
     public void suspend() {
         if (!waiting) {
             latch = new CountDownLatch(1);
@@ -236,6 +288,9 @@ public class TerminalConnection implements Connection {
         }
     }
 
+    /**
+     * Resumes reading from the terminal input stream after a suspend.
+     */
     public void awake() {
         if (waiting) {
             waiting = false;
@@ -244,14 +299,27 @@ public class TerminalConnection implements Connection {
         }
     }
 
+    /**
+     * Returns whether the connection is currently suspended.
+     *
+     * @return true if the connection is suspended, false otherwise
+     */
     public boolean suspended() {
         return waiting;
     }
 
+    /**
+     * Returns whether the connection is currently reading from the input stream.
+     *
+     * @return true if actively reading, false otherwise
+     */
     public boolean isReading() {
         return reading;
     }
 
+    /**
+     * Stops reading from the terminal input stream and wakes up any suspended threads.
+     */
     public void stopReading() {
         reading = false;
         awake();
@@ -265,6 +333,11 @@ public class TerminalConnection implements Connection {
         }
     }
 
+    /**
+     * Returns the underlying Terminal instance.
+     *
+     * @return the terminal
+     */
     public Terminal getTerminal() {
         return terminal;
     }

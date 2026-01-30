@@ -79,6 +79,8 @@ public class TerminalColorCapability {
     }
 
     /**
+     * Get the detected color depth capability.
+     *
      * @return the detected color depth capability
      */
     public ColorDepth getColorDepth() {
@@ -86,6 +88,8 @@ public class TerminalColorCapability {
     }
 
     /**
+     * Get the detected terminal theme.
+     *
      * @return the detected terminal theme (light/dark/unknown)
      */
     public TerminalTheme getTheme() {
@@ -93,6 +97,8 @@ public class TerminalColorCapability {
     }
 
     /**
+     * Get the detected foreground RGB color.
+     *
      * @return the detected foreground RGB color as [r, g, b] (0-255 each),
      *         or null if not detected
      */
@@ -101,6 +107,8 @@ public class TerminalColorCapability {
     }
 
     /**
+     * Get the detected background RGB color.
+     *
      * @return the detected background RGB color as [r, g, b] (0-255 each),
      *         or null if not detected
      */

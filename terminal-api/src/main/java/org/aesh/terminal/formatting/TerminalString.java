@@ -37,6 +37,13 @@ public class TerminalString implements Comparable<TerminalString> {
     private boolean ignoreRendering;
     private int ansiLength = 0;
 
+    /**
+     * Create a terminal string with the specified color and style.
+     *
+     * @param chars the character content
+     * @param color the terminal color
+     * @param style the text style
+     */
     public TerminalString(String chars, TerminalColor color, TerminalTextStyle style) {
         this.characters = chars;
         if (color != null)
@@ -49,43 +56,94 @@ public class TerminalString implements Comparable<TerminalString> {
             this.style = new TerminalTextStyle();
     }
 
+    /**
+     * Create a terminal string with the specified color.
+     *
+     * @param chars the character content
+     * @param color the terminal color
+     */
     public TerminalString(String chars, TerminalColor color) {
         this(chars, color, new TerminalTextStyle());
     }
 
+    /**
+     * Create a terminal string with the specified style.
+     *
+     * @param chars the character content
+     * @param style the text style
+     */
     public TerminalString(String chars, TerminalTextStyle style) {
         this(chars, new TerminalColor(), style);
     }
 
+    /**
+     * Create a terminal string with default formatting.
+     *
+     * @param chars the character content
+     */
     public TerminalString(String chars) {
         this(chars, new TerminalColor(), new TerminalTextStyle());
     }
 
+    /**
+     * Create a terminal string with optional rendering.
+     *
+     * @param chars the character content
+     * @param ignoreRendering if true, no ANSI codes will be applied
+     */
     public TerminalString(String chars, boolean ignoreRendering) {
         this(chars, new TerminalColor(), new TerminalTextStyle());
         this.ignoreRendering = ignoreRendering;
     }
 
+    /**
+     * Get the character content.
+     *
+     * @return the characters
+     */
     public String getCharacters() {
         return characters;
     }
 
+    /**
+     * Set the character content.
+     *
+     * @param chars the new characters
+     */
     public void setCharacters(String chars) {
         this.characters = chars;
     }
 
+    /**
+     * Check if the string contains spaces.
+     *
+     * @return true if spaces are present
+     */
     public boolean containSpaces() {
         return characters.indexOf(CodePointUtils.SPACE_CHAR) > 0;
     }
 
+    /**
+     * Replace spaces with escaped spaces in the character content.
+     */
     public void switchSpacesToEscapedSpaces() {
         characters = CodePointUtils.switchSpacesToEscapedSpacesInWord(characters);
     }
 
+    /**
+     * Get the text style.
+     *
+     * @return the text style
+     */
     public TerminalTextStyle getStyle() {
         return style;
     }
 
+    /**
+     * Get the length of ANSI escape sequences.
+     *
+     * @return the ANSI code length, or 0 if rendering is ignored
+     */
     public int getANSILength() {
         if (ignoreRendering)
             return 0;
@@ -97,6 +155,12 @@ public class TerminalString implements Comparable<TerminalString> {
         }
     }
 
+    /**
+     * Create a new terminal string with the same rendering attributes.
+     *
+     * @param chars the new character content
+     * @return a new terminal string with the same style and color
+     */
     public TerminalString cloneRenderingAttributes(String chars) {
         if (ignoreRendering)
             return new TerminalString(chars, true);
@@ -104,12 +168,21 @@ public class TerminalString implements Comparable<TerminalString> {
             return new TerminalString(chars, color, style);
     }
 
+    /**
+     * Check if this string has any formatting applied.
+     *
+     * @return true if color or style formatting is applied
+     */
     public boolean isFormatted() {
         return !ignoreRendering && (color.isFormatted() || style.isFormatted());
     }
 
     /**
-     * style, text color, background color
+     * Get the string representation relative to a previous terminal string.
+     * Only outputs ANSI codes for attributes that differ.
+     *
+     * @param prev the previous terminal string
+     * @return the formatted string with ANSI codes
      */
     public String toString(TerminalString prev) {
         if (ignoreRendering)
@@ -142,6 +215,11 @@ public class TerminalString implements Comparable<TerminalString> {
                 'm' + getCharacters() + ANSI.RESET;
     }
 
+    /**
+     * Write this terminal string to a print stream.
+     *
+     * @param out the output stream to write to
+     */
     public void write(PrintStream out) {
         if (ignoreRendering) {
             out.print(characters);
@@ -155,6 +233,13 @@ public class TerminalString implements Comparable<TerminalString> {
         }
     }
 
+    /**
+     * Check if this terminal string has the same style and color as another,
+     * ignoring the actual character content.
+     *
+     * @param that the terminal string to compare with
+     * @return true if style and color are equal
+     */
     public boolean equalsIgnoreCharacter(TerminalString that) {
         if (style != that.style)
             return false;

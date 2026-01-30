@@ -30,16 +30,46 @@ import org.aesh.terminal.formatting.TerminalString;
  */
 public interface CompleteOperation {
 
+    /**
+     * Get the input buffer string.
+     *
+     * @return the buffer content
+     */
     String getBuffer();
 
+    /**
+     * Get the current cursor position.
+     *
+     * @return the cursor position
+     */
     int getCursor();
 
+    /**
+     * Get the offset for completion.
+     *
+     * @return the offset
+     */
     int getOffset();
 
+    /**
+     * Set the offset for completion.
+     *
+     * @param offset the offset value
+     */
     void setOffset(int offset);
 
+    /**
+     * Set whether to ignore the offset.
+     *
+     * @param ignoreOffset true to ignore offset
+     */
     void setIgnoreOffset(boolean ignoreOffset);
 
+    /**
+     * Check if offset should be ignored.
+     *
+     * @return true if offset is ignored
+     */
     boolean doIgnoreOffset();
 
     /**
@@ -73,29 +103,93 @@ public interface CompleteOperation {
      */
     void doAppendSeparator(boolean appendSeparator);
 
+    /**
+     * Get the list of completion candidates.
+     *
+     * @return the completion candidates
+     */
     List<TerminalString> getCompletionCandidates();
 
+    /**
+     * Add a completion candidate.
+     *
+     * @param completionCandidate the candidate to add
+     */
     void addCompletionCandidate(TerminalString completionCandidate);
 
+    /**
+     * Add a completion candidate as a string.
+     *
+     * @param completionCandidate the candidate to add
+     */
     void addCompletionCandidate(String completionCandidate);
 
+    /**
+     * Add multiple completion candidates.
+     *
+     * @param completionCandidates the candidates to add
+     */
     void addCompletionCandidates(List<String> completionCandidates);
 
+    /**
+     * Add multiple completion candidates as TerminalStrings.
+     *
+     * @param completionCandidates the candidates to add
+     */
     void addCompletionCandidatesTerminalString(List<TerminalString> completionCandidates);
 
+    /**
+     * Remove escaped spaces from all completion candidates.
+     */
     void removeEscapedSpacesFromCompletionCandidates();
 
+    /**
+     * Get the formatted completion candidates as strings.
+     *
+     * @return the formatted candidates
+     */
     List<String> getFormattedCompletionCandidates();
 
+    /**
+     * Get the formatted completion candidates as TerminalStrings.
+     *
+     * @return the formatted candidates
+     */
     List<TerminalString> getFormattedCompletionCandidatesTerminalString();
 
+    /**
+     * Get the formatted version of a completion string.
+     *
+     * @param completion the completion to format
+     * @return the formatted completion
+     */
     String getFormattedCompletion(String completion);
 
+    /**
+     * Check if starts-with matching should be ignored.
+     *
+     * @return true if starts-with is ignored
+     */
     boolean isIgnoreStartsWith();
 
+    /**
+     * Set whether to ignore starts-with matching.
+     *
+     * @param ignoreStartsWith true to ignore starts-with
+     */
     void setIgnoreStartsWith(boolean ignoreStartsWith);
 
+    /**
+     * Check if non-escaped spaces should be ignored.
+     *
+     * @return true if non-escaped spaces are ignored
+     */
     boolean doIgnoreNonEscapedSpace();
 
+    /**
+     * Set whether to ignore non-escaped spaces.
+     *
+     * @param ignoreNonEscapedSpace true to ignore non-escaped spaces
+     */
     void setIgnoreNonEscapedSpace(boolean ignoreNonEscapedSpace);
 }

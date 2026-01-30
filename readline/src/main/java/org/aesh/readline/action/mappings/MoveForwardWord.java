@@ -28,10 +28,18 @@ import org.aesh.readline.editing.EditMode;
  */
 public class MoveForwardWord extends ForwardWord {
 
+    /**
+     * Creates a new MoveForwardWord action with default settings.
+     */
     public MoveForwardWord() {
         super();
     }
 
+    /**
+     * Creates a new MoveForwardWord action with the specified vi mode setting.
+     *
+     * @param viMode true to enable vi mode, false for emacs mode
+     */
     public MoveForwardWord(boolean viMode) {
         super(viMode, EditMode.Status.MOVE);
     }

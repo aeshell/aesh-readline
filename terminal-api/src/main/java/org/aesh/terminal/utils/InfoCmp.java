@@ -40,6 +40,15 @@ public final class InfoCmp {
     private InfoCmp() {
     }
 
+    /**
+     * Get the terminal capabilities for the specified terminal type.
+     * The result is cached for subsequent calls with the same terminal type.
+     *
+     * @param terminal the terminal type (e.g., "xterm-256color")
+     * @return the infocmp output for the terminal
+     * @throws IOException if an I/O error occurs
+     * @throws InterruptedException if the thread is interrupted
+     */
     public static String getInfoCmp(String terminal) throws IOException, InterruptedException {
         String caps = CAPS.get(terminal);
         if (caps == null) {
@@ -50,6 +59,13 @@ public final class InfoCmp {
         return caps;
     }
 
+    /**
+     * Get the default built-in terminal capabilities for the specified terminal type.
+     * This is used as a fallback when the infocmp command is not available.
+     *
+     * @param terminal the terminal type (e.g., "xterm-256color")
+     * @return the default capabilities string, or null if not found
+     */
     public static String getDefaultInfoCmp(String terminal) {
         if (terminal.toLowerCase().contains("windows")) {
             return readDefaultInfoCmp("windows_caps.src");
@@ -84,10 +100,27 @@ public final class InfoCmp {
         return null;
     }
 
+    /**
+     * Set the default terminal capabilities for a terminal type.
+     * This will only set the value if no capabilities have been set for this terminal.
+     *
+     * @param terminal the terminal type
+     * @param caps the capabilities string to set
+     */
     public static void setDefaultInfoCmp(String terminal, String caps) {
         CAPS.putIfAbsent(terminal, caps);
     }
 
+    /**
+     * Parse an infocmp capabilities string and populate the provided collections.
+     * Boolean capabilities are added to the bools set, integer capabilities to the ints map,
+     * and string capabilities to the strings map.
+     *
+     * @param capabilities the raw capabilities string from infocmp
+     * @param bools set to populate with boolean capabilities
+     * @param ints map to populate with integer capabilities
+     * @param strings map to populate with string capabilities
+     */
     public static void parseInfoCmp(
             String capabilities,
             Set<Capability> bools,

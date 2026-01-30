@@ -28,6 +28,9 @@ import org.aesh.terminal.Terminal.SignalHandler;
  */
 public interface SignalHandlers {
 
+    /** Default signal handler that performs the default action for the signal. */
     SignalHandler SIG_DFL = NativeSignalHandler.SIG_DFL;
+
+    /** Signal handler that ignores the signal. */
     SignalHandler SIG_IGN = NativeSignalHandler.SIG_IGN;
 }

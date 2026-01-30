@@ -67,6 +67,8 @@ public enum ColorDepth {
     }
 
     /**
+     * Get the maximum number of colors supported at this depth.
+     *
      * @return the maximum number of colors supported at this depth
      */
     public int getColorCount() {

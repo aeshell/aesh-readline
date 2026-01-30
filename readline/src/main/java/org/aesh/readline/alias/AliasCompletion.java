@@ -38,16 +38,42 @@ public class AliasCompletion implements Completion {
     private final AliasManager manager;
     private final boolean includeAliasInCompletion;
 
+    /**
+     * Creates a new AliasCompletion with the specified alias manager.
+     * By default, alias and unalias commands are included in completion suggestions.
+     *
+     * @param manager the alias manager used to retrieve alias names for completion
+     */
     public AliasCompletion(AliasManager manager) {
         this.manager = manager;
         this.includeAliasInCompletion = true;
     }
 
+    /**
+     * Creates a new AliasCompletion with the specified alias manager and completion behavior.
+     *
+     * @param manager the alias manager used to retrieve alias names for completion
+     * @param includeAliasInCompletion if true, include alias and unalias commands in completion;
+     *        if false, only provide alias name completions
+     */
     public AliasCompletion(AliasManager manager, boolean includeAliasInCompletion) {
         this.manager = manager;
         this.includeAliasInCompletion = includeAliasInCompletion;
     }
 
+    /**
+     * Provides completion candidates for alias-related commands.
+     * This method handles completion for:
+     * <ul>
+     * <li>Alias names matching the current input buffer</li>
+     * <li>The 'alias' and 'unalias' commands (if enabled)</li>
+     * <li>Arguments to 'alias' and 'unalias' commands</li>
+     * <li>The '--help' option for alias commands</li>
+     * </ul>
+     *
+     * @param completeOperation the completion operation containing the current input
+     *        and to which completion candidates will be added
+     */
     @Override
     public void complete(CompleteOperation completeOperation) {
         completeOperation.addCompletionCandidates(manager.findAllMatchingNames(completeOperation.getBuffer()));

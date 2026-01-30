@@ -42,6 +42,15 @@ public final class Curses {
     private Curses() {
     }
 
+    /**
+     * Print the given terminal capabilities without throwing checked exceptions.
+     * This is a convenience wrapper around {@link #doTputs(Appendable, String, Object...)}
+     * that converts IOExceptions to IOErrors.
+     *
+     * @param out the output stream
+     * @param str the capability to output
+     * @param params optional parameters
+     */
     public static void tputs(Appendable out, String str, Object... params) {
         try {
             doTputs(out, str, params);

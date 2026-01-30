@@ -32,14 +32,32 @@ import org.jline.nativ.Kernel32;
 import org.jline.nativ.Kernel32.INPUT_RECORD;
 import org.jline.nativ.Kernel32.KEY_EVENT_RECORD;
 
+/**
+ * Windows system terminal implementation using native console API.
+ */
 public class WinSysTerminal extends AbstractWindowsTerminal {
 
     private static final int VIRTUAL_TERMINAL_PROCESSING = 0x0004;
 
+    /**
+     * Create a new Windows system terminal with the specified name.
+     *
+     * @param name the terminal name
+     * @param nativeSignals whether to use native signal handling
+     * @throws IOException if an I/O error occurs
+     */
     public WinSysTerminal(String name, boolean nativeSignals) throws IOException {
         this(name, nativeSignals, SignalHandlers.SIG_DFL);
     }
 
+    /**
+     * Create a new Windows system terminal with custom signal handler.
+     *
+     * @param name the terminal name
+     * @param nativeSignals whether to use native signal handling
+     * @param signalHandler the signal handler to use
+     * @throws IOException if an I/O error occurs
+     */
     public WinSysTerminal(String name, boolean nativeSignals, SignalHandler signalHandler) throws IOException {
         super(setVTMode(), AnsiConsole.out(), name, nativeSignals, signalHandler);
     }
@@ -152,6 +170,11 @@ public class WinSysTerminal extends AbstractWindowsTerminal {
         return true;
     }
 
+    /**
+     * Check if virtual terminal mode is supported.
+     *
+     * @return true if virtual terminal mode is supported
+     */
     public static boolean isVTSupported() {
         return setVTMode();
     }

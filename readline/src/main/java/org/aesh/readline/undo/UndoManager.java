@@ -33,12 +33,20 @@ public class UndoManager {
     private Stack<UndoAction> undoStack;
     private int counter;
 
+    /**
+     * Creates a new UndoManager with an empty undo stack.
+     */
     public UndoManager() {
         undoStack = new Stack<>();
         undoStack.setSize(UNDO_SIZE);
         counter = 0;
     }
 
+    /**
+     * Retrieves and removes the next undo action from the stack.
+     *
+     * @return the next undo action, or null if the stack is empty
+     */
     public UndoAction getNext() {
         if (counter > 0) {
             counter--;
@@ -47,6 +55,12 @@ public class UndoManager {
             return null;
     }
 
+    /**
+     * Adds an undo action to the stack. If the stack exceeds its maximum size,
+     * the oldest action is removed.
+     *
+     * @param u the undo action to add
+     */
     public void addUndo(UndoAction u) {
         if (counter <= UNDO_SIZE) {
             counter++;
@@ -58,15 +72,28 @@ public class UndoManager {
 
     }
 
+    /**
+     * Clears all undo actions from the stack.
+     */
     public void clear() {
         undoStack.clear();
         counter = 0;
     }
 
+    /**
+     * Checks if the undo stack is empty.
+     *
+     * @return true if there are no undo actions, false otherwise
+     */
     public boolean isEmpty() {
         return (counter == 0);
     }
 
+    /**
+     * Returns the number of undo actions in the stack.
+     *
+     * @return the number of undo actions
+     */
     public int size() {
         return counter;
     }

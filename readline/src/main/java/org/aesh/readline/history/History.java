@@ -28,46 +28,132 @@ import java.util.List;
  */
 public abstract class History {
 
+    /**
+     * Protected constructor for subclasses.
+     */
+    protected History() {
+    }
+
     private boolean enabled = true;
 
+    /**
+     * Checks if history is enabled.
+     *
+     * @return true if history is enabled, false otherwise
+     */
     public boolean isEnabled() {
         return enabled;
     }
 
+    /**
+     * Enables history tracking.
+     */
     public void enable() {
         this.enabled = true;
     }
 
+    /**
+     * Disables history tracking.
+     */
     public void disable() {
         this.enabled = false;
     }
 
+    /**
+     * Pushes a new entry to the history.
+     *
+     * @param entry the entry to add
+     */
     public abstract void push(int[] entry);
 
+    /**
+     * Finds an entry in the history that matches the search.
+     *
+     * @param search the search pattern
+     * @return the matching entry, or null if not found
+     */
     public abstract int[] find(int[] search);
 
+    /**
+     * Gets the history entry at the specified index.
+     *
+     * @param index the index of the entry to retrieve
+     * @return the history entry at the specified index
+     */
     public abstract int[] get(int index);
 
+    /**
+     * Returns the number of entries in the history.
+     *
+     * @return the size of the history
+     */
     public abstract int size();
 
+    /**
+     * Sets the search direction for history searches.
+     *
+     * @param direction the search direction
+     */
     public abstract void setSearchDirection(SearchDirection direction);
 
+    /**
+     * Gets the current search direction.
+     *
+     * @return the current search direction
+     */
     public abstract SearchDirection getSearchDirection();
 
+    /**
+     * Gets the next entry in the history (moving forward).
+     *
+     * @return the next history entry, or null if at the end
+     */
     public abstract int[] getNextFetch();
 
+    /**
+     * Gets the previous entry in the history (moving backward).
+     *
+     * @return the previous history entry, or empty array if at the beginning
+     */
     public abstract int[] getPreviousFetch();
 
+    /**
+     * Searches for an entry in the history that contains the search pattern.
+     *
+     * @param search the search pattern
+     * @return the matching entry, or null if not found
+     */
     public abstract int[] search(int[] search);
 
+    /**
+     * Sets the current line being edited (used for history navigation).
+     *
+     * @param line the current line
+     */
     public abstract void setCurrent(int[] line);
 
+    /**
+     * Gets the current line being edited.
+     *
+     * @return the current line
+     */
     public abstract int[] getCurrent();
 
+    /**
+     * Gets all entries in the history.
+     *
+     * @return a list of all history entries
+     */
     public abstract List<int[]> getAll();
 
+    /**
+     * Clears all entries from the history.
+     */
     public abstract void clear();
 
+    /**
+     * Stops the history and performs any necessary cleanup (e.g., saving to file).
+     */
     public abstract void stop();
 
 }

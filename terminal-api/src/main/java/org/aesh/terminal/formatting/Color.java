@@ -26,14 +26,23 @@ package org.aesh.terminal.formatting;
  */
 public enum Color {
 
+    /** Black color (ANSI code 0). */
     BLACK(0),
+    /** Red color (ANSI code 1). */
     RED(1),
+    /** Green color (ANSI code 2). */
     GREEN(2),
+    /** Yellow color (ANSI code 3). */
     YELLOW(3),
+    /** Blue color (ANSI code 4). */
     BLUE(4),
+    /** Magenta color (ANSI code 5). */
     MAGENTA(5),
+    /** Cyan color (ANSI code 6). */
     CYAN(6),
+    /** White color (ANSI code 7). */
     WHITE(7),
+    /** Default terminal color (ANSI code 9). */
     DEFAULT(9);
 
     private final int value;
@@ -42,14 +51,30 @@ public enum Color {
         this.value = value;
     }
 
+    /**
+     * Returns the ANSI color code value.
+     *
+     * @return the ANSI color code value
+     */
     public int getValue() {
         return value;
     }
 
+    /**
+     * Color intensity levels for ANSI terminal colors.
+     */
     public enum Intensity {
+        /** Normal intensity color. */
         NORMAL,
+        /** Bright or high intensity color. */
         BRIGHT;
 
+        /**
+         * Returns the ANSI escape code prefix value based on intensity and color type.
+         *
+         * @param type the color type (foreground or background)
+         * @return the ANSI escape code prefix value
+         */
         public int getValue(Type type) {
             if (this == NORMAL) {
                 if (type == Type.FOREGROUND)
@@ -65,8 +90,13 @@ public enum Color {
         }
     }
 
+    /**
+     * Specifies whether a color applies to foreground or background.
+     */
     public enum Type {
+        /** Foreground (text) color. */
         FOREGROUND, // 3
+        /** Background color. */
         BACKGROUND // 4
     }
 }

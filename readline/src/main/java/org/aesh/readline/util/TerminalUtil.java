@@ -31,14 +31,35 @@ import org.aesh.terminal.tty.TerminalConnection;
  */
 public class TerminalUtil {
 
+    /**
+     * Private constructor to prevent instantiation of utility class.
+     */
+    private TerminalUtil() {
+    }
+
+    /**
+     * Returns the width of the terminal in columns.
+     *
+     * @return the terminal width, or -1 if the terminal is not available
+     */
     public static int terminalWidth() {
         return terminalSize().getWidth();
     }
 
+    /**
+     * Returns the height of the terminal in rows.
+     *
+     * @return the terminal height, or -1 if the terminal is not available
+     */
     public static int terminalHeight() {
         return terminalSize().getHeight();
     }
 
+    /**
+     * Returns the size of the terminal.
+     *
+     * @return the terminal size, or a Size with -1 dimensions if the terminal is not available
+     */
     public static Size terminalSize() {
         TerminalConnection connection = terminal();
         if (connection != null)
@@ -47,6 +68,11 @@ public class TerminalUtil {
             return new Size(-1, -1);
     }
 
+    /**
+     * Returns the type of the terminal (e.g., "xterm", "vt100").
+     *
+     * @return the terminal type string, or an empty string if the terminal is not available
+     */
     public static String terminalType() {
         TerminalConnection connection = terminal();
         if (connection != null)
@@ -55,6 +81,11 @@ public class TerminalUtil {
             return "";
     }
 
+    /**
+     * Creates a new terminal connection.
+     *
+     * @return a new TerminalConnection, or null if an error occurs
+     */
     private static TerminalConnection terminal() {
         try {
             return new TerminalConnection();

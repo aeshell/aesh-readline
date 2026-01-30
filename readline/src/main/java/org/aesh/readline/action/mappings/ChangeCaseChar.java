@@ -29,6 +29,13 @@ import org.aesh.readline.action.Action;
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public class ChangeCaseChar implements Action {
+
+    /**
+     * Creates a new change case char action.
+     */
+    public ChangeCaseChar() {
+    }
+
     @Override
     public String name() {
         return "change-case-char";

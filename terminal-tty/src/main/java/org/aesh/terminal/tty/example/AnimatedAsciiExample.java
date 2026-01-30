@@ -39,6 +39,13 @@ import org.aesh.terminal.utils.ANSI;
  */
 public class AnimatedAsciiExample {
 
+    /**
+     * Creates a new AnimatedAsciiExample instance.
+     */
+    public AnimatedAsciiExample() {
+        // Default constructor
+    }
+
     private static final String[] SPINNER = { "|", "/", "-", "\\" };
 
     private static final String[] ROCKET = {
@@ -66,6 +73,11 @@ public class AnimatedAsciiExample {
 
     private static volatile boolean running = true;
 
+    /**
+     * Main entry point for the animated ASCII example.
+     *
+     * @param args command line arguments (not used)
+     */
     public static void main(String[] args) {
         try {
             TerminalConnection connection = new TerminalConnection();
@@ -212,6 +224,13 @@ public class AnimatedAsciiExample {
         }
     }
 
+    /**
+     * Appends an ANSI cursor movement escape sequence to the buffer.
+     *
+     * @param buffer the StringBuilder to append to
+     * @param row the row position (1-based)
+     * @param col the column position (1-based)
+     */
     private static void moveCursor(StringBuilder buffer, int row, int col) {
         buffer.append("\u001B[").append(row).append(';').append(col).append('H');
     }

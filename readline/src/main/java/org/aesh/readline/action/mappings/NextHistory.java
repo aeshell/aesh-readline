@@ -30,6 +30,12 @@ import org.aesh.readline.editing.EditMode;
  */
 public class NextHistory implements Action {
 
+    /**
+     * Creates a new NextHistory action.
+     */
+    public NextHistory() {
+    }
+
     public String name() {
         return "next-history";
     }

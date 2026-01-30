@@ -28,6 +28,13 @@ import org.aesh.readline.action.Action;
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public class NoAction implements Action {
+
+    /**
+     * Creates a new NoAction instance.
+     */
+    public NoAction() {
+    }
+
     @Override
     public String name() {
         return "no-action";

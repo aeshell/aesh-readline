@@ -29,6 +29,12 @@ import org.aesh.readline.action.Action;
  */
 public class BackwardChar implements Action {
 
+    /**
+     * Creates a new backward char action.
+     */
+    public BackwardChar() {
+    }
+
     @Override
     public String name() {
         return "backward-char";

@@ -26,6 +26,20 @@ package org.aesh.readline.completion;
  */
 public class SimpleCompletionHandler extends CompletionHandler<CompleteOperation> {
 
+    /**
+     * Creates a new SimpleCompletionHandler.
+     */
+    public SimpleCompletionHandler() {
+        super();
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @param buffer the current input buffer content
+     * @param cursor the current cursor position in the buffer
+     * @return a new CompleteOperationImpl instance for the given buffer and cursor
+     */
     @Override
     public CompleteOperation createCompleteOperation(String buffer, int cursor) {
         return new CompleteOperationImpl(buffer, cursor);

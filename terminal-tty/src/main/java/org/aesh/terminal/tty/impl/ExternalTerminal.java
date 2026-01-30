@@ -39,8 +39,19 @@ public class ExternalTerminal extends LineDisciplineTerminal {
 
     private final AtomicBoolean closed = new AtomicBoolean();
     private final Thread pumpThread;
+
+    /** The master input stream for reading data from the external source. */
     protected final InputStream masterInput;
 
+    /**
+     * Constructs an ExternalTerminal with the specified parameters.
+     *
+     * @param name the terminal name
+     * @param type the terminal type
+     * @param masterInput the master input stream for reading external data
+     * @param masterOutput the master output stream for writing data
+     * @throws IOException if an I/O error occurs during initialization
+     */
     public ExternalTerminal(String name, String type,
             InputStream masterInput, OutputStream masterOutput) throws IOException {
         super(name, type, masterOutput);
@@ -50,6 +61,11 @@ public class ExternalTerminal extends LineDisciplineTerminal {
         this.pumpThread.start();
     }
 
+    /**
+     * Closes this terminal and releases any associated resources.
+     *
+     * @throws IOException if an I/O error occurs
+     */
     public void close() throws IOException {
         if (closed.compareAndSet(false, true)) {
             pumpThread.interrupt();
@@ -57,6 +73,11 @@ public class ExternalTerminal extends LineDisciplineTerminal {
         }
     }
 
+    /**
+     * Pumps data from the master input stream to the terminal.
+     * This method runs in a separate thread and continuously reads
+     * from the master input, processing the bytes through the line discipline.
+     */
     public void pump() {
         try {
             byte[] bBuf = new byte[1024];

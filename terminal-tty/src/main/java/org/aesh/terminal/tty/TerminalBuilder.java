@@ -39,14 +39,30 @@ import org.aesh.terminal.tty.impl.WinSysTerminal;
 import org.aesh.terminal.utils.LoggerUtil;
 import org.aesh.terminal.utils.OSUtils;
 
+/**
+ * Builder for creating Terminal instances with configurable input/output streams and settings.
+ *
+ * @author <a href="mailto:spederse@redhat.com">Stale W. Pedersen</a>
+ */
 public final class TerminalBuilder {
 
     private static final Logger LOGGER = LoggerUtil.getLogger(TerminalBuilder.class.getName());
 
+    /**
+     * Creates and returns a default system Terminal.
+     *
+     * @return a new Terminal instance
+     * @throws IOException if an I/O error occurs while creating the terminal
+     */
     public static Terminal console() throws IOException {
         return builder().build();
     }
 
+    /**
+     * Creates a new TerminalBuilder instance.
+     *
+     * @return a new TerminalBuilder
+     */
     public static TerminalBuilder builder() {
         return new TerminalBuilder();
     }
@@ -66,30 +82,72 @@ public final class TerminalBuilder {
         return this;
     }
 
+    /**
+     * Sets the terminal name.
+     *
+     * @param name the terminal name
+     * @return this builder for method chaining
+     */
     public TerminalBuilder name(String name) {
         return apply(c -> c.name = name);
     }
 
+    /**
+     * Sets the input stream for the terminal.
+     *
+     * @param in the input stream
+     * @return this builder for method chaining
+     */
     public TerminalBuilder input(InputStream in) {
         return apply(c -> c.in = in);
     }
 
+    /**
+     * Sets the output stream for the terminal.
+     *
+     * @param out the output stream
+     * @return this builder for method chaining
+     */
     public TerminalBuilder output(OutputStream out) {
         return apply(c -> c.out = out);
     }
 
+    /**
+     * Sets whether to use the system terminal.
+     *
+     * @param system true to use system terminal, false otherwise
+     * @return this builder for method chaining
+     */
     public TerminalBuilder system(boolean system) {
         return apply(c -> c.system = system);
     }
 
+    /**
+     * Sets whether to use native signal handling.
+     *
+     * @param nativeSignals true to enable native signals, false otherwise
+     * @return this builder for method chaining
+     */
     public TerminalBuilder nativeSignals(boolean nativeSignals) {
         return apply(c -> c.nativeSignals = nativeSignals);
     }
 
+    /**
+     * Sets the terminal type (e.g., "xterm", "ansi", "dumb").
+     *
+     * @param type the terminal type
+     * @return this builder for method chaining
+     */
     public TerminalBuilder type(String type) {
         return apply(c -> c.type = type);
     }
 
+    /**
+     * Builds and returns a Terminal instance with the configured settings.
+     *
+     * @return a new Terminal instance
+     * @throws IOException if an I/O error occurs while creating the terminal
+     */
     public Terminal build() throws IOException {
         String name = this.name;
         if (name == null) {

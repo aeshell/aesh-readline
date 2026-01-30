@@ -33,23 +33,54 @@ public class TerminalCharacter {
     private TerminalColor color;
     private String cache;
 
+    /**
+     * Create a terminal character with default style and colors.
+     *
+     * @param c the character
+     */
     public TerminalCharacter(char c) {
         this(c, new TerminalTextStyle());
     }
 
+    /**
+     * Create a terminal character with the specified style.
+     *
+     * @param c the character
+     * @param style the text style
+     */
     public TerminalCharacter(char c, TerminalTextStyle style) {
         this(c, new TerminalColor(), style);
     }
 
+    /**
+     * Create a terminal character with the specified color.
+     *
+     * @param c the character
+     * @param color the terminal color
+     */
     public TerminalCharacter(char c, TerminalColor color) {
         this(c, color, new TerminalTextStyle());
     }
 
+    /**
+     * Create a terminal character with the specified color and character type.
+     *
+     * @param c the character
+     * @param color the terminal color
+     * @param type the character type
+     */
     public TerminalCharacter(char c, TerminalColor color,
             CharacterType type) {
         this(c, color, new TerminalTextStyle(type));
     }
 
+    /**
+     * Create a terminal character with the specified color and style.
+     *
+     * @param c the character
+     * @param color the terminal color
+     * @param style the text style
+     */
     public TerminalCharacter(char c, TerminalColor color,
             TerminalTextStyle style) {
         this.character = c;
@@ -57,21 +88,40 @@ public class TerminalCharacter {
         this.color = color;
     }
 
+    /**
+     * Get the character.
+     *
+     * @return the character
+     */
     public char getCharacter() {
         return character;
     }
 
+    /**
+     * Set the character.
+     *
+     * @param c the new character
+     */
     public void setCharacter(char c) {
         this.character = c;
         cache = null;
     }
 
+    /**
+     * Get the text style.
+     *
+     * @return the text style
+     */
     public TerminalTextStyle getStyle() {
         return style;
     }
 
     /**
-     * style, text color, background color
+     * Get the string representation relative to a previous character.
+     * Only outputs ANSI codes for attributes that differ from the previous character.
+     *
+     * @param prev the previous terminal character
+     * @return the ANSI formatted string
      */
     public String toString(TerminalCharacter prev) {
         if (equalsIgnoreCharacter(prev))
@@ -110,6 +160,13 @@ public class TerminalCharacter {
         return cache;
     }
 
+    /**
+     * Check if this terminal character has the same style and color as another,
+     * ignoring the actual character value.
+     *
+     * @param that the terminal character to compare with
+     * @return true if style and color are equal
+     */
     public boolean equalsIgnoreCharacter(TerminalCharacter that) {
         return style.equals(that.style) && color.equals(that.color);
     }

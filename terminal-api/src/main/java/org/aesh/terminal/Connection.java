@@ -40,16 +40,22 @@ import org.aesh.terminal.utils.TerminalColorCapability;
 public interface Connection extends AutoCloseable {
 
     /**
+     * Get the device associated with this connection.
+     *
      * @return type of terminal
      */
     Device device();
 
     /**
+     * Get the current terminal size.
+     *
      * @return terminal size
      */
     Size size();
 
     /**
+     * Get the size handler.
+     *
      * @return Handler that's called when the terminal changes size
      */
     Consumer<Size> getSizeHandler();
@@ -57,7 +63,7 @@ public interface Connection extends AutoCloseable {
     /**
      * Specify size handler that's called when the terminal changes size.
      *
-     * @param handler
+     * @param handler the size change handler
      */
     void setSizeHandler(Consumer<Size> handler);
 
@@ -76,8 +82,18 @@ public interface Connection extends AutoCloseable {
      */
     void setSignalHandler(Consumer<Signal> handler);
 
+    /**
+     * Get the standard input handler.
+     *
+     * @return the stdin handler that processes input as code point arrays
+     */
     Consumer<int[]> getStdinHandler();
 
+    /**
+     * Set the standard input handler.
+     *
+     * @param handler the handler to process input as code point arrays
+     */
     void setStdinHandler(Consumer<int[]> handler);
 
     /**
@@ -95,6 +111,8 @@ public interface Connection extends AutoCloseable {
     void setCloseHandler(Consumer<Void> closeHandler);
 
     /**
+     * Get the close handler.
+     *
      * @return handler thats called when the input stream is closed.
      */
     Consumer<Void> getCloseHandler();
@@ -110,6 +128,11 @@ public interface Connection extends AutoCloseable {
     @Override
     void close();
 
+    /**
+     * Close the connection with an exit code.
+     *
+     * @param exit the exit code
+     */
     default void close(int exit) {
         close();
     }
@@ -135,14 +158,39 @@ public interface Connection extends AutoCloseable {
      */
     boolean put(Capability capability, Object... params);
 
+    /**
+     * Get the current terminal attributes.
+     *
+     * @return the terminal attributes
+     */
     Attributes getAttributes();
 
+    /**
+     * Set the terminal attributes.
+     *
+     * @param attr the attributes to set
+     */
     void setAttributes(Attributes attr);
 
+    /**
+     * Get the input character encoding.
+     *
+     * @return the charset used for input encoding
+     */
     Charset inputEncoding();
 
+    /**
+     * Get the output character encoding.
+     *
+     * @return the charset used for output encoding
+     */
     Charset outputEncoding();
 
+    /**
+     * Check if this terminal supports ANSI escape sequences.
+     *
+     * @return true if ANSI is supported, false otherwise
+     */
     boolean supportsAnsi();
 
     /**
@@ -157,6 +205,15 @@ public interface Connection extends AutoCloseable {
         return this;
     }
 
+    /**
+     * Enter raw mode for the terminal.
+     * <p>
+     * In raw mode, input is not line-buffered, echo is disabled, and special
+     * character processing is turned off. This allows reading individual
+     * keystrokes as they are typed.
+     *
+     * @return the previous terminal attributes (to restore later)
+     */
     default Attributes enterRawMode() {
         Attributes prvAttr = getAttributes();
         Attributes newAttr = new Attributes(prvAttr);
@@ -171,6 +228,15 @@ public interface Connection extends AutoCloseable {
         return prvAttr;
     }
 
+    /**
+     * Get the current cursor position in the terminal.
+     * <p>
+     * This method sends a cursor position query to the terminal and waits
+     * for the response. The terminal must be actively reading input for
+     * this to work.
+     *
+     * @return the current cursor position as a Point (row, column)
+     */
     default Point getCursorPosition() {
         Consumer<int[]> prevInputHandler = getStdinHandler();
         CountDownLatch latch = new CountDownLatch(1);

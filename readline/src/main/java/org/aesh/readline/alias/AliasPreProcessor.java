@@ -31,10 +31,22 @@ public class AliasPreProcessor implements Function<String, Optional<String>> {
 
     private final AliasManager manager;
 
+    /**
+     * Creates a new AliasPreProcessor with the specified alias manager.
+     *
+     * @param manager the alias manager used to look up and expand aliases
+     */
     public AliasPreProcessor(AliasManager manager) {
         this.manager = manager;
     }
 
+    /**
+     * Applies alias expansion to the given input string.
+     * If the input matches an alias name, returns the expanded alias value.
+     *
+     * @param input the input string to process for alias expansion
+     * @return an Optional containing the expanded alias value if found, or empty if no alias matches
+     */
     @Override
     public Optional<String> apply(String input) {
         //return manager.getAliasName(input);

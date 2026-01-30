@@ -27,6 +27,10 @@ package org.aesh.terminal.utils;
  */
 public class Config {
 
+    private Config() {
+        // utility class
+    }
+
     private static final boolean macOS = System.getProperty("os.name").startsWith("Mac") ||
             System.getProperty("os.name").startsWith("darwin");
     private static final boolean windows = System.getProperty("os.name").startsWith("Windows");
@@ -34,41 +38,90 @@ public class Config {
     private static final String pathSeparator = System.getProperty("file.separator");
     private static final String tmpDir = System.getProperty("java.io.tmpdir");
     private static final boolean posixCompatible = checkPosixCompability();
+
+    /**
+     * The line separator as an array of code points.
+     */
     public static final int[] CR = lineSeparator.codePoints().toArray();
     private static boolean cygwin = OSUtils.IS_CYGWIN;
 
+    /**
+     * Check if the operating system is POSIX compatible.
+     *
+     * @return true if the OS is POSIX compatible, false otherwise
+     */
     public static boolean isOSPOSIXCompatible() {
         return posixCompatible;
     }
 
+    /**
+     * Check if the environment is running under Cygwin.
+     *
+     * @return true if running under Cygwin, false otherwise
+     */
     public static boolean isCygwin() {
         return cygwin;
     }
 
+    /**
+     * Check if the operating system is macOS.
+     *
+     * @return true if the OS is macOS, false otherwise
+     */
     public static boolean isMacOS() {
         return macOS;
     }
 
+    /**
+     * Check if the operating system is Windows.
+     *
+     * @return true if the OS is Windows, false otherwise
+     */
     public static boolean isWindows() {
         return windows;
     }
 
+    /**
+     * Get the system line separator.
+     *
+     * @return the line separator string for the current platform
+     */
     public static String getLineSeparator() {
         return lineSeparator;
     }
 
+    /**
+     * Get the system path separator.
+     *
+     * @return the file path separator string for the current platform
+     */
     public static String getPathSeparator() {
         return pathSeparator;
     }
 
+    /**
+     * Get the system temporary directory.
+     *
+     * @return the path to the system temporary directory
+     */
     public static String getTmpDir() {
         return tmpDir;
     }
 
+    /**
+     * Get the user's home directory.
+     *
+     * @return the path to the user's home directory
+     */
     public static String getHomeDir() {
         return System.getProperty("user.home");
     }
 
+    /**
+     * Get the current user directory (working directory).
+     *
+     * @return the path to the current user directory
+     */
     public static String getUserDir() {
         return System.getProperty("user.dir");
     }

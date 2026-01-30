@@ -43,6 +43,10 @@ import org.aesh.terminal.utils.ExecHelper;
 import org.aesh.terminal.utils.LoggerUtil;
 import org.aesh.terminal.utils.OSUtils;
 
+/**
+ * PTY implementation that uses external commands (stty, tty) to interact with the terminal.
+ * This is the default PTY implementation for POSIX systems.
+ */
 public class ExecPty implements Pty {
 
     private static final Logger LOGGER = LoggerUtil.getLogger(ExecPty.class.getName());
@@ -52,6 +56,12 @@ public class ExecPty implements Pty {
     private final boolean validTTYFile;
     private static final String NOT_A_TTY = "not a tty";
 
+    /**
+     * Returns the PTY for the current terminal.
+     *
+     * @return the current PTY
+     * @throws IOException if not running in a TTY or an I/O error occurs
+     */
     public static Pty current() throws IOException {
         try {
             LOGGER.log(Level.FINE, "getting pty: " + OSUtils.TTY_COMMAND);
@@ -68,6 +78,11 @@ public class ExecPty implements Pty {
         }
     }
 
+    /**
+     * Constructs an ExecPty with the specified TTY name.
+     *
+     * @param name the name of the TTY device
+     */
     protected ExecPty(String name) {
         this.name = name;
         /*
@@ -83,6 +98,11 @@ public class ExecPty implements Pty {
     public void close() throws IOException {
     }
 
+    /**
+     * Returns the name of the TTY device.
+     *
+     * @return the TTY device name
+     */
     public String getName() {
         return name;
     }
@@ -230,6 +250,12 @@ public class ExecPty implements Pty {
 
     }
 
+    /**
+     * Retrieves the terminal configuration using the stty command.
+     *
+     * @return the terminal configuration string
+     * @throws IOException if an I/O error occurs
+     */
     protected String doGetConfig() throws IOException {
         if (OSUtils.IS_HPUX || OSUtils.IS_SUNOS) {
             return exec(OSUtils.STTY_COMMAND, "-a");

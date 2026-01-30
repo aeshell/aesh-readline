@@ -32,12 +32,27 @@ import org.aesh.terminal.utils.LoggerUtil;
  * @author <a href="mailto:jason@planet57.com">Jason Dillon</a>
  */
 public final class ShutdownHooks {
+
+    /**
+     * Private constructor to prevent instantiation.
+     */
+    private ShutdownHooks() {
+    }
+
     private static final Logger LOGGER = LoggerUtil.getLogger(ShutdownHooks.class.getName());
 
     private static final List<Task> tasks = new ArrayList<Task>();
 
     private static Thread hook;
 
+    /**
+     * Adds a task to be executed on JVM shutdown.
+     * If this is the first task, a shutdown hook thread is registered.
+     *
+     * @param <T> the task type
+     * @param task the task to execute on shutdown
+     * @return the task that was added
+     */
     public static synchronized <T extends Task> T add(final T task) {
         assert task != null;
 
@@ -85,6 +100,12 @@ public final class ShutdownHooks {
         return thread;
     }
 
+    /**
+     * Removes a task from the shutdown hook.
+     * If no tasks remain, the shutdown hook thread is unregistered.
+     *
+     * @param task the task to remove
+     */
     public static synchronized void remove(final Task task) {
         assert task != null;
 
@@ -117,9 +138,15 @@ public final class ShutdownHooks {
     }
 
     /**
-     * Essentially a {@link Runnable} which allows running to throw an exception.
+     * A task that can be executed on shutdown.
+     * Similar to {@link Runnable} but allows throwing checked exceptions.
      */
     public interface Task {
+        /**
+         * Run the task.
+         *
+         * @throws Exception if an error occurs
+         */
         void run() throws Exception;
     }
 }

@@ -36,19 +36,40 @@ public class CursorLocator {
 
     private final Buffer buffer;
 
+    /**
+     * Creates a new cursor locator for the specified buffer.
+     *
+     * @param buffer the buffer to track cursor positions for
+     */
     public CursorLocator(Buffer buffer) {
         this.buffer = buffer;
     }
 
+    /**
+     * Adds a line with the specified size and prompt size to the locator.
+     *
+     * @param size the size of the line content
+     * @param promptSize the size of the prompt on this line
+     */
     public void addLine(int size, int promptSize) {
         linesSize.add(size);
         linesSize.add(promptSize);
     }
 
+    /**
+     * Checks if the cursor location tracking has been invalidated.
+     *
+     * @return true if the location is invalidated, false otherwise
+     */
     public boolean isLocationInvalidated() {
         return invalidatedLines;
     }
 
+    /**
+     * Marks the cursor location as invalidated. This typically happens
+     * when the terminal state changes in a way that makes the stored
+     * line information unreliable.
+     */
     public void invalidateCursorLocation() {
         invalidatedLines = true;
     }
@@ -59,7 +80,7 @@ public class CursorLocator {
      *
      * @param index The commnd index.
      * @param width The terminal width.
-     * @return
+     * @return the cursor location corresponding to the index, or null if the location is invalidated or out of bounds
      */
     public CursorLocation locate(int index, int width) {
         // Upper lines location has been lost.
@@ -100,6 +121,9 @@ public class CursorLocator {
         }
     }
 
+    /**
+     * Clears all stored line information from the locator.
+     */
     public void clear() {
         linesSize.clear();
     }

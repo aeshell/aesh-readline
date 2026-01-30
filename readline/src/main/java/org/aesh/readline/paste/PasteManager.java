@@ -32,21 +32,41 @@ public class PasteManager {
     private static final int PASTE_SIZE = 10;
     private final List<int[]> pasteStack;
 
+    /**
+     * Creates a new PasteManager with an empty paste stack.
+     */
     public PasteManager() {
         pasteStack = new ArrayList<>(PASTE_SIZE);
     }
 
+    /**
+     * Adds text to the paste stack. If the stack exceeds its maximum size,
+     * the oldest entry is removed.
+     *
+     * @param buffer the text buffer (as code points) to add to the paste stack
+     */
     public void addText(int[] buffer) {
         checkSize();
         pasteStack.add(buffer);
     }
 
+    /**
+     * Ensures the paste stack does not exceed the maximum size by removing
+     * the oldest entry if necessary.
+     */
     private void checkSize() {
         if (pasteStack.size() >= PASTE_SIZE) {
             pasteStack.remove(0);
         }
     }
 
+    /**
+     * Retrieves text from the paste stack at the specified index.
+     * Index 0 returns the most recently added text.
+     *
+     * @param index the index in the paste stack (0 = most recent)
+     * @return the text buffer at the specified index, or the oldest entry if index is out of bounds
+     */
     public int[] get(int index) {
         if (index < pasteStack.size())
             return pasteStack.get((pasteStack.size() - index - 1));

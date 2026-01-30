@@ -34,6 +34,12 @@ import org.aesh.terminal.utils.Config;
  */
 public class Complete implements ActionEvent {
 
+    /**
+     * Creates a new complete action.
+     */
+    public Complete() {
+    }
+
     private boolean askForCompletion = false;
     private KeyAction key;
 

@@ -28,6 +28,13 @@ import org.aesh.readline.action.Action;
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public class BeginningOfLine implements Action {
+
+    /**
+     * Creates a new beginning of line action.
+     */
+    public BeginningOfLine() {
+    }
+
     @Override
     public String name() {
         return "beginning-of-line";

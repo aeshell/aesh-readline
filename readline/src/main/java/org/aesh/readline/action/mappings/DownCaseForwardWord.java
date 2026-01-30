@@ -28,10 +28,18 @@ import org.aesh.readline.editing.EditMode;
  */
 public class DownCaseForwardWord extends ForwardWord {
 
+    /**
+     * Creates a new DownCaseForwardWord action in emacs mode.
+     */
     public DownCaseForwardWord() {
         super(false, EditMode.Status.DOWN_CASE);
     }
 
+    /**
+     * Creates a new DownCaseForwardWord action.
+     *
+     * @param viMode true for vi mode, false for emacs mode
+     */
     public DownCaseForwardWord(boolean viMode) {
         super(viMode, EditMode.Status.DOWN_CASE);
     }

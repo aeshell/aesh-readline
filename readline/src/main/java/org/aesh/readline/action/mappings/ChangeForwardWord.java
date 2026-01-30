@@ -28,10 +28,19 @@ import org.aesh.readline.editing.EditMode;
  */
 public class ChangeForwardWord extends ForwardWord {
 
+    /**
+     * Creates a new change forward word action.
+     */
     public ChangeForwardWord() {
         super(false, EditMode.Status.CHANGE);
     }
 
+    /**
+     * Creates a new change forward word action.
+     *
+     * @param viMode whether vi mode is enabled
+     * @param status the edit mode status
+     */
     public ChangeForwardWord(boolean viMode, EditMode.Status status) {
         super(viMode, status);
     }

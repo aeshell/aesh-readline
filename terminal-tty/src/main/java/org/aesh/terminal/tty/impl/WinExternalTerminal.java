@@ -32,6 +32,15 @@ import org.aesh.terminal.Attributes;
  */
 public class WinExternalTerminal extends ExternalTerminal {
 
+    /**
+     * Create a new Windows external terminal.
+     *
+     * @param name the terminal name
+     * @param type the terminal type
+     * @param masterInput the master input stream
+     * @param masterOutput the master output stream
+     * @throws IOException if an I/O error occurs
+     */
     public WinExternalTerminal(String name, String type, InputStream masterInput, OutputStream masterOutput)
             throws IOException {
         super(name, type, masterInput, masterOutput);

@@ -29,10 +29,18 @@ import org.aesh.readline.editing.EditMode;
  */
 public class DeleteEndOfLine extends ChangeAction {
 
+    /**
+     * Creates a new DeleteEndOfLine action in emacs mode.
+     */
     public DeleteEndOfLine() {
         super(EditMode.Status.DELETE);
     }
 
+    /**
+     * Creates a new DeleteEndOfLine action.
+     *
+     * @param viMode true for vi mode, false for emacs mode
+     */
     public DeleteEndOfLine(boolean viMode) {
         super(viMode, EditMode.Status.DELETE);
     }

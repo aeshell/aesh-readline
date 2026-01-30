@@ -27,20 +27,67 @@ import java.io.OutputStream;
 import org.aesh.terminal.Attributes;
 import org.aesh.terminal.tty.Size;
 
+/**
+ * Represents a pseudo-terminal (PTY) providing master/slave input and output streams.
+ * A PTY allows a program to interact with a terminal device, providing both
+ * the master side (for the controlling process) and the slave side (for the terminal).
+ */
 public interface Pty extends Closeable {
 
+    /**
+     * Returns the master side input stream.
+     *
+     * @return the master input stream
+     * @throws IOException if an I/O error occurs
+     */
     InputStream getMasterInput() throws IOException;
 
+    /**
+     * Returns the master side output stream.
+     *
+     * @return the master output stream
+     * @throws IOException if an I/O error occurs
+     */
     OutputStream getMasterOutput() throws IOException;
 
+    /**
+     * Returns the slave side input stream.
+     *
+     * @return the slave input stream
+     * @throws IOException if an I/O error occurs
+     */
     InputStream getSlaveInput() throws IOException;
 
+    /**
+     * Returns the slave side output stream.
+     *
+     * @return the slave output stream
+     * @throws IOException if an I/O error occurs
+     */
     OutputStream getSlaveOutput() throws IOException;
 
+    /**
+     * Returns the current terminal attributes.
+     *
+     * @return the terminal attributes
+     * @throws IOException if an I/O error occurs
+     */
     Attributes getAttr() throws IOException;
 
+    /**
+     * Sets the terminal attributes.
+     *
+     * @param attr the attributes to set
+     * @throws IOException if an I/O error occurs
+     */
     void setAttr(Attributes attr) throws IOException;
 
+    /**
+     * Returns the current terminal size.
+     *
+     * @return the terminal size
+     * @throws IOException if an I/O error occurs
+     */
     Size getSize() throws IOException;
 
 }

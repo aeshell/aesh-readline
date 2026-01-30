@@ -28,6 +28,13 @@ import org.aesh.readline.action.Action;
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public class EndOfLine implements Action {
+
+    /**
+     * Creates a new EndOfLine action.
+     */
+    public EndOfLine() {
+    }
+
     @Override
     public String name() {
         return "end-of-line";

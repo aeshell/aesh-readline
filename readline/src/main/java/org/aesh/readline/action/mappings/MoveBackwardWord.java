@@ -28,10 +28,18 @@ import org.aesh.readline.editing.EditMode;
  */
 public class MoveBackwardWord extends BackwardWord {
 
+    /**
+     * Creates a new MoveBackwardWord action with default settings.
+     */
     public MoveBackwardWord() {
         super();
     }
 
+    /**
+     * Creates a new MoveBackwardWord action.
+     *
+     * @param viMode true for vi mode, false for emacs mode
+     */
     public MoveBackwardWord(boolean viMode) {
         super(viMode, EditMode.Status.MOVE);
     }

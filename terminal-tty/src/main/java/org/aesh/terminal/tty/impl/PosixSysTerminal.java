@@ -29,13 +29,33 @@ import org.aesh.terminal.tty.Signal;
 import org.aesh.terminal.tty.utils.ShutdownHooks;
 import org.aesh.terminal.tty.utils.Signals;
 
+/**
+ * A POSIX system terminal implementation that provides native signal handling
+ * and integrates with the system's PTY.
+ */
 public class PosixSysTerminal extends AbstractPosixTerminal {
 
+    /** The terminal input stream. */
     protected final InputStream input;
+
+    /** The terminal output stream. */
     protected final OutputStream output;
+
+    /** Map of signals to their native handlers. */
     protected final Map<Signal, Object> nativeHandlers = new HashMap<>();
+
+    /** Shutdown hook task for cleanup. */
     protected final ShutdownHooks.Task closer;
 
+    /**
+     * Constructs a PosixSysTerminal with the specified parameters.
+     *
+     * @param name the terminal name
+     * @param type the terminal type
+     * @param pty the pseudo-terminal to use
+     * @param nativeSignals whether to enable native signal handling
+     * @throws IOException if an I/O error occurs during initialization
+     */
     public PosixSysTerminal(String name, String type, Pty pty, boolean nativeSignals) throws IOException {
         super(name, type, pty);
         this.input = pty.getSlaveInput();

@@ -29,6 +29,9 @@ import org.aesh.readline.editing.EditMode;
  */
 public class DeleteStartOfLine extends ChangeAction {
 
+    /**
+     * Creates a new DeleteStartOfLine action.
+     */
     public DeleteStartOfLine() {
         super(EditMode.Status.DELETE);
     }

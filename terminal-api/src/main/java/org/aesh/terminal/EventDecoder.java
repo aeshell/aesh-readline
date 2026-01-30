@@ -41,18 +41,35 @@ public class EventDecoder implements Consumer<int[]> {
 
     private Queue<int[]> inputQueue = new ArrayDeque<>(10);
 
+    /**
+     * Create a new EventDecoder with default control character values.
+     * Default values: INTR=3 (Ctrl+C), EOF=4 (Ctrl+D), SUSP=26 (Ctrl+Z).
+     */
     public EventDecoder() {
         intr = 3;
         eof = 4;
         susp = 26;
     }
 
+    /**
+     * Create a new EventDecoder with custom control character values.
+     *
+     * @param intr the interrupt character code (typically Ctrl+C = 3)
+     * @param eof the end-of-file character code (typically Ctrl+D = 4)
+     * @param susp the suspend character code (typically Ctrl+Z = 26)
+     */
     public EventDecoder(int intr, int eof, int susp) {
         this.intr = intr;
         this.eof = eof;
         this.susp = susp;
     }
 
+    /**
+     * Create a new EventDecoder using control characters from terminal attributes.
+     * Falls back to default values if the attributes do not specify valid control characters.
+     *
+     * @param attributes the terminal attributes to extract control characters from
+     */
     public EventDecoder(Attributes attributes) {
         this.intr = attributes.getControlChar(Attributes.ControlChar.VINTR) > 0
                 ? attributes.getControlChar(Attributes.ControlChar.VINTR)
@@ -65,18 +82,39 @@ public class EventDecoder implements Consumer<int[]> {
                 : 26;
     }
 
+    /**
+     * Get the current signal handler.
+     *
+     * @return the signal handler, or null if not set
+     */
     public Consumer<Signal> getSignalHandler() {
         return signalHandler;
     }
 
+    /**
+     * Set the signal handler that will be called when signals are detected in input.
+     *
+     * @param signalHandler the handler to process signals
+     */
     public void setSignalHandler(Consumer<Signal> signalHandler) {
         this.signalHandler = signalHandler;
     }
 
+    /**
+     * Get the current input handler.
+     *
+     * @return the input handler, or null if not set
+     */
     public Consumer<int[]> getInputHandler() {
         return inputHandler;
     }
 
+    /**
+     * Set the input handler that will receive non-signal input.
+     * Any queued input will be delivered to the handler immediately.
+     *
+     * @param inputHandler the handler to process input as code point arrays
+     */
     public void setInputHandler(Consumer<int[]> inputHandler) {
         this.inputHandler = inputHandler;
         checkQueue();
@@ -87,6 +125,13 @@ public class EventDecoder implements Consumer<int[]> {
             inputHandler.accept(inputQueue.poll());
     }
 
+    /**
+     * Process input, separating signals from regular input.
+     * Signal characters are extracted and sent to the signal handler,
+     * while remaining input is sent to the input handler.
+     *
+     * @param input the input code points to process
+     */
     @Override
     public void accept(int[] input) {
         if (signalHandler != null) {

@@ -108,15 +108,36 @@ public class Vi implements EditMode {
         return variables.get(variable);
     }
 
+    /**
+     * Add an action mapping for a key by action name.
+     *
+     * @param key the key to map
+     * @param action the action name
+     * @return this Vi instance for chaining
+     */
     public Vi addAction(Key key, String action) {
         return addAction(key, action, Status.EDIT);
     }
 
+    /**
+     * Add an action mapping for a key with action status.
+     *
+     * @param key the key to map
+     * @param status the action status
+     * @return this Vi instance for chaining
+     */
     public Vi addAction(Key key, ActionStatus status) {
         actions.put(key, status);
         return this;
     }
 
+    /**
+     * Add an action mapping for input code points with action status.
+     *
+     * @param input the input code points
+     * @param status the action status
+     * @return this Vi instance for chaining
+     */
     public Vi addAction(int[] input, ActionStatus status) {
         Key key = Key.getKey(input);
         if (key != null)
@@ -127,40 +148,105 @@ public class Vi implements EditMode {
         return this;
     }
 
+    /**
+     * Add an action mapping for a key with action name and status.
+     *
+     * @param key the key to map
+     * @param action the action name
+     * @param status the status when this action is active
+     * @return this Vi instance for chaining
+     */
     public Vi addAction(Key key, String action, Status status) {
         actions.put(key, new ActionStatus(ActionMapper.mapToAction(action), status, Status.EDIT));
         return this;
     }
 
+    /**
+     * Add an action mapping for a key with action name, current and next status.
+     *
+     * @param key the key to map
+     * @param action the action name
+     * @param status the current status when this action is active
+     * @param after the status to transition to after the action
+     * @return this Vi instance for chaining
+     */
     public Vi addAction(Key key, String action, Status status, Status after) {
         actions.put(key, new ActionStatus(ActionMapper.mapToAction(action), status, after));
         return this;
     }
 
+    /**
+     * Add an action mapping for a key.
+     *
+     * @param key the key to map
+     * @param action the action to perform
+     * @return this Vi instance for chaining
+     */
     public Vi addAction(Key key, Action action) {
         return addAction(key, action, Status.EDIT);
     }
 
+    /**
+     * Add an action mapping for a key with status.
+     *
+     * @param key the key to map
+     * @param action the action to perform
+     * @param status the status when this action is active
+     * @return this Vi instance for chaining
+     */
     public Vi addAction(Key key, Action action, Status status) {
         actions.put(key, new ActionStatus(action, status, Status.EDIT));
         return this;
     }
 
+    /**
+     * Add an action mapping for a key with current and next status.
+     *
+     * @param key the key to map
+     * @param action the action to perform
+     * @param status the current status when this action is active
+     * @param after the status to transition to after the action
+     * @return this Vi instance for chaining
+     */
     public Vi addAction(Key key, Action action, Status status, Status after) {
         actions.put(key, new ActionStatus(action, status, after));
         return this;
     }
 
+    /**
+     * Add an action mapping for a key with full status configuration.
+     *
+     * @param key the key to map
+     * @param action the action to perform
+     * @param status the current status when this action is active
+     * @param after the status to transition to after the action
+     * @param actionStatus the action's internal status
+     * @return this Vi instance for chaining
+     */
     public Vi addAction(Key key, Action action, Status status, Status after, Status actionStatus) {
         actions.put(key, new ActionStatus(action, status, after, actionStatus));
         return this;
     }
 
+    /**
+     * Add an action group mapping for a key.
+     *
+     * @param key the key to map
+     * @param group the action status group
+     * @return this Vi instance for chaining
+     */
     public Vi addActionGroup(Key key, ActionStatusGroup group) {
         actionGroups.put(key, group);
         return this;
     }
 
+    /**
+     * Add an action group mapping for input code points.
+     *
+     * @param input the input code points
+     * @param group the action status group
+     * @return this Vi instance for chaining
+     */
     public Vi addActionGroup(int[] input, ActionStatusGroup group) {
         Key key = Key.getKey(input);
         if (key != null)

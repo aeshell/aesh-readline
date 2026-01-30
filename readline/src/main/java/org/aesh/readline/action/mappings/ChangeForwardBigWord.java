@@ -28,6 +28,9 @@ import org.aesh.readline.editing.EditMode;
  */
 public class ChangeForwardBigWord extends ForwardBigWord {
 
+    /**
+     * Creates a new change forward big word action.
+     */
     public ChangeForwardBigWord() {
         super(EditMode.Status.CHANGE);
     }

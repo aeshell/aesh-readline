@@ -49,9 +49,17 @@ public class TerminalTextStyle {
     private static byte CROSSED_OUT_OFF = 29;
     private static char SEPARATOR = ';';
 
+    /**
+     * Create a default text style with no formatting.
+     */
     public TerminalTextStyle() {
     }
 
+    /**
+     * Create a text style with the specified character type.
+     *
+     * @param type the character type to apply
+     */
     public TerminalTextStyle(CharacterType type) {
         if (type == CharacterType.BOLD)
             bold = true;
@@ -71,6 +79,17 @@ public class TerminalTextStyle {
             conceal = true;
     }
 
+    /**
+     * Create a text style with individual style options.
+     *
+     * @param bold true for bold text
+     * @param faint true for faint text
+     * @param italic true for italic text
+     * @param underline true for underlined text
+     * @param blink true for blinking text
+     * @param invert true for inverted colors
+     * @param crossedOut true for strikethrough text
+     */
     public TerminalTextStyle(boolean bold, boolean faint, boolean italic, boolean underline,
             boolean blink, boolean invert, boolean crossedOut) {
         this.bold = bold;
@@ -82,66 +101,146 @@ public class TerminalTextStyle {
         this.crossedOut = crossedOut;
     }
 
+    /**
+     * Check if bold is enabled.
+     *
+     * @return true if bold
+     */
     public boolean isBold() {
         return bold;
     }
 
+    /**
+     * Set the bold state.
+     *
+     * @param bold true to enable bold
+     */
     public void setBold(boolean bold) {
         this.bold = bold;
     }
 
+    /**
+     * Check if faint is enabled.
+     *
+     * @return true if faint
+     */
     public boolean isFaint() {
         return faint;
     }
 
+    /**
+     * Check if italic is enabled.
+     *
+     * @return true if italic
+     */
     public boolean isItalic() {
         return italic;
     }
 
+    /**
+     * Set the italic state.
+     *
+     * @param italic true to enable italic
+     */
     public void setItalic(boolean italic) {
         this.italic = italic;
     }
 
+    /**
+     * Check if underline is enabled.
+     *
+     * @return true if underlined
+     */
     public boolean isUnderline() {
         return underline;
     }
 
+    /**
+     * Set the underline state.
+     *
+     * @param underline true to enable underline
+     */
     public void setUnderline(boolean underline) {
         this.underline = underline;
     }
 
+    /**
+     * Check if blink is enabled.
+     *
+     * @return true if blinking
+     */
     public boolean isBlink() {
         return blink;
     }
 
+    /**
+     * Set the blink state.
+     *
+     * @param blink true to enable blinking
+     */
     public void setBlink(boolean blink) {
         this.blink = blink;
     }
 
+    /**
+     * Check if invert is enabled.
+     *
+     * @return true if colors are inverted
+     */
     public boolean isInvert() {
         return invert;
     }
 
+    /**
+     * Set the invert state.
+     *
+     * @param invert true to invert colors
+     */
     public void setInvert(boolean invert) {
         this.invert = invert;
     }
 
+    /**
+     * Check if crossed out is enabled.
+     *
+     * @return true if strikethrough
+     */
     public boolean isCrossedOut() {
         return crossedOut;
     }
 
+    /**
+     * Set the crossed out state.
+     *
+     * @param crossedOut true to enable strikethrough
+     */
     public void setCrossedOut(boolean crossedOut) {
         this.crossedOut = crossedOut;
     }
 
+    /**
+     * Check if conceal is enabled.
+     *
+     * @return true if concealed
+     */
     public boolean isConceal() {
         return conceal;
     }
 
+    /**
+     * Set the conceal state.
+     *
+     * @param conceal true to hide text
+     */
     public void setConceal(boolean conceal) {
         this.conceal = conceal;
     }
 
+    /**
+     * Check if any formatting is applied.
+     *
+     * @return true if any style option is enabled
+     */
     public boolean isFormatted() {
         return !(!bold && !blink && !faint && !italic && !underline && !invert && !crossedOut);
     }
@@ -196,6 +295,11 @@ public class TerminalTextStyle {
         return builder.toString();
     }
 
+    /**
+     * Get the length of the ANSI escape sequence.
+     *
+     * @return the length of the style code string
+     */
     public int getLength() {
         if (length < 0)
             toString();
@@ -234,6 +338,13 @@ public class TerminalTextStyle {
         return result;
     }
 
+    /**
+     * Get the ANSI codes for this style relative to a previous style.
+     * Only outputs codes for attributes that differ from the previous style.
+     *
+     * @param prev the previous text style
+     * @return the ANSI codes for changed attributes
+     */
     public String getValueComparedToPrev(TerminalTextStyle prev) {
         StringBuilder builder = new StringBuilder();
         if (!this.equals(prev)) {

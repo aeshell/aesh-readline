@@ -37,6 +37,11 @@ public interface Action extends Consumer<InputProcessor> {
      */
     String name();
 
+    /**
+     * Executes this action on the given input processor.
+     *
+     * @param inputProcessor the input processor to operate on
+     */
     void accept(InputProcessor inputProcessor);
 
 }

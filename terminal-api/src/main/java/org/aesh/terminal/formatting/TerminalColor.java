@@ -56,9 +56,18 @@ public class TerminalColor {
 
     private Color.Intensity intensity = Color.Intensity.NORMAL;
 
+    /**
+     * Create a default TerminalColor with no formatting.
+     */
     public TerminalColor() {
     }
 
+    /**
+     * Create a TerminalColor with the specified foreground and background colors.
+     *
+     * @param text the foreground color
+     * @param background the background color
+     */
     public TerminalColor(Color text, Color background) {
         if (text != null)
             this.textColor = text;
@@ -66,6 +75,13 @@ public class TerminalColor {
             this.backgroundColor = background;
     }
 
+    /**
+     * Create a TerminalColor with the specified colors and intensity.
+     *
+     * @param textColor the foreground color
+     * @param background the background color
+     * @param intensity the color intensity
+     */
     public TerminalColor(Color textColor, Color background, Color.Intensity intensity) {
         this(textColor, background);
         this.intensity = intensity;
@@ -98,17 +114,37 @@ public class TerminalColor {
         this.backgroundColor = background;
     }
 
+    /**
+     * Create a TerminalColor with 256-color foreground, basic background, and intensity.
+     *
+     * @param text foreground color index (0-255)
+     * @param background background color
+     * @param intensity the color intensity
+     */
     public TerminalColor(int text, Color background, Color.Intensity intensity) {
         this.intTextColor = text;
         this.backgroundColor = background;
         this.intensity = intensity;
     }
 
+    /**
+     * Create a TerminalColor with basic foreground and 256-color background.
+     *
+     * @param text foreground color
+     * @param background background color index (0-255)
+     */
     public TerminalColor(Color text, int background) {
         this.textColor = text;
         this.intBackgroundColor = background;
     }
 
+    /**
+     * Create a TerminalColor with basic foreground, 256-color background, and intensity.
+     *
+     * @param text foreground color
+     * @param background background color index (0-255)
+     * @param intensity the color intensity
+     */
     public TerminalColor(Color text, int background, Color.Intensity intensity) {
         this.textColor = text;
         this.intBackgroundColor = background;
@@ -387,6 +423,11 @@ public class TerminalColor {
 
     // ==================== Existing Methods ====================
 
+    /**
+     * Check if this color has any formatting applied.
+     *
+     * @return true if any color is set (not all defaults)
+     */
     public boolean isFormatted() {
         return !(textColor == Color.DEFAULT && backgroundColor == Color.DEFAULT
                 && intensity == Color.Intensity.NORMAL && !isTrueColor()
@@ -429,6 +470,11 @@ public class TerminalColor {
         return result;
     }
 
+    /**
+     * Get the full ANSI escape sequence for this color.
+     *
+     * @return the complete ANSI color code
+     */
     public String fullString() {
         return ANSI.START + toString() + "m";
     }
@@ -473,16 +519,33 @@ public class TerminalColor {
         return cache;
     }
 
+    /**
+     * Get the length of the ANSI escape sequence.
+     *
+     * @return the length of the color code string
+     */
     public int getLength() {
         if (length < 0)
             toString();
         return length;
     }
 
+    /**
+     * Write the color code to a print stream.
+     *
+     * @param out the output stream to write to
+     */
     public void write(PrintStream out) {
         out.print(toString());
     }
 
+    /**
+     * Get the ANSI codes for this color relative to a previous color.
+     * Only outputs codes for attributes that differ from the previous color.
+     *
+     * @param prev the previous terminal color
+     * @return the ANSI codes for changed attributes
+     */
     public String toString(TerminalColor prev) {
         if (this.equals(prev))
             return "";

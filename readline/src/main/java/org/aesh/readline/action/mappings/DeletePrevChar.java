@@ -31,6 +31,13 @@ import org.aesh.readline.action.Action;
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public class DeletePrevChar implements Action {
+
+    /**
+     * Creates a new DeletePrevChar action.
+     */
+    public DeletePrevChar() {
+    }
+
     @Override
     public String name() {
         return "backward-delete-char";

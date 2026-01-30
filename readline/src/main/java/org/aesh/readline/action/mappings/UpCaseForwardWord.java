@@ -28,10 +28,18 @@ import org.aesh.readline.editing.EditMode;
  */
 public class UpCaseForwardWord extends ForwardWord {
 
+    /**
+     * Creates a new UpCaseForwardWord action with emacs mode.
+     */
     public UpCaseForwardWord() {
         super(false, EditMode.Status.UP_CASE);
     }
 
+    /**
+     * Creates a new UpCaseForwardWord action with the specified vi mode setting.
+     *
+     * @param viMode true to enable vi mode, false for emacs mode
+     */
     public UpCaseForwardWord(boolean viMode) {
         super(viMode, EditMode.Status.UP_CASE);
     }

@@ -33,18 +33,64 @@ import org.aesh.terminal.utils.ColorDepth;
  */
 public interface Device {
 
+    /**
+     * Returns the terminal type identifier for this device.
+     *
+     * @return the terminal type (e.g., "xterm", "ansi", "vt100")
+     */
     String type();
 
+    /**
+     * Checks if this device has the specified boolean capability.
+     *
+     * @param capability the capability to check
+     * @return true if the capability is supported, false otherwise
+     */
     boolean getBooleanCapability(Capability capability);
 
+    /**
+     * Gets the value of a numeric capability.
+     *
+     * @param capability the capability to retrieve
+     * @return the numeric value, or null if the capability is not set
+     */
     Integer getNumericCapability(Capability capability);
 
+    /**
+     * Gets the value of a string capability.
+     *
+     * @param capability the capability to retrieve
+     * @return the string value, or null if the capability is not set
+     */
     String getStringCapability(Capability capability);
 
+    /**
+     * Gets a string capability as an array of code points, with parameter substitution.
+     *
+     * @param capability the capability to retrieve
+     * @param params optional parameters to substitute into the capability string
+     * @return the capability string as an int array of code points, or null if not set
+     */
     int[] getStringCapabilityAsInts(Capability capability, Object... params);
 
+    /**
+     * Outputs a capability string to the given consumer with parameter substitution.
+     *
+     * @param output the consumer to receive the output as an int array
+     * @param capability the capability to output
+     * @param params optional parameters to substitute into the capability string
+     * @return true if the capability was found and output, false otherwise
+     */
     boolean puts(Consumer<int[]> output, Capability capability, Object... params);
 
+    /**
+     * Outputs a capability string to the given consumer with parameter substitution.
+     *
+     * @param output the consumer to receive the output as an int array
+     * @param capability the capability name to look up and output
+     * @param params optional parameters to substitute into the capability string
+     * @return true if the capability was found and output, false otherwise
+     */
     boolean puts(Consumer<int[]> output, String capability, Object... params);
 
     /**

@@ -52,28 +52,30 @@ public class LineDisciplineTerminal extends AbstractTerminal {
 
     private static final int PIPE_SIZE = 1024;
 
-    /*
-     * Master output stream
-     */
+    /** Master output stream. */
     protected final OutputStream masterOutput;
 
-    /*
-     * Slave input pipe write side
-     */
+    /** Slave input pipe write side. */
     protected final OutputStream slaveInputPipe;
 
-    /*
-     * Slave streams
-     */
+    /** Slave input stream. */
     protected final InputStream slaveInput;
+    /** Slave output stream. */
     protected final OutputStream slaveOutput;
 
-    /**
-     * Console data
-     */
+    /** Terminal attributes. */
     protected final Attributes attributes;
+    /** Terminal size. */
     protected Size size;
 
+    /**
+     * Create a new line discipline terminal.
+     *
+     * @param name the terminal name
+     * @param type the terminal type
+     * @param masterOutput the master output stream
+     * @throws IOException if an I/O error occurs
+     */
     public LineDisciplineTerminal(String name,
             String type,
             OutputStream masterOutput) throws IOException {
@@ -141,23 +143,43 @@ public class LineDisciplineTerminal extends AbstractTerminal {
      * using this method.
      *
      * @param c the input byte
-     * @throws IOException
+     * @throws IOException if an I/O error occurs
      */
     public void processInputByte(int c) throws IOException {
         doProcessInputByte(c);
         slaveInputPipe.flush();
     }
 
+    /**
+     * Process an array of input bytes.
+     *
+     * @param input the input bytes
+     * @throws IOException if an I/O error occurs
+     */
     public void processInputBytes(byte[] input) throws IOException {
         processInputBytes(input, input.length);
     }
 
+    /**
+     * Process input bytes up to the specified length.
+     *
+     * @param input the input bytes
+     * @param length the number of bytes to process
+     * @throws IOException if an I/O error occurs
+     */
     public void processInputBytes(byte[] input, int length) throws IOException {
         for (int i = 0; i < length; i++)
             doProcessInputByte(input[i]);
         slaveInputPipe.flush();
     }
 
+    /**
+     * Process input code points up to the specified length.
+     *
+     * @param input the input code points
+     * @param length the number of code points to process
+     * @throws IOException if an I/O error occurs
+     */
     public void processInputBytes(int[] input, int length) throws IOException {
         for (int i = 0; i < length; i++)
             doProcessInputByte(input[i]);
@@ -196,6 +218,9 @@ public class LineDisciplineTerminal extends AbstractTerminal {
         slaveInputPipe.write(c);
     }
 
+    /**
+     * Close the slave input pipe.
+     */
     protected void closeSlaveInputPipe() {
         try {
             slaveInputPipe.close();
@@ -209,7 +234,7 @@ public class LineDisciplineTerminal extends AbstractTerminal {
      * All data going to the master should be provided by this method.
      *
      * @param c the output byte
-     * @throws IOException
+     * @throws IOException if an I/O error occurs
      */
     protected void processOutputByte(int c) throws IOException {
         if (attributes.getOutputFlag(Attributes.OutputFlag.OPOST)) {

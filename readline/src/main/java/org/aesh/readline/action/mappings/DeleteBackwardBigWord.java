@@ -28,6 +28,9 @@ import org.aesh.readline.editing.EditMode;
  */
 public class DeleteBackwardBigWord extends BackwardBigWord {
 
+    /**
+     * Creates a new DeleteBackwardBigWord action.
+     */
     public DeleteBackwardBigWord() {
         super(EditMode.Status.DELETE);
     }

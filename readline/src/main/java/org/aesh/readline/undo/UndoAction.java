@@ -29,23 +29,49 @@ public class UndoAction {
     private int cursorPosition;
     private int[] buffer;
 
+    /**
+     * Creates a new undo action with the specified cursor position and buffer state.
+     *
+     * @param cursorPosition the cursor position at the time of the action
+     * @param buffer the buffer content at the time of the action
+     */
     public UndoAction(int cursorPosition, int[] buffer) {
         setCursorPosition(cursorPosition);
         setBuffer(buffer);
     }
 
+    /**
+     * Returns the cursor position stored in this undo action.
+     *
+     * @return the cursor position
+     */
     public int getCursorPosition() {
         return cursorPosition;
     }
 
+    /**
+     * Sets the cursor position for this undo action.
+     *
+     * @param cursorPosition the cursor position to set
+     */
     private void setCursorPosition(int cursorPosition) {
         this.cursorPosition = cursorPosition;
     }
 
+    /**
+     * Returns the buffer content stored in this undo action.
+     *
+     * @return the buffer content as code points
+     */
     public int[] getBuffer() {
         return buffer;
     }
 
+    /**
+     * Sets the buffer content for this undo action.
+     *
+     * @param buffer the buffer content to set
+     */
     private void setBuffer(int[] buffer) {
         this.buffer = buffer;
     }

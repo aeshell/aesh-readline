@@ -26,31 +26,63 @@ import org.aesh.readline.editing.EditMode;
 import org.aesh.terminal.utils.Parser;
 
 /**
+ * Abstract base class for actions that modify text (delete, change, yank, case change).
+ *
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 abstract class ChangeAction extends MovementAction {
 
     private EditMode.Status status;
+    /** Whether this action operates in vi mode. */
     protected boolean viMode;
 
+    /**
+     * Creates a new change action with the specified status.
+     *
+     * @param status the edit mode status
+     */
     ChangeAction(EditMode.Status status) {
         this.status = status;
         viMode = false;
     }
 
+    /**
+     * Creates a new change action with the specified vi mode and status.
+     *
+     * @param viMode whether vi mode is enabled
+     * @param status the edit mode status
+     */
     ChangeAction(boolean viMode, EditMode.Status status) {
         this.status = status;
         this.viMode = viMode;
     }
 
+    /**
+     * Get the edit mode status.
+     *
+     * @return the status
+     */
     protected EditMode.Status getStatus() {
         return status;
     }
 
+    /**
+     * Apply the change action from the current cursor position.
+     *
+     * @param cursor the target cursor position
+     * @param inputProcessor the input processor
+     */
     protected final void apply(int cursor, InputProcessor inputProcessor) {
         apply(cursor, inputProcessor.buffer().buffer().cursor(), inputProcessor);
     }
 
+    /**
+     * Apply the change action between two cursor positions.
+     *
+     * @param cursor the target cursor position
+     * @param oldCursor the original cursor position
+     * @param inputProcessor the input processor
+     */
     protected final void apply(int cursor, int oldCursor, InputProcessor inputProcessor) {
         if (status == EditMode.Status.DELETE || status == EditMode.Status.CHANGE) {
             inputProcessor.buffer().addActionToUndoStack();

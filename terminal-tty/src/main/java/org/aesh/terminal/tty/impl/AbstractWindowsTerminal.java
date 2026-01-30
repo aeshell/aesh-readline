@@ -72,21 +72,36 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
 
     private static final int PIPE_SIZE = 1024;
 
+    /** Enable processed input mode. */
     protected static final int ENABLE_PROCESSED_INPUT = 0x0001;
+    /** Enable line input mode. */
     protected static final int ENABLE_LINE_INPUT = 0x0002;
+    /** Enable echo input mode. */
     protected static final int ENABLE_ECHO_INPUT = 0x0004;
+    /** Enable window input mode. */
     protected static final int ENABLE_WINDOW_INPUT = 0x0008;
+    /** Enable mouse input mode. */
     protected static final int ENABLE_MOUSE_INPUT = 0x0010;
+    /** Enable insert mode. */
     protected static final int ENABLE_INSERT_MODE = 0x0020;
+    /** Enable quick edit mode. */
     protected static final int ENABLE_QUICK_EDIT_MODE = 0x0040;
 
+    /** Slave input pipe. */
     protected final OutputStream slaveInputPipe;
+    /** Terminal input stream. */
     protected final InputStream input;
+    /** Terminal output stream. */
     protected final OutputStream output;
+    /** Print writer for output. */
     protected final PrintWriter writer;
+    /** Map of native signal handlers. */
     protected final Map<Signal, Object> nativeHandlers = new HashMap<>();
+    /** Shutdown hook task for cleanup. */
     protected final ShutdownHooks.Task closer;
+    /** Terminal attributes. */
     protected final Attributes attributes = new Attributes();
+    /** Input pump thread. */
     protected final Thread pump;
 
     private volatile boolean closing;
@@ -138,6 +153,11 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
         }
     }
 
+    /**
+     * Get the console encoding based on the console output code page.
+     *
+     * @return the charset name, or null if not supported
+     */
     protected String getConsoleEncoding() {
         int codepage = getConsoleOutputCP();
         //http://docs.oracle.com/javase/6/docs/technotes/guides/intl/encoding.doc.html
@@ -152,8 +172,18 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
         return null;
     }
 
+    /**
+     * Get the console output code page.
+     *
+     * @return the code page number
+     */
     protected abstract int getConsoleOutputCP();
 
+    /**
+     * Get the print writer for output.
+     *
+     * @return the print writer
+     */
     public PrintWriter writer() {
         return writer;
     }
@@ -179,6 +209,11 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
         return new Attributes(attributes);
     }
 
+    /**
+     * Set terminal attributes.
+     *
+     * @param attr the attributes to set
+     */
     public void setAttributes(Attributes attr) {
         attributes.copy(attr);
         int mode = 0;
@@ -191,14 +226,36 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
         setConsoleMode(mode);
     }
 
+    /**
+     * Convert a character to its control code equivalent.
+     *
+     * @param key the character
+     * @return the control code
+     */
     protected int ctrl(char key) {
         return (Character.toUpperCase(key) & 0x1f);
     }
 
+    /**
+     * Get the current console mode.
+     *
+     * @return the console mode flags
+     */
     protected abstract int getConsoleMode();
 
+    /**
+     * Set the console mode.
+     *
+     * @param mode the mode flags to set
+     */
     protected abstract void setConsoleMode(int mode);
 
+    /**
+     * Set the terminal size. Not supported on Windows.
+     *
+     * @param size the size to set
+     * @throws UnsupportedOperationException always
+     */
     public void setSize(Size size) {
         throw new UnsupportedOperationException("Can not resize windows terminal");
     }
@@ -213,8 +270,19 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
         writer.close();
     }
 
+    /**
+     * Read console input from the Windows console.
+     *
+     * @return the input bytes
+     */
     protected abstract byte[] readConsoleInput();
 
+    /**
+     * Get the escape sequence for a Windows virtual key code.
+     *
+     * @param keyCode the Windows virtual key code
+     * @return the escape sequence, or null if not mapped
+     */
     protected String getEscapeSequence(short keyCode) {
         String escapeSequence = null;
         switch (keyCode) {
@@ -293,6 +361,12 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
         return escapeSequence;
     }
 
+    /**
+     * Get the terminal sequence for a capability.
+     *
+     * @param cap the capability
+     * @return the sequence string, or null if not available
+     */
     protected String getSequence(Capability cap) {
         String str = device.getStringCapability(cap);
         if (str != null) {
@@ -303,6 +377,9 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
         return null;
     }
 
+    /**
+     * Pump thread that reads console input and processes it.
+     */
     protected void pump() {
         try {
             while (!closing) {

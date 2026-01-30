@@ -29,35 +29,75 @@ public class Alias implements Comparable {
     private final String name;
     private final String value;
 
+    /**
+     * Creates a new Alias with the specified name and value.
+     *
+     * @param name the alias name used to invoke the alias
+     * @param value the command or text that the alias expands to
+     */
     public Alias(String name, String value) {
         this.name = name;
         this.value = value;
     }
 
+    /**
+     * Returns the name of this alias.
+     *
+     * @return the alias name
+     */
     public String getName() {
         return name;
     }
 
+    /**
+     * Returns the value of this alias.
+     *
+     * @return the command or text that the alias expands to
+     */
     public String getValue() {
         return value;
     }
 
+    /**
+     * Compares this alias to another object for equality.
+     * Two aliases are considered equal if they have the same name.
+     *
+     * @param o the object to compare with
+     * @return true if the object is an Alias with the same name, false otherwise
+     */
     @Override
     public boolean equals(Object o) {
         return (o instanceof Alias && ((Alias) o).getName().equals(getName()));
     }
 
+    /**
+     * Returns a hash code value for this alias.
+     *
+     * @return a constant hash code value
+     */
     @Override
     public int hashCode() {
         return 9320012;
     }
 
+    /**
+     * Returns a string representation of this alias in the format "name='value'".
+     *
+     * @return a string representation of the alias
+     */
     @Override
     public String toString() {
         return new StringBuilder(getName()).append("='")
                 .append(getValue()).append("'").toString();
     }
 
+    /**
+     * Compares this alias to another alias by name for ordering.
+     *
+     * @param o the alias to compare with
+     * @return a negative integer, zero, or a positive integer as this alias name
+     *         is less than, equal to, or greater than the specified alias name
+     */
     @Override
     public int compareTo(Object o) {
         return getName().compareTo(((Alias) o).getName());

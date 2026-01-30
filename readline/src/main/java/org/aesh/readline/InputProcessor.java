@@ -43,37 +43,50 @@ public interface InputProcessor {
     String returnValue();
 
     /**
+     * Gets the current console buffer.
+     *
      * @return current console buffer
      */
     ConsoleBuffer buffer();
 
     /**
-     * Specify the return value
+     * Specify the return value.
      *
      * @param value return value
      */
     void setReturnValue(int[] value);
 
     /**
+     * Gets the current edit mode.
+     *
      * @return the current edit mode
      */
     EditMode editMode();
 
     /**
-     * Update the current edit mode
+     * Update the current edit mode.
      *
      * @param mode edit mode
      */
     void setEditMode(EditMode mode);
 
     /**
+     * Gets the connection.
+     *
      * @return the Connection
      */
     Connection connection();
 
+    /**
+     * Finishes the input processing with the given output.
+     *
+     * @param out the output string
+     */
     void finish(String out);
 
     /**
+     * Gets the current readline flags.
+     *
      * @return current flags
      */
     EnumMap<ReadlineFlag, Integer> flags();

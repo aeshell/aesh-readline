@@ -29,6 +29,12 @@ import org.aesh.readline.action.Action;
  */
 public class ForwardChar implements Action {
 
+    /**
+     * Creates a new ForwardChar action.
+     */
+    public ForwardChar() {
+    }
+
     @Override
     public String name() {
         return "forward-char";

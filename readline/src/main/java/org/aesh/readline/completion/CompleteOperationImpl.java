@@ -44,6 +44,12 @@ public class CompleteOperationImpl implements CompleteOperation {
     private boolean appendSeparator = true;
     private boolean ignoreOffset = false;
 
+    /**
+     * Creates a new CompleteOperationImpl with the given buffer and cursor position.
+     *
+     * @param buffer the input buffer to complete
+     * @param cursor the cursor position in the buffer
+     */
     public CompleteOperationImpl(String buffer, int cursor) {
         setCursor(cursor);
         setSeparator(' ');
@@ -77,14 +83,29 @@ public class CompleteOperationImpl implements CompleteOperation {
             this.buffer = buffer;
     }
 
+    /**
+     * Checks if the buffer has been trimmed.
+     *
+     * @return true if the buffer was trimmed, false otherwise
+     */
     public boolean isTrimmed() {
         return trimmed;
     }
 
+    /**
+     * Returns the number of characters that were trimmed from the buffer.
+     *
+     * @return the difference in length between the non-trimmed and trimmed buffer
+     */
     public int getTrimmedSize() {
         return nonTrimmedBuffer.length() - buffer.length();
     }
 
+    /**
+     * Returns the original non-trimmed buffer.
+     *
+     * @return the non-trimmed buffer string
+     */
     public String getNonTrimmedBuffer() {
         return nonTrimmedBuffer;
     }
@@ -169,10 +190,20 @@ public class CompleteOperationImpl implements CompleteOperation {
         return completionCandidates;
     }
 
+    /**
+     * Sets the completion candidates from a list of strings.
+     *
+     * @param completionCandidates the list of completion candidate strings
+     */
     public void setCompletionCandidates(List<String> completionCandidates) {
         addCompletionCandidates(completionCandidates);
     }
 
+    /**
+     * Sets the completion candidates from a list of TerminalString objects.
+     *
+     * @param completionCandidates the list of TerminalString completion candidates
+     */
     public void setCompletionCandidatesTerminalString(List<TerminalString> completionCandidates) {
         this.completionCandidates = completionCandidates;
     }

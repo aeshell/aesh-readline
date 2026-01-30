@@ -32,6 +32,9 @@ import org.aesh.readline.action.Action;
  */
 public class DeleteChar implements Action {
 
+    /**
+     * Creates a new DeleteChar action.
+     */
     public DeleteChar() {
     }
 

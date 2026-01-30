@@ -29,6 +29,13 @@ public class Size {
     private final int height;
     private final int width;
 
+    /**
+     * Creates a new size with the specified dimensions.
+     * Values less than or equal to 0 default to 80 for width and 20 for height.
+     *
+     * @param width the terminal width in columns
+     * @param height the terminal height in rows
+     */
     public Size(int width, int height) {
         if (width > 0)
             this.width = width;
@@ -40,14 +47,30 @@ public class Size {
             this.height = 20; //we default to 20
     }
 
+    /**
+     * Get the terminal width in columns.
+     *
+     * @return the width
+     */
     public int getWidth() {
         return width;
     }
 
+    /**
+     * Get the terminal height in rows.
+     *
+     * @return the height
+     */
     public int getHeight() {
         return height;
     }
 
+    /**
+     * Check if a point is within this size boundaries.
+     *
+     * @param pos the point to check
+     * @return true if the point is within bounds
+     */
     public boolean isPointWithinSize(Point pos) {
         return (pos.y() > -1 && pos.x() > -1 &&
                 pos.y() < height && pos.x() < width);

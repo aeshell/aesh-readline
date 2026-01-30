@@ -43,15 +43,32 @@ public class DeviceBuilder {
     private DeviceBuilder() {
     }
 
+    /**
+     * Creates a new DeviceBuilder instance.
+     *
+     * @return a new DeviceBuilder
+     */
     public static DeviceBuilder builder() {
         return new DeviceBuilder();
     }
 
+    /**
+     * Sets the terminal type name for the device.
+     *
+     * @param name the terminal type name (e.g., "ansi", "windows", "xterm")
+     * @return this builder for method chaining
+     */
     public DeviceBuilder name(String name) {
         this.name = name;
         return this;
     }
 
+    /**
+     * Builds and returns a new TerminalDevice with the configured settings.
+     * If no name is set, defaults to "ansi" on POSIX systems or "windows" on Windows.
+     *
+     * @return a new TerminalDevice instance
+     */
     public TerminalDevice build() {
         if (name == null)
             name = Config.isOSPOSIXCompatible() ? "ansi" : "windows";

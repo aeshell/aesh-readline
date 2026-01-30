@@ -44,42 +44,100 @@ public class ReadlineBuilder {
     private String historyFile;
     private boolean enableHistory = true;
 
+    /**
+     * Creates a new ReadlineBuilder instance.
+     *
+     * @return a new builder instance
+     */
     public static ReadlineBuilder builder() {
         return new ReadlineBuilder();
     }
 
+    /**
+     * Private constructor to enforce use of the builder() factory method.
+     */
     private ReadlineBuilder() {
     }
 
+    /**
+     * Applies a consumer function to this builder and returns the builder for chaining.
+     *
+     * @param consumer the consumer function to apply
+     * @return this builder instance
+     */
     private ReadlineBuilder apply(Consumer<ReadlineBuilder> consumer) {
         consumer.accept(this);
         return this;
     }
 
+    /**
+     * Sets the edit mode for the Readline instance.
+     *
+     * @param editMode the edit mode to use (e.g., Emacs or Vi mode)
+     * @return this builder instance
+     */
     public ReadlineBuilder editMode(EditMode editMode) {
         return apply(c -> c.editMode = editMode);
     }
 
+    /**
+     * Sets the history implementation for the Readline instance.
+     *
+     * @param history the history implementation to use
+     * @return this builder instance
+     */
     public ReadlineBuilder history(History history) {
         return apply(c -> c.history = history);
     }
 
+    /**
+     * Enables or disables history tracking.
+     *
+     * @param enableHistory true to enable history, false to disable
+     * @return this builder instance
+     */
     public ReadlineBuilder enableHistory(boolean enableHistory) {
         return apply(c -> c.enableHistory = enableHistory);
     }
 
+    /**
+     * Sets the maximum number of history entries to retain.
+     *
+     * @param historySize the maximum history size
+     * @return this builder instance
+     */
     public ReadlineBuilder historySize(int historySize) {
         return apply(c -> c.historySize = historySize);
     }
 
+    /**
+     * Sets the file path for persistent history storage.
+     *
+     * @param historyFile the path to the history file
+     * @return this builder instance
+     */
     public ReadlineBuilder historyFile(String historyFile) {
         return apply(c -> c.historyFile = historyFile);
     }
 
+    /**
+     * Sets the completion handler for tab completion.
+     *
+     * @param completionHandler the completion handler to use
+     * @return this builder instance
+     */
     public ReadlineBuilder completionHandler(CompletionHandler completionHandler) {
         return apply(c -> c.completionHandler = completionHandler);
     }
 
+    /**
+     * Builds and returns a configured Readline instance.
+     * If no edit mode is specified, a default one is created.
+     * If history is enabled but not specified, an in-memory or file-based history is created.
+     * If no completion handler is specified, a SimpleCompletionHandler is used.
+     *
+     * @return a new configured Readline instance
+     */
     public Readline build() {
         if (editMode == null)
             editMode = EditModeBuilder.builder().create();

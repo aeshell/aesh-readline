@@ -26,9 +26,17 @@ package org.aesh.readline.alias;
  */
 public class AliasConflictException extends Exception {
 
+    /**
+     * Creates a new AliasConflictException with no detail message.
+     */
     public AliasConflictException() {
     }
 
+    /**
+     * Creates a new AliasConflictException with the specified detail message.
+     *
+     * @param message the detail message describing the conflict
+     */
     public AliasConflictException(String message) {
         super(message);
     }

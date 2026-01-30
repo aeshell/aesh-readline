@@ -73,6 +73,11 @@ public final class Buffer {
         locator = new CursorLocator(this);
     }
 
+    /**
+     * Creates a copy of an existing buffer.
+     *
+     * @param buf the buffer to copy
+     */
     public Buffer(Buffer buf) {
         line = buf.line.clone();
         cursor = buf.cursor;
@@ -81,10 +86,22 @@ public final class Buffer {
         locator = new CursorLocator(this);
     }
 
+    /**
+     * Returns the cursor locator for this buffer.
+     *
+     * @return the cursor locator used to track cursor position
+     */
     public CursorLocator getCursorLocator() {
         return locator;
     }
 
+    /**
+     * Returns the character at the specified position in the buffer.
+     *
+     * @param pos the position in the buffer
+     * @return the character code point at the specified position
+     * @throws IndexOutOfBoundsException if the position is out of bounds
+     */
     public int get(int pos) {
         if (pos > -1 && pos <= size)
             return line[pos];
@@ -92,10 +109,22 @@ public final class Buffer {
             throw new IndexOutOfBoundsException();
     }
 
+    /**
+     * Returns the current cursor position in the buffer.
+     *
+     * @return the current cursor position
+     */
     public int cursor() {
         return cursor;
     }
 
+    /**
+     * Returns the cursor position including the multi-line buffer offset.
+     * If the buffer is in multi-line mode, this returns the cursor position
+     * relative to the entire multi-line content.
+     *
+     * @return the cursor position including multi-line offset
+     */
     public int multiCursor() {
         if (multiLine) {
             return multiLineBuffer.length + cursor;
@@ -103,18 +132,38 @@ public final class Buffer {
         return cursor;
     }
 
+    /**
+     * Checks if the buffer is in masking mode (e.g., for password input).
+     *
+     * @return true if input is being masked, false otherwise
+     */
     public boolean isMasking() {
         return prompt.isMasking();
     }
 
+    /**
+     * Checks if the buffer is in multi-line mode.
+     *
+     * @return true if the buffer is in multi-line mode, false otherwise
+     */
     public boolean isMultiLine() {
         return multiLine;
     }
 
+    /**
+     * Returns the entire buffer content as a string, including multi-line content.
+     *
+     * @return the buffer content as a string
+     */
     public String asString() {
         return Parser.fromCodePoints(multiLine());
     }
 
+    /**
+     * Resets the buffer to its initial empty state.
+     * This clears all content, resets the cursor to position 0,
+     * and clears any multi-line buffer content.
+     */
     public void reset() {
         cursor = 0;
         for (int i = 0; i < size; i++)
@@ -128,10 +177,21 @@ public final class Buffer {
         locator.clear();
     }
 
+    /**
+     * Sets whether the prompt has been displayed.
+     *
+     * @param isPromptDisplayed true if the prompt is displayed, false otherwise
+     */
     public void setIsPromptDisplayed(boolean isPromptDisplayed) {
         this.isPromptDisplayed = isPromptDisplayed;
     }
 
+    /**
+     * Forces the delta changed at end of buffer flag to a specific value.
+     * This flag is used to optimize terminal updates.
+     *
+     * @param delta the value to set for the deltaChangedAtEndOfBuffer flag
+     */
     public void forceSetDeltaChangedAtEndOfBuffer(boolean delta) {
         deltaChangedAtEndOfBuffer = delta;
     }
@@ -145,6 +205,11 @@ public final class Buffer {
         disablePrompt = disable;
     }
 
+    /**
+     * Checks if the prompt is disabled for calculations.
+     *
+     * @return true if the prompt is disabled, false otherwise
+     */
     public boolean isPromptDisabled() {
         return disablePrompt;
     }
@@ -157,10 +222,21 @@ public final class Buffer {
         }
     }
 
+    /**
+     * Returns the current prompt.
+     *
+     * @return the prompt associated with this buffer
+     */
     public Prompt prompt() {
         return prompt;
     }
 
+    /**
+     * Returns the length of the buffer content.
+     * If masking with a null mask character, returns 1.
+     *
+     * @return the length of the buffer content
+     */
     public int length() {
         if (isMasking() && prompt.getMask() == 0)
             return 1;
@@ -172,6 +248,12 @@ public final class Buffer {
         return disablePrompt ? 0 : prompt.getLength();
     }
 
+    /**
+     * Sets the multi-line mode for this buffer.
+     * Multi-line mode is not enabled if the buffer is in masking mode.
+     *
+     * @param multi true to enable multi-line mode, false to disable
+     */
     public void setMultiLine(boolean multi) {
         if (!isMasking())
             multiLine = multi;
@@ -187,6 +269,11 @@ public final class Buffer {
         }
     }
 
+    /**
+     * Updates the multi-line buffer by appending the current line content.
+     * If the line ends with a backslash, the backslash is removed.
+     * Otherwise, a newline is appended to the buffer.
+     */
     public void updateMultiLineBuffer() {
         int originalSize = multiLineBuffer.length;
         // Store the size of each line.
@@ -217,9 +304,11 @@ public final class Buffer {
     }
 
     /**
-     * Insert text at cursor position
+     * Inserts text at the current cursor position.
      *
-     * @param data text
+     * @param out the output consumer for terminal updates
+     * @param data the text to insert as an array of code points
+     * @param width the terminal width
      */
     public void insert(Consumer<int[]> out, int[] data, int width) {
         doInsert(data);
@@ -227,9 +316,11 @@ public final class Buffer {
     }
 
     /**
-     * Insert at cursor position.
+     * Inserts a single character at the current cursor position.
      *
-     * @param data char
+     * @param out the output consumer for terminal updates
+     * @param data the character code point to insert
+     * @param width the terminal width
      */
     public void insert(Consumer<int[]> out, int data, int width) {
         doInsert(data);
@@ -394,6 +485,13 @@ public final class Buffer {
         return builder.toArray();
     }
 
+    /**
+     * Creates an ANSI escape sequence to move the cursor a specified number of columns.
+     *
+     * @param column the number of columns to move
+     * @param direction the direction character ('C' for right, 'D' for left, 'A' for up, 'B' for down)
+     * @return an int array containing the ANSI escape sequence
+     */
     public static int[] moveNumberOfColumns(int column, char direction) {
         if (column < 10) {
             int[] out = new int[4];
@@ -491,6 +589,13 @@ public final class Buffer {
         return Arrays.copyOfRange(line, position, size);
     }
 
+    /**
+     * Returns the current line content, with masking applied if enabled.
+     * If masking is enabled, each character is replaced with the mask character.
+     * If the mask character is null (0), an empty array is returned.
+     *
+     * @return the line content with masking applied, or the original line if not masking
+     */
     public int[] getLineMasked() {
         if (!isMasking())
             return Arrays.copyOf(line, size);
@@ -508,6 +613,10 @@ public final class Buffer {
         return Arrays.copyOf(line, size);
     }
 
+    /**
+     * Clears the buffer content without resetting multi-line state.
+     * This resets the cursor position and size to 0 and marks the prompt as not displayed.
+     */
     public void clear() {
         Arrays.fill(this.line, 0, size, 0);
         cursor = 0;
@@ -666,6 +775,15 @@ public final class Buffer {
         replace(out, Parser.toCodePoints(line), width);
     }
 
+    /**
+     * Replaces the entire current buffer with the given line as code points.
+     * The new line will be pushed to the consumer and the cursor will be
+     * moved to the end of the new buffer line.
+     *
+     * @param out the output consumer for terminal updates
+     * @param line the new buffer content as an array of code points
+     * @param width the terminal width
+     */
     public void replace(Consumer<int[]> out, int[] line, int width) {
         //quick exit
         if (line == null || size == 0 && line.length == 0)
@@ -792,6 +910,12 @@ public final class Buffer {
         isPromptDisplayed = true;
     }
 
+    /**
+     * Returns the complete buffer content including multi-line content.
+     * If in multi-line mode, this combines the multi-line buffer with the current line.
+     *
+     * @return the complete buffer content as an array of code points
+     */
     public int[] multiLine() {
         if (multiLine) {
             int[] tmpLine = Arrays.copyOf(multiLineBuffer, multiLineBuffer.length + size);
@@ -803,15 +927,26 @@ public final class Buffer {
     }
 
     /**
-     * Delete from cursor position and backwards if delta is &lt; 0
-     * Delete from cursor position and forwards if delta is &gt; 0
+     * Deletes characters from the buffer relative to the cursor position.
+     * Deletes backward if delta is negative, forward if delta is positive.
      *
-     * @param delta difference
+     * @param out the output consumer for terminal updates
+     * @param delta the number of characters to delete (negative for backward, positive for forward)
+     * @param width the terminal width
      */
     public void delete(Consumer<int[]> out, int delta, int width) {
         delete(out, delta, width, false);
     }
 
+    /**
+     * Deletes characters from the buffer relative to the cursor position.
+     * Deletes backward if delta is negative, forward if delta is positive.
+     *
+     * @param out the output consumer for terminal updates
+     * @param delta the number of characters to delete (negative for backward, positive for forward)
+     * @param width the terminal width
+     * @param viMode true if vi editing mode is enabled, false for emacs mode
+     */
     public void delete(Consumer<int[]> out, int delta, int width, boolean viMode) {
         if (delta > 0) {
             delta = Math.min(delta, size - cursor);
@@ -846,10 +981,11 @@ public final class Buffer {
     }
 
     /**
-     * Write a string to the line and update cursor accordingly
+     * Inserts a string at the current cursor position and updates the cursor accordingly.
      *
-     * @param out consumer
-     * @param str string
+     * @param out the output consumer for terminal updates
+     * @param str the string to insert
+     * @param width the terminal width
      */
     public void insert(Consumer<int[]> out, final String str, int width) {
         insert(out, Parser.toCodePoints(str), width);
@@ -890,7 +1026,10 @@ public final class Buffer {
     }
 
     /**
-     * Replace the current character
+     * Replaces the character at the current cursor position with the specified character.
+     *
+     * @param out the output consumer for terminal updates
+     * @param rChar the replacement character
      */
     public void replace(Consumer<int[]> out, char rChar) {
         doReplace(out, cursor(), rChar);

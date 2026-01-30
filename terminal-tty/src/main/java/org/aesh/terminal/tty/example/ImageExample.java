@@ -41,6 +41,18 @@ import org.aesh.terminal.utils.ANSI;
  */
 public class ImageExample {
 
+    /**
+     * Creates a new ImageExample instance.
+     */
+    public ImageExample() {
+        // Default constructor
+    }
+
+    /**
+     * Main entry point for the image example.
+     *
+     * @param args command line arguments; optionally specify an image path
+     */
     public static void main(String[] args) {
         try {
             TerminalConnection conn = new TerminalConnection();
@@ -129,6 +141,13 @@ public class ImageExample {
         }
     }
 
+    /**
+     * Sets up an exit handler that restores terminal attributes and closes the connection
+     * when any key is pressed.
+     *
+     * @param conn the terminal connection
+     * @param savedAttributes the saved terminal attributes to restore
+     */
     private static void setupExitHandler(TerminalConnection conn, Attributes savedAttributes) {
         conn.setStdinHandler(input -> {
             if (input != null && input.length > 0) {

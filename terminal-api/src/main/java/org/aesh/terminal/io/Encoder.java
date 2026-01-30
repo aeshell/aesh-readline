@@ -35,6 +35,12 @@ public class Encoder implements Consumer<int[]> {
     private Charset charset;
     private final Consumer<byte[]> out;
 
+    /**
+     * Create a new Encoder with the specified charset and output consumer.
+     *
+     * @param charset the charset to use for encoding, or null for the default charset
+     * @param out the consumer to receive encoded byte arrays
+     */
     public Encoder(Charset charset, Consumer<byte[]> out) {
         if (charset != null)
             this.charset = charset;
@@ -43,17 +49,34 @@ public class Encoder implements Consumer<int[]> {
         this.out = out;
     }
 
+    /**
+     * Set the charset to use for encoding.
+     *
+     * @param charset the charset to use, ignored if null
+     */
     public void setCharset(Charset charset) {
         if (charset != null)
             this.charset = charset;
     }
 
+    /**
+     * Encode an array of Unicode code points and send the resulting bytes to the output consumer.
+     *
+     * @param input the code points to encode
+     */
     @Override
     public void accept(int[] input) {
         ByteBuffer bytesBuf = charset.encode(toCharBuffer(input));
         out.accept(safeTrim(bytesBuf.array(), bytesBuf.limit()));
     }
 
+    /**
+     * Convert an array of Unicode code points to a CharBuffer.
+     * Handles surrogate pairs for code points outside the Basic Multilingual Plane.
+     *
+     * @param input the code points to convert
+     * @return a CharBuffer containing the character representation
+     */
     public static CharBuffer toCharBuffer(int[] input) {
         final char[] tmp = new char[2];
         int capacity = 0;

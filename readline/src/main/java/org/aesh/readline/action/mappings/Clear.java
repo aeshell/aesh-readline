@@ -28,6 +28,13 @@ import org.aesh.readline.action.Action;
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public class Clear implements Action {
+
+    /**
+     * Creates a new clear action.
+     */
+    public Clear() {
+    }
+
     @Override
     public String name() {
         return "clear-screen";

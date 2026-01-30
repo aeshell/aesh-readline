@@ -27,37 +27,108 @@ import java.util.function.Consumer;
 import org.aesh.terminal.tty.Signal;
 import org.aesh.terminal.tty.Size;
 
+/**
+ * Terminal interface providing access to terminal functionality.
+ */
 public interface Terminal extends Closeable {
 
+    /**
+     * Get the terminal name.
+     *
+     * @return the terminal name
+     */
     String getName();
 
-    // Signal support
+    /**
+     * Handler for terminal signals.
+     */
     interface SignalHandler {
+        /**
+         * Handle a terminal signal.
+         *
+         * @param signal the signal to handle
+         */
         void handle(Signal signal);
     }
 
+    /**
+     * Register a signal handler for the specified signal.
+     *
+     * @param signal the signal to handle
+     * @param handler the handler to register
+     * @return the previous handler, or null if none
+     */
     SignalHandler handle(Signal signal, SignalHandler handler);
 
+    /**
+     * Raise a signal on this terminal.
+     *
+     * @param signal the signal to raise
+     */
     void raise(Signal signal);
 
+    /**
+     * Get the terminal input stream.
+     *
+     * @return the input stream
+     */
     InputStream input();
 
+    /**
+     * Get the terminal output stream.
+     *
+     * @return the output stream
+     */
     OutputStream output();
 
-    //set echo attribute on terminal
+    /**
+     * Get the current echo state of the terminal.
+     *
+     * @return true if echo is enabled
+     */
     boolean echo();
 
+    /**
+     * Set the echo state of the terminal.
+     *
+     * @param echo true to enable echo
+     * @return the previous echo state
+     */
     boolean echo(boolean echo);
 
+    /**
+     * Get the terminal attributes.
+     *
+     * @return the terminal attributes
+     */
     Attributes getAttributes();
 
+    /**
+     * Set the terminal attributes.
+     *
+     * @param attr the attributes to set
+     */
     void setAttributes(Attributes attr);
 
+    /**
+     * Get the terminal size.
+     *
+     * @return the terminal size
+     */
     Size getSize();
 
-    // Infocmp capabilities
+    /**
+     * Get the terminal device for capability queries.
+     *
+     * @return the terminal device
+     */
     Device device();
 
+    /**
+     * Get the code point consumer for this terminal.
+     *
+     * @return the code point consumer, or null if none
+     */
     default Consumer<int[]> getCodePointConsumer() {
         return null;
     }

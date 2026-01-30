@@ -28,6 +28,9 @@ import org.aesh.readline.editing.EditMode;
  */
 public class DeleteForwardBigWord extends ForwardBigWord {
 
+    /**
+     * Creates a new DeleteForwardBigWord action.
+     */
     public DeleteForwardBigWord() {
         super(EditMode.Status.DELETE);
     }

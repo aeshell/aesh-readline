@@ -28,10 +28,18 @@ import org.aesh.readline.editing.EditMode;
  */
 public class CopyBackwardWord extends BackwardWord {
 
+    /**
+     * Creates a new copy backward word action.
+     */
     public CopyBackwardWord() {
         super(false, EditMode.Status.YANK);
     }
 
+    /**
+     * Creates a new copy backward word action.
+     *
+     * @param viMode whether vi mode is enabled
+     */
     public CopyBackwardWord(boolean viMode) {
         super(viMode, EditMode.Status.YANK);
     }

@@ -31,6 +31,11 @@ public class TtyOutputMode implements Consumer<int[]> {
 
     private final Consumer<int[]> readHandler;
 
+    /**
+     * Create a new TTY output mode processor.
+     *
+     * @param readHandler the handler to receive processed output
+     */
     public TtyOutputMode(Consumer<int[]> readHandler) {
         this.readHandler = readHandler;
     }

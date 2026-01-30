@@ -41,15 +41,27 @@ public class BaseDevice implements Device {
 
     private static final Pattern A = Pattern.compile("^\\\\([0-9]{1,3})");
     private static final Pattern B = Pattern.compile("^\\\\x([0-9,A-F,a-f]{1,2})");
+    /** Set of boolean capabilities supported by this device. */
     protected final Set<Capability> bools = new HashSet<>();
+    /** Map of numeric capabilities and their values. */
     protected final Map<Capability, Integer> ints = new HashMap<>();
+    /** Map of string capabilities and their values. */
     protected final Map<Capability, String> strings = new HashMap<>();
+    /** The terminal type identifier. */
     protected String type;
 
+    /**
+     * Creates a new BaseDevice with the default "ansi" terminal type.
+     */
     public BaseDevice() {
         this.type = "ansi";
     }
 
+    /**
+     * Creates a new BaseDevice with the specified terminal type.
+     *
+     * @param type the terminal type identifier
+     */
     public BaseDevice(String type) {
         this.type = type;
     }

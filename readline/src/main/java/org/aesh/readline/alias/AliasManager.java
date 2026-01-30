@@ -59,6 +59,14 @@ public class AliasManager {
 
     private static final Logger LOGGER = LoggerUtil.getLogger(AliasManager.class.getName());
 
+    /**
+     * Creates a new AliasManager with the specified alias file and persistence setting.
+     * If the alias file exists, aliases are read from it during initialization.
+     *
+     * @param aliasFile the file to read and persist aliases from/to, may be null
+     * @param persistAlias if true, aliases will be persisted to the alias file
+     * @throws IOException if an I/O error occurs while reading the alias file
+     */
     public AliasManager(File aliasFile, boolean persistAlias) throws IOException {
         this.persistAlias = persistAlias;
         aliases = new ArrayList<>();
@@ -74,6 +82,7 @@ public class AliasManager {
      *
      * @param aliasName name of the alias
      * @return true if there is no conflict
+     * @throws AliasConflictException if the alias name conflicts with an existing command
      */
     public boolean verifyNoNewAliasConflict(String aliasName) throws AliasConflictException {
         //default impl just returns true, designed to be overridden
@@ -98,6 +107,12 @@ public class AliasManager {
         }
     }
 
+    /**
+     * Persists all aliases to the alias file.
+     * This method writes all current aliases to the configured alias file if persistence
+     * is enabled and an alias file was specified. The aliases are sorted before writing.
+     * If the file already exists, it is deleted and recreated.
+     */
     public void persist() {
         if (persistAlias && aliasFile != null) {
 
@@ -138,6 +153,12 @@ public class AliasManager {
         aliases.add(alias);
     }
 
+    /**
+     * Returns a formatted string containing all defined aliases sorted alphabetically.
+     * Each alias is printed on a separate line in the format "alias name='value'".
+     *
+     * @return a string representation of all aliases, with each alias on a separate line
+     */
     @SuppressWarnings("unchecked")
     public String printAllAliases() {
         StringBuilder sb = new StringBuilder();
@@ -158,12 +179,27 @@ public class AliasManager {
         return sb.toString();
     }
 
+    /**
+     * Retrieves an alias by its name.
+     *
+     * @param name the name of the alias to retrieve
+     * @return an Optional containing the Alias if found, or an empty Optional if not found
+     */
     public Optional<Alias> getAlias(String name) {
         return aliases.stream()
                 .filter(a -> a.getName().equals(name))
                 .findFirst();
     }
 
+    /**
+     * Expands an alias if the first word of the input matches an alias name.
+     * If a matching alias is found, returns the alias value with the remainder
+     * of the input appended.
+     *
+     * @param input the input string to check for alias expansion
+     * @return an Optional containing the expanded command if an alias matches,
+     *         or an empty Optional if no alias matches the first word
+     */
     public Optional<String> getAliasName(String input) {
         String name = Parser.findFirstWord(input);
         return aliases.stream()
@@ -172,6 +208,13 @@ public class AliasManager {
                 .findAny();
     }
 
+    /**
+     * Finds all alias names that start with the given prefix.
+     * This method is useful for tab completion functionality.
+     *
+     * @param name the prefix to match against alias names
+     * @return a list of alias names that start with the given prefix
+     */
     public List<String> findAllMatchingNames(String name) {
         return aliases.stream()
                 .filter(a -> a.getName().startsWith(name))
@@ -179,12 +222,26 @@ public class AliasManager {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Returns a list of all defined alias names.
+     *
+     * @return a list containing the names of all defined aliases
+     */
     public List<String> getAllNames() {
         return aliases.stream()
                 .map(Alias::getName)
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Removes one or more aliases based on the unalias command input.
+     * The buffer should contain the unalias command followed by one or more alias names
+     * to remove, separated by spaces.
+     *
+     * @param buffer the unalias command string containing alias names to remove
+     * @return null if all aliases were successfully removed, an error message if an alias
+     *         was not found, or usage information if the command is invalid
+     */
     public String removeAlias(String buffer) {
         if (buffer.trim().equals(UNALIAS))
             return unaliasUsage();
@@ -205,6 +262,23 @@ public class AliasManager {
         return null;
     }
 
+    /**
+     * Parses an alias command and either creates a new alias, lists specified aliases,
+     * or returns all aliases.
+     * <p>
+     * Supported formats:
+     * <ul>
+     * <li>"alias" - returns all defined aliases</li>
+     * <li>"alias --help" - returns usage information</li>
+     * <li>"alias name=value" - creates or updates an alias</li>
+     * <li>"alias name1 name2" - lists the specified aliases</li>
+     * </ul>
+     *
+     * @param buffer the alias command string to parse
+     * @return null if an alias was successfully created, a string containing alias
+     *         definitions when listing, an error message if the command is invalid,
+     *         or usage information
+     */
     public String parseAlias(String buffer) {
         if (buffer.trim().equals(ALIAS))
             return printAllAliases();
@@ -266,10 +340,20 @@ public class AliasManager {
         return null;
     }
 
+    /**
+     * Returns the usage information for the alias command.
+     *
+     * @return a string containing the alias command usage syntax
+     */
     public String aliasUsage() {
         return "alias: usage: alias [name[=value] ... ]" + Config.getLineSeparator();
     }
 
+    /**
+     * Returns the usage information for the unalias command.
+     *
+     * @return a string containing the unalias command usage syntax
+     */
     public String unaliasUsage() {
         return "unalias: usage: unalias name [name ...]" + Config.getLineSeparator();
     }

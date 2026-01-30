@@ -29,10 +29,18 @@ import org.aesh.readline.editing.EditMode;
  */
 public class CopyBackwardBigWord extends BackwardBigWord {
 
+    /**
+     * Creates a new copy backward big word action.
+     */
     public CopyBackwardBigWord() {
         super(false, EditMode.Status.YANK);
     }
 
+    /**
+     * Creates a new copy backward big word action.
+     *
+     * @param viMode whether vi mode is enabled
+     */
     public CopyBackwardBigWord(boolean viMode) {
         super(viMode, EditMode.Status.YANK);
     }

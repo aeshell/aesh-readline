@@ -28,7 +28,14 @@ import java.util.regex.Pattern;
  */
 public final class CodePointUtils {
 
+    /**
+     * The space character constant.
+     */
     public static final char SPACE_CHAR = ' ';
+
+    /**
+     * The backslash character constant.
+     */
     public static final char BACK_SLASH = '\\';
     private static final Pattern spacePattern = Pattern.compile("(?<!\\\\)\\s");
 

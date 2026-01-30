@@ -50,84 +50,108 @@ public class FileAccessPermission {
     }
 
     /**
-     * @return the executable
+     * Checks if the file is executable.
+     *
+     * @return the executable flag
      */
     public boolean isExecutable() {
         return executable;
     }
 
     /**
-     * @param executable the executable to set
+     * Sets the executable permission.
+     *
+     * @param executable the executable flag to set
      */
     public void setExecutable(boolean executable) {
         this.executable = executable;
     }
 
     /**
-     * @return the executableOwnerOnly
+     * Checks if executable permission is owner only.
+     *
+     * @return the executableOwnerOnly flag
      */
     public boolean isExecutableOwnerOnly() {
         return executableOwnerOnly;
     }
 
     /**
-     * @param executableOwnerOnly the executableOwnerOnly to set
+     * Sets whether executable permission is owner only.
+     *
+     * @param executableOwnerOnly the executableOwnerOnly flag to set
      */
     public void setExecutableOwnerOnly(boolean executableOwnerOnly) {
         this.executableOwnerOnly = executableOwnerOnly;
     }
 
     /**
-     * @return the readable
+     * Checks if the file is readable.
+     *
+     * @return the readable flag
      */
     public boolean isReadable() {
         return readable;
     }
 
     /**
-     * @param readable the readable to set
+     * Sets the readable permission.
+     *
+     * @param readable the readable flag to set
      */
     public void setReadable(boolean readable) {
         this.readable = readable;
     }
 
     /**
-     * @return the readableOwnerOnly
+     * Checks if readable permission is owner only.
+     *
+     * @return the readableOwnerOnly flag
      */
     public boolean isReadableOwnerOnly() {
         return readableOwnerOnly;
     }
 
     /**
-     * @param readableOwnerOnly the readableOwnerOnly to set
+     * Sets whether readable permission is owner only.
+     *
+     * @param readableOwnerOnly the readableOwnerOnly flag to set
      */
     public void setReadableOwnerOnly(boolean readableOwnerOnly) {
         this.readableOwnerOnly = readableOwnerOnly;
     }
 
     /**
-     * @return the writable
+     * Checks if the file is writable.
+     *
+     * @return the writable flag
      */
     public boolean isWritable() {
         return writable;
     }
 
     /**
-     * @param writable the writable to set
+     * Sets the writable permission.
+     *
+     * @param writable the writable flag to set
      */
     public void setWritable(boolean writable) {
         this.writable = writable;
     }
 
     /**
-     * @return the writableOwnerOnly
+     * Checks if writable permission is owner only.
+     *
+     * @return the writableOwnerOnly flag
      */
     public boolean isWritableOwnerOnly() {
         return writableOwnerOnly;
     }
 
     /**
-     * @param writableOwnerOnly the writableOwnerOnly to set
+     * Sets whether writable permission is owner only.
+     *
+     * @param writableOwnerOnly the writableOwnerOnly flag to set
      */
     public void setWritableOwnerOnly(boolean writableOwnerOnly) {
         this.writableOwnerOnly = writableOwnerOnly;

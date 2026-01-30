@@ -46,6 +46,15 @@ public class Line {
      */
     public abstract class CursorAction {
 
+        /**
+         * Default constructor for CursorAction.
+         */
+        public CursorAction() {
+        }
+
+        /**
+         * Applies this cursor action.
+         */
         public abstract void apply();
     }
 
@@ -198,10 +207,19 @@ public class Line {
 
         private final List<CursorAction> actions = new ArrayList<>();
 
+        /**
+         * Creates a new CursorTransaction with the specified list of actions.
+         *
+         * @param actions the list of cursor actions to execute in this transaction
+         */
         CursorTransaction(List<CursorAction> actions) {
             this.actions.addAll(actions);
         }
 
+        /**
+         * Runs this cursor transaction. The cursor is saved before executing
+         * actions and restored after all actions have been applied.
+         */
         public void run() {
             saveCursor();
             try {
@@ -228,36 +246,87 @@ public class Line {
 
         private final List<CursorAction> actions = new ArrayList<>();
 
+        /**
+         * Default constructor for CursorTransactionBuilder.
+         */
+        public CursorTransactionBuilder() {
+        }
+
+        /**
+         * Adds a move action to move the cursor to the specified index.
+         *
+         * @param value the index to move the cursor to
+         * @return this builder for method chaining
+         */
         public CursorTransactionBuilder move(int value) {
             actions.add(new MoveAction(value));
             return this;
         }
 
+        /**
+         * Adds a colorize action to change the color of a character at the specified index.
+         *
+         * @param index the index of the character to colorize
+         * @param text the text/foreground color
+         * @param bg the background color
+         * @param bright whether to use bright/bold styling
+         * @return this builder for method chaining
+         */
         public CursorTransactionBuilder colorize(int index, Color text, Color bg, boolean bright) {
             actions.add(new ColorizeAction(index, text, bg, bright));
             return this;
         }
 
+        /**
+         * Adds a move backward action to move the cursor backward by the specified amount.
+         *
+         * @param value the number of positions to move backward
+         * @return this builder for method chaining
+         */
         public CursorTransactionBuilder moveBackward(int value) {
             actions.add(new MoveBackwardAction(value));
             return this;
         }
 
+        /**
+         * Adds a move forward action to move the cursor forward by the specified amount.
+         *
+         * @param value the number of positions to move forward
+         * @return this builder for method chaining
+         */
         public CursorTransactionBuilder moveForward(int value) {
             actions.add(new MoveForwardAction(value));
             return this;
         }
 
+        /**
+         * Adds a move up action to move the cursor up by the specified number of rows.
+         *
+         * @param value the number of rows to move up
+         * @return this builder for method chaining
+         */
         public CursorTransactionBuilder moveUp(int value) {
             actions.add(new MoveUpAction(value));
             return this;
         }
 
+        /**
+         * Adds a move down action to move the cursor down by the specified number of rows.
+         *
+         * @param value the number of rows to move down
+         * @return this builder for method chaining
+         */
         public CursorTransactionBuilder moveDown(int value) {
             actions.add(new MoveDownAction(value));
             return this;
         }
 
+        /**
+         * Builds and returns the CursorTransaction with all added actions.
+         * If the cursor location is invalidated, returns an empty transaction.
+         *
+         * @return the built CursorTransaction
+         */
         public CursorTransaction build() {
             if (buffer.getCursorLocator().isLocationInvalidated()) {
                 return new CursorTransaction(Collections.emptyList());
@@ -271,6 +340,13 @@ public class Line {
     private final Connection connection;
     private final int width;
 
+    /**
+     * Creates a new Line instance representing a command line.
+     *
+     * @param buffer the buffer containing the line content
+     * @param connection the terminal connection for cursor operations
+     * @param width the terminal width in characters
+     */
     public Line(Buffer buffer, Connection connection, int width) {
         this.buffer = buffer;
         this.connection = connection;
@@ -281,7 +357,7 @@ public class Line {
      * Returns a string from the the cursor position to the end of the line. Takes into
      * account multiple lines.
      *
-     * @return
+     * @return the substring from the cursor position to the end of the line
      */
     public String getLineFromCursor() {
         return buffer.asString().substring(buffer.multiCursor());
@@ -301,6 +377,11 @@ public class Line {
         return new CursorTransactionBuilder();
     }
 
+    /**
+     * Gets the cursor locator for this line's buffer.
+     *
+     * @return the cursor locator
+     */
     public CursorLocator getCursorLocator() {
         return buffer.getCursorLocator();
     }

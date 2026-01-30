@@ -45,14 +45,35 @@ public class FileHistory extends InMemoryHistory {
     private final boolean logging;
     private static final Logger LOGGER = LoggerUtil.getLogger(FileHistory.class.getName());
 
+    /**
+     * Creates a FileHistory with the specified file and maximum size.
+     *
+     * @param file the history file
+     * @param maxSize the maximum number of history entries
+     */
     public FileHistory(File file, int maxSize) {
         this(file, maxSize, false);
     }
 
+    /**
+     * Creates a FileHistory with the specified file, maximum size, and logging option.
+     *
+     * @param file the history file
+     * @param maxSize the maximum number of history entries
+     * @param logging whether to log warnings and errors
+     */
     public FileHistory(File file, int maxSize, boolean logging) {
         this(file, maxSize, null, logging);
     }
 
+    /**
+     * Creates a FileHistory with full configuration options.
+     *
+     * @param file the history file
+     * @param maxSize the maximum number of history entries
+     * @param historyFilePermission the file access permissions to set on the history file
+     * @param logging whether to log warnings and errors
+     */
     public FileHistory(File file, int maxSize, FileAccessPermission historyFilePermission,
             boolean logging) {
         super(maxSize);

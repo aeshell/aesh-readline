@@ -40,10 +40,18 @@ public class Prompt {
     private Character mask;
     private int[] ansiString;
 
+    /**
+     * Creates an empty prompt.
+     */
     public Prompt() {
         this.prompt = new int[] {};
     }
 
+    /**
+     * Creates a prompt with the specified text.
+     *
+     * @param prompt the prompt text, or null for an empty prompt
+     */
     public Prompt(String prompt) {
         if (prompt != null)
             this.prompt = Parser.toCodePoints(prompt);
@@ -51,12 +59,23 @@ public class Prompt {
             this.prompt = new int[] {};
     }
 
+    /**
+     * Creates a copy of the specified prompt.
+     *
+     * @param prompt the prompt to copy
+     */
     public Prompt(Prompt prompt) {
         this.prompt = prompt.prompt.clone();
         this.mask = prompt.mask;
         this.ansiString = prompt.ansiString.clone();
     }
 
+    /**
+     * Creates a prompt with the specified text and ANSI formatting.
+     *
+     * @param prompt the prompt text for length calculation, or null for an empty prompt
+     * @param ansiString the ANSI-formatted string for display
+     */
     public Prompt(String prompt, String ansiString) {
         if (prompt != null)
             this.prompt = Parser.toCodePoints(prompt);
@@ -65,6 +84,12 @@ public class Prompt {
         this.ansiString = Parser.toCodePoints(ansiString);
     }
 
+    /**
+     * Creates a prompt with the specified text and input masking character.
+     *
+     * @param prompt the prompt text, or null for an empty prompt
+     * @param mask the character to use for masking input (e.g., for passwords)
+     */
     public Prompt(String prompt, Character mask) {
         if (prompt != null)
             this.prompt = Parser.toCodePoints(prompt);
@@ -73,6 +98,13 @@ public class Prompt {
         this.mask = mask;
     }
 
+    /**
+     * Creates a prompt with the specified text, ANSI formatting, and input masking character.
+     *
+     * @param prompt the prompt text for length calculation, or null for an empty prompt
+     * @param ansiString the ANSI-formatted string for display
+     * @param mask the character to use for masking input (e.g., for passwords)
+     */
     public Prompt(String prompt, String ansiString, Character mask) {
         if (prompt != null)
             this.prompt = Parser.toCodePoints(prompt);
@@ -82,6 +114,12 @@ public class Prompt {
         this.mask = mask;
     }
 
+    /**
+     * Creates a prompt with the specified code points and input masking character.
+     *
+     * @param prompt the prompt as an array of Unicode code points, or null for an empty prompt
+     * @param mask the character to use for masking input (e.g., for passwords)
+     */
     public Prompt(int[] prompt, Character mask) {
         if (prompt != null) {
             this.prompt = new int[prompt.length];
@@ -91,6 +129,11 @@ public class Prompt {
         this.mask = mask;
     }
 
+    /**
+     * Creates a prompt from a TerminalString with ANSI formatting.
+     *
+     * @param terminalString the terminal string containing the prompt, or null for an empty prompt
+     */
     public Prompt(TerminalString terminalString) {
         if (terminalString != null) {
             ansiString = Parser.toCodePoints(terminalString.toString());
@@ -99,15 +142,32 @@ public class Prompt {
             this.prompt = new int[] {};
     }
 
+    /**
+     * Creates a prompt from a list of terminal characters with individual formatting.
+     *
+     * @param characters the list of terminal characters that make up the prompt
+     */
     public Prompt(List<TerminalCharacter> characters) {
         generateOutString(characters);
     }
 
+    /**
+     * Creates a prompt from a list of terminal characters with individual formatting
+     * and an input masking character.
+     *
+     * @param characters the list of terminal characters that make up the prompt
+     * @param mask the character to use for masking input (e.g., for passwords)
+     */
     public Prompt(List<TerminalCharacter> characters, Character mask) {
         this.mask = mask;
         generateOutString(characters);
     }
 
+    /**
+     * Generates the prompt and ANSI strings from a list of terminal characters.
+     *
+     * @param chars the list of terminal characters to process
+     */
     private void generateOutString(List<TerminalCharacter> chars) {
         StringBuilder promptBuilder = new StringBuilder();
         StringBuilder builder = new StringBuilder();
@@ -124,32 +184,67 @@ public class Prompt {
         this.prompt = Parser.toCodePoints(promptBuilder.toString());
     }
 
+    /**
+     * Returns the masking character used for hiding input.
+     *
+     * @return the mask character, or null if masking is not enabled
+     */
     public Character getMask() {
         return mask;
     }
 
+    /**
+     * Checks if input masking is enabled.
+     *
+     * @return true if a mask character is set, false otherwise
+     */
     public boolean isMasking() {
         return mask != null;
     }
 
+    /**
+     * Returns the prompt text as an array of Unicode code points.
+     *
+     * @return the prompt as code points
+     */
     public int[] getPromptAsString() {
         return prompt;
     }
 
+    /**
+     * Returns the length of the prompt in characters.
+     *
+     * @return the prompt length
+     */
     public int getLength() {
         return prompt.length;
     }
 
+    /**
+     * Checks if the prompt has ANSI formatting.
+     *
+     * @return true if ANSI formatting is present, false otherwise
+     */
     public boolean hasANSI() {
         return ansiString != null;
     }
 
+    /**
+     * Returns the ANSI-formatted prompt string, or the plain prompt if no ANSI formatting exists.
+     *
+     * @return the ANSI string as code points, or the plain prompt if no ANSI formatting
+     */
     public int[] getANSI() {
         if (ansiString == null)
             return prompt;
         return ansiString;
     }
 
+    /**
+     * Creates a copy of this prompt.
+     *
+     * @return a new Prompt instance with the same values
+     */
     public Prompt copy() {
         return new Prompt(this);
     }

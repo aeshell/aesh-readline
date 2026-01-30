@@ -28,6 +28,9 @@ import org.aesh.readline.editing.EditMode;
  */
 public class MoveBackwardBigWord extends BackwardBigWord {
 
+    /**
+     * Creates a new MoveBackwardBigWord action.
+     */
     public MoveBackwardBigWord() {
         super(EditMode.Status.MOVE);
     }

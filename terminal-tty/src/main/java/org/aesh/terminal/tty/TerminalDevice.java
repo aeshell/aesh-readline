@@ -31,30 +31,67 @@ import org.aesh.terminal.BaseDevice;
  */
 public class TerminalDevice extends BaseDevice {
 
+    /**
+     * Create a new terminal device with the specified type.
+     *
+     * @param type the terminal type
+     */
     public TerminalDevice(String type) {
         super(type);
     }
 
+    /**
+     * Add an integer capability.
+     *
+     * @param capability the capability to add
+     * @param integer the integer value
+     */
     public void addCapability(Capability capability, Integer integer) {
         this.ints.put(capability, integer);
     }
 
+    /**
+     * Add all integer capabilities from a map.
+     *
+     * @param integers the map of capabilities to integers
+     */
     public void addAllCapabilityInts(Map<Capability, Integer> integers) {
         this.ints.putAll(integers);
     }
 
+    /**
+     * Add a boolean capability.
+     *
+     * @param capability the capability to add
+     */
     public void addCapability(Capability capability) {
         bools.add(capability);
     }
 
+    /**
+     * Add all boolean capabilities from a set.
+     *
+     * @param capabilities the set of capabilities
+     */
     public void addAllCapabilityBooleans(Set<Capability> capabilities) {
         bools.addAll(capabilities);
     }
 
+    /**
+     * Add a string capability.
+     *
+     * @param capability the capability to add
+     * @param s the string value
+     */
     public void addCapability(Capability capability, String s) {
         strings.put(capability, s);
     }
 
+    /**
+     * Add all string capabilities from a map.
+     *
+     * @param strings the map of capabilities to strings
+     */
     public void addAllCapabilityStrings(Map<Capability, String> strings) {
         this.strings.putAll(strings);
     }

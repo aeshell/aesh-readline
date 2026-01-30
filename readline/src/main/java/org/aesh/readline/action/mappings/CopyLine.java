@@ -30,6 +30,12 @@ import org.aesh.readline.action.Action;
  */
 public class CopyLine implements Action {
 
+    /**
+     * Creates a new copy line action.
+     */
+    public CopyLine() {
+    }
+
     @Override
     public String name() {
         return "copy-line";

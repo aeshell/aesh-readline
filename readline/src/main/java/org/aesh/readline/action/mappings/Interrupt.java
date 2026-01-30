@@ -30,6 +30,12 @@ import org.aesh.terminal.tty.Signal;
  */
 public class Interrupt implements Action {
 
+    /**
+     * Creates a new Interrupt action.
+     */
+    public Interrupt() {
+    }
+
     @Override
     public String name() {
         return "interrupt";

@@ -12,22 +12,41 @@ public class IntArrayBuilder {
     private int[] data;
     private int size;
 
+    /**
+     * Create an empty IntArrayBuilder with initial capacity of 1.
+     */
     public IntArrayBuilder() {
         data = new int[1];
         size = 0;
     }
 
+    /**
+     * Create an empty IntArrayBuilder with the specified initial capacity.
+     *
+     * @param size the initial capacity
+     */
     public IntArrayBuilder(int size) {
         data = new int[size];
         this.size = 0;
     }
 
+    /**
+     * Create an IntArrayBuilder initialized with a copy of the given array.
+     *
+     * @param ints the initial values to copy into this builder
+     */
     public IntArrayBuilder(int[] ints) {
         data = new int[ints.length];
         System.arraycopy(ints, 0, data, 0, ints.length);
         size = data.length;
     }
 
+    /**
+     * Append an array of integers to this builder.
+     *
+     * @param str the integers to append
+     * @return this builder for method chaining
+     */
     public IntArrayBuilder append(int[] str) {
         int len = str.length;
         ensureCapacityInternal(size + len);
@@ -36,12 +55,23 @@ public class IntArrayBuilder {
         return this;
     }
 
+    /**
+     * Append a single integer to this builder.
+     *
+     * @param c the integer to append
+     * @return this builder for method chaining
+     */
     public IntArrayBuilder append(int c) {
         ensureCapacityInternal(size + 1);
         data[size++] = c;
         return this;
     }
 
+    /**
+     * Return the contents of this builder as a new int array.
+     *
+     * @return a new array containing all appended integers
+     */
     public int[] toArray() {
         if (size == 0)
             return new int[] {};
@@ -49,10 +79,19 @@ public class IntArrayBuilder {
             return Arrays.copyOf(data, size);
     }
 
+    /**
+     * Return the number of integers currently in this builder.
+     *
+     * @return the current size
+     */
     public int size() {
         return size;
     }
 
+    /**
+     * Remove the last entry from this builder.
+     * If the builder is empty, this method does nothing.
+     */
     public void deleteLastEntry() {
         if (size > 0)
             size--;

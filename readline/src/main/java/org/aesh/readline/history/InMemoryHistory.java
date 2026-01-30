@@ -40,10 +40,18 @@ public class InMemoryHistory extends History {
     private final int maxSize;
     private int[] lastSearchArgument;
 
+    /**
+     * Creates an InMemoryHistory with the default maximum size of 500 entries.
+     */
     public InMemoryHistory() {
         this(500);
     }
 
+    /**
+     * Creates an InMemoryHistory with the specified maximum size.
+     *
+     * @param maxSize the maximum number of history entries, or -1 for unlimited
+     */
     public InMemoryHistory(int maxSize) {
         if (maxSize == -1)
             this.maxSize = Integer.MAX_VALUE;
@@ -141,6 +149,12 @@ public class InMemoryHistory extends History {
             return searchForward(search);
     }
 
+    /**
+     * Searches for an entry in reverse order (from most recent to oldest).
+     *
+     * @param search the search pattern
+     * @return the matching entry, or null if not found
+     */
     private int[] searchReverse(int[] search) {
         if (size() == 0)
             return new int[] {};
@@ -158,6 +172,12 @@ public class InMemoryHistory extends History {
         return null;
     }
 
+    /**
+     * Searches for an entry in forward order (from oldest to most recent).
+     *
+     * @param search the search pattern
+     * @return the matching entry, or null if not found
+     */
     private int[] searchForward(int[] search) {
         if (lastId >= size())
             lastId = 0;

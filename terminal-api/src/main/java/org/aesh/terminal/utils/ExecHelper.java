@@ -35,6 +35,15 @@ public final class ExecHelper {
     private ExecHelper() {
     }
 
+    /**
+     * Wait for a process to complete and capture its output.
+     * Both stdout and stderr are captured and returned as a single string.
+     *
+     * @param p the process to wait for
+     * @return the combined output of stdout and stderr
+     * @throws IOException if an I/O error occurs
+     * @throws InterruptedException if the thread is interrupted while waiting
+     */
     public static String waitAndCapture(Process p) throws IOException, InterruptedException {
         ByteArrayOutputStream bout = new ByteArrayOutputStream();
         InputStream in = null;

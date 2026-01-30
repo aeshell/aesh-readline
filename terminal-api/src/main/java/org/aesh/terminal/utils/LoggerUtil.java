@@ -42,6 +42,12 @@ public class LoggerUtil {
     private static Handler logHandler;
     private static boolean doLog = false;
 
+    /**
+     * Private constructor to prevent instantiation.
+     */
+    private LoggerUtil() {
+    }
+
     private static void createLogHandler(String log) {
         try {
             File logFile = new File(log);
@@ -71,10 +77,22 @@ public class LoggerUtil {
         logHandler.setFormatter(new SimpleFormatter());
     }
 
+    /**
+     * Get a logger for the specified class.
+     *
+     * @param clazz the class to get a logger for
+     * @return the logger
+     */
     public static synchronized Logger getLogger(Class clazz) {
         return getLogger(clazz.getName());
     }
 
+    /**
+     * Get a logger for the specified name.
+     *
+     * @param name the logger name
+     * @return the logger
+     */
     public static synchronized Logger getLogger(String name) {
         if (!doLog) {
             Logger log = Logger.getLogger(name);
@@ -96,6 +114,9 @@ public class LoggerUtil {
         }
     }
 
+    /**
+     * Enable logging and configure all existing loggers to use the file handler.
+     */
     public static synchronized void doLog() {
         if (!doLog) {
             doLog = true;

@@ -21,25 +21,44 @@ package org.aesh.terminal.utils;
 
 import java.io.File;
 
-public class OSUtils {
+/**
+ * Operating system detection and command utilities.
+ */
+public final class OSUtils {
 
+    /**
+     * Private constructor to prevent instantiation.
+     */
+    private OSUtils() {
+    }
+
+    /** True if running on Linux. */
     public static final boolean IS_LINUX = System.getProperty("os.name").toLowerCase().contains("linux");
 
+    /** True if running on Windows. */
     public static final boolean IS_WINDOWS = System.getProperty("os.name").toLowerCase().contains("win");
 
+    /** True if running on Cygwin (Windows with POSIX environment). */
     public static final boolean IS_CYGWIN = IS_WINDOWS
             && System.getenv("PWD") != null
             && System.getenv("PWD").startsWith("/");
 
+    /** True if running on macOS. */
     public static final boolean IS_OSX = System.getProperty("os.name").toLowerCase().contains("mac");
 
+    /** True if running on HP-UX. */
     public static final boolean IS_HPUX = System.getProperty("os.name").toLowerCase().contains("hp-ux");
 
+    /** True if running on SunOS/Solaris. */
     public static final boolean IS_SUNOS = System.getProperty("os.name").toLowerCase().contains("sunos");
 
+    /** Path to the tty command. */
     public static final String TTY_COMMAND;
+    /** Path to the stty command. */
     public static final String STTY_COMMAND;
+    /** The -f/-F option for stty based on OS. */
     public static final String STTY_F_OPTION;
+    /** Path to the infocmp command. */
     public static final String INFOCMP_COMMAND;
 
     static {
