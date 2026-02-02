@@ -809,12 +809,23 @@ public final class Parser {
 
     /**
      * Convert a string to an array of code points.
+     * Uses direct iteration instead of Stream API for better performance.
      *
      * @param s the string to convert
      * @return array of code points
      */
     public static int[] toCodePoints(String s) {
-        return s.codePoints().toArray();
+        if (s == null || s.isEmpty()) {
+            return new int[0];
+        }
+        int[] result = new int[s.codePointCount(0, s.length())];
+        int i = 0;
+        for (int offset = 0; offset < s.length();) {
+            int cp = s.codePointAt(offset);
+            result[i++] = cp;
+            offset += Character.charCount(cp);
+        }
+        return result;
     }
 
     /**

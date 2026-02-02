@@ -35,6 +35,7 @@ import org.aesh.terminal.KeyAction;
 public class ActionDecoder {
 
     private KeyAction[] mappings;
+    private KeyMappingTrie trie;
     private final Queue<KeyAction> actions = new LinkedList<>();
     private int[] buffer = new int[0];
 
@@ -45,6 +46,8 @@ public class ActionDecoder {
      */
     public ActionDecoder(EditMode editMode) {
         this.mappings = editMode.keys();
+        this.trie = new KeyMappingTrie();
+        this.trie.build(this.mappings);
     }
 
     /**
@@ -52,6 +55,8 @@ public class ActionDecoder {
      */
     public ActionDecoder() {
         this.mappings = Key.values();
+        this.trie = new KeyMappingTrie();
+        this.trie.build(this.mappings);
     }
 
     /**
@@ -119,43 +124,42 @@ public class ActionDecoder {
      */
     public void setMappings(EditMode editMode) {
         mappings = editMode.keys();
+        trie.build(mappings);
     }
 
     private KeyAction parse(int[] buffer) {
-        if (buffer.length > 0) {
-            KeyAction candidate = null;
-            int prefixes = 0;
-            next: for (KeyAction action : mappings) {
-                if (action.length() > 0) {
-                    if (action.length() <= buffer.length) {
-                        for (int i = 0; i < action.length(); i++) {
-                            if (action.getCodePointAt(i) != buffer[i]) {
-                                continue next;
-                            }
-                        }
-                        if (candidate != null && candidate.length() > action.length()) {
-                            continue;
-                        }
-                        candidate = action;
-                    } else {
-                        for (int i = 0; i < buffer.length; i++) {
-                            if (action.getCodePointAt(i) != buffer[i]) {
-                                continue next;
-                            }
-                        }
-                        prefixes++;
-                    }
-                }
-            }
-            if (candidate == null) {
-                if (prefixes == 0) {
-                    return new DefaultKeyAction(buffer[0]);
-                }
-            } else {
-                return candidate;
-            }
+        if (buffer.length == 0) {
+            return null;
         }
-        return null;
+
+        // Fast path: single printable character
+        if (buffer.length == 1) {
+            int code = buffer[0];
+            KeyMappingTrie.MatchResult result = trie.matchSingleByte(code);
+            if (result.action != null) {
+                return result.action;
+            }
+            if (!result.hasPrefix) {
+                return new DefaultKeyAction(code);
+            }
+            // Has prefix - wait for more input
+            return null;
+        }
+
+        // Full trie lookup for multi-byte sequences
+        KeyMappingTrie.MatchResult result = trie.match(buffer);
+
+        if (result.action != null) {
+            return result.action;
+        }
+
+        if (result.hasPrefix) {
+            // Buffer is prefix of a longer sequence - wait for more input
+            return null;
+        }
+
+        // No match and not a prefix - return single character
+        return new DefaultKeyAction(buffer[0]);
     }
 
     private class DefaultKeyAction implements KeyAction {

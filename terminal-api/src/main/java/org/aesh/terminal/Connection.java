@@ -30,6 +30,7 @@ import org.aesh.terminal.tty.Signal;
 import org.aesh.terminal.tty.Size;
 import org.aesh.terminal.utils.ANSI;
 import org.aesh.terminal.utils.ColorDepth;
+import org.aesh.terminal.utils.Parser;
 import org.aesh.terminal.utils.TerminalColorCapability;
 
 /**
@@ -200,8 +201,7 @@ public interface Connection extends AutoCloseable {
      * @return this connection
      */
     default Connection write(String s) {
-        int[] codePoints = s.codePoints().toArray();
-        stdoutHandler().accept(codePoints);
+        stdoutHandler().accept(Parser.toCodePoints(s));
         return this;
     }
 

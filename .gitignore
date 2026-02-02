@@ -30,3 +30,5 @@ classes
 # ignore maven backup files
 *.versionsBackup
 dependency-reduced-pom.xml
+
+*.factorypath
