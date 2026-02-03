@@ -349,6 +349,42 @@ public class TerminalColor {
                 : new TerminalColor(Color.WHITE, Color.DEFAULT, Color.Intensity.NORMAL);
     }
 
+    /**
+     * Create a TerminalColor appropriate for timestamps in log output.
+     * <p>
+     * Uses cyan tones that are subdued compared to the main message content,
+     * making timestamps visible but not distracting.
+     *
+     * @param capability the detected terminal color capability
+     * @return a TerminalColor suitable for timestamps
+     */
+    public static TerminalColor forTimestamp(TerminalColorCapability capability) {
+        if (capability == null || capability.getTheme() == TerminalTheme.UNKNOWN) {
+            return new TerminalColor(Color.CYAN, Color.DEFAULT, Color.Intensity.BRIGHT);
+        }
+        return capability.getTheme().isLight()
+                ? new TerminalColor(Color.CYAN, Color.DEFAULT, Color.Intensity.NORMAL)
+                : new TerminalColor(Color.CYAN, Color.DEFAULT, Color.Intensity.BRIGHT);
+    }
+
+    /**
+     * Create a TerminalColor appropriate for highlighted messages in log output.
+     * <p>
+     * Uses magenta tones that stand out from regular text and other log elements,
+     * suitable for emphasizing important message content.
+     *
+     * @param capability the detected terminal color capability
+     * @return a TerminalColor suitable for highlighted messages
+     */
+    public static TerminalColor forMessage(TerminalColorCapability capability) {
+        if (capability == null || capability.getTheme() == TerminalTheme.UNKNOWN) {
+            return new TerminalColor(Color.MAGENTA, Color.DEFAULT, Color.Intensity.BRIGHT);
+        }
+        return capability.getTheme().isLight()
+                ? new TerminalColor(Color.MAGENTA, Color.DEFAULT, Color.Intensity.NORMAL)
+                : new TerminalColor(Color.MAGENTA, Color.DEFAULT, Color.Intensity.BRIGHT);
+    }
+
     // ==================== Color Depth Aware Methods ====================
 
     /**

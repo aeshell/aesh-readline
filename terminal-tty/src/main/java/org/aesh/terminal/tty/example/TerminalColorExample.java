@@ -89,44 +89,55 @@ public class TerminalColorExample {
      * @param connection the terminal connection to use for output
      */
     private static void runExample(TerminalConnection connection) {
+        // First, do environment-based detection to get capability for the builder
+        TerminalColorCapability envCap = TerminalColorCapability.detectFromEnvironment();
+
+        // Detect with OSC queries for full capability
+        TerminalColorCapability fullCap = TerminalColorDetector.detect(connection);
+
+        // Create a single reusable ANSIBuilder with the detected capability
+        ANSIBuilder builder = ANSIBuilder.builder(fullCap);
+
         connection.write("\n");
-        connection.write(ANSIBuilder.builder().bold("=== Terminal Color Detection Example ===").toString() + "\n");
+        connection.write(builder.bold("=== Terminal Color Detection Example ===").toLine());
         connection.write("\n");
 
         // First, show environment-based detection (fast, no terminal query)
-        connection.write(ANSIBuilder.builder().bold("1. Environment-Based Detection (Fast)").toString() + "\n");
+        builder.reset();
+        connection.write(builder.bold("1. Environment-Based Detection (Fast)").toLine());
         connection.write("   This uses environment variables only, no terminal queries.\n");
         connection.write("\n");
 
-        TerminalColorCapability envCap = TerminalColorCapability.detectFromEnvironment();
         printCapability(connection, "   ", envCap);
 
         connection.write("\n");
-        connection.write(ANSIBuilder.builder().bold("2. Full Detection with Terminal Query").toString() + "\n");
+        builder.reset();
+        connection.write(builder.bold("2. Full Detection with Terminal Query").toLine());
         connection.write("   This queries the terminal for actual colors using OSC sequences.\n");
         connection.write("\n");
 
-        // Detect with OSC queries
-        TerminalColorCapability fullCap = TerminalColorDetector.detect(connection);
         printCapability(connection, "   ", fullCap);
 
         connection.write("\n");
-        connection.write(ANSIBuilder.builder().bold("3. Color Demonstration").toString() + "\n");
+        builder.reset();
+        connection.write(builder.bold("3. Color Demonstration").toLine());
         connection.write("   Using suggested colors based on detected theme:\n");
         connection.write("\n");
 
-        demonstrateColors(connection, fullCap);
+        demonstrateColors(connection, builder);
 
         connection.write("\n");
-        connection.write(ANSIBuilder.builder().bold("4. Color Depth Capabilities").toString() + "\n");
+        builder.reset();
+        connection.write(builder.bold("4. Color Depth Capabilities").toLine());
         connection.write("\n");
 
-        demonstrateColorDepth(connection, fullCap.getColorDepth());
+        demonstrateColorDepth(connection, builder, fullCap.getColorDepth());
 
         connection.write("\n");
-        connection.write(ANSIBuilder.builder().bold("5. Environment Variables").toString() + "\n");
+        builder.reset();
+        connection.write(builder.bold("5. Environment Variables").toLine());
         connection.write("\n");
-        printEnvironmentVariables(connection);
+        printEnvironmentVariables(connection, builder);
 
         connection.write("\n");
     }
@@ -178,71 +189,101 @@ public class TerminalColorExample {
      * Demonstrates suggested colors for various message types based on terminal theme.
      *
      * @param connection the terminal connection to use for output
-     * @param cap the terminal color capability containing theme information
+     * @param builder the reusable ANSIBuilder instance
      */
-    private static void demonstrateColors(TerminalConnection connection, TerminalColorCapability cap) {
+    private static void demonstrateColors(TerminalConnection connection, ANSIBuilder builder) {
         String indent = "   ";
 
-        // Normal text
-        int fg = cap.getSuggestedForegroundCode();
-        connection.write(indent + "\u001B[" + fg + "mNormal text (code " + fg + ")" + ANSI.RESET + "\n");
+        // Normal text - use textCode for suggested foreground
+        builder.reset();
+        connection.write(builder.append(indent).textCode(37).append("Normal text (code 37)").toLine());
 
-        // Error
-        int error = cap.getSuggestedErrorCode();
-        connection.write(indent + "\u001B[" + error + "mError message (code " + error + ")" + ANSI.RESET + "\n");
+        // Error - uses bright red for dark themes, dark red for light themes
+        builder.reset();
+        connection.write(builder.append(indent).error("Error message").toLine());
 
-        // Success
-        int success = cap.getSuggestedSuccessCode();
-        connection.write(indent + "\u001B[" + success + "mSuccess message (code " + success + ")" + ANSI.RESET + "\n");
+        // Success - uses bright green for dark themes, dark green for light themes
+        builder.reset();
+        connection.write(builder.append(indent).success("Success message").toLine());
 
-        // Warning
-        int warning = cap.getSuggestedWarningCode();
-        connection.write(indent + "\u001B[" + warning + "mWarning message (code " + warning + ")" + ANSI.RESET + "\n");
+        // Warning - uses bright yellow for dark themes, dark yellow for light themes
+        builder.reset();
+        connection.write(builder.append(indent).warning("Warning message").toLine());
 
-        // Info
-        int info = cap.getSuggestedInfoCode();
-        connection.write(indent + "\u001B[" + info + "mInfo message (code " + info + ")" + ANSI.RESET + "\n");
+        // Info - uses bright blue for dark themes, dark blue for light themes
+        builder.reset();
+        connection.write(builder.append(indent).info("Info message").toLine());
+
+        // Timestamp - uses bright cyan for dark themes, dark cyan for light themes
+        builder.reset();
+        connection.write(builder.append(indent).timestamp("Timestamp").toLine());
+
+        // Message - uses bright magenta for dark themes, dark magenta for light themes
+        builder.reset();
+        connection.write(builder.append(indent).message("Highlighted message").toLine());
+
+        // Combined log line example using ANSIBuilder chaining
+        connection.write("\n");
+        builder.reset();
+        connection.write(builder.append(indent).append("Example log output:\n").toString());
+        builder.reset();
+        connection.write(builder.append(indent)
+                .timestamp("2024-01-15 10:30:45").append(" ")
+                .success("[INFO]").append(" ")
+                .message("Application started successfully")
+                .toLine());
     }
 
     /**
      * Demonstrates the color depth capabilities of the terminal.
      *
      * @param connection the terminal connection to use for output
+     * @param builder the reusable ANSIBuilder instance
      * @param depth the color depth capability of the terminal
      */
-    private static void demonstrateColorDepth(TerminalConnection connection, ColorDepth depth) {
+    private static void demonstrateColorDepth(TerminalConnection connection, ANSIBuilder builder, ColorDepth depth) {
         String indent = "   ";
 
-        connection.write(indent + "Supports any color:  " + (depth.supportsColor() ? "Yes" : "No") + "\n");
-        connection.write(indent + "Supports 16 colors:  " + (depth.supports16Colors() ? "Yes" : "No") + "\n");
-        connection.write(indent + "Supports 256 colors: " + (depth.supports256Colors() ? "Yes" : "No") + "\n");
-        connection.write(indent + "Supports true color: " + (depth.supportsTrueColor() ? "Yes" : "No") + "\n");
+        builder.reset();
+        connection.write(builder.append(indent).append("Supports any color:  ")
+                .append(depth.supportsColor() ? "Yes" : "No").toLine());
+        builder.reset();
+        connection.write(builder.append(indent).append("Supports 16 colors:  ")
+                .append(depth.supports16Colors() ? "Yes" : "No").toLine());
+        builder.reset();
+        connection.write(builder.append(indent).append("Supports 256 colors: ")
+                .append(depth.supports256Colors() ? "Yes" : "No").toLine());
+        builder.reset();
+        connection.write(builder.append(indent).append("Supports true color: ")
+                .append(depth.supportsTrueColor() ? "Yes" : "No").toLine());
 
         if (depth.supports256Colors()) {
             connection.write("\n");
-            connection.write(indent + "256-color palette sample:\n");
-            StringBuilder palette = new StringBuilder(indent);
-            // Show a sample of the 256-color palette (colors 16-51)
+            builder.reset();
+            connection.write(builder.append(indent).append("256-color palette sample:").toLine());
+            // Build palette using bg256 for each color
+            builder.reset();
+            builder.append(indent);
             for (int i = 16; i < 52; i++) {
-                palette.append("\u001B[48;5;").append(i).append("m  ");
+                builder.bg256(i).append("  ");
             }
-            palette.append(ANSI.RESET).append("\n");
-            connection.write(palette.toString());
+            connection.write(builder.toLine());
         }
 
         if (depth.supportsTrueColor()) {
             connection.write("\n");
-            connection.write(indent + "True color gradient sample:\n");
-            StringBuilder gradient = new StringBuilder(indent);
-            // Show a rainbow gradient
+            builder.reset();
+            connection.write(builder.append(indent).append("True color gradient sample:").toLine());
+            // Build gradient using bgRgb for each color
+            builder.reset();
+            builder.append(indent);
             for (int i = 0; i < 36; i++) {
                 int r = (int) (Math.sin(0.1 * i + 0) * 127 + 128);
                 int g = (int) (Math.sin(0.1 * i + 2) * 127 + 128);
                 int b = (int) (Math.sin(0.1 * i + 4) * 127 + 128);
-                gradient.append("\u001B[48;2;").append(r).append(";").append(g).append(";").append(b).append("m ");
+                builder.bgRgb(r, g, b).append(" ");
             }
-            gradient.append(ANSI.RESET).append("\n");
-            connection.write(gradient.toString());
+            connection.write(builder.toLine());
         }
     }
 
@@ -250,13 +291,15 @@ public class TerminalColorExample {
      * Prints relevant environment variables used for terminal detection.
      *
      * @param connection the terminal connection to use for output
+     * @param builder the reusable ANSIBuilder instance
      */
-    private static void printEnvironmentVariables(TerminalConnection connection) {
+    private static void printEnvironmentVariables(TerminalConnection connection, ANSIBuilder builder) {
         String indent = "   ";
 
         // First, show detected terminal type
         String detectedTerminal = detectTerminalType();
-        connection.write(indent + ANSIBuilder.builder().bold("Detected Terminal: " + detectedTerminal).toString() + "\n");
+        builder.reset();
+        connection.write(builder.append(indent).bold("Detected Terminal: " + detectedTerminal).toLine());
         connection.write("\n");
 
         String[] vars = { "TERM", "COLORTERM", "COLORFGBG", "TERM_PROGRAM",
@@ -273,33 +316,43 @@ public class TerminalColorExample {
                 if (value.length() > 50) {
                     value = value.substring(0, 47) + "...";
                 }
-                connection.write(indent + var + " = " + value + "\n");
+                builder.reset();
+                connection.write(builder.append(indent).append(var).append(" = ").append(value).toLine());
             }
         }
 
         connection.write("\n");
-        connection.write(indent + "OSC query supported: " +
-                (TerminalColorDetector.isOscColorQuerySupported() ? "Yes" : "No") + "\n");
-        connection.write(indent + "Running in multiplexer: " +
-                (TerminalColorDetector.isRunningInMultiplexer() ? "Yes" : "No") + "\n");
-        connection.write(indent + "Tmux passthrough: " +
-                (TerminalColorDetector.shouldUseTmuxPassthrough() ? "Yes" : "No") + "\n");
+        builder.reset();
+        connection.write(builder.append(indent).append("OSC query supported: ")
+                .append(TerminalColorDetector.isOscColorQuerySupported() ? "Yes" : "No").toLine());
+        builder.reset();
+        connection.write(builder.append(indent).append("Running in multiplexer: ")
+                .append(TerminalColorDetector.isRunningInMultiplexer() ? "Yes" : "No").toLine());
+        builder.reset();
+        connection.write(builder.append(indent).append("Tmux passthrough: ")
+                .append(TerminalColorDetector.shouldUseTmuxPassthrough() ? "Yes" : "No").toLine());
 
         // Additional info for JetBrains
         String terminalEmulator = System.getenv("TERMINAL_EMULATOR");
         if (terminalEmulator != null && terminalEmulator.toLowerCase().contains("jetbrains")) {
             connection.write("\n");
-            connection.write(indent + ANSIBuilder.builder().faint("JetBrains IDE detected - theme read from config files")
-                    .toString() + "\n");
+            builder.reset();
+            connection.write(builder.append(indent)
+                    .faint("JetBrains IDE detected - theme read from config files").toLine());
         }
 
         // Additional info if in tmux
         if (TerminalColorDetector.isRunningInTmux()) {
             connection.write("\n");
-            connection.write(indent + ANSIBuilder.builder().faint("Tip: If colors are not detected in tmux, try:")
-                    .toString() + "\n");
-            connection.write(indent + ANSIBuilder.builder().faint("  1. tmux set -g allow-passthrough on").toString() + "\n");
-            connection.write(indent + ANSIBuilder.builder().faint("  2. export TMUX_PASSTHROUGH=1").toString() + "\n");
+            builder.reset();
+            connection.write(builder.append(indent)
+                    .faint("Tip: If colors are not detected in tmux, try:").toLine());
+            builder.reset();
+            connection.write(builder.append(indent)
+                    .faint("  1. tmux set -g allow-passthrough on").toLine());
+            builder.reset();
+            connection.write(builder.append(indent)
+                    .faint("  2. export TMUX_PASSTHROUGH=1").toLine());
         }
 
         // Additional info for Windows cmd.exe
@@ -307,15 +360,18 @@ public class TerminalColorExample {
         if (osName.contains("win") && System.getenv("WT_SESSION") == null &&
                 System.getenv("ConEmuPID") == null) {
             connection.write("\n");
-            connection.write(indent + ANSIBuilder.builder().faint("Windows Build: " + getWindowsBuildInfo()).toString() + "\n");
-            connection.write(
-                    indent + ANSIBuilder.builder().faint("Note: Windows cmd.exe does not support OSC color queries.").toString()
-                            + "\n");
-            connection.write(
-                    indent + ANSIBuilder.builder().faint("Theme detection uses Windows registry settings.").toString() + "\n");
-            connection.write(indent
-                    + ANSIBuilder.builder().faint("For better color support, consider using Windows Terminal.").toString()
-                    + "\n");
+            builder.reset();
+            connection.write(builder.append(indent)
+                    .faint("Windows Build: " + getWindowsBuildInfo()).toLine());
+            builder.reset();
+            connection.write(builder.append(indent)
+                    .faint("Note: Windows cmd.exe does not support OSC color queries.").toLine());
+            builder.reset();
+            connection.write(builder.append(indent)
+                    .faint("Theme detection uses Windows registry settings.").toLine());
+            builder.reset();
+            connection.write(builder.append(indent)
+                    .faint("For better color support, consider using Windows Terminal.").toLine());
         }
     }
 

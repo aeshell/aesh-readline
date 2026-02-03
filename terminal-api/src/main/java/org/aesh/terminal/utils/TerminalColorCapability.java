@@ -43,6 +43,15 @@ public class TerminalColorCapability {
     private final int[] foregroundRGB;
     private final int[] backgroundRGB;
 
+    // Custom color overrides (null means use theme-based default)
+    private final Integer foregroundCodeOverride;
+    private final Integer errorCodeOverride;
+    private final Integer successCodeOverride;
+    private final Integer warningCodeOverride;
+    private final Integer infoCodeOverride;
+    private final Integer timestampCodeOverride;
+    private final Integer messageCodeOverride;
+
     /**
      * Create a new TerminalColorCapability with all detected values.
      *
@@ -57,6 +66,31 @@ public class TerminalColorCapability {
         this.theme = theme != null ? theme : TerminalTheme.UNKNOWN;
         this.foregroundRGB = foregroundRGB;
         this.backgroundRGB = backgroundRGB;
+        // No overrides in this constructor
+        this.foregroundCodeOverride = null;
+        this.errorCodeOverride = null;
+        this.successCodeOverride = null;
+        this.warningCodeOverride = null;
+        this.infoCodeOverride = null;
+        this.timestampCodeOverride = null;
+        this.messageCodeOverride = null;
+    }
+
+    /**
+     * Private constructor used by the Builder.
+     */
+    private TerminalColorCapability(Builder builder) {
+        this.colorDepth = builder.colorDepth != null ? builder.colorDepth : ColorDepth.COLORS_8;
+        this.theme = builder.theme != null ? builder.theme : TerminalTheme.UNKNOWN;
+        this.foregroundRGB = builder.foregroundRGB;
+        this.backgroundRGB = builder.backgroundRGB;
+        this.foregroundCodeOverride = builder.foregroundCodeOverride;
+        this.errorCodeOverride = builder.errorCodeOverride;
+        this.successCodeOverride = builder.successCodeOverride;
+        this.warningCodeOverride = builder.warningCodeOverride;
+        this.infoCodeOverride = builder.infoCodeOverride;
+        this.timestampCodeOverride = builder.timestampCodeOverride;
+        this.messageCodeOverride = builder.messageCodeOverride;
     }
 
     /**
@@ -248,22 +282,27 @@ public class TerminalColorCapability {
     /**
      * Get the suggested foreground ANSI color code for text based on the theme.
      * <p>
-     * Returns a color that contrasts well with the detected background:
+     * If a custom foreground code was set via the {@link Builder}, it is returned.
+     * Otherwise, returns a color that contrasts well with the detected background:
      * <ul>
      * <li>For dark themes: suggests white/light gray (37)</li>
      * <li>For light themes: suggests black/dark gray (30)</li>
      * </ul>
      *
-     * @return ANSI color code (30-37) for suggested foreground
+     * @return ANSI color code for suggested foreground
      */
     public int getSuggestedForegroundCode() {
+        if (foregroundCodeOverride != null) {
+            return foregroundCodeOverride;
+        }
         return theme.isLight() ? 30 : 37; // black for light bg, white for dark bg
     }
 
     /**
      * Get the suggested "error" foreground ANSI color code.
      * <p>
-     * Returns a red variant that contrasts well with the detected background:
+     * If a custom error code was set via the {@link Builder}, it is returned.
+     * Otherwise, returns a red variant that contrasts well with the detected background:
      * <ul>
      * <li>For dark themes: bright red (91)</li>
      * <li>For light themes: dark red (31)</li>
@@ -272,40 +311,95 @@ public class TerminalColorCapability {
      * @return ANSI color code for suggested error foreground
      */
     public int getSuggestedErrorCode() {
+        if (errorCodeOverride != null) {
+            return errorCodeOverride;
+        }
         return theme.isLight() ? 31 : 91; // dark red for light bg, bright red for dark bg
     }
 
     /**
      * Get the suggested "success" foreground ANSI color code.
      * <p>
-     * Returns a green variant that contrasts well with the detected background.
+     * If a custom success code was set via the {@link Builder}, it is returned.
+     * Otherwise, returns a green variant that contrasts well with the detected background.
      *
      * @return ANSI color code for suggested success foreground
      */
     public int getSuggestedSuccessCode() {
+        if (successCodeOverride != null) {
+            return successCodeOverride;
+        }
         return theme.isLight() ? 32 : 92; // dark green for light bg, bright green for dark bg
     }
 
     /**
      * Get the suggested "warning" foreground ANSI color code.
      * <p>
-     * Returns a yellow variant that contrasts well with the detected background.
+     * If a custom warning code was set via the {@link Builder}, it is returned.
+     * Otherwise, returns a yellow variant that contrasts well with the detected background.
      *
      * @return ANSI color code for suggested warning foreground
      */
     public int getSuggestedWarningCode() {
+        if (warningCodeOverride != null) {
+            return warningCodeOverride;
+        }
         return theme.isLight() ? 33 : 93; // dark yellow for light bg, bright yellow for dark bg
     }
 
     /**
      * Get the suggested "info" foreground ANSI color code.
      * <p>
-     * Returns a cyan/blue variant that contrasts well with the detected background.
+     * If a custom info code was set via the {@link Builder}, it is returned.
+     * Otherwise, returns a cyan/blue variant that contrasts well with the detected background.
      *
      * @return ANSI color code for suggested info foreground
      */
     public int getSuggestedInfoCode() {
+        if (infoCodeOverride != null) {
+            return infoCodeOverride;
+        }
         return theme.isLight() ? 34 : 94; // dark blue for light bg, bright blue for dark bg
+    }
+
+    /**
+     * Get the suggested "timestamp" foreground ANSI color code.
+     * <p>
+     * If a custom timestamp code was set via the {@link Builder}, it is returned.
+     * Otherwise, returns a cyan variant that is subdued compared to the main message,
+     * commonly used for timestamps in log output.
+     * <ul>
+     * <li>For dark themes: bright cyan (96)</li>
+     * <li>For light themes: dark cyan (36)</li>
+     * </ul>
+     *
+     * @return ANSI color code for suggested timestamp foreground
+     */
+    public int getSuggestedTimestampCode() {
+        if (timestampCodeOverride != null) {
+            return timestampCodeOverride;
+        }
+        return theme.isLight() ? 36 : 96; // dark cyan for light bg, bright cyan for dark bg
+    }
+
+    /**
+     * Get the suggested "message" foreground ANSI color code.
+     * <p>
+     * If a custom message code was set via the {@link Builder}, it is returned.
+     * Otherwise, returns a magenta variant that stands out for highlighted messages
+     * in log output.
+     * <ul>
+     * <li>For dark themes: bright magenta (95)</li>
+     * <li>For light themes: dark magenta (35)</li>
+     * </ul>
+     *
+     * @return ANSI color code for suggested message foreground
+     */
+    public int getSuggestedMessageCode() {
+        if (messageCodeOverride != null) {
+            return messageCodeOverride;
+        }
+        return theme.isLight() ? 35 : 95; // dark magenta for light bg, bright magenta for dark bg
     }
 
     /**
@@ -429,5 +523,265 @@ public class TerminalColorCapability {
         return new TerminalColorCapability(
                 detectColorDepthFromEnvironment(),
                 detectThemeFromEnvironment());
+    }
+
+    /**
+     * Create a new Builder for constructing a customized TerminalColorCapability.
+     * <p>
+     * Example usage:
+     *
+     * <pre>
+     * TerminalColorCapability cap = TerminalColorCapability.builder()
+     *         .colorDepth(ColorDepth.COLORS_256)
+     *         .theme(TerminalTheme.DARK)
+     *         .errorCode(196) // Custom 256-color red
+     *         .successCode(46) // Custom 256-color green
+     *         .timestampCode(244) // Custom gray for timestamps
+     *         .build();
+     * </pre>
+     *
+     * @return a new Builder instance
+     */
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    /**
+     * Create a new Builder initialized with values from an existing capability.
+     * <p>
+     * This allows you to start with detected values and customize specific colors:
+     *
+     * <pre>
+     * TerminalColorCapability detected = TerminalColorDetector.detect(connection);
+     * TerminalColorCapability custom = TerminalColorCapability.builder(detected)
+     *         .errorCode(196) // Override just the error color
+     *         .build();
+     * </pre>
+     *
+     * @param base the existing capability to copy values from
+     * @return a new Builder initialized with the base capability's values
+     */
+    public static Builder builder(TerminalColorCapability base) {
+        return new Builder(base);
+    }
+
+    /**
+     * Builder for creating customized TerminalColorCapability instances.
+     * <p>
+     * The builder allows overriding the suggested color codes for semantic
+     * color types (error, success, warning, info, timestamp, message).
+     * Any color not explicitly set will use the theme-based default.
+     */
+    public static class Builder {
+        private ColorDepth colorDepth;
+        private TerminalTheme theme;
+        private int[] foregroundRGB;
+        private int[] backgroundRGB;
+        private Integer foregroundCodeOverride;
+        private Integer errorCodeOverride;
+        private Integer successCodeOverride;
+        private Integer warningCodeOverride;
+        private Integer infoCodeOverride;
+        private Integer timestampCodeOverride;
+        private Integer messageCodeOverride;
+
+        /**
+         * Create a new empty Builder.
+         */
+        public Builder() {
+        }
+
+        /**
+         * Create a Builder initialized with values from an existing capability.
+         *
+         * @param base the capability to copy values from
+         */
+        public Builder(TerminalColorCapability base) {
+            if (base != null) {
+                this.colorDepth = base.colorDepth;
+                this.theme = base.theme;
+                this.foregroundRGB = base.foregroundRGB;
+                this.backgroundRGB = base.backgroundRGB;
+                this.foregroundCodeOverride = base.foregroundCodeOverride;
+                this.errorCodeOverride = base.errorCodeOverride;
+                this.successCodeOverride = base.successCodeOverride;
+                this.warningCodeOverride = base.warningCodeOverride;
+                this.infoCodeOverride = base.infoCodeOverride;
+                this.timestampCodeOverride = base.timestampCodeOverride;
+                this.messageCodeOverride = base.messageCodeOverride;
+            }
+        }
+
+        /**
+         * Set the color depth capability.
+         *
+         * @param colorDepth the color depth
+         * @return this builder for method chaining
+         */
+        public Builder colorDepth(ColorDepth colorDepth) {
+            this.colorDepth = colorDepth;
+            return this;
+        }
+
+        /**
+         * Set the terminal theme.
+         *
+         * @param theme the terminal theme
+         * @return this builder for method chaining
+         */
+        public Builder theme(TerminalTheme theme) {
+            this.theme = theme;
+            return this;
+        }
+
+        /**
+         * Set the foreground RGB color.
+         *
+         * @param rgb the RGB array [r, g, b] with values 0-255
+         * @return this builder for method chaining
+         */
+        public Builder foregroundRGB(int[] rgb) {
+            this.foregroundRGB = rgb;
+            return this;
+        }
+
+        /**
+         * Set the background RGB color.
+         *
+         * @param rgb the RGB array [r, g, b] with values 0-255
+         * @return this builder for method chaining
+         */
+        public Builder backgroundRGB(int[] rgb) {
+            this.backgroundRGB = rgb;
+            return this;
+        }
+
+        /**
+         * Override the suggested foreground color code.
+         *
+         * @param code the ANSI color code to use for normal foreground text
+         * @return this builder for method chaining
+         */
+        public Builder foregroundCode(int code) {
+            this.foregroundCodeOverride = code;
+            return this;
+        }
+
+        /**
+         * Override the suggested error color code.
+         * <p>
+         * Common values:
+         * <ul>
+         * <li>31: dark red (good for light backgrounds)</li>
+         * <li>91: bright red (good for dark backgrounds)</li>
+         * <li>196: 256-color bright red</li>
+         * </ul>
+         *
+         * @param code the ANSI color code to use for error messages
+         * @return this builder for method chaining
+         */
+        public Builder errorCode(int code) {
+            this.errorCodeOverride = code;
+            return this;
+        }
+
+        /**
+         * Override the suggested success color code.
+         * <p>
+         * Common values:
+         * <ul>
+         * <li>32: dark green (good for light backgrounds)</li>
+         * <li>92: bright green (good for dark backgrounds)</li>
+         * <li>46: 256-color bright green</li>
+         * </ul>
+         *
+         * @param code the ANSI color code to use for success messages
+         * @return this builder for method chaining
+         */
+        public Builder successCode(int code) {
+            this.successCodeOverride = code;
+            return this;
+        }
+
+        /**
+         * Override the suggested warning color code.
+         * <p>
+         * Common values:
+         * <ul>
+         * <li>33: dark yellow/orange (good for light backgrounds)</li>
+         * <li>93: bright yellow (good for dark backgrounds)</li>
+         * <li>208: 256-color orange</li>
+         * </ul>
+         *
+         * @param code the ANSI color code to use for warning messages
+         * @return this builder for method chaining
+         */
+        public Builder warningCode(int code) {
+            this.warningCodeOverride = code;
+            return this;
+        }
+
+        /**
+         * Override the suggested info color code.
+         * <p>
+         * Common values:
+         * <ul>
+         * <li>34: dark blue (good for light backgrounds)</li>
+         * <li>94: bright blue (good for dark backgrounds)</li>
+         * <li>39: 256-color light blue</li>
+         * </ul>
+         *
+         * @param code the ANSI color code to use for info messages
+         * @return this builder for method chaining
+         */
+        public Builder infoCode(int code) {
+            this.infoCodeOverride = code;
+            return this;
+        }
+
+        /**
+         * Override the suggested timestamp color code.
+         * <p>
+         * Common values:
+         * <ul>
+         * <li>36: dark cyan (good for light backgrounds)</li>
+         * <li>96: bright cyan (good for dark backgrounds)</li>
+         * <li>244: 256-color gray (subdued)</li>
+         * </ul>
+         *
+         * @param code the ANSI color code to use for timestamps
+         * @return this builder for method chaining
+         */
+        public Builder timestampCode(int code) {
+            this.timestampCodeOverride = code;
+            return this;
+        }
+
+        /**
+         * Override the suggested message color code.
+         * <p>
+         * Common values:
+         * <ul>
+         * <li>35: dark magenta (good for light backgrounds)</li>
+         * <li>95: bright magenta (good for dark backgrounds)</li>
+         * <li>255: 256-color white</li>
+         * </ul>
+         *
+         * @param code the ANSI color code to use for highlighted messages
+         * @return this builder for method chaining
+         */
+        public Builder messageCode(int code) {
+            this.messageCodeOverride = code;
+            return this;
+        }
+
+        /**
+         * Build the TerminalColorCapability with the configured values.
+         *
+         * @return a new TerminalColorCapability instance
+         */
+        public TerminalColorCapability build() {
+            return new TerminalColorCapability(this);
+        }
     }
 }

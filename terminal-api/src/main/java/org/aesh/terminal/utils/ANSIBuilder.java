@@ -22,6 +22,36 @@ package org.aesh.terminal.utils;
 /**
  * A fluent builder for constructing ANSI escape sequences for terminal text formatting.
  * Supports colors, text styles (bold, italic, underline, etc.), and various text effects.
+ * <p>
+ * Basic usage:
+ *
+ * <pre>
+ * String output = ANSIBuilder.builder()
+ *         .bold().redText("Error: ").boldOff()
+ *         .append("Something went wrong")
+ *         .toString();
+ * </pre>
+ * <p>
+ * Theme-aware usage with semantic colors:
+ *
+ * <pre>
+ * TerminalColorCapability cap = TerminalColorCapability.detectFromEnvironment();
+ * String output = ANSIBuilder.builder(cap)
+ *         .timestamp("2024-01-15 10:30:45").append(" ")
+ *         .success("[INFO]").append(" ")
+ *         .message("Application started")
+ *         .toString();
+ * </pre>
+ * <p>
+ * Extended color support:
+ *
+ * <pre>
+ * ANSIBuilder.builder()
+ *         .bright().redText("Bright red") // Bright color variant
+ *         .color256(208).append("Orange") // 256-color palette
+ *         .rgb(255, 100, 50).append("Custom") // True color RGB
+ *         .toString();
+ * </pre>
  *
  * @author <a href="mailto:stalep@gmail.com">Ståle Pedersen</a>
  */
@@ -37,9 +67,24 @@ public class ANSIBuilder {
     private Color text = Color.DEFAULT;
     private boolean havePrintedColor = false;
 
+    // Extended color support
+    private TerminalColorCapability capability;
+    private boolean bright = false;
+    private Integer textCode = null; // Raw ANSI code (30-37, 90-97)
+    private Integer bgCode = null; // Raw ANSI code (40-47, 100-107)
+    private Integer text256 = null; // 256-color palette index
+    private Integer bg256 = null; // 256-color palette index
+    private int[] textRgb = null; // True color RGB
+    private int[] bgRgb = null; // True color RGB
+
     private ANSIBuilder(boolean enableAnsi) {
         ansi = enableAnsi;
         b = new StringBuilder();
+    }
+
+    private ANSIBuilder(boolean enableAnsi, TerminalColorCapability capability) {
+        this(enableAnsi);
+        this.capability = capability;
     }
 
     /**
@@ -61,6 +106,21 @@ public class ANSIBuilder {
         return new ANSIBuilder(enableAnsi);
     }
 
+    /**
+     * Creates a new theme-aware ANSIBuilder with terminal color capability.
+     * <p>
+     * When a capability is provided, semantic color methods like {@link #error()},
+     * {@link #success()}, {@link #timestamp()}, etc. will automatically choose
+     * appropriate color intensities based on the terminal's theme (light or dark).
+     *
+     * @param capability the detected terminal color capability
+     * @return a new ANSIBuilder instance configured for the terminal
+     */
+    public static ANSIBuilder builder(TerminalColorCapability capability) {
+        boolean enableAnsi = capability != null && capability.supportsAnsiColors();
+        return new ANSIBuilder(enableAnsi, capability);
+    }
+
     private void checkColor() {
         if (ansi && !havePrintedColor) {
             havePrintedColor = true;
@@ -69,17 +129,75 @@ public class ANSIBuilder {
     }
 
     private void doAppendColors() {
-        if (bg == Color.DEFAULT && text == Color.DEFAULT && textType == TextType.DEFAULT)
+        // Check if we have any colors to output
+        boolean hasText = text != Color.DEFAULT || textCode != null || text256 != null || textRgb != null;
+        boolean hasBg = bg != Color.DEFAULT || bgCode != null || bg256 != null || bgRgb != null;
+        boolean hasStyle = textType != TextType.DEFAULT;
+
+        if (!hasText && !hasBg && !hasStyle) {
             return;
-        else if (bg == Color.DEFAULT && text == Color.DEFAULT) {
-            b.append(ANSI_START)
-                    .append(textType.value()).append("m");
-        } else {
-            b.append(ANSI_START)
-                    .append(textType.value()).append(';')
-                    .append(text.text()).append(';')
-                    .append(bg.bg()).append('m');
         }
+
+        b.append(ANSI_START);
+        boolean needsSemicolon = false;
+
+        // Text style
+        if (hasStyle) {
+            b.append(textType.value());
+            needsSemicolon = true;
+        }
+
+        // Foreground color
+        if (textRgb != null) {
+            // True color: ESC[38;2;r;g;bm
+            if (needsSemicolon)
+                b.append(';');
+            b.append("38;2;").append(textRgb[0]).append(';').append(textRgb[1]).append(';').append(textRgb[2]);
+            needsSemicolon = true;
+        } else if (text256 != null) {
+            // 256-color: ESC[38;5;indexm
+            if (needsSemicolon)
+                b.append(';');
+            b.append("38;5;").append(text256);
+            needsSemicolon = true;
+        } else if (textCode != null) {
+            // Raw ANSI code
+            if (needsSemicolon)
+                b.append(';');
+            b.append(textCode);
+            needsSemicolon = true;
+        } else if (text != Color.DEFAULT) {
+            // Basic color with optional bright
+            if (needsSemicolon)
+                b.append(';');
+            b.append(bright ? text.text() + 60 : text.text());
+            needsSemicolon = true;
+        }
+
+        // Background color
+        if (bgRgb != null) {
+            // True color: ESC[48;2;r;g;bm
+            if (needsSemicolon)
+                b.append(';');
+            b.append("48;2;").append(bgRgb[0]).append(';').append(bgRgb[1]).append(';').append(bgRgb[2]);
+        } else if (bg256 != null) {
+            // 256-color: ESC[48;5;indexm
+            if (needsSemicolon)
+                b.append(';');
+            b.append("48;5;").append(bg256);
+        } else if (bgCode != null) {
+            // Raw ANSI code
+            if (needsSemicolon)
+                b.append(';');
+            b.append(bgCode);
+        } else if (bg != Color.DEFAULT) {
+            // Basic color with optional bright
+            if (needsSemicolon)
+                b.append(';');
+            b.append(bright ? bg.bg() + 60 : bg.bg());
+        }
+
+        b.append('m');
     }
 
     /**
@@ -90,7 +208,12 @@ public class ANSIBuilder {
     public ANSIBuilder resetColors() {
         if (!ansi)
             return this;
-        if (textType == TextType.DEFAULT && bg == Color.DEFAULT && text == Color.DEFAULT)
+        // Check if any colors or styles are active (basic or extended)
+        boolean hasBasicColors = textType != TextType.DEFAULT || bg != Color.DEFAULT || text != Color.DEFAULT;
+        boolean hasExtendedColors = textCode != null || bgCode != null ||
+                text256 != null || bg256 != null ||
+                textRgb != null || bgRgb != null || bright;
+        if (!hasBasicColors && !hasExtendedColors)
             return this;
         else {
             doResetColors();
@@ -103,6 +226,13 @@ public class ANSIBuilder {
         textType = TextType.DEFAULT;
         bg = Color.DEFAULT;
         text = Color.DEFAULT;
+        bright = false;
+        textCode = null;
+        bgCode = null;
+        text256 = null;
+        bg256 = null;
+        textRgb = null;
+        bgRgb = null;
     }
 
     /**
@@ -116,6 +246,15 @@ public class ANSIBuilder {
             doResetColors();
         havePrintedColor = false;
         return this;
+    }
+
+    /**
+     * Clears the builder content and resets all formatting, identical to clear()
+     *
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder reset() {
+        return clear();
     }
 
     /**
@@ -856,6 +995,436 @@ public class ANSIBuilder {
         return textType(TextType.CROSSED_OUT).append(text).textType(TextType.CROSSED_OUT_OFF);
     }
 
+    // ==================== Brightness Modifier ====================
+
+    /**
+     * Enables bright (high intensity) mode for subsequent colors.
+     * <p>
+     * When bright mode is enabled, basic colors (red, green, etc.) will use
+     * their bright variants (codes 90-97 instead of 30-37).
+     * <p>
+     * Example:
+     *
+     * <pre>
+     * ANSIBuilder.builder().bright().redText("Bright red").toString();
+     * </pre>
+     *
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder bright() {
+        this.bright = true;
+        havePrintedColor = false;
+        return this;
+    }
+
+    /**
+     * Disables bright mode, returning to normal intensity colors.
+     *
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder brightOff() {
+        this.bright = false;
+        havePrintedColor = false;
+        return this;
+    }
+
+    // ==================== 256-Color Support ====================
+
+    /**
+     * Sets the foreground color using the 256-color palette.
+     * <p>
+     * The 256-color palette is organized as:
+     * <ul>
+     * <li>0-7: Standard colors (same as basic ANSI)</li>
+     * <li>8-15: High intensity colors</li>
+     * <li>16-231: 6x6x6 color cube</li>
+     * <li>232-255: Grayscale from dark to light</li>
+     * </ul>
+     *
+     * @param index the color index (0-255)
+     * @return this builder for method chaining
+     * @throws IllegalArgumentException if index is out of range
+     */
+    public ANSIBuilder color256(int index) {
+        if (index < 0 || index > 255) {
+            throw new IllegalArgumentException("Color index must be 0-255, got: " + index);
+        }
+        this.text256 = index;
+        this.text = Color.DEFAULT;
+        this.textCode = null;
+        this.textRgb = null;
+        havePrintedColor = false;
+        return this;
+    }
+
+    /**
+     * Sets the background color using the 256-color palette.
+     *
+     * @param index the color index (0-255)
+     * @return this builder for method chaining
+     * @throws IllegalArgumentException if index is out of range
+     */
+    public ANSIBuilder bg256(int index) {
+        if (index < 0 || index > 255) {
+            throw new IllegalArgumentException("Color index must be 0-255, got: " + index);
+        }
+        this.bg256 = index;
+        this.bg = Color.DEFAULT;
+        this.bgCode = null;
+        this.bgRgb = null;
+        havePrintedColor = false;
+        return this;
+    }
+
+    /**
+     * Appends text with the specified 256-color foreground and resets.
+     *
+     * @param index the color index (0-255)
+     * @param text the text to append
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder color256(int index, String text) {
+        return color256(index).append(text).resetColors();
+    }
+
+    /**
+     * Appends text with the specified 256-color background and resets.
+     *
+     * @param index the color index (0-255)
+     * @param text the text to append
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder bg256(int index, String text) {
+        return bg256(index).append(text).resetColors();
+    }
+
+    // ==================== True Color (24-bit RGB) Support ====================
+
+    /**
+     * Sets the foreground color using RGB values (true color).
+     * <p>
+     * True color support requires a terminal that supports 24-bit colors.
+     * Use {@link TerminalColorCapability#getColorDepth()} to check if
+     * the terminal supports true color.
+     *
+     * @param r red component (0-255)
+     * @param g green component (0-255)
+     * @param b blue component (0-255)
+     * @return this builder for method chaining
+     * @throws IllegalArgumentException if any component is out of range
+     */
+    public ANSIBuilder rgb(int r, int g, int b) {
+        validateRgb(r, g, b);
+        this.textRgb = new int[] { r, g, b };
+        this.text = Color.DEFAULT;
+        this.textCode = null;
+        this.text256 = null;
+        havePrintedColor = false;
+        return this;
+    }
+
+    /**
+     * Sets the background color using RGB values (true color).
+     *
+     * @param r red component (0-255)
+     * @param g green component (0-255)
+     * @param b blue component (0-255)
+     * @return this builder for method chaining
+     * @throws IllegalArgumentException if any component is out of range
+     */
+    public ANSIBuilder bgRgb(int r, int g, int b) {
+        validateRgb(r, g, b);
+        this.bgRgb = new int[] { r, g, b };
+        this.bg = Color.DEFAULT;
+        this.bgCode = null;
+        this.bg256 = null;
+        havePrintedColor = false;
+        return this;
+    }
+
+    /**
+     * Sets the foreground color using a hex color value.
+     *
+     * @param hex the color in hex format (e.g., "#FF5733" or "FF5733")
+     * @return this builder for method chaining
+     * @throws IllegalArgumentException if the hex string is invalid
+     */
+    public ANSIBuilder hex(String hex) {
+        int[] rgb = TerminalColorCapability.hexToRgb(hex);
+        if (rgb == null) {
+            throw new IllegalArgumentException("Invalid hex color: " + hex);
+        }
+        return rgb(rgb[0], rgb[1], rgb[2]);
+    }
+
+    /**
+     * Sets the background color using a hex color value.
+     *
+     * @param hex the color in hex format (e.g., "#FF5733" or "FF5733")
+     * @return this builder for method chaining
+     * @throws IllegalArgumentException if the hex string is invalid
+     */
+    public ANSIBuilder bgHex(String hex) {
+        int[] rgb = TerminalColorCapability.hexToRgb(hex);
+        if (rgb == null) {
+            throw new IllegalArgumentException("Invalid hex color: " + hex);
+        }
+        return bgRgb(rgb[0], rgb[1], rgb[2]);
+    }
+
+    /**
+     * Appends text with the specified RGB foreground color and resets.
+     *
+     * @param r red component (0-255)
+     * @param g green component (0-255)
+     * @param b blue component (0-255)
+     * @param text the text to append
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder rgb(int r, int g, int b, String text) {
+        return rgb(r, g, b).append(text).resetColors();
+    }
+
+    /**
+     * Appends text with the specified hex foreground color and resets.
+     *
+     * @param hex the color in hex format
+     * @param text the text to append
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder hex(String hex, String text) {
+        return hex(hex).append(text).resetColors();
+    }
+
+    private void validateRgb(int r, int g, int b) {
+        if (r < 0 || r > 255 || g < 0 || g > 255 || b < 0 || b > 255) {
+            throw new IllegalArgumentException(
+                    "RGB values must be 0-255, got: (" + r + ", " + g + ", " + b + ")");
+        }
+    }
+
+    // ==================== Semantic Colors (Theme-Aware) ====================
+
+    /**
+     * Sets the foreground color to the theme-appropriate error color (red).
+     * <p>
+     * If a {@link TerminalColorCapability} was provided to the builder,
+     * this will use bright red for dark themes and dark red for light themes.
+     * Without capability info, defaults to bright red.
+     *
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder error() {
+        if (capability != null) {
+            this.textCode = capability.getSuggestedErrorCode();
+        } else {
+            this.textCode = 91; // bright red default
+        }
+        this.text = Color.DEFAULT;
+        this.text256 = null;
+        this.textRgb = null;
+        havePrintedColor = false;
+        return this;
+    }
+
+    /**
+     * Appends text with error styling (red) and resets.
+     *
+     * @param text the text to append
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder error(String text) {
+        return error().append(text).resetColors();
+    }
+
+    /**
+     * Sets the foreground color to the theme-appropriate success color (green).
+     *
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder success() {
+        if (capability != null) {
+            this.textCode = capability.getSuggestedSuccessCode();
+        } else {
+            this.textCode = 92; // bright green default
+        }
+        this.text = Color.DEFAULT;
+        this.text256 = null;
+        this.textRgb = null;
+        havePrintedColor = false;
+        return this;
+    }
+
+    /**
+     * Appends text with success styling (green) and resets.
+     *
+     * @param text the text to append
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder success(String text) {
+        return success().append(text).resetColors();
+    }
+
+    /**
+     * Sets the foreground color to the theme-appropriate warning color (yellow).
+     *
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder warning() {
+        if (capability != null) {
+            this.textCode = capability.getSuggestedWarningCode();
+        } else {
+            this.textCode = 93; // bright yellow default
+        }
+        this.text = Color.DEFAULT;
+        this.text256 = null;
+        this.textRgb = null;
+        havePrintedColor = false;
+        return this;
+    }
+
+    /**
+     * Appends text with warning styling (yellow) and resets.
+     *
+     * @param text the text to append
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder warning(String text) {
+        return warning().append(text).resetColors();
+    }
+
+    /**
+     * Sets the foreground color to the theme-appropriate info color (blue/cyan).
+     *
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder info() {
+        if (capability != null) {
+            this.textCode = capability.getSuggestedInfoCode();
+        } else {
+            this.textCode = 94; // bright blue default
+        }
+        this.text = Color.DEFAULT;
+        this.text256 = null;
+        this.textRgb = null;
+        havePrintedColor = false;
+        return this;
+    }
+
+    /**
+     * Appends text with info styling (blue/cyan) and resets.
+     *
+     * @param text the text to append
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder info(String text) {
+        return info().append(text).resetColors();
+    }
+
+    /**
+     * Sets the foreground color to the theme-appropriate timestamp color (cyan).
+     * <p>
+     * Timestamps use a subdued cyan color that is visible but doesn't
+     * distract from the main message content.
+     *
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder timestamp() {
+        if (capability != null) {
+            this.textCode = capability.getSuggestedTimestampCode();
+        } else {
+            this.textCode = 96; // bright cyan default
+        }
+        this.text = Color.DEFAULT;
+        this.text256 = null;
+        this.textRgb = null;
+        havePrintedColor = false;
+        return this;
+    }
+
+    /**
+     * Appends text with timestamp styling (cyan) and resets.
+     *
+     * @param text the text to append
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder timestamp(String text) {
+        return timestamp().append(text).resetColors();
+    }
+
+    /**
+     * Sets the foreground color to the theme-appropriate message color (magenta).
+     * <p>
+     * Message color is used for highlighted or emphasized message content
+     * that should stand out from regular text.
+     *
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder message() {
+        if (capability != null) {
+            this.textCode = capability.getSuggestedMessageCode();
+        } else {
+            this.textCode = 95; // bright magenta default
+        }
+        this.text = Color.DEFAULT;
+        this.text256 = null;
+        this.textRgb = null;
+        havePrintedColor = false;
+        return this;
+    }
+
+    /**
+     * Appends text with message styling (magenta) and resets.
+     *
+     * @param text the text to append
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder message(String text) {
+        return message().append(text).resetColors();
+    }
+
+    /**
+     * Sets the foreground color using a raw ANSI color code.
+     * <p>
+     * This allows direct control over the ANSI color code used:
+     * <ul>
+     * <li>30-37: Standard foreground colors</li>
+     * <li>90-97: Bright foreground colors</li>
+     * </ul>
+     *
+     * @param code the ANSI color code
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder textCode(int code) {
+        this.textCode = code;
+        this.text = Color.DEFAULT;
+        this.text256 = null;
+        this.textRgb = null;
+        havePrintedColor = false;
+        return this;
+    }
+
+    /**
+     * Sets the background color using a raw ANSI color code.
+     * <p>
+     * This allows direct control over the ANSI color code used:
+     * <ul>
+     * <li>40-47: Standard background colors</li>
+     * <li>100-107: Bright background colors</li>
+     * </ul>
+     *
+     * @param code the ANSI color code
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder bgCode(int code) {
+        this.bgCode = code;
+        this.bg = Color.DEFAULT;
+        this.bg256 = null;
+        this.bgRgb = null;
+        havePrintedColor = false;
+        return this;
+    }
+
     /**
      * Returns the built string with ANSI formatting.
      *
@@ -864,6 +1433,30 @@ public class ANSIBuilder {
     public String toString() {
         resetColors();
         return b.toString();
+    }
+
+    /**
+     * Returns the built string with ANSI formatting followed by a newline.
+     * <p>
+     * This is a convenience method equivalent to {@code toString() + "\n"}.
+     *
+     * @return the formatted string with a trailing newline
+     */
+    public String toLine() {
+        resetColors();
+        return b.toString() + Config.getLineSeparator();
+    }
+
+    /**
+     * Appends text followed by a newline.
+     * <p>
+     * This is a convenience method equivalent to {@code append(text).newline()}.
+     *
+     * @param text the text to append before the newline
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder appendLine(String text) {
+        return append(text).newline();
     }
 
     /**

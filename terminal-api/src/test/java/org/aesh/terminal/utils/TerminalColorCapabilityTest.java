@@ -101,6 +101,8 @@ public class TerminalColorCapabilityTest {
         assertEquals(92, cap.getSuggestedSuccessCode()); // bright green for dark bg
         assertEquals(93, cap.getSuggestedWarningCode()); // bright yellow for dark bg
         assertEquals(94, cap.getSuggestedInfoCode()); // bright blue for dark bg
+        assertEquals(96, cap.getSuggestedTimestampCode()); // bright cyan for dark bg
+        assertEquals(95, cap.getSuggestedMessageCode()); // bright magenta for dark bg
     }
 
     @Test
@@ -113,6 +115,8 @@ public class TerminalColorCapabilityTest {
         assertEquals(32, cap.getSuggestedSuccessCode()); // dark green for light bg
         assertEquals(33, cap.getSuggestedWarningCode()); // dark yellow for light bg
         assertEquals(34, cap.getSuggestedInfoCode()); // dark blue for light bg
+        assertEquals(36, cap.getSuggestedTimestampCode()); // dark cyan for light bg
+        assertEquals(35, cap.getSuggestedMessageCode()); // dark magenta for light bg
     }
 
     @Test
@@ -252,5 +256,180 @@ public class TerminalColorCapabilityTest {
         assertNotNull(cap);
         assertNotNull(cap.getColorDepth());
         assertNotNull(cap.getTheme());
+    }
+
+    @Test
+    public void testSuggestedTimestampAndMessageCodesExample() {
+        // Example: Colorizing log output with timestamps and messages
+        // This demonstrates how to use the suggested color codes for log formatting
+
+        // Detect terminal capabilities (or use a known configuration)
+        TerminalColorCapability darkTerminal = new TerminalColorCapability(
+                ColorDepth.COLORS_256, TerminalTheme.DARK);
+        TerminalColorCapability lightTerminal = new TerminalColorCapability(
+                ColorDepth.COLORS_256, TerminalTheme.LIGHT);
+
+        // Build ANSI escape sequences for a dark terminal
+        String timestamp = "2024-01-15 10:30:45";
+        String message = "Application started successfully";
+
+        int tsCode = darkTerminal.getSuggestedTimestampCode();
+        int msgCode = darkTerminal.getSuggestedMessageCode();
+
+        // Format: ESC[<code>m<text>ESC[0m
+        String coloredTimestamp = "\u001B[" + tsCode + "m" + timestamp + "\u001B[0m";
+        String coloredMessage = "\u001B[" + msgCode + "m" + message + "\u001B[0m";
+
+        // Verify the codes are correct for dark theme
+        assertEquals(96, tsCode); // bright cyan
+        assertEquals(95, msgCode); // bright magenta
+
+        // Verify the formatted strings contain the expected escape sequences
+        assertTrue(coloredTimestamp.contains("\u001B[96m"));
+        assertTrue(coloredMessage.contains("\u001B[95m"));
+
+        // For light terminal, codes should be different (darker variants)
+        assertEquals(36, lightTerminal.getSuggestedTimestampCode()); // dark cyan
+        assertEquals(35, lightTerminal.getSuggestedMessageCode()); // dark magenta
+    }
+
+    // ==================== Builder Tests ====================
+
+    @Test
+    public void testBuilderBasic() {
+        TerminalColorCapability cap = TerminalColorCapability.builder()
+                .colorDepth(ColorDepth.COLORS_256)
+                .theme(TerminalTheme.DARK)
+                .build();
+
+        assertEquals(ColorDepth.COLORS_256, cap.getColorDepth());
+        assertEquals(TerminalTheme.DARK, cap.getTheme());
+        // Should still use theme-based defaults when no overrides set
+        assertEquals(91, cap.getSuggestedErrorCode()); // bright red for dark
+    }
+
+    @Test
+    public void testBuilderWithColorOverrides() {
+        TerminalColorCapability cap = TerminalColorCapability.builder()
+                .colorDepth(ColorDepth.COLORS_256)
+                .theme(TerminalTheme.DARK)
+                .errorCode(196) // Custom 256-color red
+                .successCode(46) // Custom 256-color green
+                .warningCode(208) // Custom 256-color orange
+                .infoCode(39) // Custom 256-color blue
+                .timestampCode(244) // Custom 256-color gray
+                .messageCode(255) // Custom 256-color white
+                .foregroundCode(252) // Custom 256-color light gray
+                .build();
+
+        // All should return the overridden values
+        assertEquals(196, cap.getSuggestedErrorCode());
+        assertEquals(46, cap.getSuggestedSuccessCode());
+        assertEquals(208, cap.getSuggestedWarningCode());
+        assertEquals(39, cap.getSuggestedInfoCode());
+        assertEquals(244, cap.getSuggestedTimestampCode());
+        assertEquals(255, cap.getSuggestedMessageCode());
+        assertEquals(252, cap.getSuggestedForegroundCode());
+    }
+
+    @Test
+    public void testBuilderFromExistingCapability() {
+        // Start with a detected capability
+        TerminalColorCapability detected = new TerminalColorCapability(
+                ColorDepth.TRUE_COLOR, TerminalTheme.DARK,
+                new int[] { 255, 255, 255 }, new int[] { 30, 30, 30 });
+
+        // Create a custom capability based on it, overriding just error color
+        TerminalColorCapability custom = TerminalColorCapability.builder(detected)
+                .errorCode(196)
+                .build();
+
+        // Should preserve original values
+        assertEquals(ColorDepth.TRUE_COLOR, custom.getColorDepth());
+        assertEquals(TerminalTheme.DARK, custom.getTheme());
+        assertTrue(custom.hasForegroundColor());
+        assertTrue(custom.hasBackgroundColor());
+
+        // Error should be overridden
+        assertEquals(196, custom.getSuggestedErrorCode());
+
+        // Other colors should still use theme-based defaults
+        assertEquals(92, custom.getSuggestedSuccessCode()); // bright green for dark
+        assertEquals(96, custom.getSuggestedTimestampCode()); // bright cyan for dark
+    }
+
+    @Test
+    public void testBuilderOverridesIgnoreTheme() {
+        // When colors are overridden, theme should not affect them
+        TerminalColorCapability lightCap = TerminalColorCapability.builder()
+                .theme(TerminalTheme.LIGHT)
+                .errorCode(196)
+                .build();
+
+        TerminalColorCapability darkCap = TerminalColorCapability.builder()
+                .theme(TerminalTheme.DARK)
+                .errorCode(196)
+                .build();
+
+        // Both should return the same override value regardless of theme
+        assertEquals(196, lightCap.getSuggestedErrorCode());
+        assertEquals(196, darkCap.getSuggestedErrorCode());
+
+        // But non-overridden colors should still respect theme
+        assertEquals(32, lightCap.getSuggestedSuccessCode()); // dark green for light
+        assertEquals(92, darkCap.getSuggestedSuccessCode()); // bright green for dark
+    }
+
+    @Test
+    public void testBuilderWithRgbColors() {
+        int[] fg = { 200, 200, 200 };
+        int[] bg = { 40, 40, 40 };
+
+        TerminalColorCapability cap = TerminalColorCapability.builder()
+                .colorDepth(ColorDepth.TRUE_COLOR)
+                .theme(TerminalTheme.DARK)
+                .foregroundRGB(fg)
+                .backgroundRGB(bg)
+                .build();
+
+        assertTrue(cap.hasForegroundColor());
+        assertTrue(cap.hasBackgroundColor());
+        assertArrayEquals(fg, cap.getForegroundRGB());
+        assertArrayEquals(bg, cap.getBackgroundRGB());
+    }
+
+    @Test
+    public void testBuilderPreservesOverridesWhenCopying() {
+        // Create a capability with overrides
+        TerminalColorCapability original = TerminalColorCapability.builder()
+                .theme(TerminalTheme.DARK)
+                .errorCode(196)
+                .successCode(46)
+                .build();
+
+        // Copy it and add more overrides
+        TerminalColorCapability copy = TerminalColorCapability.builder(original)
+                .warningCode(208)
+                .build();
+
+        // Original overrides should be preserved
+        assertEquals(196, copy.getSuggestedErrorCode());
+        assertEquals(46, copy.getSuggestedSuccessCode());
+        // New override should be added
+        assertEquals(208, copy.getSuggestedWarningCode());
+    }
+
+    @Test
+    public void testBuilderWithNullBase() {
+        // builder(null) should work and use defaults
+        TerminalColorCapability cap = TerminalColorCapability.builder(null)
+                .errorCode(196)
+                .build();
+
+        // Should use default color depth and theme
+        assertEquals(ColorDepth.COLORS_8, cap.getColorDepth());
+        assertEquals(TerminalTheme.UNKNOWN, cap.getTheme());
+        // Override should work
+        assertEquals(196, cap.getSuggestedErrorCode());
     }
 }
