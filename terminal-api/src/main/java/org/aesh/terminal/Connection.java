@@ -444,4 +444,48 @@ public interface Connection extends AutoCloseable {
                 input -> ANSI.parseOscColorResponse(input, ANSI.OSC_CURSOR_COLOR));
     }
 
+    /**
+     * Send an OSC query with an index parameter to the terminal.
+     * <p>
+     * This is used for OSC codes that require an index, such as OSC 4 (palette colors).
+     * <p>
+     * The terminal must be actively reading input for this to work.
+     *
+     * @param oscCode the OSC code (e.g., 4 for palette color)
+     * @param index the index parameter (e.g., palette color index 0-255)
+     * @param param the query parameter (typically "?" for queries)
+     * @param timeoutMs timeout in milliseconds to wait for response
+     * @param responseParser function to parse the response; should return non-null
+     *        when a complete response is received, null to continue waiting
+     * @param <T> the type of the parsed response
+     * @return the parsed response, or null if timeout or not supported
+     */
+    default <T> T queryOsc(int oscCode, int index, String param, long timeoutMs,
+            java.util.function.Function<int[], T> responseParser) {
+        String query = ANSI.buildOscQuery(oscCode, index, param);
+        return queryTerminal(query, timeoutMs, responseParser);
+    }
+
+    /**
+     * Query the terminal for a palette color using OSC 4.
+     * <p>
+     * Palette colors are indexed 0-255, where:
+     * <ul>
+     * <li>0-7: Standard ANSI colors</li>
+     * <li>8-15: Bright ANSI colors</li>
+     * <li>16-231: 216-color cube</li>
+     * <li>232-255: Grayscale ramp</li>
+     * </ul>
+     * <p>
+     * The terminal must be actively reading input for this to work.
+     *
+     * @param index the palette color index (0-255)
+     * @param timeoutMs timeout in milliseconds to wait for response
+     * @return RGB array [r, g, b] (0-255 each), or null if not supported or timeout
+     */
+    default int[] queryPaletteColor(int index, long timeoutMs) {
+        return queryOsc(ANSI.OSC_PALETTE, index, "?", timeoutMs,
+                input -> ANSI.parseOscColorResponse(input, ANSI.OSC_PALETTE, index));
+    }
+
 }

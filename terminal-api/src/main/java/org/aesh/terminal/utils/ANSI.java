@@ -129,6 +129,8 @@ public class ANSI {
     /** ST (String Terminator), alternate OSC terminator. */
     public static final String ST = "\u001B\\";
 
+    /** OSC code for palette color query/set. */
+    public static final int OSC_PALETTE = 4;
     /** OSC code for foreground color query/set. */
     public static final int OSC_FOREGROUND = 10;
     /** OSC code for background color query/set. */
@@ -324,6 +326,23 @@ public class ANSI {
     }
 
     /**
+     * Build an OSC query string with an additional index parameter.
+     * <p>
+     * This is used for OSC codes that require an index, such as OSC 4 (palette colors).
+     * <p>
+     * OSC format: ESC ] Ps ; Pn ; Pt BEL
+     * Where Ps is the OSC code, Pn is the index/parameter, and Pt is the query.
+     *
+     * @param oscCode the OSC code (e.g., 4 for palette color)
+     * @param index the index parameter (e.g., palette color index 0-255)
+     * @param param the parameter (e.g., "?" for query)
+     * @return the OSC query string
+     */
+    public static String buildOscQuery(int oscCode, int index, String param) {
+        return OSC_START + oscCode + ";" + index + ";" + param + BEL;
+    }
+
+    /**
      * Parse an OSC color response.
      * <p>
      * Expected format: ESC ] {oscCode} ; rgb:RRRR/GGGG/BBBB {ST}
@@ -334,12 +353,37 @@ public class ANSI {
      * <li>RRRR, GGGG, BBBB are 4-digit or 2-digit hex values</li>
      * <li>ST is either BEL (0x07) or ESC \ (0x1B 0x5C)</li>
      * </ul>
+     * <p>
+     * For OSC codes with parameters (like OSC 4 palette colors), use
+     * {@link #parseOscColorResponse(int[], int, int)} instead.
      *
      * @param input the input sequence as code points
      * @param oscCode the expected OSC code in response
      * @return RGB array [r, g, b] (0-255 each), or null if parsing failed
      */
     public static int[] parseOscColorResponse(int[] input, int oscCode) {
+        return parseOscColorResponse(input, oscCode, -1);
+    }
+
+    /**
+     * Parse an OSC color response with an optional parameter.
+     * <p>
+     * This method handles OSC codes that include a parameter, such as OSC 4
+     * (palette colors) which includes a color index.
+     * <p>
+     * Expected formats:
+     * <ul>
+     * <li>Without parameter: ESC ] {code} ; rgb:RRRR/GGGG/BBBB {ST}</li>
+     * <li>With parameter: ESC ] {code} ; {param} ; rgb:RRRR/GGGG/BBBB {ST}</li>
+     * </ul>
+     *
+     * @param input the input sequence as code points
+     * @param oscCode the expected OSC code in response
+     * @param oscParam the expected parameter (e.g., palette index for OSC 4),
+     *        or -1 to not require a specific parameter
+     * @return RGB array [r, g, b] (0-255 each), or null if parsing failed
+     */
+    public static int[] parseOscColorResponse(int[] input, int oscCode, int oscParam) {
         if (input == null || input.length < 10) {
             return null;
         }
@@ -351,24 +395,56 @@ public class ANSI {
         }
         String response = sb.toString();
 
-        // Look for the OSC response pattern
-        // Format: ESC ] {code} ; rgb:RRRR/GGGG/BBBB {terminator}
-        int start = response.indexOf("\u001B]" + oscCode + ";rgb:");
+        // Build the pattern to search for
+        String oscMarker = "\u001B]" + oscCode + ";";
+        int start = response.indexOf(oscMarker);
         if (start < 0) {
             // Try alternate format with just ']'
-            start = response.indexOf("]" + oscCode + ";rgb:");
+            oscMarker = "]" + oscCode + ";";
+            start = response.indexOf(oscMarker);
             if (start >= 0 && start > 0 && response.charAt(start - 1) == '\u001B') {
                 start--;
+                oscMarker = "\u001B" + oscMarker;
             } else if (start < 0) {
                 return null;
             }
         }
 
-        // Extract the rgb: part
-        int rgbStart = response.indexOf("rgb:", start);
+        // Move past the OSC marker
+        int searchStart = start + oscMarker.length();
+
+        // If a specific parameter is expected, verify it's present
+        if (oscParam >= 0) {
+            String paramMarker = oscParam + ";";
+            if (!response.substring(searchStart).startsWith(paramMarker)) {
+                return null;
+            }
+            searchStart += paramMarker.length();
+        }
+
+        // Find rgb: from current position
+        // Handle case where there might be an unexpected parameter before rgb:
+        int rgbStart = response.indexOf("rgb:", searchStart);
         if (rgbStart < 0) {
             return null;
         }
+
+        // Verify rgb: comes before any terminator
+        int belPos = response.indexOf('\u0007', searchStart);
+        int stPos = response.indexOf("\u001B\\", searchStart);
+        int terminatorPos = -1;
+        if (belPos >= 0 && stPos >= 0) {
+            terminatorPos = Math.min(belPos, stPos);
+        } else if (belPos >= 0) {
+            terminatorPos = belPos;
+        } else if (stPos >= 0) {
+            terminatorPos = stPos;
+        }
+
+        if (terminatorPos >= 0 && rgbStart > terminatorPos) {
+            return null;
+        }
+
         rgbStart += 4; // skip "rgb:"
 
         // Find the terminator (BEL or ESC \)

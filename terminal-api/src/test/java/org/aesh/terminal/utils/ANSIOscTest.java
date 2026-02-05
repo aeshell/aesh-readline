@@ -229,4 +229,138 @@ public class ANSIOscTest {
         assertEquals(0xef, rgb[1]); // ef01 >> 8 = 0xef = 239
         assertEquals(0x23, rgb[2]); // 2345 >> 8 = 0x23 = 35
     }
+
+    // ==================== OSC 4 Palette Color Tests ====================
+
+    @Test
+    public void testOscPaletteConstant() {
+        assertEquals(4, ANSI.OSC_PALETTE);
+    }
+
+    @Test
+    public void testBuildOscQueryWithIndex() {
+        // Test palette color query (OSC 4 with index)
+        String query = ANSI.buildOscQuery(4, 1, "?");
+        assertEquals("\u001B]4;1;?\u0007", query);
+
+        // Test with different index
+        query = ANSI.buildOscQuery(4, 255, "?");
+        assertEquals("\u001B]4;255;?\u0007", query);
+    }
+
+    @Test
+    public void testParseOscColorResponse_PaletteColorWithIndex() {
+        // OSC 4 response with palette index 1
+        // Response: ESC ] 4 ; 1 ; rgb:dc19/686d/6b19 BEL
+        String response = "\u001B]4;1;rgb:dc19/686d/6b19\u0007";
+        int[] input = response.codePoints().toArray();
+
+        int[] rgb = ANSI.parseOscColorResponse(input, 4, 1);
+
+        assertNotNull("Should parse OSC 4 response with index", rgb);
+        assertEquals(3, rgb.length);
+        assertEquals(0xdc, rgb[0]); // dc19 >> 8 = 0xdc = 220
+        assertEquals(0x68, rgb[1]); // 686d >> 8 = 0x68 = 104
+        assertEquals(0x6b, rgb[2]); // 6b19 >> 8 = 0x6b = 107
+    }
+
+    @Test
+    public void testParseOscColorResponse_PaletteColorIndex0() {
+        // OSC 4 response with palette index 0 (black in standard palette)
+        String response = "\u001B]4;0;rgb:0000/0000/0000\u0007";
+        int[] input = response.codePoints().toArray();
+
+        int[] rgb = ANSI.parseOscColorResponse(input, 4, 0);
+
+        assertNotNull("Should parse OSC 4 response for index 0", rgb);
+        assertEquals(0, rgb[0]);
+        assertEquals(0, rgb[1]);
+        assertEquals(0, rgb[2]);
+    }
+
+    @Test
+    public void testParseOscColorResponse_PaletteColorHighIndex() {
+        // OSC 4 response with palette index 255
+        String response = "\u001B]4;255;rgb:EEEE/EEEE/EEEE\u0007";
+        int[] input = response.codePoints().toArray();
+
+        int[] rgb = ANSI.parseOscColorResponse(input, 4, 255);
+
+        assertNotNull("Should parse OSC 4 response for index 255", rgb);
+        assertEquals(0xee, rgb[0]); // EEEE >> 8 = 238
+        assertEquals(0xee, rgb[1]);
+        assertEquals(0xee, rgb[2]);
+    }
+
+    @Test
+    public void testParseOscColorResponse_PaletteColorWrongIndex() {
+        // OSC 4 response with index 2, but we're looking for index 1
+        String response = "\u001B]4;2;rgb:FFFF/0000/0000\u0007";
+        int[] input = response.codePoints().toArray();
+
+        int[] rgb = ANSI.parseOscColorResponse(input, 4, 1);
+
+        assertNull("Should return null for wrong palette index", rgb);
+    }
+
+    @Test
+    public void testParseOscColorResponse_PaletteColorNoIndexParam() {
+        // Using parseOscColorResponse without index parameter
+        // This simulates the issue #96 - old code couldn't parse OSC 4 responses
+        String response = "\u001B]4;1;rgb:dc19/686d/6b19\u0007";
+        int[] input = response.codePoints().toArray();
+
+        // The 2-param version should still find rgb: even with index present
+        int[] rgb = ANSI.parseOscColorResponse(input, 4);
+
+        assertNotNull("Should find rgb: even when index is present", rgb);
+        assertEquals(0xdc, rgb[0]);
+        assertEquals(0x68, rgb[1]);
+        assertEquals(0x6b, rgb[2]);
+    }
+
+    @Test
+    public void testParseOscColorResponse_PaletteColorWithSTTerminator() {
+        // OSC 4 response with ESC \ terminator
+        String response = "\u001B]4;7;rgb:c0c0/c0c0/c0c0\u001B\\";
+        int[] input = response.codePoints().toArray();
+
+        int[] rgb = ANSI.parseOscColorResponse(input, 4, 7);
+
+        assertNotNull("Should parse OSC 4 response with ST terminator", rgb);
+        assertEquals(0xc0, rgb[0]); // c0c0 >> 8 = 192
+        assertEquals(0xc0, rgb[1]);
+        assertEquals(0xc0, rgb[2]);
+    }
+
+    @Test
+    public void testParseOscColorResponse_Issue96Scenario() {
+        // Exact scenario from GitHub issue #96
+        // Query: OSC 4;1;? - query palette color 1
+        // Response: ESC]4;1;rgb:dc19/686d/6b19
+        String response = "\u001B]4;1;rgb:dc19/686d/6b19\u0007";
+        int[] input = response.codePoints().toArray();
+
+        // This should now work with the 3-param method
+        int[] rgb = ANSI.parseOscColorResponse(input, ANSI.OSC_PALETTE, 1);
+
+        assertNotNull("Issue #96: Should parse OSC 4;1 palette color response", rgb);
+        assertEquals(220, rgb[0]); // 0xdc
+        assertEquals(104, rgb[1]); // 0x68
+        assertEquals(107, rgb[2]); // 0x6b
+    }
+
+    @Test
+    public void testParseOscColorResponse_RegularOscStillWorks() {
+        // Verify that regular OSC 11 still works after the changes
+        String response = "\u001B]11;rgb:19ee/2448/2b8a\u0007";
+        int[] input = response.codePoints().toArray();
+
+        int[] rgb = ANSI.parseOscColorResponse(input, ANSI.OSC_BACKGROUND);
+
+        assertNotNull("Regular OSC 11 should still work", rgb);
+        assertEquals(0x19, rgb[0]); // 19ee >> 8 = 25
+        assertEquals(0x24, rgb[1]); // 2448 >> 8 = 36
+        assertEquals(0x2b, rgb[2]); // 2b8a >> 8 = 43
+    }
 }
