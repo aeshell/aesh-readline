@@ -376,4 +376,72 @@ public interface Connection extends AutoCloseable {
         return new TerminalColorCapability(depth, TerminalColorCapability.detectThemeFromEnvironment());
     }
 
+    /**
+     * Send an OSC (Operating System Command) query to the terminal.
+     * <p>
+     * This method sends an OSC query sequence and waits for the terminal's response.
+     * The terminal must be actively reading input (via {@link #openBlocking()} or
+     * {@link #openNonBlocking()}) for this to work.
+     * <p>
+     * Common OSC codes:
+     * <ul>
+     * <li>10 - Query/set foreground color</li>
+     * <li>11 - Query/set background color</li>
+     * <li>12 - Query/set cursor color</li>
+     * <li>4;N - Query/set palette color N</li>
+     * </ul>
+     *
+     * @param oscCode the OSC code (e.g., 10 for foreground, 11 for background)
+     * @param param the query parameter (typically "?" for queries)
+     * @param timeoutMs timeout in milliseconds to wait for response
+     * @param responseParser function to parse the response; should return non-null
+     *        when a complete response is received, null to continue waiting
+     * @param <T> the type of the parsed response
+     * @return the parsed response, or null if timeout or not supported
+     */
+    default <T> T queryOsc(int oscCode, String param, long timeoutMs,
+            java.util.function.Function<int[], T> responseParser) {
+        String query = ANSI.buildOscQuery(oscCode, param);
+        return queryTerminal(query, timeoutMs, responseParser);
+    }
+
+    /**
+     * Query the terminal for its foreground color using OSC 10.
+     * <p>
+     * The terminal must be actively reading input for this to work.
+     *
+     * @param timeoutMs timeout in milliseconds to wait for response
+     * @return RGB array [r, g, b] (0-255 each), or null if not supported or timeout
+     */
+    default int[] queryForegroundColor(long timeoutMs) {
+        return queryOsc(ANSI.OSC_FOREGROUND, "?", timeoutMs,
+                input -> ANSI.parseOscColorResponse(input, ANSI.OSC_FOREGROUND));
+    }
+
+    /**
+     * Query the terminal for its background color using OSC 11.
+     * <p>
+     * The terminal must be actively reading input for this to work.
+     *
+     * @param timeoutMs timeout in milliseconds to wait for response
+     * @return RGB array [r, g, b] (0-255 each), or null if not supported or timeout
+     */
+    default int[] queryBackgroundColor(long timeoutMs) {
+        return queryOsc(ANSI.OSC_BACKGROUND, "?", timeoutMs,
+                input -> ANSI.parseOscColorResponse(input, ANSI.OSC_BACKGROUND));
+    }
+
+    /**
+     * Query the terminal for its cursor color using OSC 12.
+     * <p>
+     * The terminal must be actively reading input for this to work.
+     *
+     * @param timeoutMs timeout in milliseconds to wait for response
+     * @return RGB array [r, g, b] (0-255 each), or null if not supported or timeout
+     */
+    default int[] queryCursorColor(long timeoutMs) {
+        return queryOsc(ANSI.OSC_CURSOR_COLOR, "?", timeoutMs,
+                input -> ANSI.parseOscColorResponse(input, ANSI.OSC_CURSOR_COLOR));
+    }
+
 }

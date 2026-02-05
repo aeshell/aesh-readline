@@ -20,9 +20,6 @@
 package org.aesh.terminal.tty;
 
 import java.io.IOException;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -1591,7 +1588,10 @@ public final class TerminalColorDetector {
      * @return RGB array [r, g, b] (0-255 each), or null if not supported
      */
     public static int[] queryForegroundColor(Connection connection, long timeoutMs) {
-        return queryOscColor(connection, OSC_QUERY_FOREGROUND, 10, timeoutMs);
+        if (connection == null) {
+            return null;
+        }
+        return connection.queryForegroundColor(timeoutMs);
     }
 
     /**
@@ -1602,7 +1602,10 @@ public final class TerminalColorDetector {
      * @return RGB array [r, g, b] (0-255 each), or null if not supported
      */
     public static int[] queryBackgroundColor(Connection connection, long timeoutMs) {
-        return queryOscColor(connection, OSC_QUERY_BACKGROUND, 11, timeoutMs);
+        if (connection == null) {
+            return null;
+        }
+        return connection.queryBackgroundColor(timeoutMs);
     }
 
     /**
@@ -2098,138 +2101,6 @@ public final class TerminalColorDetector {
             return rgb;
         } catch (NumberFormatException e) {
             LOGGER.log(Level.FINE, "Failed to parse OSC color: " + rgbPart, e);
-            return null;
-        }
-    }
-
-    /**
-     * Query an OSC color from the terminal.
-     *
-     * @param connection the terminal connection
-     * @param query the OSC query sequence
-     * @param oscCode the expected OSC code in response (10 or 11)
-     * @param timeoutMs timeout in milliseconds
-     * @return RGB array [r, g, b] (0-255 each), or null if not supported
-     */
-    private static int[] queryOscColor(Connection connection, String query, int oscCode, long timeoutMs) {
-        if (connection == null || !connection.supportsAnsi()) {
-            return null;
-        }
-
-        CountDownLatch latch = new CountDownLatch(1);
-        final int[][] result = { null };
-
-        Consumer<int[]> prevHandler = connection.getStdinHandler();
-        connection.setStdinHandler(input -> {
-            int[] parsed = parseOscColorResponse(input, oscCode);
-            if (parsed != null) {
-                result[0] = parsed;
-                latch.countDown();
-            }
-        });
-
-        try {
-            // Send the query
-            connection.stdoutHandler().accept(query.codePoints().toArray());
-
-            // Wait for response with timeout
-            if (!latch.await(timeoutMs, TimeUnit.MILLISECONDS)) {
-                LOGGER.log(Level.FINE, "Timeout waiting for OSC color response");
-            }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            LOGGER.log(Level.FINE, "Interrupted while waiting for OSC color response", e);
-        } finally {
-            // Restore previous handler
-            connection.setStdinHandler(prevHandler);
-        }
-
-        return result[0];
-    }
-
-    /**
-     * Parse an OSC color response.
-     * <p>
-     * Expected format: ESC ] {oscCode} ; rgb:RRRR/GGGG/BBBB {ST}
-     * Where:
-     * <ul>
-     * <li>ESC is 0x1B (27)</li>
-     * <li>oscCode is 10 (foreground) or 11 (background)</li>
-     * <li>RRRR, GGGG, BBBB are 4-digit hex values</li>
-     * <li>ST is either BEL (0x07) or ESC \ (0x1B 0x5C)</li>
-     * </ul>
-     *
-     * @param input the input sequence
-     * @param oscCode the expected OSC code
-     * @return RGB array [r, g, b] (0-255 each), or null if parsing failed
-     */
-    static int[] parseOscColorResponse(int[] input, int oscCode) {
-        if (input == null || input.length < 10) {
-            return null;
-        }
-
-        // Convert to string for easier parsing
-        StringBuilder sb = new StringBuilder();
-        for (int c : input) {
-            sb.appendCodePoint(c);
-        }
-        String response = sb.toString();
-
-        // Look for the OSC response pattern
-        // Format: ESC ] {code} ; rgb:RRRR/GGGG/BBBB {terminator}
-        int start = response.indexOf("\u001B]" + oscCode + ";rgb:");
-        if (start < 0) {
-            // Try alternate format with just ']'
-            start = response.indexOf("]" + oscCode + ";rgb:");
-            if (start >= 0 && start > 0 && response.charAt(start - 1) == '\u001B') {
-                start--;
-            } else if (start < 0) {
-                return null;
-            }
-        }
-
-        // Extract the rgb: part
-        int rgbStart = response.indexOf("rgb:", start);
-        if (rgbStart < 0) {
-            return null;
-        }
-
-        // Find the terminator (BEL or ESC \)
-        int end = response.indexOf('\u0007', rgbStart);
-        if (end < 0) {
-            end = response.indexOf("\u001B\\", rgbStart);
-        }
-        if (end < 0) {
-            end = response.length();
-        }
-
-        String rgbPart = response.substring(rgbStart + 4, end);
-
-        // Parse RRRR/GGGG/BBBB
-        String[] parts = rgbPart.split("/");
-        if (parts.length != 3) {
-            return null;
-        }
-
-        try {
-            int[] rgb = new int[3];
-            for (int i = 0; i < 3; i++) {
-                String hex = parts[i].trim();
-                int value;
-                if (hex.length() == 4) {
-                    // 4-digit hex (e.g., FFFF), take high byte
-                    value = Integer.parseInt(hex, 16) >> 8;
-                } else if (hex.length() == 2) {
-                    // 2-digit hex
-                    value = Integer.parseInt(hex, 16);
-                } else {
-                    return null;
-                }
-                rgb[i] = Math.min(255, Math.max(0, value));
-            }
-            return rgb;
-        } catch (NumberFormatException e) {
-            LOGGER.log(Level.FINE, "Failed to parse OSC color response: " + rgbPart, e);
             return null;
         }
     }
