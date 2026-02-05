@@ -21,6 +21,7 @@ package org.aesh.terminal.utils;
 
 import java.util.Arrays;
 
+import org.aesh.terminal.DeviceAttributes;
 import org.aesh.terminal.tty.Point;
 
 /**
@@ -743,5 +744,168 @@ public class ANSI {
             { 0, 255, 255 }, // 14: Bright Cyan
             { 255, 255, 255 } // 15: Bright White
     };
+
+    // ==================== Device Attributes (DA1/DA2) ====================
+
+    /** DA1 (Primary Device Attributes) query sequence. */
+    public static final String DA1_QUERY = "\u001B[c";
+
+    /** DA2 (Secondary Device Attributes) query sequence. */
+    public static final String DA2_QUERY = "\u001B[>c";
+
+    /**
+     * Parse a DA1 (Primary Device Attributes) response.
+     * <p>
+     * Expected format: ESC [ ? Ps ; Ps ; ... c
+     * <p>
+     * Where the first Ps is the device class/conformance level and
+     * subsequent Ps values are feature parameters.
+     *
+     * @param input the input sequence as code points
+     * @return DeviceAttributes parsed from DA1, or null if parsing failed
+     */
+    public static DeviceAttributes parseDA1Response(int[] input) {
+        if (input == null || input.length < 4) {
+            return null;
+        }
+
+        // Convert to string for easier parsing
+        StringBuilder sb = new StringBuilder();
+        for (int c : input) {
+            sb.appendCodePoint(c);
+        }
+        String response = sb.toString();
+
+        // Look for DA1 response pattern: ESC [ ? ... c
+        int start = response.indexOf("\u001B[?");
+        if (start < 0) {
+            return null;
+        }
+
+        // Find the terminating 'c'
+        int end = response.indexOf('c', start);
+        if (end < 0) {
+            return null;
+        }
+
+        // Extract the parameters between "?" and "c"
+        String params = response.substring(start + 3, end);
+        if (params.isEmpty()) {
+            return null;
+        }
+
+        // Parse semicolon-separated parameters
+        String[] parts = params.split(";");
+        if (parts.length == 0) {
+            return null;
+        }
+
+        try {
+            // First parameter is device class
+            int deviceClass = Integer.parseInt(parts[0].trim());
+
+            // Remaining parameters are feature codes
+            java.util.Set<Integer> features = new java.util.HashSet<>();
+            for (int i = 1; i < parts.length; i++) {
+                String part = parts[i].trim();
+                if (!part.isEmpty()) {
+                    features.add(Integer.parseInt(part));
+                }
+            }
+
+            return new DeviceAttributes(deviceClass, features);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    /**
+     * Parse a DA2 (Secondary Device Attributes) response.
+     * <p>
+     * Expected format: ESC [ > Pp ; Pv ; Pc c
+     * <p>
+     * Where:
+     * <ul>
+     * <li>Pp is the terminal type (0=VT100, 1=VT220, etc.)</li>
+     * <li>Pv is the firmware version</li>
+     * <li>Pc is the ROM cartridge registration number</li>
+     * </ul>
+     *
+     * @param input the input sequence as code points
+     * @return DeviceAttributes parsed from DA2, or null if parsing failed
+     */
+    public static DeviceAttributes parseDA2Response(int[] input) {
+        if (input == null || input.length < 4) {
+            return null;
+        }
+
+        // Convert to string for easier parsing
+        StringBuilder sb = new StringBuilder();
+        for (int c : input) {
+            sb.appendCodePoint(c);
+        }
+        String response = sb.toString();
+
+        // Look for DA2 response pattern: ESC [ > ... c
+        int start = response.indexOf("\u001B[>");
+        if (start < 0) {
+            return null;
+        }
+
+        // Find the terminating 'c'
+        int end = response.indexOf('c', start);
+        if (end < 0) {
+            return null;
+        }
+
+        // Extract the parameters between ">" and "c"
+        String params = response.substring(start + 3, end);
+        if (params.isEmpty()) {
+            return null;
+        }
+
+        // Parse semicolon-separated parameters
+        String[] parts = params.split(";");
+
+        try {
+            int typeCode = parts.length > 0 && !parts[0].trim().isEmpty()
+                    ? Integer.parseInt(parts[0].trim())
+                    : -1;
+            int version = parts.length > 1 && !parts[1].trim().isEmpty()
+                    ? Integer.parseInt(parts[1].trim())
+                    : -1;
+            int rom = parts.length > 2 && !parts[2].trim().isEmpty()
+                    ? Integer.parseInt(parts[2].trim())
+                    : -1;
+
+            DeviceAttributes.TerminalType termType = DeviceAttributes.TerminalType.fromCode(typeCode);
+
+            return new DeviceAttributes(-1, null, termType, version, rom);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    /**
+     * Parse both DA1 and DA2 responses from a combined input.
+     * <p>
+     * This is useful when both queries are sent together and responses
+     * arrive in sequence.
+     *
+     * @param input the input sequence containing both responses
+     * @return DeviceAttributes with merged DA1 and DA2 data, or null if parsing failed
+     */
+    public static DeviceAttributes parseDAResponse(int[] input) {
+        DeviceAttributes da1 = parseDA1Response(input);
+        DeviceAttributes da2 = parseDA2Response(input);
+
+        if (da1 != null && da2 != null) {
+            return da1.merge(da2);
+        } else if (da1 != null) {
+            return da1;
+        } else {
+            return da2;
+        }
+    }
 
 }

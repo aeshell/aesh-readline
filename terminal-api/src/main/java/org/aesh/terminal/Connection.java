@@ -24,6 +24,8 @@ import java.util.EnumSet;
 import java.util.concurrent.CountDownLatch;
 import java.util.function.Consumer;
 
+import org.aesh.terminal.image.ImageProtocol;
+import org.aesh.terminal.image.ImageProtocolDetector;
 import org.aesh.terminal.tty.Capability;
 import org.aesh.terminal.tty.Point;
 import org.aesh.terminal.tty.Signal;
@@ -319,6 +321,9 @@ public interface Connection extends AutoCloseable {
      * <p>
      * This checks both the device type and environment variables to determine
      * if OSC queries like color detection are likely to work.
+     * <p>
+     * For more accurate detection, use {@link #supportsOscQueries(DeviceAttributes)}
+     * with DA1 query results.
      *
      * @return true if OSC queries are likely supported
      */
@@ -338,6 +343,41 @@ public interface Connection extends AutoCloseable {
         }
 
         return supportsAnsi();
+    }
+
+    /**
+     * Check if OSC queries are supported, using DA1 device attributes for
+     * improved detection.
+     * <p>
+     * This method uses the device attributes from a DA1 query to provide
+     * more accurate OSC support detection. If the terminal reports modern
+     * features like ANSI color or Sixel graphics, it likely supports OSC queries.
+     *
+     * @param attrs the device attributes from DA1 query (may be null)
+     * @return true if OSC queries are likely supported
+     */
+    default boolean supportsOscQueries(DeviceAttributes attrs) {
+        // If we have DA1 data, use it for better detection
+        if (attrs != null && attrs.likelySupportsOscQueries()) {
+            return true;
+        }
+
+        // Fall back to heuristic detection
+        return supportsOscQueries();
+    }
+
+    /**
+     * Query the terminal to check if OSC queries are supported.
+     * <p>
+     * This method sends a DA1 query to get device attributes and uses them
+     * to determine OSC support more accurately than heuristic detection.
+     *
+     * @param timeoutMs timeout in milliseconds for the DA1 query
+     * @return true if OSC queries are likely supported
+     */
+    default boolean querySupportsOscQueries(long timeoutMs) {
+        DeviceAttributes attrs = queryPrimaryDeviceAttributes(timeoutMs);
+        return supportsOscQueries(attrs);
     }
 
     /**
@@ -486,6 +526,93 @@ public interface Connection extends AutoCloseable {
     default int[] queryPaletteColor(int index, long timeoutMs) {
         return queryOsc(ANSI.OSC_PALETTE, index, "?", timeoutMs,
                 input -> ANSI.parseOscColorResponse(input, ANSI.OSC_PALETTE, index));
+    }
+
+    // ==================== Device Attributes (DA1/DA2) ====================
+
+    /**
+     * Query the terminal for its primary device attributes (DA1).
+     * <p>
+     * DA1 returns the device conformance level and supported features.
+     * This can be used to detect capabilities like:
+     * <ul>
+     * <li>Sixel graphics support</li>
+     * <li>ANSI color support</li>
+     * <li>Mouse/locator support</li>
+     * <li>Rectangular editing operations</li>
+     * </ul>
+     * <p>
+     * The terminal must be actively reading input for this to work.
+     *
+     * @param timeoutMs timeout in milliseconds to wait for response
+     * @return DeviceAttributes with DA1 data, or null if not supported or timeout
+     */
+    default DeviceAttributes queryPrimaryDeviceAttributes(long timeoutMs) {
+        return queryTerminal(ANSI.DA1_QUERY, timeoutMs, ANSI::parseDA1Response);
+    }
+
+    /**
+     * Query the terminal for its secondary device attributes (DA2).
+     * <p>
+     * DA2 returns terminal identification information:
+     * <ul>
+     * <li>Terminal type (VT100, VT220, xterm, etc.)</li>
+     * <li>Firmware/version number</li>
+     * <li>ROM cartridge registration</li>
+     * </ul>
+     * <p>
+     * Note: Not all terminals support DA2. Some may return nothing or
+     * the same response as DA1.
+     * <p>
+     * The terminal must be actively reading input for this to work.
+     *
+     * @param timeoutMs timeout in milliseconds to wait for response
+     * @return DeviceAttributes with DA2 data, or null if not supported or timeout
+     */
+    default DeviceAttributes querySecondaryDeviceAttributes(long timeoutMs) {
+        return queryTerminal(ANSI.DA2_QUERY, timeoutMs, ANSI::parseDA2Response);
+    }
+
+    /**
+     * Query the terminal for both primary and secondary device attributes.
+     * <p>
+     * This sends both DA1 and DA2 queries and merges the results into a
+     * single DeviceAttributes object containing all available information.
+     * <p>
+     * The terminal must be actively reading input for this to work.
+     *
+     * @param timeoutMs timeout in milliseconds to wait for each response
+     * @return DeviceAttributes with merged DA1 and DA2 data, or null if neither succeeded
+     */
+    default DeviceAttributes queryDeviceAttributes(long timeoutMs) {
+        DeviceAttributes da1 = queryPrimaryDeviceAttributes(timeoutMs);
+        DeviceAttributes da2 = querySecondaryDeviceAttributes(timeoutMs);
+
+        if (da1 != null && da2 != null) {
+            return da1.merge(da2);
+        } else if (da1 != null) {
+            return da1;
+        } else {
+            return da2;
+        }
+    }
+
+    /**
+     * Query the terminal for its image protocol support.
+     * <p>
+     * This method sends a DA1 query to detect Sixel support authoritatively,
+     * and combines it with heuristic detection based on terminal type.
+     * <p>
+     * For faster (but less accurate) detection without querying the terminal,
+     * use {@link Device#getImageProtocol()} instead.
+     *
+     * @param timeoutMs timeout in milliseconds to wait for DA1 response
+     * @return the detected image protocol
+     */
+    default ImageProtocol queryImageProtocol(long timeoutMs) {
+        DeviceAttributes attrs = queryPrimaryDeviceAttributes(timeoutMs);
+        String termType = device() != null ? device().type() : null;
+        return ImageProtocolDetector.detect(attrs, termType);
     }
 
 }

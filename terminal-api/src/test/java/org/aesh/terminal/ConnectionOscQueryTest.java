@@ -150,7 +150,7 @@ public class ConnectionOscQueryTest {
         Thread responseThread = new Thread(() -> {
             try {
                 queryStarted.await(1, TimeUnit.SECONDS);
-                Thread.sleep(20);
+                Thread.sleep(50); // Increased from 20ms to avoid race condition
                 String response = "\u001B]12;rgb:0000/FFFF/0000\u0007";
                 connection.simulateInput(response);
             } catch (InterruptedException e) {

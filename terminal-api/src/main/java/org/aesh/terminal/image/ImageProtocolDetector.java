@@ -19,8 +19,18 @@
  */
 package org.aesh.terminal.image;
 
+import org.aesh.terminal.DeviceAttributes;
+
 /**
  * Utility class for detecting terminal image protocol support.
+ * <p>
+ * Detection can be done in two ways:
+ * <ul>
+ * <li><b>Heuristic</b>: Based on TERM type and environment variables (fast, always available)</li>
+ * <li><b>Authoritative</b>: Based on DA1 device attributes query (accurate, requires terminal query)</li>
+ * </ul>
+ * <p>
+ * For best results, use {@link #detect(DeviceAttributes, String)} which combines both methods.
  */
 public final class ImageProtocolDetector {
 
@@ -29,7 +39,66 @@ public final class ImageProtocolDetector {
     }
 
     /**
+     * Detect the image protocol using both device attributes and terminal type.
+     * <p>
+     * This method provides the most accurate detection by:
+     * <ol>
+     * <li>Checking DA1 attributes for Sixel support (authoritative)</li>
+     * <li>Falling back to heuristic detection based on terminal type</li>
+     * </ol>
+     *
+     * @param attrs the device attributes from DA1 query (may be null)
+     * @param termType the terminal type string (may be null)
+     * @return the detected protocol, or NONE if unknown
+     */
+    public static ImageProtocol detect(DeviceAttributes attrs, String termType) {
+        // First check environment for Kitty/iTerm2 (these don't report via DA1)
+        ImageProtocol envProtocol = checkEnvironment();
+
+        // Kitty and iTerm2 protocols take priority over Sixel
+        if (envProtocol == ImageProtocol.KITTY || envProtocol == ImageProtocol.ITERM2) {
+            return envProtocol;
+        }
+
+        // Check terminal type for Kitty/iTerm2 support
+        if (termType != null) {
+            String typeLower = termType.toLowerCase();
+            if (typeLower.contains("kitty") || typeLower.contains("ghostty")) {
+                return ImageProtocol.KITTY;
+            }
+            if (typeLower.contains("iterm") || typeLower.contains("wezterm") ||
+                    typeLower.contains("mintty") || typeLower.contains("vscode") ||
+                    typeLower.contains("tabby") || typeLower.contains("hyper")) {
+                return ImageProtocol.ITERM2;
+            }
+            if (typeLower.contains("konsole")) {
+                return ImageProtocol.KITTY;
+            }
+        }
+
+        // Check DA1 for authoritative Sixel support (parameter 4)
+        if (attrs != null && attrs.supportsSixel()) {
+            return ImageProtocol.SIXEL;
+        }
+
+        // Fall back to heuristic Sixel detection from terminal type
+        if (termType != null) {
+            String typeLower = termType.toLowerCase();
+            if (typeLower.contains("mlterm") || typeLower.contains("foot") ||
+                    typeLower.contains("contour") || typeLower.contains("yaft") ||
+                    typeLower.contains("ctx") || typeLower.contains("darktile")) {
+                return ImageProtocol.SIXEL;
+            }
+        }
+
+        return ImageProtocol.NONE;
+    }
+
+    /**
      * Detect the image protocol based on the terminal type string.
+     * <p>
+     * This is a heuristic method that does not query the terminal.
+     * For more accurate detection, use {@link #detect(DeviceAttributes, String)}.
      *
      * @param termType the terminal type (e.g., from TERM environment variable)
      * @return the detected protocol, or NONE if unknown
