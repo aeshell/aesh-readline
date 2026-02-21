@@ -23,6 +23,7 @@ import java.util.function.Consumer;
 
 import org.aesh.terminal.tty.Signal;
 import org.aesh.terminal.tty.Size;
+import org.aesh.terminal.utils.TerminalTheme;
 
 /**
  * Abstract base class for {@link Connection} implementations that use an
@@ -86,6 +87,16 @@ public abstract class AbstractConnection implements Connection {
     @Override
     public Consumer<Void> getCloseHandler() {
         return closeHandler;
+    }
+
+    @Override
+    public void setThemeChangeHandler(Consumer<TerminalTheme> handler) {
+        eventDecoder.setThemeChangeHandler(handler);
+    }
+
+    @Override
+    public Consumer<TerminalTheme> getThemeChangeHandler() {
+        return eventDecoder.getThemeChangeHandler();
     }
 
     @Override

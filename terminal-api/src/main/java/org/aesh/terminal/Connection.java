@@ -36,6 +36,7 @@ import org.aesh.terminal.utils.CodePointUtils;
 import org.aesh.terminal.utils.ColorDepth;
 import org.aesh.terminal.utils.Parser;
 import org.aesh.terminal.utils.TerminalColorCapability;
+import org.aesh.terminal.utils.TerminalTheme;
 
 /**
  * Represent a connection to either a local/direct/remote Terminal.
@@ -508,6 +509,148 @@ public interface Connection extends AutoCloseable {
     default int[] queryCursorColor(long timeoutMs) {
         return queryOsc(ANSI.OSC_CURSOR_COLOR, "?", timeoutMs,
                 input -> ANSI.parseOscColorResponse(input, ANSI.OSC_CURSOR_COLOR));
+    }
+
+    // ==================== Theme Mode DSR (CSI ? 996 n) ====================
+
+    /**
+     * Query the terminal for its current theme mode using the CSI ? 996 n protocol.
+     * <p>
+     * This sends {@code CSI ? 996 n} and expects a response of
+     * {@code CSI ? 997 ; 1 n} (dark) or {@code CSI ? 997 ; 2 n} (light).
+     * <p>
+     * This is simpler and faster than OSC 10/11 RGB queries since it returns
+     * a direct dark/light answer without needing luminance calculation.
+     * <p>
+     * The terminal must be actively reading input for this to work.
+     * Only works on terminals that support this extension (Contour, Ghostty,
+     * Kitty 0.38.1+, tmux, VTE 0.82.0+).
+     * <p>
+     * Ref: <a href="https://contour-terminal.org/vt-extensions/color-palette-update-notifications/">
+     * Contour VT extension: Dark and Light Mode detection</a>
+     *
+     * @param timeoutMs timeout in milliseconds to wait for response
+     * @return {@link TerminalTheme#DARK} or {@link TerminalTheme#LIGHT},
+     *         or {@code null} if not supported or timeout
+     */
+    default TerminalTheme queryThemeMode(long timeoutMs) {
+        if (!supportsAnsi()) {
+            return null;
+        }
+
+        // Check if the terminal supports this protocol
+        if (device() != null && !device().supportsThemeQuery()) {
+            return null;
+        }
+
+        return queryTerminal(ANSI.THEME_MODE_QUERY, timeoutMs, ANSI::parseThemeDsrResponse);
+    }
+
+    /**
+     * Check if the terminal supports the CSI ? 996 n theme mode query.
+     * <p>
+     * Delegates to {@link Device#supportsThemeQuery()}.
+     *
+     * @return true if the terminal supports theme mode queries
+     */
+    default boolean supportsThemeQuery() {
+        return device() != null && device().supportsThemeQuery();
+    }
+
+    /**
+     * Set a handler to be called when the terminal's theme changes.
+     * <p>
+     * When a handler is registered, the input pipeline will intercept unsolicited
+     * {@code CSI ? 997 ; Ps n} responses and route them to this handler instead
+     * of passing them through as input. This prevents theme change notifications
+     * from corrupting the readline buffer.
+     * <p>
+     * Typically used together with {@link #enableThemeChangeNotification()} which
+     * tells the terminal to send these notifications.
+     * <p>
+     * Note: The default implementation is a no-op. Implementations that extend
+     * {@link AbstractConnection} get automatic support via {@link EventDecoder}.
+     *
+     * @param handler the handler to invoke with the new theme, or null to remove
+     * @see #enableThemeChangeNotification()
+     */
+    default void setThemeChangeHandler(Consumer<TerminalTheme> handler) {
+        // Default no-op; AbstractConnection delegates to EventDecoder
+    }
+
+    /**
+     * Get the current theme change handler.
+     *
+     * @return the theme change handler, or null if not set
+     * @see #setThemeChangeHandler(Consumer)
+     */
+    default Consumer<TerminalTheme> getThemeChangeHandler() {
+        return null;
+    }
+
+    /**
+     * Enable unsolicited theme change notifications.
+     * <p>
+     * Sends {@code CSI ? 2031 h} to the terminal. When enabled, the terminal
+     * will send {@code CSI ? 997 ; 1 n} or {@code CSI ? 997 ; 2 n} whenever
+     * the color palette changes (e.g., dark/light mode switch).
+     * <p>
+     * To receive these notifications, also register a handler with
+     * {@link #setThemeChangeHandler(Consumer)}.
+     * <p>
+     * Use {@link #disableThemeChangeNotification()} to stop receiving notifications.
+     * <p>
+     * Ref: <a href="https://contour-terminal.org/vt-extensions/color-palette-update-notifications/">
+     * Contour VT extension</a>
+     */
+    default void enableThemeChangeNotification() {
+        if (supportsThemeQuery()) {
+            write(ANSI.THEME_NOTIFY_ENABLE);
+        }
+    }
+
+    /**
+     * Enable unsolicited theme change notifications with a handler.
+     * <p>
+     * Convenience method that registers the theme change handler and enables
+     * notifications in one call. Equivalent to:
+     *
+     * <pre>
+     * connection.setThemeChangeHandler(handler);
+     * connection.enableThemeChangeNotification();
+     * </pre>
+     * <p>
+     * The handler is called whenever the terminal reports a theme change.
+     * Applications can update their cached {@link TerminalColorCapability} in
+     * the handler:
+     *
+     * <pre>
+     * connection.enableThemeChangeNotification(theme -&gt; {
+     *     capability = new TerminalColorCapability(capability.getColorDepth(), theme);
+     * });
+     * </pre>
+     *
+     * @param handler the handler to invoke with the new theme
+     * @see #disableThemeChangeNotification()
+     */
+    default void enableThemeChangeNotification(Consumer<TerminalTheme> handler) {
+        setThemeChangeHandler(handler);
+        enableThemeChangeNotification();
+    }
+
+    /**
+     * Disable unsolicited theme change notifications.
+     * <p>
+     * Sends {@code CSI ? 2031 l} to the terminal. Does not remove the
+     * theme change handler — call {@link #setThemeChangeHandler(Consumer)}
+     * with {@code null} to remove it.
+     *
+     * @see #enableThemeChangeNotification()
+     */
+    default void disableThemeChangeNotification() {
+        if (supportsThemeQuery()) {
+            write(ANSI.THEME_NOTIFY_DISABLE);
+        }
     }
 
     /**

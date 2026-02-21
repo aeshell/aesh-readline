@@ -70,119 +70,124 @@ public interface Device {
      * <li>An identifier string</li>
      * <li>Supported OSC codes</li>
      * <li>Default/native color depth</li>
+     * <li>Whether CSI ? 996 n theme DSR queries are supported</li>
      * </ul>
      */
     enum TerminalType {
         // ==================== IDE Terminals ====================
 
         /** JetBrains IDEs (IntelliJ, etc.) using JediTerm */
-        JETBRAINS("JetBrains-JediTerm", EnumSet.of(OscCode.FOREGROUND, OscCode.BACKGROUND), ColorDepth.TRUE_COLOR),
+        JETBRAINS("JetBrains-JediTerm", EnumSet.of(OscCode.FOREGROUND, OscCode.BACKGROUND), ColorDepth.TRUE_COLOR, false),
 
         /** Visual Studio Code integrated terminal */
         VSCODE("vscode", EnumSet.of(OscCode.FOREGROUND, OscCode.BACKGROUND, OscCode.CURSOR_COLOR, OscCode.CLIPBOARD),
-                ColorDepth.TRUE_COLOR),
+                ColorDepth.TRUE_COLOR, false),
 
         // ==================== macOS Terminals ====================
 
         /** Apple Terminal */
         APPLE_TERMINAL("Apple_Terminal", EnumSet.of(OscCode.FOREGROUND, OscCode.BACKGROUND, OscCode.CURSOR_COLOR),
-                ColorDepth.COLORS_256),
+                ColorDepth.COLORS_256, false),
 
         /** iTerm2 */
-        ITERM2("iTerm.app", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR),
+        ITERM2("iTerm.app", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, false),
 
         // ==================== Cross-Platform Modern Terminals ====================
 
-        /** Kitty terminal - GPU-accelerated, uses Kitty graphics protocol */
-        KITTY("kitty", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR),
+        /** Kitty terminal - GPU-accelerated, uses Kitty graphics protocol. Supports CSI ? 996 n since 0.38.1. */
+        KITTY("kitty", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, true),
 
-        /** Ghostty - Fast GPU-accelerated terminal, uses Kitty graphics protocol */
-        GHOSTTY("ghostty", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR),
+        /** Ghostty - Fast GPU-accelerated terminal, uses Kitty graphics protocol. Supports CSI ? 996 n since 1.0.0. */
+        GHOSTTY("ghostty", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, true),
 
         /** Alacritty - GPU-accelerated terminal */
-        ALACRITTY("alacritty", EnumSet.of(OscCode.FOREGROUND, OscCode.BACKGROUND, OscCode.CURSOR_COLOR), ColorDepth.TRUE_COLOR),
+        ALACRITTY("alacritty", EnumSet.of(OscCode.FOREGROUND, OscCode.BACKGROUND, OscCode.CURSOR_COLOR), ColorDepth.TRUE_COLOR,
+                false),
 
         /** WezTerm - GPU-accelerated terminal with multiplexing */
-        WEZTERM("WezTerm", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR),
+        WEZTERM("WezTerm", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, false),
 
-        /** Foot - Fast, lightweight Wayland terminal */
-        FOOT("foot", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR),
+        /** Foot - Fast, lightweight Wayland terminal (VTE-based, supports CSI ? 996 n) */
+        FOOT("foot", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, true),
 
-        /** Contour - Modern terminal emulator */
-        CONTOUR("contour", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR),
+        /** Contour - Modern terminal emulator. Origin of the CSI ? 996 n extension since 0.4.0. */
+        CONTOUR("contour", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, true),
 
         /** Rio - Hardware-accelerated GPU terminal */
-        RIO("rio", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR),
+        RIO("rio", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, false),
 
         /** Warp - Modern terminal with AI features */
-        WARP("warp", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR),
+        WARP("warp", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, false),
 
         /** Wave - Modern terminal */
-        WAVE("wave", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR),
+        WAVE("wave", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, false),
 
         // ==================== Electron-Based Terminals ====================
 
         /** Hyper - Electron-based terminal */
-        HYPER("hyper", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR),
+        HYPER("hyper", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, false),
 
         /** Terminus/Tabby - Electron-based terminal */
-        TABBY("tabby", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR),
+        TABBY("tabby", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, false),
 
         /** Extraterm - Electron-based terminal */
-        EXTRATERM("extraterm", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR),
+        EXTRATERM("extraterm", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, false),
 
         // ==================== Linux Desktop Terminals ====================
 
-        /** GNOME Terminal and other VTE-based terminals */
-        GNOME_TERMINAL("gnome-terminal", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR),
+        /** GNOME Terminal and other VTE-based terminals. Supports CSI ? 996 n since VTE 0.82.0. */
+        GNOME_TERMINAL("gnome-terminal", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, true),
 
         /** Konsole - KDE terminal emulator */
-        KONSOLE("konsole", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR),
+        KONSOLE("konsole", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, false),
 
         /** rxvt and urxvt */
-        RXVT("rxvt", EnumSet.of(OscCode.FOREGROUND, OscCode.BACKGROUND, OscCode.CURSOR_COLOR), ColorDepth.COLORS_256),
+        RXVT("rxvt", EnumSet.of(OscCode.FOREGROUND, OscCode.BACKGROUND, OscCode.CURSOR_COLOR), ColorDepth.COLORS_256, false),
 
         // ==================== Windows Terminals ====================
 
         /** Windows Terminal */
         WINDOWS_TERMINAL("Windows Terminal", EnumSet.of(OscCode.FOREGROUND, OscCode.BACKGROUND, OscCode.CURSOR_COLOR),
-                ColorDepth.TRUE_COLOR),
+                ColorDepth.TRUE_COLOR, false),
 
         /** Mintty - Default terminal for Git Bash, Cygwin, MSYS2 */
-        MINTTY("mintty", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR),
+        MINTTY("mintty", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, false),
 
         /** ConEmu/Cmder - Windows console emulator */
-        CONEMU("ConEmu", EnumSet.of(OscCode.FOREGROUND, OscCode.BACKGROUND), ColorDepth.TRUE_COLOR),
+        CONEMU("ConEmu", EnumSet.of(OscCode.FOREGROUND, OscCode.BACKGROUND), ColorDepth.TRUE_COLOR, false),
 
         // ==================== Terminal Multiplexers ====================
 
-        /** tmux - Terminal multiplexer (no OSC passthrough by default) */
-        TMUX("tmux", EnumSet.noneOf(OscCode.class), ColorDepth.COLORS_256),
+        /** tmux - Terminal multiplexer. Supports CSI ? 996 n passthrough. */
+        TMUX("tmux", EnumSet.noneOf(OscCode.class), ColorDepth.COLORS_256, true),
 
         /** GNU Screen - Terminal multiplexer (no OSC passthrough by default) */
-        SCREEN("screen", EnumSet.noneOf(OscCode.class), ColorDepth.COLORS_256),
+        SCREEN("screen", EnumSet.noneOf(OscCode.class), ColorDepth.COLORS_256, false),
 
         // ==================== Classic/Legacy Terminals ====================
 
         /** xterm and compatible */
-        XTERM("xterm", EnumSet.allOf(OscCode.class), ColorDepth.COLORS_256),
+        XTERM("xterm", EnumSet.allOf(OscCode.class), ColorDepth.COLORS_256, false),
 
         /** Linux console (no OSC query support) */
-        LINUX_CONSOLE("linux", EnumSet.noneOf(OscCode.class), ColorDepth.COLORS_8),
+        LINUX_CONSOLE("linux", EnumSet.noneOf(OscCode.class), ColorDepth.COLORS_8, false),
 
         // ==================== Fallback ====================
 
         /** Unknown terminal - assume basic support */
-        UNKNOWN("unknown", EnumSet.of(OscCode.FOREGROUND, OscCode.BACKGROUND), ColorDepth.COLORS_256);
+        UNKNOWN("unknown", EnumSet.of(OscCode.FOREGROUND, OscCode.BACKGROUND), ColorDepth.COLORS_256, false);
 
         private final String identifier;
         private final Set<OscCode> supportedCodes;
         private final ColorDepth defaultColorDepth;
+        private final boolean supportsThemeDsr;
 
-        TerminalType(String identifier, Set<OscCode> supportedCodes, ColorDepth defaultColorDepth) {
+        TerminalType(String identifier, Set<OscCode> supportedCodes, ColorDepth defaultColorDepth,
+                boolean supportsThemeDsr) {
             this.identifier = identifier;
             this.supportedCodes = Collections.unmodifiableSet(supportedCodes);
             this.defaultColorDepth = defaultColorDepth;
+            this.supportsThemeDsr = supportsThemeDsr;
         }
 
         public String getIdentifier() {
@@ -216,6 +221,25 @@ public interface Device {
          */
         public boolean supportsTrueColor() {
             return defaultColorDepth == ColorDepth.TRUE_COLOR;
+        }
+
+        /**
+         * Check if this terminal supports the CSI ? 996 n theme mode DSR query.
+         * <p>
+         * When supported, the terminal can be queried for its current dark/light
+         * mode preference using {@code CSI ? 996 n}, and responds with
+         * {@code CSI ? 997 ; 1 n} (dark) or {@code CSI ? 997 ; 2 n} (light).
+         * <p>
+         * Additionally, unsolicited notifications can be enabled with
+         * {@code CSI ? 2031 h} so the terminal reports theme changes automatically.
+         * <p>
+         * Ref: <a href="https://contour-terminal.org/vt-extensions/color-palette-update-notifications/">
+         * Contour VT extension</a>
+         *
+         * @return true if CSI ? 996 n theme DSR is supported
+         */
+        public boolean supportsThemeDsr() {
+            return supportsThemeDsr;
         }
 
         /**
@@ -407,6 +431,21 @@ public interface Device {
      */
     default boolean supportsOscCode(OscCode oscCode) {
         return detectTerminalType().supports(oscCode);
+    }
+
+    /**
+     * Check if the current terminal supports the CSI ? 996 n theme mode query.
+     * <p>
+     * When supported, the terminal can be queried for its current dark/light
+     * mode preference, and can subscribe to unsolicited theme change notifications.
+     * <p>
+     * This delegates to {@link TerminalType#supportsThemeDsr()}.
+     *
+     * @return true if the terminal supports CSI ? 996 n theme DSR queries
+     * @see TerminalType#supportsThemeDsr()
+     */
+    default boolean supportsThemeQuery() {
+        return detectTerminalType().supportsThemeDsr();
     }
 
     /**

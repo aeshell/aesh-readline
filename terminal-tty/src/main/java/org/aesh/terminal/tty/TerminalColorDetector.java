@@ -348,6 +348,15 @@ public final class TerminalColorDetector {
         boolean supportsCursor = inTmux || connection.supportsOscCode(Device.OscCode.CURSOR_COLOR);
         boolean supportsPalette = inTmux || connection.supportsPaletteQuery();
 
+        // Try CSI ? 996 n for direct theme detection first
+        TerminalTheme dsrTheme = null;
+        if (connection.supportsThemeQuery()) {
+            dsrTheme = queryThemeDsr(connection, Math.min(timeoutMs, FAST_TIMEOUT_MS));
+            if (dsrTheme != null) {
+                LOGGER.log(Level.FINE, "Theme detected via CSI ? 996 n: " + dsrTheme);
+            }
+        }
+
         LOGGER.log(Level.FINE, "Trying plain OSC color query");
         TerminalColorCapability result = doSynchronousColorQuery(
                 connection, terminal, timeoutMs, supportsCursor, supportsPalette, false);
@@ -385,6 +394,17 @@ public final class TerminalColorDetector {
 
         if (result != null && hasColors(result)) {
             LOGGER.log(Level.FINE, "Color query succeeded");
+        }
+
+        // If we got a theme from CSI ? 996 n, override the OSC-derived theme
+        if (dsrTheme != null && result != null) {
+            result = new TerminalColorCapability(
+                    result.getColorDepth(),
+                    dsrTheme,
+                    result.getForegroundRGB(),
+                    result.getBackgroundRGB(),
+                    result.getCursorRGB(),
+                    result.getPaletteColors());
         }
 
         return result;
@@ -564,6 +584,20 @@ public final class TerminalColorDetector {
         Map<Integer, int[]> paletteColors = null;
 
         if (queryTerminal && connection != null && connection.supportsAnsi()) {
+            // Try CSI ? 996 n theme DSR first — it's faster and simpler than OSC 10/11
+            if (connection.supportsThemeQuery()) {
+                try {
+                    TerminalTheme dsrTheme = queryThemeDsr(connection, FAST_TIMEOUT_MS);
+                    if (dsrTheme != null) {
+                        theme = dsrTheme;
+                        LOGGER.log(Level.FINE, "Theme detected via CSI ? 996 n: " + theme);
+                    }
+                } catch (Exception e) {
+                    LOGGER.log(Level.FINE, "CSI ? 996 n theme query failed", e);
+                }
+            }
+
+            // Query colors via OSC for RGB values (still useful for palette, FG/BG colors)
             try {
                 long timeoutMs = fullDetection ? DEFAULT_TIMEOUT_MS : FAST_TIMEOUT_MS;
                 TerminalColorCapability queryResult;
@@ -577,7 +611,10 @@ public final class TerminalColorDetector {
                     backgroundRGB = queryResult.getBackgroundRGB();
                     cursorRGB = queryResult.getCursorRGB();
                     paletteColors = queryResult.getPaletteColors();
-                    theme = queryResult.getTheme();
+                    // Only use OSC-derived theme if CSI ? 996 n didn't provide one
+                    if (theme == TerminalTheme.UNKNOWN) {
+                        theme = queryResult.getTheme();
+                    }
 
                     LOGGER.log(Level.FINE, "Queried colors via Connection: FG=" + (foregroundRGB != null) +
                             ", BG=" + (backgroundRGB != null) + ", cursor=" + (cursorRGB != null) +
@@ -661,6 +698,102 @@ public final class TerminalColorDetector {
                 osName.contains("windows server 2022")) {
             LOGGER.log(Level.FINE, "Modern Windows detected by name - assuming true color");
             return ColorDepth.TRUE_COLOR;
+        }
+
+        return null;
+    }
+
+    // ==================== Synchronous Theme DSR Query ====================
+
+    /**
+     * Query the terminal for its theme mode using CSI ? 996 n via synchronous I/O.
+     * <p>
+     * This uses the same synchronous I/O pattern as {@code doSynchronousColorQuery}
+     * and works regardless of whether the connection is actively reading.
+     * <p>
+     * For terminals that support this protocol (Contour, Ghostty, Kitty 0.38.1+,
+     * tmux, VTE 0.82.0+), this is faster than OSC 10/11 because it returns a
+     * direct dark/light answer.
+     *
+     * @param connection the terminal connection
+     * @param timeoutMs timeout in milliseconds
+     * @return {@link TerminalTheme#DARK} or {@link TerminalTheme#LIGHT},
+     *         or null if not supported or timeout
+     */
+    private static TerminalTheme queryThemeDsr(Connection connection, long timeoutMs) {
+        if (!(connection instanceof TerminalConnection)) {
+            // For non-TerminalConnection, try the handler-based approach
+            return connection.queryThemeMode(timeoutMs);
+        }
+
+        TerminalConnection termConn = (TerminalConnection) connection;
+        Terminal terminal = termConn.getTerminal();
+        if (terminal == null) {
+            return null;
+        }
+
+        Attributes savedAttributes = connection.getAttributes();
+        Attributes rawAttributes = new Attributes(savedAttributes);
+        rawAttributes.setLocalFlags(
+                EnumSet.of(Attributes.LocalFlag.ICANON, Attributes.LocalFlag.ECHO),
+                false);
+        rawAttributes.setControlChar(Attributes.ControlChar.VMIN, 0);
+        rawAttributes.setControlChar(Attributes.ControlChar.VTIME, 1);
+        connection.setAttributes(rawAttributes);
+
+        try {
+            InputStream input = terminal.input();
+
+            // Drain any pending input
+            while (input.available() > 0) {
+                input.read();
+            }
+
+            // Send CSI ? 996 n
+            connection.write(ANSI.THEME_MODE_QUERY);
+            terminal.output().flush();
+
+            // Read response — expecting ESC [ ? 997 ; Ps n
+            StringBuilder response = new StringBuilder();
+            long endTime = System.currentTimeMillis() + timeoutMs;
+            byte[] buffer = new byte[256];
+
+            while (System.currentTimeMillis() < endTime) {
+                int read = input.read(buffer);
+                if (read > 0) {
+                    for (int i = 0; i < read; i++) {
+                        response.append((char) (buffer[i] & 0xFF));
+                    }
+                    // Check if we have a complete response (terminated by 'n')
+                    String resp = response.toString();
+                    if (resp.contains("n") && resp.contains("\u001B[?997;")) {
+                        break;
+                    }
+                } else if (read < 0) {
+                    break;
+                }
+                try {
+                    Thread.sleep(5);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+
+            drainInput(input, 10);
+
+            String responseStr = response.toString();
+            if (!responseStr.isEmpty()) {
+                int[] responseCodePoints = CodePointUtils.toCodePoints(responseStr);
+                TerminalTheme result = ANSI.parseThemeDsrResponse(responseCodePoints);
+                if (result != null) {
+                    return result;
+                }
+            }
+        } catch (IOException e) {
+            LOGGER.log(Level.FINE, "Failed to query theme via CSI ? 996 n", e);
+        } finally {
+            connection.setAttributes(savedAttributes);
         }
 
         return null;

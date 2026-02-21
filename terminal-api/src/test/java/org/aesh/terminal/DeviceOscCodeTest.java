@@ -387,4 +387,41 @@ public class DeviceOscCodeTest {
         assertTrue(TerminalType.JETBRAINS.supportsTrueColor());
         assertTrue(TerminalType.VSCODE.supportsTrueColor());
     }
+
+    // ==================== Theme DSR (CSI ? 996 n) Support Tests ====================
+
+    @Test
+    public void testThemeDsrSupportedTerminals() {
+        // Terminals known to support CSI ? 996 n
+        assertTrue("Kitty supports theme DSR", TerminalType.KITTY.supportsThemeDsr());
+        assertTrue("Ghostty supports theme DSR", TerminalType.GHOSTTY.supportsThemeDsr());
+        assertTrue("Foot supports theme DSR", TerminalType.FOOT.supportsThemeDsr());
+        assertTrue("Contour supports theme DSR", TerminalType.CONTOUR.supportsThemeDsr());
+        assertTrue("GNOME Terminal supports theme DSR", TerminalType.GNOME_TERMINAL.supportsThemeDsr());
+        assertTrue("tmux supports theme DSR", TerminalType.TMUX.supportsThemeDsr());
+    }
+
+    @Test
+    public void testThemeDsrUnsupportedTerminals() {
+        // Terminals that do NOT support CSI ? 996 n
+        assertFalse("JetBrains does not support theme DSR", TerminalType.JETBRAINS.supportsThemeDsr());
+        assertFalse("VS Code does not support theme DSR", TerminalType.VSCODE.supportsThemeDsr());
+        assertFalse("iTerm2 does not support theme DSR", TerminalType.ITERM2.supportsThemeDsr());
+        assertFalse("Alacritty does not support theme DSR", TerminalType.ALACRITTY.supportsThemeDsr());
+        assertFalse("WezTerm does not support theme DSR", TerminalType.WEZTERM.supportsThemeDsr());
+        assertFalse("xterm does not support theme DSR", TerminalType.XTERM.supportsThemeDsr());
+        assertFalse("Konsole does not support theme DSR", TerminalType.KONSOLE.supportsThemeDsr());
+        assertFalse("Screen does not support theme DSR", TerminalType.SCREEN.supportsThemeDsr());
+        assertFalse("Linux console does not support theme DSR", TerminalType.LINUX_CONSOLE.supportsThemeDsr());
+        assertFalse("Unknown does not support theme DSR", TerminalType.UNKNOWN.supportsThemeDsr());
+    }
+
+    @Test
+    public void testAllTerminalTypesHaveThemeDsrValue() {
+        // Ensure supportsThemeDsr() doesn't throw for any terminal type
+        for (TerminalType type : TerminalType.values()) {
+            // Just call it - should not throw
+            type.supportsThemeDsr();
+        }
+    }
 }

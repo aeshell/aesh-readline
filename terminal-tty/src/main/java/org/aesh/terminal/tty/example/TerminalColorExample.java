@@ -424,6 +424,11 @@ public class TerminalColorExample {
         connection.write(builder.append(indent).append("Tmux passthrough: ")
                 .append(env.isTmuxPassthroughEnabled() ? "Yes" : "No").toLine());
 
+        Device.TerminalType termType = env.getTerminalType();
+        builder.reset();
+        connection.write(builder.append(indent).append("Theme mode query (CSI ? 996 n): ")
+                .append(termType.supportsThemeDsr() ? "Yes" : "No").toLine());
+
         // Additional info for JetBrains
         if (env.isJetBrains()) {
             connection.write("\n");

@@ -717,4 +717,101 @@ public class ANSIOscTest {
         assertEquals(0, results.get(11)[1]);
         assertEquals(255, results.get(11)[2]);
     }
+
+    // ==================== Theme Mode DSR (CSI ? 996 n) Tests ====================
+
+    @Test
+    public void testParseThemeDsrResponse_DarkMode() {
+        // ESC [ ? 997 ; 1 n
+        String response = "\u001B[?997;1n";
+        int[] input = response.codePoints().toArray();
+        assertEquals(TerminalTheme.DARK, ANSI.parseThemeDsrResponse(input));
+    }
+
+    @Test
+    public void testParseThemeDsrResponse_LightMode() {
+        // ESC [ ? 997 ; 2 n
+        String response = "\u001B[?997;2n";
+        int[] input = response.codePoints().toArray();
+        assertEquals(TerminalTheme.LIGHT, ANSI.parseThemeDsrResponse(input));
+    }
+
+    @Test
+    public void testParseThemeDsrResponse_NullInput() {
+        assertNull(ANSI.parseThemeDsrResponse(null));
+    }
+
+    @Test
+    public void testParseThemeDsrResponse_EmptyInput() {
+        assertNull(ANSI.parseThemeDsrResponse(new int[0]));
+    }
+
+    @Test
+    public void testParseThemeDsrResponse_TooShort() {
+        // Less than 8 characters
+        String response = "\u001B[?99";
+        int[] input = response.codePoints().toArray();
+        assertNull(ANSI.parseThemeDsrResponse(input));
+    }
+
+    @Test
+    public void testParseThemeDsrResponse_InvalidMode() {
+        // ESC [ ? 997 ; 3 n — mode 3 is not defined
+        String response = "\u001B[?997;3n";
+        int[] input = response.codePoints().toArray();
+        assertNull(ANSI.parseThemeDsrResponse(input));
+    }
+
+    @Test
+    public void testParseThemeDsrResponse_NoTerminator() {
+        // Missing terminating 'n'
+        String response = "\u001B[?997;1";
+        int[] input = response.codePoints().toArray();
+        assertNull(ANSI.parseThemeDsrResponse(input));
+    }
+
+    @Test
+    public void testParseThemeDsrResponse_WrongSequence() {
+        // Not a theme DSR response
+        String response = "\u001B[?998;1n";
+        int[] input = response.codePoints().toArray();
+        assertNull(ANSI.parseThemeDsrResponse(input));
+    }
+
+    @Test
+    public void testParseThemeDsrResponse_EmbeddedInOtherData() {
+        // Theme DSR response embedded with other terminal data
+        String response = "some data\u001B[?997;2nmore data";
+        int[] input = response.codePoints().toArray();
+        assertEquals(TerminalTheme.LIGHT, ANSI.parseThemeDsrResponse(input));
+    }
+
+    @Test
+    public void testParseThemeDsrResponse_NonNumericParam() {
+        // Non-numeric parameter
+        String response = "\u001B[?997;xn";
+        int[] input = response.codePoints().toArray();
+        assertNull(ANSI.parseThemeDsrResponse(input));
+    }
+
+    @Test
+    public void testThemeModeQueryConstant() {
+        assertEquals("\u001B[?996n", ANSI.THEME_MODE_QUERY);
+    }
+
+    @Test
+    public void testThemeNotifyEnableConstant() {
+        assertEquals("\u001B[?2031h", ANSI.THEME_NOTIFY_ENABLE);
+    }
+
+    @Test
+    public void testThemeNotifyDisableConstant() {
+        assertEquals("\u001B[?2031l", ANSI.THEME_NOTIFY_DISABLE);
+    }
+
+    @Test
+    public void testThemeDsrConstants() {
+        assertEquals(1, ANSI.THEME_DSR_DARK);
+        assertEquals(2, ANSI.THEME_DSR_LIGHT);
+    }
 }

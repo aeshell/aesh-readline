@@ -141,6 +141,48 @@ public class ANSI {
     /** OSC code for cursor color query/set. */
     public static final int OSC_CURSOR_COLOR = 12;
 
+    // ==================== Theme Mode DSR (CSI ? 996 n) ====================
+
+    /**
+     * CSI query to request the current color theme mode (dark or light).
+     * <p>
+     * Sends {@code CSI ? 996 n} to the terminal. The terminal responds with:
+     * <ul>
+     * <li>{@code CSI ? 997 ; 1 n} for dark mode</li>
+     * <li>{@code CSI ? 997 ; 2 n} for light mode</li>
+     * </ul>
+     * <p>
+     * Ref: <a href="https://contour-terminal.org/vt-extensions/color-palette-update-notifications/">
+     * Contour VT extension: Dark and Light Mode detection</a>
+     * <p>
+     * Supported by: Contour, Ghostty, Kitty (0.38.1+), tmux, VTE (0.82.0+), Helix, Neovim.
+     */
+    public static final String THEME_MODE_QUERY = "\u001B[?996n";
+
+    /**
+     * Enable unsolicited DSR notifications for color palette updates.
+     * <p>
+     * Sends {@code CSI ? 2031 h} to the terminal. When enabled, the terminal
+     * will send {@code CSI ? 997 ; 1 n} or {@code CSI ? 997 ; 2 n} whenever
+     * the color palette changes (e.g., dark/light mode switch, profile change).
+     * <p>
+     * Use {@link #THEME_NOTIFY_DISABLE} to stop receiving notifications.
+     */
+    public static final String THEME_NOTIFY_ENABLE = "\u001B[?2031h";
+
+    /**
+     * Disable unsolicited DSR notifications for color palette updates.
+     * <p>
+     * Sends {@code CSI ? 2031 l} to the terminal.
+     */
+    public static final String THEME_NOTIFY_DISABLE = "\u001B[?2031l";
+
+    /** DSR response value indicating dark mode: {@code CSI ? 997 ; 1 n}. */
+    public static final int THEME_DSR_DARK = 1;
+
+    /** DSR response value indicating light mode: {@code CSI ? 997 ; 2 n}. */
+    public static final int THEME_DSR_LIGHT = 2;
+
     private ANSI() {
     }
 
@@ -1018,6 +1060,67 @@ public class ANSI {
             { 0, 255, 255 }, // 14: Bright Cyan
             { 255, 255, 255 } // 15: Bright White
     };
+
+    // ==================== Theme Mode DSR Parsing ====================
+
+    /**
+     * Parse a theme mode DSR response.
+     * <p>
+     * Expected format: {@code ESC [ ? 997 ; Ps n}
+     * <p>
+     * Where Ps is:
+     * <ul>
+     * <li>1 for dark mode</li>
+     * <li>2 for light mode</li>
+     * </ul>
+     * <p>
+     * This parses the response to {@link #THEME_MODE_QUERY} ({@code CSI ? 996 n})
+     * and also handles unsolicited DSR notifications when {@link #THEME_NOTIFY_ENABLE}
+     * ({@code CSI ? 2031 h}) is active.
+     *
+     * @param input the input sequence as code points
+     * @return {@link TerminalTheme#DARK} or {@link TerminalTheme#LIGHT},
+     *         or {@code null} if the input does not contain a valid theme DSR response
+     */
+    public static TerminalTheme parseThemeDsrResponse(int[] input) {
+        if (input == null || input.length < 8) {
+            return null;
+        }
+
+        StringBuilder sb = new StringBuilder();
+        for (int c : input) {
+            sb.appendCodePoint(c);
+        }
+        String response = sb.toString();
+
+        // Look for the pattern: ESC [ ? 997 ; Ps n
+        int start = response.indexOf("\u001B[?997;");
+        if (start < 0) {
+            return null;
+        }
+
+        // Move past "ESC[?997;"
+        int paramStart = start + 7; // length of "\u001B[?997;"
+
+        // Find the terminating 'n'
+        int end = response.indexOf('n', paramStart);
+        if (end < 0) {
+            return null;
+        }
+
+        String paramStr = response.substring(paramStart, end).trim();
+        try {
+            int mode = Integer.parseInt(paramStr);
+            if (mode == THEME_DSR_DARK) {
+                return TerminalTheme.DARK;
+            } else if (mode == THEME_DSR_LIGHT) {
+                return TerminalTheme.LIGHT;
+            }
+            return null;
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
 
     // ==================== Device Attributes (DA1/DA2) ====================
 
