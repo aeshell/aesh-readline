@@ -21,6 +21,7 @@ package org.aesh.terminal.utils;
 
 import static org.aesh.terminal.utils.ANSIBuilder.Color.*;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import org.aesh.terminal.utils.ANSIBuilder.TextType;
 import org.junit.Test;
@@ -155,6 +156,12 @@ public class ANSIBuilderTest {
         assertEquals(COLOR_START + "38;5;252mTimestamp" + RESET, builder.timestamp("Timestamp").toString());
         builder.clear();
         assertEquals(COLOR_START + "37mMessage" + RESET, builder.message("Message").toString());
+        builder.clear();
+        assertEquals(COLOR_START + "94mCategory" + RESET, builder.category("Category").toString());
+        builder.clear();
+        assertEquals(COLOR_START + "92mThreadName" + RESET, builder.threadName("ThreadName").toString());
+        builder.clear();
+        assertEquals(COLOR_START + "91mFatal" + RESET, builder.fatal("Fatal").toString());
     }
 
     @Test
@@ -175,6 +182,12 @@ public class ANSIBuilderTest {
         assertEquals(COLOR_START + "38;5;252mTimestamp" + RESET, builder.timestamp("Timestamp").toString());
         builder.clear();
         assertEquals(COLOR_START + "37mMessage" + RESET, builder.message("Message").toString());
+        builder.clear();
+        assertEquals(COLOR_START + "94mCategory" + RESET, builder.category("Category").toString());
+        builder.clear();
+        assertEquals(COLOR_START + "92mThreadName" + RESET, builder.threadName("ThreadName").toString());
+        builder.clear();
+        assertEquals(COLOR_START + "91mFatal" + RESET, builder.fatal("Fatal").toString());
     }
 
     @Test
@@ -195,6 +208,12 @@ public class ANSIBuilderTest {
         assertEquals(COLOR_START + "38;5;240mTimestamp" + RESET, builder.timestamp("Timestamp").toString());
         builder.clear();
         assertEquals(COLOR_START + "30mMessage" + RESET, builder.message("Message").toString());
+        builder.clear();
+        assertEquals(COLOR_START + "34mCategory" + RESET, builder.category("Category").toString());
+        builder.clear();
+        assertEquals(COLOR_START + "32mThreadName" + RESET, builder.threadName("ThreadName").toString());
+        builder.clear();
+        assertEquals(COLOR_START + "31mFatal" + RESET, builder.fatal("Fatal").toString());
     }
 
     @Test
@@ -501,5 +520,151 @@ public class ANSIBuilderTest {
 
         String result = builder.error("Error").toString();
         assertEquals(COLOR_START + "38;2;255;0;0mError" + RESET, result);
+    }
+
+    @Test
+    public void testBuilderLevelCategoryOverrides() {
+        // Test 256-color code override
+        ANSIBuilder builder = ANSIBuilder.builder()
+                .categoryCode(75); // 256-color blue
+
+        String result = builder.category("org.aesh").toString();
+        assertEquals(COLOR_START + "38;5;75morg.aesh" + RESET, result);
+    }
+
+    @Test
+    public void testBuilderLevelThreadNameOverrides() {
+        // Test 256-color code override
+        ANSIBuilder builder = ANSIBuilder.builder()
+                .threadNameCode(78); // 256-color green
+
+        String result = builder.threadName("main").toString();
+        assertEquals(COLOR_START + "38;5;78mmain" + RESET, result);
+    }
+
+    @Test
+    public void testBuilderLevelFatalOverrides() {
+        // Test 256-color code override
+        ANSIBuilder builder = ANSIBuilder.builder()
+                .fatalCode(160); // 256-color dark red
+
+        String result = builder.fatal("FATAL").toString();
+        assertEquals(COLOR_START + "38;5;160mFATAL" + RESET, result);
+    }
+
+    @Test
+    public void testCategoryRgbOverride() {
+        ANSIBuilder builder = ANSIBuilder.builder()
+                .categoryRgb(100, 149, 237); // Cornflower blue
+
+        String result = builder.category("[org.aesh.App]").toString();
+        assertEquals(COLOR_START + "38;2;100;149;237m[org.aesh.App]" + RESET, result);
+    }
+
+    @Test
+    public void testThreadNameRgbOverride() {
+        ANSIBuilder builder = ANSIBuilder.builder()
+                .threadNameRgb(144, 238, 144); // Light green
+
+        String result = builder.threadName("(main)").toString();
+        assertEquals(COLOR_START + "38;2;144;238;144m(main)" + RESET, result);
+    }
+
+    @Test
+    public void testFatalRgbOverride() {
+        ANSIBuilder builder = ANSIBuilder.builder()
+                .fatalRgb(220, 20, 60); // Crimson
+
+        String result = builder.fatal("FATAL").toString();
+        assertEquals(COLOR_START + "38;2;220;20;60mFATAL" + RESET, result);
+    }
+
+    @Test
+    public void testCategoryHexOverride() {
+        ANSIBuilder builder = ANSIBuilder.builder()
+                .categoryHex("#6495ED"); // Cornflower blue
+
+        String result = builder.category("pkg.Class").toString();
+        assertEquals(COLOR_START + "38;2;100;149;237mpkg.Class" + RESET, result);
+    }
+
+    @Test
+    public void testThreadNameHexOverride() {
+        ANSIBuilder builder = ANSIBuilder.builder()
+                .threadNameHex("90EE90"); // Light green
+
+        String result = builder.threadName("worker-1").toString();
+        assertEquals(COLOR_START + "38;2;144;238;144mworker-1" + RESET, result);
+    }
+
+    @Test
+    public void testFatalHexOverride() {
+        ANSIBuilder builder = ANSIBuilder.builder()
+                .fatalHex("#DC143C"); // Crimson
+
+        String result = builder.fatal("FATAL").toString();
+        assertEquals(COLOR_START + "38;2;220;20;60mFATAL" + RESET, result);
+    }
+
+    @Test
+    public void testCategoryRgbPrecedenceOverCode() {
+        // RGB should take precedence over code
+        ANSIBuilder builder = ANSIBuilder.builder()
+                .categoryCode(75)
+                .categoryRgb(100, 149, 237);
+
+        String result = builder.category("pkg.Class").toString();
+        assertEquals(COLOR_START + "38;2;100;149;237mpkg.Class" + RESET, result);
+    }
+
+    @Test
+    public void testFullLogLineWithAllFields() {
+        // Test composing a full log line: TIMESTAMP LEVEL [CATEGORY] (THREAD) MESSAGE
+        ANSIBuilder builder = ANSIBuilder.builder();
+
+        String result = builder
+                .timestamp("2024-01-15 10:30:45").append(" ")
+                .fatal("FATAL").append(" ")
+                .category("[org.aesh.App]").append(" ")
+                .threadName("(main)").append(" ")
+                .message("Application crashed")
+                .toString();
+
+        assertEquals(
+                COLOR_START + "38;5;252m2024-01-15 10:30:45" + RESET + " " +
+                        COLOR_START + "91mFATAL" + RESET + " " +
+                        COLOR_START + "94m[org.aesh.App]" + RESET + " " +
+                        COLOR_START + "92m(main)" + RESET + " " +
+                        COLOR_START + "37mApplication crashed" + RESET,
+                result);
+    }
+
+    @Test
+    public void testFullLogLineWithCapabilityAndOverrides() {
+        // Full log line with dark theme capability and HSL overrides
+        TerminalColorCapability cap = new TerminalColorCapability(
+                ColorDepth.TRUE_COLOR, TerminalTheme.DARK);
+
+        ANSIBuilder builder = ANSIBuilder.builder(cap)
+                .categoryHsl(220f, 90f, 80f)
+                .threadNameHsl(120f, 42.9f, 80f);
+
+        String result = builder
+                .timestamp("10:30:45").append(" ")
+                .error("ERROR").append(" ")
+                .category("[org.aesh]").append(" ")
+                .threadName("(main)").append(" ")
+                .message("Something failed")
+                .toString();
+
+        // Verify it produces valid ANSI output (RGB overrides from HSL)
+        // We just check the structure is correct - RGB values from HSL conversion
+        assertTrue(result.contains("10:30:45"));
+        assertTrue(result.contains("ERROR"));
+        assertTrue(result.contains("[org.aesh]"));
+        assertTrue(result.contains("(main)"));
+        assertTrue(result.contains("Something failed"));
+        // Verify RGB format is used for category and threadName (HSL override)
+        assertTrue(result.contains("38;2;"));
     }
 }

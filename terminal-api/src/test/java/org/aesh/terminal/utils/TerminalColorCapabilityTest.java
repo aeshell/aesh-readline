@@ -105,6 +105,9 @@ public class TerminalColorCapabilityTest {
         assertEquals(90, cap.getSuggestedTraceCode()); // gray for all themes
         assertEquals(252, cap.getSuggestedTimestampCode()); // light gray for dark bg (~rgb 208,208,208)
         assertEquals(37, cap.getSuggestedMessageCode()); // white for dark bg
+        assertEquals(94, cap.getSuggestedCategoryCode()); // bright blue for dark bg
+        assertEquals(92, cap.getSuggestedThreadNameCode()); // bright green for dark bg
+        assertEquals(91, cap.getSuggestedFatalCode()); // bright red for dark bg
     }
 
     @Test
@@ -121,6 +124,9 @@ public class TerminalColorCapabilityTest {
         assertEquals(90, cap.getSuggestedTraceCode()); // gray for all themes
         assertEquals(240, cap.getSuggestedTimestampCode()); // dark gray for light bg (~rgb 88,88,88)
         assertEquals(30, cap.getSuggestedMessageCode()); // black for light bg
+        assertEquals(34, cap.getSuggestedCategoryCode()); // dark blue for light bg
+        assertEquals(32, cap.getSuggestedThreadNameCode()); // dark green for light bg
+        assertEquals(31, cap.getSuggestedFatalCode()); // dark red for light bg
     }
 
     @Test
@@ -366,6 +372,9 @@ public class TerminalColorCapabilityTest {
                 .timestampCode(244) // Custom 256-color gray
                 .messageCode(255) // Custom 256-color white
                 .foregroundCode(252) // Custom 256-color light gray
+                .categoryCode(75) // Custom 256-color blue
+                .threadNameCode(78) // Custom 256-color green
+                .fatalCode(160) // Custom 256-color dark red
                 .build();
 
         // All should return the overridden values
@@ -378,6 +387,9 @@ public class TerminalColorCapabilityTest {
         assertEquals(244, cap.getSuggestedTimestampCode());
         assertEquals(255, cap.getSuggestedMessageCode());
         assertEquals(252, cap.getSuggestedForegroundCode());
+        assertEquals(75, cap.getSuggestedCategoryCode());
+        assertEquals(78, cap.getSuggestedThreadNameCode());
+        assertEquals(160, cap.getSuggestedFatalCode());
     }
 
     @Test
@@ -479,5 +491,67 @@ public class TerminalColorCapabilityTest {
         assertEquals(TerminalTheme.UNKNOWN, cap.getTheme());
         // Override should work
         assertEquals(196, cap.getSuggestedErrorCode());
+    }
+
+    @Test
+    public void testSuggestedCategoryThreadNameFatalCodes() {
+        // Dark theme
+        TerminalColorCapability dark = new TerminalColorCapability(
+                ColorDepth.COLORS_256, TerminalTheme.DARK);
+        assertEquals(94, dark.getSuggestedCategoryCode()); // bright blue
+        assertEquals(92, dark.getSuggestedThreadNameCode()); // bright green
+        assertEquals(91, dark.getSuggestedFatalCode()); // bright red
+
+        // Light theme
+        TerminalColorCapability light = new TerminalColorCapability(
+                ColorDepth.COLORS_256, TerminalTheme.LIGHT);
+        assertEquals(34, light.getSuggestedCategoryCode()); // dark blue
+        assertEquals(32, light.getSuggestedThreadNameCode()); // dark green
+        assertEquals(31, light.getSuggestedFatalCode()); // dark red
+
+        // Unknown theme (defaults to dark behavior)
+        TerminalColorCapability unknown = new TerminalColorCapability(
+                ColorDepth.COLORS_8, TerminalTheme.UNKNOWN);
+        assertEquals(94, unknown.getSuggestedCategoryCode()); // bright blue
+        assertEquals(92, unknown.getSuggestedThreadNameCode()); // bright green
+        assertEquals(91, unknown.getSuggestedFatalCode()); // bright red
+    }
+
+    @Test
+    public void testBuilderCategoryThreadNameFatalOverrides() {
+        TerminalColorCapability cap = TerminalColorCapability.builder()
+                .theme(TerminalTheme.LIGHT)
+                .categoryCode(75)
+                .threadNameCode(78)
+                .fatalCode(160)
+                .build();
+
+        // Overrides should take precedence over theme
+        assertEquals(75, cap.getSuggestedCategoryCode());
+        assertEquals(78, cap.getSuggestedThreadNameCode());
+        assertEquals(160, cap.getSuggestedFatalCode());
+    }
+
+    @Test
+    public void testBuilderPreservesCategoryThreadNameFatalOverrides() {
+        // Create a capability with category/threadName/fatal overrides
+        TerminalColorCapability original = TerminalColorCapability.builder()
+                .theme(TerminalTheme.DARK)
+                .categoryCode(75)
+                .threadNameCode(78)
+                .fatalCode(160)
+                .build();
+
+        // Copy and add different overrides
+        TerminalColorCapability copy = TerminalColorCapability.builder(original)
+                .errorCode(196)
+                .build();
+
+        // Original overrides should be preserved
+        assertEquals(75, copy.getSuggestedCategoryCode());
+        assertEquals(78, copy.getSuggestedThreadNameCode());
+        assertEquals(160, copy.getSuggestedFatalCode());
+        // New override should be added
+        assertEquals(196, copy.getSuggestedErrorCode());
     }
 }

@@ -38,8 +38,10 @@ package org.aesh.terminal.utils;
  * TerminalColorCapability cap = TerminalColorCapability.detectFromEnvironment();
  * String output = ANSIBuilder.builder(cap)
  *         .timestamp("2024-01-15 10:30:45").append(" ")
- *         .success("[INFO]").append(" ")
- *         .message("Application started")
+ *         .error("ERROR").append(" ")
+ *         .category("[org.aesh.readline.ReadlineConsole]").append(" ")
+ *         .threadName("(main)").append(" ")
+ *         .message("Failed to initialize readline")
  *         .toString();
  * </pre>
  * <p>
@@ -86,6 +88,9 @@ public class ANSIBuilder {
     private Integer traceCodeOverride = null;
     private Integer timestampCodeOverride = null;
     private Integer messageCodeOverride = null;
+    private Integer categoryCodeOverride = null;
+    private Integer threadNameCodeOverride = null;
+    private Integer fatalCodeOverride = null;
 
     // RGB overrides for semantic colors (takes precedence over code overrides)
     private int[] errorRgbOverride = null;
@@ -96,6 +101,9 @@ public class ANSIBuilder {
     private int[] traceRgbOverride = null;
     private int[] timestampRgbOverride = null;
     private int[] messageRgbOverride = null;
+    private int[] categoryRgbOverride = null;
+    private int[] threadNameRgbOverride = null;
+    private int[] fatalRgbOverride = null;
 
     private ANSIBuilder(boolean enableAnsi) {
         ansi = enableAnsi;
@@ -231,6 +239,39 @@ public class ANSIBuilder {
      */
     public ANSIBuilder messageCode(int code) {
         this.messageCodeOverride = code;
+        return this;
+    }
+
+    /**
+     * Overrides the category (package/class name) color code for this builder.
+     *
+     * @param code the ANSI color code to use for category/logger names
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder categoryCode(int code) {
+        this.categoryCodeOverride = code;
+        return this;
+    }
+
+    /**
+     * Overrides the thread name color code for this builder.
+     *
+     * @param code the ANSI color code to use for thread names
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder threadNameCode(int code) {
+        this.threadNameCodeOverride = code;
+        return this;
+    }
+
+    /**
+     * Overrides the fatal color code for this builder.
+     *
+     * @param code the ANSI color code to use for fatal messages
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder fatalCode(int code) {
+        this.fatalCodeOverride = code;
         return this;
     }
 
@@ -564,6 +605,129 @@ public class ANSIBuilder {
     public ANSIBuilder messageHsl(float h, float s, float l) {
         int[] rgb = org.aesh.terminal.formatting.TerminalColor.hslToRgb(h, s, l);
         return messageRgb(rgb[0], rgb[1], rgb[2]);
+    }
+
+    /**
+     * Overrides the category color using RGB values (true color).
+     *
+     * @param r red component (0-255)
+     * @param g green component (0-255)
+     * @param b blue component (0-255)
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder categoryRgb(int r, int g, int b) {
+        validateRgb(r, g, b);
+        this.categoryRgbOverride = new int[] { r, g, b };
+        return this;
+    }
+
+    /**
+     * Overrides the category color using a hex color value.
+     *
+     * @param hex the color in hex format
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder categoryHex(String hex) {
+        int[] rgb = TerminalColorCapability.hexToRgb(hex);
+        if (rgb == null) {
+            throw new IllegalArgumentException("Invalid hex color: " + hex);
+        }
+        return categoryRgb(rgb[0], rgb[1], rgb[2]);
+    }
+
+    /**
+     * Overrides the category color using HSL values.
+     *
+     * @param h hue in degrees (0-360)
+     * @param s saturation as percentage (0-100)
+     * @param l lightness as percentage (0-100)
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder categoryHsl(float h, float s, float l) {
+        int[] rgb = org.aesh.terminal.formatting.TerminalColor.hslToRgb(h, s, l);
+        return categoryRgb(rgb[0], rgb[1], rgb[2]);
+    }
+
+    /**
+     * Overrides the thread name color using RGB values (true color).
+     *
+     * @param r red component (0-255)
+     * @param g green component (0-255)
+     * @param b blue component (0-255)
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder threadNameRgb(int r, int g, int b) {
+        validateRgb(r, g, b);
+        this.threadNameRgbOverride = new int[] { r, g, b };
+        return this;
+    }
+
+    /**
+     * Overrides the thread name color using a hex color value.
+     *
+     * @param hex the color in hex format
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder threadNameHex(String hex) {
+        int[] rgb = TerminalColorCapability.hexToRgb(hex);
+        if (rgb == null) {
+            throw new IllegalArgumentException("Invalid hex color: " + hex);
+        }
+        return threadNameRgb(rgb[0], rgb[1], rgb[2]);
+    }
+
+    /**
+     * Overrides the thread name color using HSL values.
+     *
+     * @param h hue in degrees (0-360)
+     * @param s saturation as percentage (0-100)
+     * @param l lightness as percentage (0-100)
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder threadNameHsl(float h, float s, float l) {
+        int[] rgb = org.aesh.terminal.formatting.TerminalColor.hslToRgb(h, s, l);
+        return threadNameRgb(rgb[0], rgb[1], rgb[2]);
+    }
+
+    /**
+     * Overrides the fatal color using RGB values (true color).
+     *
+     * @param r red component (0-255)
+     * @param g green component (0-255)
+     * @param b blue component (0-255)
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder fatalRgb(int r, int g, int b) {
+        validateRgb(r, g, b);
+        this.fatalRgbOverride = new int[] { r, g, b };
+        return this;
+    }
+
+    /**
+     * Overrides the fatal color using a hex color value.
+     *
+     * @param hex the color in hex format
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder fatalHex(String hex) {
+        int[] rgb = TerminalColorCapability.hexToRgb(hex);
+        if (rgb == null) {
+            throw new IllegalArgumentException("Invalid hex color: " + hex);
+        }
+        return fatalRgb(rgb[0], rgb[1], rgb[2]);
+    }
+
+    /**
+     * Overrides the fatal color using HSL values.
+     *
+     * @param h hue in degrees (0-360)
+     * @param s saturation as percentage (0-100)
+     * @param l lightness as percentage (0-100)
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder fatalHsl(float h, float s, float l) {
+        int[] rgb = org.aesh.terminal.formatting.TerminalColor.hslToRgb(h, s, l);
+        return fatalRgb(rgb[0], rgb[1], rgb[2]);
     }
 
     private void checkColor() {
@@ -2044,6 +2208,129 @@ public class ANSIBuilder {
      */
     public ANSIBuilder message(String text) {
         return message().append(text).resetColors();
+    }
+
+    /**
+     * Sets the foreground color to the theme-appropriate category color (blue).
+     * <p>
+     * Color priority: RGB override > code override > capability > default.
+     * <p>
+     * Category color is used for package/class names (logger categories) in log output.
+     * Aligns with JBoss LogManager's ColorPatternFormatter CATEGORY item
+     * (HSL 220°, 0.9, 0.8 — a blue hue).
+     *
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder category() {
+        if (categoryRgbOverride != null) {
+            this.textRgb = categoryRgbOverride;
+            this.textCode = null;
+        } else if (categoryCodeOverride != null) {
+            this.textCode = categoryCodeOverride;
+            this.textRgb = null;
+        } else if (capability != null) {
+            this.textCode = capability.getSuggestedCategoryCode();
+            this.textRgb = null;
+        } else {
+            this.textCode = 94; // bright blue default
+            this.textRgb = null;
+        }
+        this.text = Color.DEFAULT;
+        this.text256 = null;
+        havePrintedColor = false;
+        return this;
+    }
+
+    /**
+     * Appends text with category styling (blue) and resets.
+     *
+     * @param text the text to append
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder category(String text) {
+        return category().append(text).resetColors();
+    }
+
+    /**
+     * Sets the foreground color to the theme-appropriate thread name color (green).
+     * <p>
+     * Color priority: RGB override > code override > capability > default.
+     * <p>
+     * Thread name color is used for thread identifiers in log output.
+     * Aligns with JBoss LogManager's ColorPatternFormatter THREAD_NAME item
+     * (HSL 120°, 0.429, 0.8 — a muted green).
+     *
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder threadName() {
+        if (threadNameRgbOverride != null) {
+            this.textRgb = threadNameRgbOverride;
+            this.textCode = null;
+        } else if (threadNameCodeOverride != null) {
+            this.textCode = threadNameCodeOverride;
+            this.textRgb = null;
+        } else if (capability != null) {
+            this.textCode = capability.getSuggestedThreadNameCode();
+            this.textRgb = null;
+        } else {
+            this.textCode = 92; // bright green default
+            this.textRgb = null;
+        }
+        this.text = Color.DEFAULT;
+        this.text256 = null;
+        havePrintedColor = false;
+        return this;
+    }
+
+    /**
+     * Appends text with thread name styling (green) and resets.
+     *
+     * @param text the text to append
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder threadName(String text) {
+        return threadName().append(text).resetColors();
+    }
+
+    /**
+     * Sets the foreground color to the theme-appropriate fatal color (red).
+     * <p>
+     * Color priority: RGB override > code override > capability > default.
+     * <p>
+     * Fatal color is used for FATAL-level log messages — the most severe
+     * log level. Uses the same red base as error, but is typically
+     * distinguished by bold styling in usage.
+     *
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder fatal() {
+        if (fatalRgbOverride != null) {
+            this.textRgb = fatalRgbOverride;
+            this.textCode = null;
+        } else if (fatalCodeOverride != null) {
+            this.textCode = fatalCodeOverride;
+            this.textRgb = null;
+        } else if (capability != null) {
+            this.textCode = capability.getSuggestedFatalCode();
+            this.textRgb = null;
+        } else {
+            this.textCode = 91; // bright red default
+            this.textRgb = null;
+        }
+        this.text = Color.DEFAULT;
+        this.text256 = null;
+        havePrintedColor = false;
+        return this;
+    }
+
+    /**
+     * Appends text with fatal styling (red) and resets.
+     *
+     * @param text the text to append
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder fatal(String text) {
+        return fatal().append(text).resetColors();
     }
 
     /**

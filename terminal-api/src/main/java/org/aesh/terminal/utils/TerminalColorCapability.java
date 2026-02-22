@@ -55,6 +55,9 @@ public class TerminalColorCapability {
     private final Integer traceCodeOverride;
     private final Integer timestampCodeOverride;
     private final Integer messageCodeOverride;
+    private final Integer categoryCodeOverride;
+    private final Integer threadNameCodeOverride;
+    private final Integer fatalCodeOverride;
 
     /**
      * Create a new TerminalColorCapability with all detected values.
@@ -100,6 +103,9 @@ public class TerminalColorCapability {
         this.traceCodeOverride = null;
         this.timestampCodeOverride = null;
         this.messageCodeOverride = null;
+        this.categoryCodeOverride = null;
+        this.threadNameCodeOverride = null;
+        this.fatalCodeOverride = null;
     }
 
     /**
@@ -123,6 +129,9 @@ public class TerminalColorCapability {
         this.traceCodeOverride = builder.traceCodeOverride;
         this.timestampCodeOverride = builder.timestampCodeOverride;
         this.messageCodeOverride = builder.messageCodeOverride;
+        this.categoryCodeOverride = builder.categoryCodeOverride;
+        this.threadNameCodeOverride = builder.threadNameCodeOverride;
+        this.fatalCodeOverride = builder.fatalCodeOverride;
     }
 
     /**
@@ -534,6 +543,69 @@ public class TerminalColorCapability {
     }
 
     /**
+     * Get the suggested "category" (package/class name) foreground ANSI color code.
+     * <p>
+     * If a custom category code was set via the {@link Builder}, it is returned.
+     * Otherwise, returns a blue variant suitable for logger/category names in log output.
+     * Aligns with JBoss LogManager's ColorPatternFormatter CATEGORY item
+     * (HSL 220°, 0.9, 0.8 — a blue hue).
+     * <ul>
+     * <li>For dark themes: bright blue (94)</li>
+     * <li>For light themes: dark blue (34)</li>
+     * </ul>
+     *
+     * @return ANSI color code for suggested category foreground
+     */
+    public int getSuggestedCategoryCode() {
+        if (categoryCodeOverride != null) {
+            return categoryCodeOverride;
+        }
+        return theme.isLight() ? 34 : 94; // dark blue for light bg, bright blue for dark bg
+    }
+
+    /**
+     * Get the suggested "thread name" foreground ANSI color code.
+     * <p>
+     * If a custom thread name code was set via the {@link Builder}, it is returned.
+     * Otherwise, returns a green variant suitable for thread names in log output.
+     * Aligns with JBoss LogManager's ColorPatternFormatter THREAD_NAME item
+     * (HSL 120°, 0.429, 0.8 — a muted green).
+     * <ul>
+     * <li>For dark themes: bright green (92)</li>
+     * <li>For light themes: dark green (32)</li>
+     * </ul>
+     *
+     * @return ANSI color code for suggested thread name foreground
+     */
+    public int getSuggestedThreadNameCode() {
+        if (threadNameCodeOverride != null) {
+            return threadNameCodeOverride;
+        }
+        return theme.isLight() ? 32 : 92; // dark green for light bg, bright green for dark bg
+    }
+
+    /**
+     * Get the suggested "fatal" foreground ANSI color code.
+     * <p>
+     * If a custom fatal code was set via the {@link Builder}, it is returned.
+     * Otherwise, returns a red variant for fatal-level log messages — the most
+     * severe log level. Uses the same red base as error, but typically
+     * distinguished by bold styling in usage.
+     * <ul>
+     * <li>For dark themes: bright red (91)</li>
+     * <li>For light themes: dark red (31)</li>
+     * </ul>
+     *
+     * @return ANSI color code for suggested fatal foreground
+     */
+    public int getSuggestedFatalCode() {
+        if (fatalCodeOverride != null) {
+            return fatalCodeOverride;
+        }
+        return theme.isLight() ? 31 : 91; // dark red for light bg, bright red for dark bg
+    }
+
+    /**
      * Create a default TerminalColorCapability assuming 8 colors and dark theme.
      *
      * @return a default TerminalColorCapability
@@ -686,6 +758,9 @@ public class TerminalColorCapability {
         private Integer traceCodeOverride;
         private Integer timestampCodeOverride;
         private Integer messageCodeOverride;
+        private Integer categoryCodeOverride;
+        private Integer threadNameCodeOverride;
+        private Integer fatalCodeOverride;
 
         /**
          * Create a new empty Builder.
@@ -715,6 +790,9 @@ public class TerminalColorCapability {
                 this.traceCodeOverride = base.traceCodeOverride;
                 this.timestampCodeOverride = base.timestampCodeOverride;
                 this.messageCodeOverride = base.messageCodeOverride;
+                this.categoryCodeOverride = base.categoryCodeOverride;
+                this.threadNameCodeOverride = base.threadNameCodeOverride;
+                this.fatalCodeOverride = base.fatalCodeOverride;
             }
         }
 
@@ -871,7 +949,7 @@ public class TerminalColorCapability {
          * <ul>
          * <li>34: dark blue (good for light backgrounds)</li>
          * <li>94: bright blue (good for dark backgrounds)</li>
-         * <li>39: 256-color light blue</li>
+         * <li>75: 256-color light blue</li>
          * </ul>
          *
          * @param code the ANSI color code to use for info messages
@@ -950,6 +1028,60 @@ public class TerminalColorCapability {
          */
         public Builder messageCode(int code) {
             this.messageCodeOverride = code;
+            return this;
+        }
+
+        /**
+         * Override the suggested category (package/class name) color code.
+         * <p>
+         * Common values:
+         * <ul>
+         * <li>34: dark blue (good for light backgrounds)</li>
+         * <li>94: bright blue (good for dark backgrounds)</li>
+         * <li>75: 256-color light blue</li>
+         * </ul>
+         *
+         * @param code the ANSI color code to use for category/logger names
+         * @return this builder for method chaining
+         */
+        public Builder categoryCode(int code) {
+            this.categoryCodeOverride = code;
+            return this;
+        }
+
+        /**
+         * Override the suggested thread name color code.
+         * <p>
+         * Common values:
+         * <ul>
+         * <li>32: dark green (good for light backgrounds)</li>
+         * <li>92: bright green (good for dark backgrounds)</li>
+         * <li>78: 256-color muted green</li>
+         * </ul>
+         *
+         * @param code the ANSI color code to use for thread names
+         * @return this builder for method chaining
+         */
+        public Builder threadNameCode(int code) {
+            this.threadNameCodeOverride = code;
+            return this;
+        }
+
+        /**
+         * Override the suggested fatal color code.
+         * <p>
+         * Common values:
+         * <ul>
+         * <li>31: dark red (good for light backgrounds)</li>
+         * <li>91: bright red (good for dark backgrounds)</li>
+         * <li>196: 256-color bright red</li>
+         * </ul>
+         *
+         * @param code the ANSI color code to use for fatal messages
+         * @return this builder for method chaining
+         */
+        public Builder fatalCode(int code) {
+            this.fatalCodeOverride = code;
             return this;
         }
 
