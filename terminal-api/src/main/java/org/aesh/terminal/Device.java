@@ -77,117 +77,121 @@ public interface Device {
         // ==================== IDE Terminals ====================
 
         /** JetBrains IDEs (IntelliJ, etc.) using JediTerm */
-        JETBRAINS("JetBrains-JediTerm", EnumSet.of(OscCode.FOREGROUND, OscCode.BACKGROUND), ColorDepth.TRUE_COLOR, false),
+        JETBRAINS("JetBrains-JediTerm", EnumSet.of(OscCode.FOREGROUND, OscCode.BACKGROUND), ColorDepth.TRUE_COLOR, false,
+                false),
 
         /** Visual Studio Code integrated terminal */
         VSCODE("vscode", EnumSet.of(OscCode.FOREGROUND, OscCode.BACKGROUND, OscCode.CURSOR_COLOR, OscCode.CLIPBOARD),
-                ColorDepth.TRUE_COLOR, false),
+                ColorDepth.TRUE_COLOR, false, false),
 
         // ==================== macOS Terminals ====================
 
         /** Apple Terminal */
         APPLE_TERMINAL("Apple_Terminal", EnumSet.of(OscCode.FOREGROUND, OscCode.BACKGROUND, OscCode.CURSOR_COLOR),
-                ColorDepth.COLORS_256, false),
+                ColorDepth.COLORS_256, false, false),
 
         /** iTerm2 */
-        ITERM2("iTerm.app", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, false),
+        ITERM2("iTerm.app", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, false, false),
 
         // ==================== Cross-Platform Modern Terminals ====================
 
         /** Kitty terminal - GPU-accelerated, uses Kitty graphics protocol. Supports CSI ? 996 n since 0.38.1. */
-        KITTY("kitty", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, true),
+        KITTY("kitty", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, true, true),
 
         /** Ghostty - Fast GPU-accelerated terminal, uses Kitty graphics protocol. Supports CSI ? 996 n since 1.0.0. */
-        GHOSTTY("ghostty", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, true),
+        GHOSTTY("ghostty", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, true, true),
 
         /** Alacritty - GPU-accelerated terminal */
         ALACRITTY("alacritty", EnumSet.of(OscCode.FOREGROUND, OscCode.BACKGROUND, OscCode.CURSOR_COLOR), ColorDepth.TRUE_COLOR,
-                false),
+                false, false),
 
         /** WezTerm - GPU-accelerated terminal with multiplexing */
-        WEZTERM("WezTerm", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, false),
+        WEZTERM("WezTerm", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, false, true),
 
         /** Foot - Fast, lightweight Wayland terminal (VTE-based, supports CSI ? 996 n) */
-        FOOT("foot", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, true),
+        FOOT("foot", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, true, true),
 
         /** Contour - Modern terminal emulator. Origin of the CSI ? 996 n extension since 0.4.0. */
-        CONTOUR("contour", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, true),
+        CONTOUR("contour", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, true, true),
 
         /** Rio - Hardware-accelerated GPU terminal */
-        RIO("rio", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, false),
+        RIO("rio", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, false, false),
 
         /** Warp - Modern terminal with AI features */
-        WARP("warp", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, false),
+        WARP("warp", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, false, false),
 
         /** Wave - Modern terminal */
-        WAVE("wave", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, false),
+        WAVE("wave", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, false, false),
 
         // ==================== Electron-Based Terminals ====================
 
         /** Hyper - Electron-based terminal */
-        HYPER("hyper", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, false),
+        HYPER("hyper", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, false, false),
 
         /** Terminus/Tabby - Electron-based terminal */
-        TABBY("tabby", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, false),
+        TABBY("tabby", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, false, false),
 
         /** Extraterm - Electron-based terminal */
-        EXTRATERM("extraterm", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, false),
+        EXTRATERM("extraterm", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, false, false),
 
         // ==================== Linux Desktop Terminals ====================
 
         /** GNOME Terminal and other VTE-based terminals. Supports CSI ? 996 n since VTE 0.82.0. */
-        GNOME_TERMINAL("gnome-terminal", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, true),
+        GNOME_TERMINAL("gnome-terminal", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, true, false),
 
         /** Konsole - KDE terminal emulator */
-        KONSOLE("konsole", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, false),
+        KONSOLE("konsole", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, false, false),
 
         /** rxvt and urxvt */
-        RXVT("rxvt", EnumSet.of(OscCode.FOREGROUND, OscCode.BACKGROUND, OscCode.CURSOR_COLOR), ColorDepth.COLORS_256, false),
+        RXVT("rxvt", EnumSet.of(OscCode.FOREGROUND, OscCode.BACKGROUND, OscCode.CURSOR_COLOR), ColorDepth.COLORS_256, false,
+                false),
 
         // ==================== Windows Terminals ====================
 
         /** Windows Terminal */
         WINDOWS_TERMINAL("Windows Terminal", EnumSet.of(OscCode.FOREGROUND, OscCode.BACKGROUND, OscCode.CURSOR_COLOR),
-                ColorDepth.TRUE_COLOR, false),
+                ColorDepth.TRUE_COLOR, false, false),
 
         /** Mintty - Default terminal for Git Bash, Cygwin, MSYS2 */
-        MINTTY("mintty", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, false),
+        MINTTY("mintty", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, false, false),
 
         /** ConEmu/Cmder - Windows console emulator */
-        CONEMU("ConEmu", EnumSet.of(OscCode.FOREGROUND, OscCode.BACKGROUND), ColorDepth.TRUE_COLOR, false),
+        CONEMU("ConEmu", EnumSet.of(OscCode.FOREGROUND, OscCode.BACKGROUND), ColorDepth.TRUE_COLOR, false, false),
 
         // ==================== Terminal Multiplexers ====================
 
         /** tmux - Terminal multiplexer. Supports CSI ? 996 n passthrough. */
-        TMUX("tmux", EnumSet.noneOf(OscCode.class), ColorDepth.COLORS_256, true),
+        TMUX("tmux", EnumSet.noneOf(OscCode.class), ColorDepth.COLORS_256, true, false),
 
         /** GNU Screen - Terminal multiplexer (no OSC passthrough by default) */
-        SCREEN("screen", EnumSet.noneOf(OscCode.class), ColorDepth.COLORS_256, false),
+        SCREEN("screen", EnumSet.noneOf(OscCode.class), ColorDepth.COLORS_256, false, false),
 
         // ==================== Classic/Legacy Terminals ====================
 
         /** xterm and compatible */
-        XTERM("xterm", EnumSet.allOf(OscCode.class), ColorDepth.COLORS_256, false),
+        XTERM("xterm", EnumSet.allOf(OscCode.class), ColorDepth.COLORS_256, false, false),
 
         /** Linux console (no OSC query support) */
-        LINUX_CONSOLE("linux", EnumSet.noneOf(OscCode.class), ColorDepth.COLORS_8, false),
+        LINUX_CONSOLE("linux", EnumSet.noneOf(OscCode.class), ColorDepth.COLORS_8, false, false),
 
         // ==================== Fallback ====================
 
         /** Unknown terminal - assume basic support */
-        UNKNOWN("unknown", EnumSet.of(OscCode.FOREGROUND, OscCode.BACKGROUND), ColorDepth.COLORS_256, false);
+        UNKNOWN("unknown", EnumSet.of(OscCode.FOREGROUND, OscCode.BACKGROUND), ColorDepth.COLORS_256, false, false);
 
         private final String identifier;
         private final Set<OscCode> supportedCodes;
         private final ColorDepth defaultColorDepth;
         private final boolean supportsThemeDsr;
+        private final boolean supportsGraphemeClusterMode;
 
         TerminalType(String identifier, Set<OscCode> supportedCodes, ColorDepth defaultColorDepth,
-                boolean supportsThemeDsr) {
+                boolean supportsThemeDsr, boolean supportsGraphemeClusterMode) {
             this.identifier = identifier;
             this.supportedCodes = Collections.unmodifiableSet(supportedCodes);
             this.defaultColorDepth = defaultColorDepth;
             this.supportsThemeDsr = supportsThemeDsr;
+            this.supportsGraphemeClusterMode = supportsGraphemeClusterMode;
         }
 
         public String getIdentifier() {
@@ -240,6 +244,22 @@ public interface Device {
          */
         public boolean supportsThemeDsr() {
             return supportsThemeDsr;
+        }
+
+        /**
+         * Check if this terminal supports Mode 2027 (grapheme cluster segmentation).
+         * <p>
+         * Mode 2027 tells the terminal to use UAX #29 grapheme cluster segmentation
+         * instead of per-codepoint wcwidth for cursor positioning. This is needed for
+         * correct handling of multi-codepoint characters like ZWJ emoji sequences,
+         * flag emoji, and combining characters.
+         * <p>
+         * Known supporting terminals: Ghostty, WezTerm, Kitty, Contour, Foot.
+         *
+         * @return true if Mode 2027 is expected to be supported
+         */
+        public boolean supportsGraphemeClusterMode() {
+            return supportsGraphemeClusterMode;
         }
 
         /**
@@ -401,6 +421,22 @@ public interface Device {
      */
     default boolean supportsOscQueries() {
         return org.aesh.terminal.utils.TerminalEnvironment.getInstance().supportsOscQueries();
+    }
+
+    /**
+     * Check if this device supports Mode 2027 (grapheme cluster segmentation).
+     * <p>
+     * Mode 2027 tells the terminal to use UAX #29 grapheme cluster segmentation
+     * instead of per-codepoint wcwidth for cursor positioning.
+     * <p>
+     * This method uses {@link org.aesh.terminal.utils.TerminalEnvironment} for
+     * environment-based detection.
+     *
+     * @return true if Mode 2027 is likely supported
+     */
+    default boolean supportsGraphemeClusterMode() {
+        return org.aesh.terminal.utils.TerminalEnvironment.getInstance()
+                .supportsGraphemeClusterMode();
     }
 
     /**

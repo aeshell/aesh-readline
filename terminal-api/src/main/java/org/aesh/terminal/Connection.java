@@ -288,8 +288,8 @@ public interface Connection extends AutoCloseable {
      * Send a query to the terminal and wait for a response with timeout.
      * <p>
      * This method enters raw mode, sends the query, collects the response,
-     * and restores the original terminal attributes. It's useful for OSC queries
-     * and other terminal interrogation sequences.
+     * and restores the original terminal attributes. It's useful for both
+     * OSC queries and CSI queries (DA1/DA2, DECRQM, theme DSR, etc.).
      * <p>
      * This method uses {@link #setStdinHandler(Consumer)} to receive responses,
      * which requires the connection to be actively reading input (i.e.,
@@ -313,11 +313,6 @@ public interface Connection extends AutoCloseable {
 
         // This method uses setStdinHandler which requires active reading
         if (!reading()) {
-            return null;
-        }
-
-        // Check if OSC queries are supported
-        if (device() != null && !device().supportsOscQueries()) {
             return null;
         }
 
@@ -468,6 +463,10 @@ public interface Connection extends AutoCloseable {
      */
     default <T> T queryOsc(int oscCode, String param, long timeoutMs,
             java.util.function.Function<int[], T> responseParser) {
+        // OSC queries require OSC support from the terminal
+        if (device() != null && !device().supportsOscQueries()) {
+            return null;
+        }
         String query = ANSI.buildOscQuery(oscCode, param);
         return queryTerminal(query, timeoutMs, responseParser);
     }
@@ -671,6 +670,10 @@ public interface Connection extends AutoCloseable {
      */
     default <T> T queryOsc(int oscCode, int index, String param, long timeoutMs,
             java.util.function.Function<int[], T> responseParser) {
+        // OSC queries require OSC support from the terminal
+        if (device() != null && !device().supportsOscQueries()) {
+            return null;
+        }
         String query = ANSI.buildOscQuery(oscCode, index, param);
         return queryTerminal(query, timeoutMs, responseParser);
     }
@@ -936,6 +939,62 @@ public interface Connection extends AutoCloseable {
         DeviceAttributes attrs = queryPrimaryDeviceAttributes(timeoutMs);
         String termType = device() != null ? device().type() : null;
         return ImageProtocolDetector.detect(attrs, termType);
+    }
+
+    // ==================== Mode 2027 (Grapheme Cluster Mode) ====================
+
+    /**
+     * Check if Mode 2027 (grapheme cluster segmentation) is likely supported.
+     * <p>
+     * This delegates to the device's capability detection based on terminal type.
+     * Returns false for dumb terminals or when the device is null.
+     *
+     * @return true if Mode 2027 is likely supported
+     */
+    default boolean supportsGraphemeClusterMode() {
+        if (device() == null || !supportsAnsi()) {
+            return false;
+        }
+        return device().supportsGraphemeClusterMode();
+    }
+
+    /**
+     * Query the terminal to check if Mode 2027 is supported via DECRQM.
+     * <p>
+     * This sends a DECRQM (DEC Private Mode Request Mode) query for Mode 2027
+     * and parses the DECRPM response.
+     * <p>
+     * The terminal must be actively reading input for this to work.
+     *
+     * @param timeoutMs timeout in milliseconds to wait for response
+     * @return true if supported, false if not supported, null if no response/timeout
+     */
+    default Boolean queryGraphemeClusterMode(long timeoutMs) {
+        return queryTerminal(ANSI.MODE_2027_QUERY, timeoutMs, ANSI::parseMode2027Response);
+    }
+
+    /**
+     * Enable Mode 2027 (grapheme cluster segmentation).
+     * <p>
+     * When enabled, the terminal uses UAX #29 grapheme cluster segmentation
+     * for cursor positioning instead of per-codepoint wcwidth.
+     *
+     * @return this connection
+     */
+    default Connection enableGraphemeClusterMode() {
+        return write(ANSI.MODE_2027_ENABLE);
+    }
+
+    /**
+     * Disable Mode 2027 (grapheme cluster segmentation).
+     * <p>
+     * When disabled, the terminal reverts to per-codepoint wcwidth for
+     * cursor positioning.
+     *
+     * @return this connection
+     */
+    default Connection disableGraphemeClusterMode() {
+        return write(ANSI.MODE_2027_DISABLE);
     }
 
     // ==================== OSC Support Detection ====================

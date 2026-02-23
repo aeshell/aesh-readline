@@ -204,6 +204,15 @@ public final class WcWidth {
                                 (ucs >= 0xfe30 && ucs <= 0xfe6f) || /* CJK Compatibility Forms */
                                 (ucs >= 0xff00 && ucs <= 0xff60) || /* Fullwidth Forms */
                                 (ucs >= 0xffe0 && ucs <= 0xffe6) ||
+                                (ucs >= 0x1f300 && ucs <= 0x1f5ff) || /* Misc Symbols and Pictographs */
+                                (ucs >= 0x1f600 && ucs <= 0x1f64f) || /* Emoticons */
+                                (ucs >= 0x1f680 && ucs <= 0x1f6ff) || /* Transport and Map */
+                                (ucs >= 0x1f7e0 && ucs <= 0x1f7eb) || /*
+                                                                       * Geometric Shapes Extended (colored emoji
+                                                                       * circles/squares)
+                                                                       */
+                                (ucs >= 0x1f900 && ucs <= 0x1f9ff) || /* Supplemental Symbols and Pictographs */
+                                (ucs >= 0x1fa70 && ucs <= 0x1faff) || /* Symbols and Pictographs Extended-A */
                                 (ucs >= 0x20000 && ucs <= 0x2fffd) ||
                                 (ucs >= 0x30000 && ucs <= 0x3fffd))) ? 1 : 0);
     }

@@ -378,6 +378,17 @@ public final class TerminalEnvironment {
     }
 
     /**
+     * Check if Mode 2027 (grapheme cluster segmentation) is likely supported.
+     * <p>
+     * This delegates to the detected terminal type's grapheme cluster mode support.
+     *
+     * @return true if Mode 2027 is likely supported
+     */
+    public boolean supportsGraphemeClusterMode() {
+        return terminalType.supportsGraphemeClusterMode();
+    }
+
+    /**
      * Check if a known OSC-capable outer terminal is detected.
      * <p>
      * This is useful for nested terminal sessions (e.g., tmux inside Kitty).

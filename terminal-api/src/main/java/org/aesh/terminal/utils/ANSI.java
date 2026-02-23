@@ -1122,6 +1122,87 @@ public class ANSI {
         }
     }
 
+    // ==================== Mode 2027 (Grapheme Cluster Mode) ====================
+
+    /** DECRQM query for Mode 2027 (grapheme cluster segmentation). */
+    public static final String MODE_2027_QUERY = "\u001B[?2027$p";
+
+    /** Enable Mode 2027 (grapheme cluster segmentation). */
+    public static final String MODE_2027_ENABLE = "\u001B[?2027h";
+
+    /** Disable Mode 2027 (grapheme cluster segmentation). */
+    public static final String MODE_2027_DISABLE = "\u001B[?2027l";
+
+    /**
+     * Parse a DECRPM (DEC Private Mode Report) response for Mode 2027.
+     * <p>
+     * Expected format: CSI ? 2027 ; Ps $ y
+     * <p>
+     * Where Ps indicates the mode status:
+     * <ul>
+     * <li>0 - not recognized</li>
+     * <li>1 - set (enabled)</li>
+     * <li>2 - reset (disabled, but recognized)</li>
+     * <li>3 - permanently set</li>
+     * <li>4 - permanently reset</li>
+     * </ul>
+     * <p>
+     * Returns {@code Boolean.TRUE} if Ps is 1, 2, or 3 (terminal recognizes the mode),
+     * {@code Boolean.FALSE} if Ps is 0 or 4 (not recognized or permanently disabled),
+     * or {@code null} if the response cannot be parsed.
+     *
+     * @param input the input sequence as code points
+     * @return true if the terminal supports Mode 2027, false if not, null if unparseable
+     */
+    public static Boolean parseMode2027Response(int[] input) {
+        if (input == null || input.length < 9) {
+            return null;
+        }
+
+        StringBuilder sb = new StringBuilder();
+        for (int c : input) {
+            sb.appendCodePoint(c);
+        }
+        String response = sb.toString();
+
+        // Look for DECRPM pattern: ESC [ ? 2027 ; Ps $ y
+        int start = response.indexOf("\u001B[?2027;");
+        if (start < 0) {
+            return null;
+        }
+
+        // Move past "ESC[?2027;" — 8 chars: \u001B [ ? 2 0 2 7 ;
+        int paramStart = start + "\u001B[?2027;".length();
+
+        // Find the terminating "$y"
+        int end = response.indexOf("$y", paramStart);
+        if (end < 0) {
+            return null;
+        }
+
+        String paramStr = response.substring(paramStart, end).trim();
+        if (paramStr.isEmpty()) {
+            return null;
+        }
+
+        try {
+            int ps = Integer.parseInt(paramStr);
+            switch (ps) {
+                case 1: // set (enabled)
+                case 2: // reset (disabled, but recognized)
+                case 3: // permanently set
+                    return Boolean.TRUE;
+                case 0: // not recognized
+                case 4: // permanently reset
+                    return Boolean.FALSE;
+                default:
+                    return null;
+            }
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
     // ==================== Device Attributes (DA1/DA2) ====================
 
     /** DA1 (Primary Device Attributes) query sequence. */
