@@ -389,6 +389,17 @@ public final class TerminalEnvironment {
     }
 
     /**
+     * Check if OSC 8 hyperlinks are likely supported.
+     * <p>
+     * This delegates to the detected terminal type's hyperlink support.
+     *
+     * @return true if OSC 8 hyperlinks are likely supported
+     */
+    public boolean supportsHyperlinks() {
+        return terminalType.supportsHyperlinks();
+    }
+
+    /**
      * Check if a known OSC-capable outer terminal is detected.
      * <p>
      * This is useful for nested terminal sessions (e.g., tmux inside Kitty).

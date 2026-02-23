@@ -997,6 +997,43 @@ public interface Connection extends AutoCloseable {
         return write(ANSI.MODE_2027_DISABLE);
     }
 
+    // ==================== OSC 8 Hyperlink Support ====================
+
+    /**
+     * Check if OSC 8 hyperlinks are likely supported.
+     *
+     * @return true if OSC 8 hyperlinks are likely supported
+     */
+    default boolean supportsHyperlinks() {
+        if (device() == null || !supportsAnsi()) {
+            return false;
+        }
+        return device().supportsHyperlinks();
+    }
+
+    /**
+     * Write a clickable hyperlink to the terminal.
+     *
+     * @param url the hyperlink URL
+     * @param text the visible text
+     * @return this connection
+     */
+    default Connection writeHyperlink(String url, String text) {
+        return write(ANSI.hyperlink(url, text));
+    }
+
+    /**
+     * Write a clickable hyperlink with a grouping id.
+     *
+     * @param url the hyperlink URL
+     * @param text the visible text
+     * @param id the grouping id
+     * @return this connection
+     */
+    default Connection writeHyperlink(String url, String text, String id) {
+        return write(ANSI.hyperlink(url, text, id));
+    }
+
     // ==================== OSC Support Detection ====================
 
     /**

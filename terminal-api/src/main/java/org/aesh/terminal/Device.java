@@ -42,6 +42,8 @@ public interface Device {
     enum OscCode {
         /** OSC 4 - Query/set palette colors */
         PALETTE(4),
+        /** OSC 8 - Hyperlink support */
+        HYPERLINK(8),
         /** OSC 10 - Query/set foreground color */
         FOREGROUND(10),
         /** OSC 11 - Query/set background color */
@@ -77,11 +79,13 @@ public interface Device {
         // ==================== IDE Terminals ====================
 
         /** JetBrains IDEs (IntelliJ, etc.) using JediTerm */
-        JETBRAINS("JetBrains-JediTerm", EnumSet.of(OscCode.FOREGROUND, OscCode.BACKGROUND), ColorDepth.TRUE_COLOR, false,
+        JETBRAINS("JetBrains-JediTerm", EnumSet.of(OscCode.FOREGROUND, OscCode.BACKGROUND, OscCode.HYPERLINK),
+                ColorDepth.TRUE_COLOR, false,
                 false),
 
         /** Visual Studio Code integrated terminal */
-        VSCODE("vscode", EnumSet.of(OscCode.FOREGROUND, OscCode.BACKGROUND, OscCode.CURSOR_COLOR, OscCode.CLIPBOARD),
+        VSCODE("vscode",
+                EnumSet.of(OscCode.FOREGROUND, OscCode.BACKGROUND, OscCode.CURSOR_COLOR, OscCode.CLIPBOARD, OscCode.HYPERLINK),
                 ColorDepth.TRUE_COLOR, false, false),
 
         // ==================== macOS Terminals ====================
@@ -102,7 +106,8 @@ public interface Device {
         GHOSTTY("ghostty", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, true, true),
 
         /** Alacritty - GPU-accelerated terminal */
-        ALACRITTY("alacritty", EnumSet.of(OscCode.FOREGROUND, OscCode.BACKGROUND, OscCode.CURSOR_COLOR), ColorDepth.TRUE_COLOR,
+        ALACRITTY("alacritty", EnumSet.of(OscCode.FOREGROUND, OscCode.BACKGROUND, OscCode.CURSOR_COLOR, OscCode.HYPERLINK),
+                ColorDepth.TRUE_COLOR,
                 false, false),
 
         /** WezTerm - GPU-accelerated terminal with multiplexing */
@@ -149,7 +154,8 @@ public interface Device {
         // ==================== Windows Terminals ====================
 
         /** Windows Terminal */
-        WINDOWS_TERMINAL("Windows Terminal", EnumSet.of(OscCode.FOREGROUND, OscCode.BACKGROUND, OscCode.CURSOR_COLOR),
+        WINDOWS_TERMINAL("Windows Terminal",
+                EnumSet.of(OscCode.FOREGROUND, OscCode.BACKGROUND, OscCode.CURSOR_COLOR, OscCode.HYPERLINK),
                 ColorDepth.TRUE_COLOR, false, false),
 
         /** Mintty - Default terminal for Git Bash, Cygwin, MSYS2 */
@@ -260,6 +266,15 @@ public interface Device {
          */
         public boolean supportsGraphemeClusterMode() {
             return supportsGraphemeClusterMode;
+        }
+
+        /**
+         * Check if this terminal supports OSC 8 hyperlinks.
+         *
+         * @return true if OSC 8 hyperlinks are supported
+         */
+        public boolean supportsHyperlinks() {
+            return supports(OscCode.HYPERLINK);
         }
 
         /**
@@ -437,6 +452,18 @@ public interface Device {
     default boolean supportsGraphemeClusterMode() {
         return org.aesh.terminal.utils.TerminalEnvironment.getInstance()
                 .supportsGraphemeClusterMode();
+    }
+
+    /**
+     * Check if this device supports OSC 8 hyperlinks.
+     * <p>
+     * This method uses {@link org.aesh.terminal.utils.TerminalEnvironment} for
+     * environment-based detection.
+     *
+     * @return true if OSC 8 hyperlinks are likely supported
+     */
+    default boolean supportsHyperlinks() {
+        return org.aesh.terminal.utils.TerminalEnvironment.getInstance().supportsHyperlinks();
     }
 
     /**

@@ -21,6 +21,7 @@ package org.aesh.terminal;
 
 import static org.junit.Assert.*;
 
+import java.util.EnumSet;
 import java.util.Set;
 
 import org.aesh.terminal.Device.OscCode;
@@ -108,12 +109,13 @@ public class DeviceOscCodeTest {
     @Test
     public void testGetSupportedOscCodes() {
         Set<OscCode> jetbrainsCodes = TerminalType.JETBRAINS.getSupportedCodes();
-        assertEquals(2, jetbrainsCodes.size());
         assertTrue(jetbrainsCodes.contains(OscCode.FOREGROUND));
         assertTrue(jetbrainsCodes.contains(OscCode.BACKGROUND));
+        assertTrue(jetbrainsCodes.contains(OscCode.HYPERLINK));
 
+        // xterm supports all OSC codes
         Set<OscCode> xtermCodes = TerminalType.XTERM.getSupportedCodes();
-        assertEquals(5, xtermCodes.size());
+        assertEquals(EnumSet.allOf(OscCode.class), xtermCodes);
     }
 
     @Test

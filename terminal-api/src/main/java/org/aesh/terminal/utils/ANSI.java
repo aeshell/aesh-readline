@@ -134,6 +134,8 @@ public class ANSI {
 
     /** OSC code for palette color query/set. */
     public static final int OSC_PALETTE = 4;
+    /** OSC code for hyperlink support. */
+    public static final int OSC_HYPERLINK = 8;
     /** OSC code for foreground color query/set. */
     public static final int OSC_FOREGROUND = 10;
     /** OSC code for background color query/set. */
@@ -425,6 +427,91 @@ public class ANSI {
      */
     public static String buildOscQuery(int oscCode, int index, String param) {
         return OSC_START + oscCode + ";" + index + ";" + param + BEL;
+    }
+
+    // ==================== OSC 8 Hyperlink Support ====================
+
+    /**
+     * Sanitize a string for safe inclusion as an OSC parameter.
+     * <p>
+     * Removes characters that can terminate or break the OSC sequence,
+     * specifically ESC (\u001B) and BEL (\u0007).
+     *
+     * @param value the value to sanitize
+     * @return a sanitized string safe for inclusion in an OSC sequence
+     * @throws IllegalArgumentException if value is null
+     */
+    private static String sanitizeOscParam(String value) {
+        if (value == null) {
+            throw new IllegalArgumentException("OSC parameter must not be null");
+        }
+        StringBuilder sanitized = new StringBuilder(value.length());
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            if (c == '\u001B' || c == '\u0007') {
+                continue;
+            }
+            sanitized.append(c);
+        }
+        return sanitized.toString();
+    }
+
+    /**
+     * Build an OSC 8 hyperlink open sequence.
+     * <p>
+     * Format: {@code ESC ] 8 ; params ; URL ST}
+     *
+     * @param url the hyperlink URL (must not be null)
+     * @param id optional link id for grouping (may be null)
+     * @return the opening escape sequence
+     * @throws IllegalArgumentException if url is null
+     */
+    public static String buildHyperlinkStart(String url, String id) {
+        String safeUrl = sanitizeOscParam(url);
+        StringBuilder sb = new StringBuilder();
+        sb.append(OSC_START).append(OSC_HYPERLINK).append(';');
+        if (id != null && !id.isEmpty()) {
+            String safeId = sanitizeOscParam(id);
+            if (!safeId.isEmpty()) {
+                sb.append("id=").append(safeId);
+            }
+        }
+        sb.append(';').append(safeUrl).append(ST);
+        return sb.toString();
+    }
+
+    /**
+     * Build an OSC 8 hyperlink close sequence.
+     * <p>
+     * Format: {@code ESC ] 8 ; ; ST}
+     *
+     * @return the closing escape sequence
+     */
+    public static String buildHyperlinkEnd() {
+        return OSC_START + OSC_HYPERLINK + ";;" + ST;
+    }
+
+    /**
+     * Wrap visible text in a complete OSC 8 hyperlink.
+     *
+     * @param url the hyperlink URL
+     * @param text the visible text
+     * @param id optional link id (may be null)
+     * @return the full sequence: open + text + close
+     */
+    public static String hyperlink(String url, String text, String id) {
+        return buildHyperlinkStart(url, id) + text + buildHyperlinkEnd();
+    }
+
+    /**
+     * Wrap visible text in a complete OSC 8 hyperlink (without id).
+     *
+     * @param url the hyperlink URL
+     * @param text the visible text
+     * @return the full sequence: open + text + close
+     */
+    public static String hyperlink(String url, String text) {
+        return hyperlink(url, text, null);
     }
 
     // ==================== Batch OSC Queries ====================
