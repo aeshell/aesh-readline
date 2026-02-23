@@ -281,6 +281,7 @@ public class Readline {
         private Attributes attributes;
         private final EnumMap<ReadlineFlag, Integer> flags;
         private boolean graphemeClusterModeActive;
+        private boolean synchronizedOutputSupported;
 
         private AeshInputProcessor(
                 Connection conn,
@@ -334,7 +335,11 @@ public class Readline {
                 synchronized (Readline.this) {
                     paused = true;
                 }
+                if (synchronizedOutputSupported)
+                    conn.enableSynchronizedOutput();
                 action.accept(this);
+                if (synchronizedOutputSupported)
+                    conn.disableSynchronizedOutput();
                 editMode.setPrevKey(event);
                 if (this.returnValue() != null) {
                     conn.stdoutHandler().accept(Config.CR);
@@ -423,8 +428,18 @@ public class Readline {
                 graphemeClusterModeActive = true;
             }
 
+            // Detect Mode 2026 (synchronized output) support
+            if (!flags.containsKey(ReadlineFlag.NO_SYNCHRONIZED_OUTPUT)
+                    && conn.supportsSynchronizedOutput()) {
+                synchronizedOutputSupported = true;
+            }
+
             //last, display prompt
+            if (synchronizedOutputSupported)
+                conn.enableSynchronizedOutput();
             consoleBuffer.drawLine();
+            if (synchronizedOutputSupported)
+                conn.disableSynchronizedOutput();
             //last process input, the readInput() can read/finish in one go
             //since EventDecoder might have queued up data
             conn.setStdinHandler(data -> {
@@ -437,12 +452,16 @@ public class Readline {
 
         private void resize(Size size) {
             //redraw the buffer when we resize
+            if (synchronizedOutputSupported)
+                conn.enableSynchronizedOutput();
             if (inputProcessor.consoleBuffer.buffer().length() > 0) {
                 int[] buffer = inputProcessor.buffer().buffer().multiLine();
                 inputProcessor.consoleBuffer.setSize(size);
                 inputProcessor.consoleBuffer.replace(buffer);
             } else
                 inputProcessor.consoleBuffer.setSize(size);
+            if (synchronizedOutputSupported)
+                conn.disableSynchronizedOutput();
         }
 
         @Override

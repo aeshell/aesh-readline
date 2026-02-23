@@ -81,123 +81,126 @@ public interface Device {
         /** JetBrains IDEs (IntelliJ, etc.) using JediTerm */
         JETBRAINS("JetBrains-JediTerm", EnumSet.of(OscCode.FOREGROUND, OscCode.BACKGROUND, OscCode.HYPERLINK),
                 ColorDepth.TRUE_COLOR, false,
-                false),
+                false, false),
 
         /** Visual Studio Code integrated terminal */
         VSCODE("vscode",
                 EnumSet.of(OscCode.FOREGROUND, OscCode.BACKGROUND, OscCode.CURSOR_COLOR, OscCode.CLIPBOARD, OscCode.HYPERLINK),
-                ColorDepth.TRUE_COLOR, false, false),
+                ColorDepth.TRUE_COLOR, false, false, false),
 
         // ==================== macOS Terminals ====================
 
         /** Apple Terminal */
         APPLE_TERMINAL("Apple_Terminal", EnumSet.of(OscCode.FOREGROUND, OscCode.BACKGROUND, OscCode.CURSOR_COLOR),
-                ColorDepth.COLORS_256, false, false),
+                ColorDepth.COLORS_256, false, false, false),
 
         /** iTerm2 */
-        ITERM2("iTerm.app", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, false, false),
+        ITERM2("iTerm.app", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, false, false, true),
 
         // ==================== Cross-Platform Modern Terminals ====================
 
         /** Kitty terminal - GPU-accelerated, uses Kitty graphics protocol. Supports CSI ? 996 n since 0.38.1. */
-        KITTY("kitty", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, true, true),
+        KITTY("kitty", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, true, true, true),
 
         /** Ghostty - Fast GPU-accelerated terminal, uses Kitty graphics protocol. Supports CSI ? 996 n since 1.0.0. */
-        GHOSTTY("ghostty", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, true, true),
+        GHOSTTY("ghostty", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, true, true, true),
 
         /** Alacritty - GPU-accelerated terminal */
         ALACRITTY("alacritty", EnumSet.of(OscCode.FOREGROUND, OscCode.BACKGROUND, OscCode.CURSOR_COLOR, OscCode.HYPERLINK),
                 ColorDepth.TRUE_COLOR,
-                false, false),
+                false, false, false),
 
         /** WezTerm - GPU-accelerated terminal with multiplexing */
-        WEZTERM("WezTerm", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, false, true),
+        WEZTERM("WezTerm", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, false, true, true),
 
         /** Foot - Fast, lightweight Wayland terminal (VTE-based, supports CSI ? 996 n) */
-        FOOT("foot", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, true, true),
+        FOOT("foot", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, true, true, true),
 
         /** Contour - Modern terminal emulator. Origin of the CSI ? 996 n extension since 0.4.0. */
-        CONTOUR("contour", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, true, true),
+        CONTOUR("contour", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, true, true, true),
 
         /** Rio - Hardware-accelerated GPU terminal */
-        RIO("rio", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, false, false),
+        RIO("rio", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, false, false, false),
 
         /** Warp - Modern terminal with AI features */
-        WARP("warp", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, false, false),
+        WARP("warp", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, false, false, false),
 
         /** Wave - Modern terminal */
-        WAVE("wave", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, false, false),
+        WAVE("wave", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, false, false, false),
 
         // ==================== Electron-Based Terminals ====================
 
         /** Hyper - Electron-based terminal */
-        HYPER("hyper", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, false, false),
+        HYPER("hyper", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, false, false, false),
 
         /** Terminus/Tabby - Electron-based terminal */
-        TABBY("tabby", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, false, false),
+        TABBY("tabby", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, false, false, false),
 
         /** Extraterm - Electron-based terminal */
-        EXTRATERM("extraterm", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, false, false),
+        EXTRATERM("extraterm", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, false, false, false),
 
         // ==================== Linux Desktop Terminals ====================
 
         /** GNOME Terminal and other VTE-based terminals. Supports CSI ? 996 n since VTE 0.82.0. */
-        GNOME_TERMINAL("gnome-terminal", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, true, false),
+        GNOME_TERMINAL("gnome-terminal", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, true, false, false),
 
         /** Konsole - KDE terminal emulator */
-        KONSOLE("konsole", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, false, false),
+        KONSOLE("konsole", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, false, false, false),
 
         /** rxvt and urxvt */
         RXVT("rxvt", EnumSet.of(OscCode.FOREGROUND, OscCode.BACKGROUND, OscCode.CURSOR_COLOR), ColorDepth.COLORS_256, false,
-                false),
+                false, false),
 
         // ==================== Windows Terminals ====================
 
         /** Windows Terminal */
         WINDOWS_TERMINAL("Windows Terminal",
                 EnumSet.of(OscCode.FOREGROUND, OscCode.BACKGROUND, OscCode.CURSOR_COLOR, OscCode.HYPERLINK),
-                ColorDepth.TRUE_COLOR, false, false),
+                ColorDepth.TRUE_COLOR, false, false, false),
 
         /** Mintty - Default terminal for Git Bash, Cygwin, MSYS2 */
-        MINTTY("mintty", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, false, false),
+        MINTTY("mintty", EnumSet.allOf(OscCode.class), ColorDepth.TRUE_COLOR, false, false, true),
 
         /** ConEmu/Cmder - Windows console emulator */
-        CONEMU("ConEmu", EnumSet.of(OscCode.FOREGROUND, OscCode.BACKGROUND), ColorDepth.TRUE_COLOR, false, false),
+        CONEMU("ConEmu", EnumSet.of(OscCode.FOREGROUND, OscCode.BACKGROUND), ColorDepth.TRUE_COLOR, false, false, false),
 
         // ==================== Terminal Multiplexers ====================
 
         /** tmux - Terminal multiplexer. Supports CSI ? 996 n passthrough. */
-        TMUX("tmux", EnumSet.noneOf(OscCode.class), ColorDepth.COLORS_256, true, false),
+        TMUX("tmux", EnumSet.noneOf(OscCode.class), ColorDepth.COLORS_256, true, false, false),
 
         /** GNU Screen - Terminal multiplexer (no OSC passthrough by default) */
-        SCREEN("screen", EnumSet.noneOf(OscCode.class), ColorDepth.COLORS_256, false, false),
+        SCREEN("screen", EnumSet.noneOf(OscCode.class), ColorDepth.COLORS_256, false, false, false),
 
         // ==================== Classic/Legacy Terminals ====================
 
         /** xterm and compatible */
-        XTERM("xterm", EnumSet.allOf(OscCode.class), ColorDepth.COLORS_256, false, false),
+        XTERM("xterm", EnumSet.allOf(OscCode.class), ColorDepth.COLORS_256, false, false, false),
 
         /** Linux console (no OSC query support) */
-        LINUX_CONSOLE("linux", EnumSet.noneOf(OscCode.class), ColorDepth.COLORS_8, false, false),
+        LINUX_CONSOLE("linux", EnumSet.noneOf(OscCode.class), ColorDepth.COLORS_8, false, false, false),
 
         // ==================== Fallback ====================
 
         /** Unknown terminal - assume basic support */
-        UNKNOWN("unknown", EnumSet.of(OscCode.FOREGROUND, OscCode.BACKGROUND), ColorDepth.COLORS_256, false, false);
+        UNKNOWN("unknown", EnumSet.of(OscCode.FOREGROUND, OscCode.BACKGROUND), ColorDepth.COLORS_256, false, false, false);
 
         private final String identifier;
         private final Set<OscCode> supportedCodes;
         private final ColorDepth defaultColorDepth;
         private final boolean supportsThemeDsr;
         private final boolean supportsGraphemeClusterMode;
+        private final boolean supportsSynchronizedOutput;
 
         TerminalType(String identifier, Set<OscCode> supportedCodes, ColorDepth defaultColorDepth,
-                boolean supportsThemeDsr, boolean supportsGraphemeClusterMode) {
+                boolean supportsThemeDsr, boolean supportsGraphemeClusterMode,
+                boolean supportsSynchronizedOutput) {
             this.identifier = identifier;
             this.supportedCodes = Collections.unmodifiableSet(supportedCodes);
             this.defaultColorDepth = defaultColorDepth;
             this.supportsThemeDsr = supportsThemeDsr;
             this.supportsGraphemeClusterMode = supportsGraphemeClusterMode;
+            this.supportsSynchronizedOutput = supportsSynchronizedOutput;
         }
 
         public String getIdentifier() {
@@ -266,6 +269,20 @@ public interface Device {
          */
         public boolean supportsGraphemeClusterMode() {
             return supportsGraphemeClusterMode;
+        }
+
+        /**
+         * Check if this terminal supports Mode 2026 (synchronized output).
+         * <p>
+         * Synchronized output prevents screen tearing during rapid terminal
+         * redraws by buffering rendering until the mode is disabled.
+         * <p>
+         * Known supporting terminals: Kitty, Ghostty, WezTerm, Foot, Contour, iTerm2, Mintty.
+         *
+         * @return true if Mode 2026 is expected to be supported
+         */
+        public boolean supportsSynchronizedOutput() {
+            return supportsSynchronizedOutput;
         }
 
         /**
@@ -452,6 +469,22 @@ public interface Device {
     default boolean supportsGraphemeClusterMode() {
         return org.aesh.terminal.utils.TerminalEnvironment.getInstance()
                 .supportsGraphemeClusterMode();
+    }
+
+    /**
+     * Check if this device supports Mode 2026 (synchronized output).
+     * <p>
+     * Synchronized output prevents screen tearing during rapid terminal
+     * redraws by buffering rendering until the mode is disabled.
+     * <p>
+     * This method uses {@link org.aesh.terminal.utils.TerminalEnvironment} for
+     * environment-based detection.
+     *
+     * @return true if Mode 2026 is likely supported
+     */
+    default boolean supportsSynchronizedOutput() {
+        return org.aesh.terminal.utils.TerminalEnvironment.getInstance()
+                .supportsSynchronizedOutput();
     }
 
     /**

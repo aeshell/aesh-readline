@@ -941,6 +941,61 @@ public interface Connection extends AutoCloseable {
         return ImageProtocolDetector.detect(attrs, termType);
     }
 
+    // ==================== Mode 2026 (Synchronized Output) ====================
+
+    /**
+     * Check if Mode 2026 (synchronized output) is likely supported.
+     * <p>
+     * This delegates to the device's capability detection based on terminal type.
+     * Returns false for dumb terminals or when the device is null.
+     *
+     * @return true if Mode 2026 is likely supported
+     */
+    default boolean supportsSynchronizedOutput() {
+        if (device() == null || !supportsAnsi()) {
+            return false;
+        }
+        return device().supportsSynchronizedOutput();
+    }
+
+    /**
+     * Query the terminal to check if Mode 2026 is supported via DECRQM.
+     * <p>
+     * This sends a DECRQM (DEC Private Mode Request Mode) query for Mode 2026
+     * and parses the DECRPM response.
+     * <p>
+     * The terminal must be actively reading input for this to work.
+     *
+     * @param timeoutMs timeout in milliseconds to wait for response
+     * @return true if supported, false if not supported, null if no response/timeout
+     */
+    default Boolean querySynchronizedOutput(long timeoutMs) {
+        return queryTerminal(ANSI.MODE_2026_QUERY, timeoutMs, ANSI::parseMode2026Response);
+    }
+
+    /**
+     * Enable Mode 2026 (synchronized output) — Begin Synchronized Update (BSU).
+     * <p>
+     * When enabled, the terminal buffers rendering until the mode is disabled,
+     * then paints the final state in one frame.
+     *
+     * @return this connection
+     */
+    default Connection enableSynchronizedOutput() {
+        return write(ANSI.MODE_2026_ENABLE);
+    }
+
+    /**
+     * Disable Mode 2026 (synchronized output) — End Synchronized Update (ESU).
+     * <p>
+     * When disabled, the terminal renders the buffered output in a single frame.
+     *
+     * @return this connection
+     */
+    default Connection disableSynchronizedOutput() {
+        return write(ANSI.MODE_2026_DISABLE);
+    }
+
     // ==================== Mode 2027 (Grapheme Cluster Mode) ====================
 
     /**

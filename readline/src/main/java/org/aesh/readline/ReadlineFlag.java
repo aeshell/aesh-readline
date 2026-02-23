@@ -44,6 +44,12 @@ public enum ReadlineFlag {
      * Do not automatically enable Mode 2027 (grapheme cluster segmentation)
      * for terminals that support it
      */
-    NO_GRAPHEME_CLUSTER_MODE
+    NO_GRAPHEME_CLUSTER_MODE,
+
+    /**
+     * Do not automatically use Mode 2026 (synchronized output)
+     * for terminals that support it
+     */
+    NO_SYNCHRONIZED_OUTPUT
 
 }

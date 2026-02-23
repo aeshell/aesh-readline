@@ -389,6 +389,17 @@ public final class TerminalEnvironment {
     }
 
     /**
+     * Check if Mode 2026 (synchronized output) is likely supported.
+     * <p>
+     * This delegates to the detected terminal type's synchronized output support.
+     *
+     * @return true if Mode 2026 is likely supported
+     */
+    public boolean supportsSynchronizedOutput() {
+        return terminalType.supportsSynchronizedOutput();
+    }
+
+    /**
      * Check if OSC 8 hyperlinks are likely supported.
      * <p>
      * This delegates to the detected terminal type's hyperlink support.

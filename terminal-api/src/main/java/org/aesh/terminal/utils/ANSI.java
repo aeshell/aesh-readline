@@ -1209,6 +1209,87 @@ public class ANSI {
         }
     }
 
+    // ==================== Mode 2026 (Synchronized Output) ====================
+
+    /** DECRQM query for Mode 2026 (synchronized output). */
+    public static final String MODE_2026_QUERY = "\u001B[?2026$p";
+
+    /** Enable Mode 2026 (synchronized output) — Begin Synchronized Update (BSU). */
+    public static final String MODE_2026_ENABLE = "\u001B[?2026h";
+
+    /** Disable Mode 2026 (synchronized output) — End Synchronized Update (ESU). */
+    public static final String MODE_2026_DISABLE = "\u001B[?2026l";
+
+    /**
+     * Parse a DECRPM (DEC Private Mode Report) response for Mode 2026.
+     * <p>
+     * Expected format: CSI ? 2026 ; Ps $ y
+     * <p>
+     * Where Ps indicates the mode status:
+     * <ul>
+     * <li>0 - not recognized</li>
+     * <li>1 - set (enabled)</li>
+     * <li>2 - reset (disabled, but recognized)</li>
+     * <li>3 - permanently set</li>
+     * <li>4 - permanently reset</li>
+     * </ul>
+     * <p>
+     * Returns {@code Boolean.TRUE} if Ps is 1, 2, or 3 (terminal recognizes the mode),
+     * {@code Boolean.FALSE} if Ps is 0 or 4 (not recognized or permanently disabled),
+     * or {@code null} if the response cannot be parsed.
+     *
+     * @param input the input sequence as code points
+     * @return true if the terminal supports Mode 2026, false if not, null if unparseable
+     */
+    public static Boolean parseMode2026Response(int[] input) {
+        if (input == null || input.length < 9) {
+            return null;
+        }
+
+        StringBuilder sb = new StringBuilder();
+        for (int c : input) {
+            sb.appendCodePoint(c);
+        }
+        String response = sb.toString();
+
+        // Look for DECRPM pattern: ESC [ ? 2026 ; Ps $ y
+        int start = response.indexOf("\u001B[?2026;");
+        if (start < 0) {
+            return null;
+        }
+
+        // Move past "ESC[?2026;"
+        int paramStart = start + "\u001B[?2026;".length();
+
+        // Find the terminating "$y"
+        int end = response.indexOf("$y", paramStart);
+        if (end < 0) {
+            return null;
+        }
+
+        String paramStr = response.substring(paramStart, end).trim();
+        if (paramStr.isEmpty()) {
+            return null;
+        }
+
+        try {
+            int ps = Integer.parseInt(paramStr);
+            switch (ps) {
+                case 1: // set (enabled)
+                case 2: // reset (disabled, but recognized)
+                case 3: // permanently set
+                    return Boolean.TRUE;
+                case 0: // not recognized
+                case 4: // permanently reset
+                    return Boolean.FALSE;
+                default:
+                    return null;
+            }
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
     // ==================== Mode 2027 (Grapheme Cluster Mode) ====================
 
     /** DECRQM query for Mode 2027 (grapheme cluster segmentation). */
