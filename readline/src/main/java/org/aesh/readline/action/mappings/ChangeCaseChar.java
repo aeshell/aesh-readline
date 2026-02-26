@@ -46,7 +46,6 @@ public class ChangeCaseChar implements Action {
         if (inputProcessor.buffer().buffer().length() >= inputProcessor.buffer().buffer().cursor()) {
             inputProcessor.buffer().addActionToUndoStack();
             inputProcessor.buffer().changeCase();
-            inputProcessor.buffer().moveCursor(1);
         }
 
     }

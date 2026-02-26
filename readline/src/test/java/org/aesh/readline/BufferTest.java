@@ -296,13 +296,17 @@ public class BufferTest {
         buffer.upCase(outConsumer::add);
         assertEquals("R", Parser.fromCodePoints(outConsumer.get(0)));
         assertEquals("foo baR", buffer.asString());
-        buffer.move(outConsumer::add, -4, 120);
+        assertEquals(7, buffer.cursor());
+        buffer.move(outConsumer::add, -5, 120);
         outConsumer.clear();
         buffer.changeCase(outConsumer::add);
         assertEquals("foO baR", buffer.asString());
+        assertEquals(3, buffer.cursor());
+        buffer.move(outConsumer::add, -1, 120);
         outConsumer.clear();
         buffer.changeCase(outConsumer::add);
         assertEquals("foo baR", buffer.asString());
+        assertEquals(3, buffer.cursor());
         buffer.move(outConsumer::add, 10, 120);
         outConsumer.clear();
         buffer.downCase(outConsumer::add);
@@ -311,6 +315,7 @@ public class BufferTest {
         outConsumer.clear();
         buffer.downCase(outConsumer::add);
         assertEquals("foo bar", buffer.asString());
+        assertEquals(7, buffer.cursor());
     }
 
     @Test

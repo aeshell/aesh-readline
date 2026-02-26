@@ -23,7 +23,6 @@ import java.util.Arrays;
 
 import org.aesh.readline.InputProcessor;
 import org.aesh.readline.editing.EditMode;
-import org.aesh.terminal.utils.Parser;
 
 /**
  * Abstract base class for actions that modify text (delete, change, yank, case change).
@@ -117,43 +116,35 @@ abstract class ChangeAction extends MovementAction {
         }
 
         else if (status == EditMode.Status.UP_CASE) {
+            inputProcessor.buffer().addActionToUndoStack();
             if (cursor < oldCursor) {
-                inputProcessor.buffer().addActionToUndoStack();
-                for (int i = cursor; i < oldCursor; i++) {
-                    inputProcessor.buffer().upCase();
-                }
-            } else {
-                inputProcessor.buffer().addActionToUndoStack();
-                for (int i = oldCursor; i < cursor; i++) {
-                    inputProcessor.buffer().upCase();
-                }
-            }
-            inputProcessor.buffer().moveCursor(cursor - oldCursor);
-        } else if (status == EditMode.Status.DOWN_CASE) {
-            if (cursor < oldCursor) {
-                inputProcessor.buffer().addActionToUndoStack();
-                for (int i = cursor; i < oldCursor; i++) {
-                    inputProcessor.buffer().downCase();
-                }
-            } else {
-                inputProcessor.buffer().addActionToUndoStack();
-                for (int i = oldCursor; i < cursor; i++) {
-                    inputProcessor.buffer().downCase();
-                }
-            }
-            inputProcessor.buffer().moveCursor(cursor - oldCursor);
-        } else if (status == EditMode.Status.CAPITALIZE) {
-            String word = Parser.findWordClosestToCursor(inputProcessor.buffer().buffer().asString(), oldCursor);
-            if (word.length() > 0) {
-                inputProcessor.buffer().addActionToUndoStack();
-                int pos = inputProcessor.buffer().buffer().asString().indexOf(word,
-                        oldCursor - word.length());
-                if (pos < 0)
-                    pos = 0;
-                inputProcessor.buffer().upCase();
-
                 inputProcessor.buffer().moveCursor(cursor - oldCursor);
+                for (int i = cursor; i < oldCursor; i++) {
+                    inputProcessor.buffer().upCase();
+                }
+            } else {
+                for (int i = oldCursor; i < cursor; i++) {
+                    inputProcessor.buffer().upCase();
+                }
             }
+            inputProcessor.buffer().moveCursor(cursor - inputProcessor.buffer().buffer().cursor());
+        } else if (status == EditMode.Status.DOWN_CASE) {
+            inputProcessor.buffer().addActionToUndoStack();
+            if (cursor < oldCursor) {
+                inputProcessor.buffer().moveCursor(cursor - oldCursor);
+                for (int i = cursor; i < oldCursor; i++) {
+                    inputProcessor.buffer().downCase();
+                }
+            } else {
+                for (int i = oldCursor; i < cursor; i++) {
+                    inputProcessor.buffer().downCase();
+                }
+            }
+            inputProcessor.buffer().moveCursor(cursor - inputProcessor.buffer().buffer().cursor());
+        } else if (status == EditMode.Status.CAPITALIZE) {
+            inputProcessor.buffer().addActionToUndoStack();
+            inputProcessor.buffer().upCase();
+            inputProcessor.buffer().moveCursor(cursor - inputProcessor.buffer().buffer().cursor());
         }
     }
 

@@ -1002,6 +1002,7 @@ public final class Buffer {
                 line[cursor] = Character.toLowerCase(line[cursor]);
 
             out.accept(new int[] { line[cursor] });
+            cursor++;
         }
     }
 
@@ -1012,6 +1013,7 @@ public final class Buffer {
         if (Character.isLetter(line[cursor])) {
             line[cursor] = Character.toUpperCase(line[cursor]);
             out.accept(new int[] { line[cursor] });
+            cursor++;
         }
     }
 
@@ -1022,6 +1024,7 @@ public final class Buffer {
         if (Character.isLetter(line[cursor])) {
             line[cursor] = Character.toLowerCase(line[cursor]);
             out.accept(new int[] { line[cursor] });
+            cursor++;
         }
     }
 

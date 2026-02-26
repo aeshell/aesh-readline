@@ -29,7 +29,7 @@ import org.aesh.readline.editing.EditMode;
  */
 abstract class ForwardWord extends ChangeAction {
 
-    private boolean viMode;
+    private final boolean viMode;
     private boolean removeTrailingSpaces;
 
     ForwardWord() {
@@ -40,10 +40,7 @@ abstract class ForwardWord extends ChangeAction {
     ForwardWord(boolean viMode, EditMode.Status status) {
         super(status);
         this.viMode = viMode;
-        if (status == EditMode.Status.CHANGE)
-            removeTrailingSpaces = false;
-        else
-            removeTrailingSpaces = true;
+        removeTrailingSpaces = status != EditMode.Status.CHANGE;
     }
 
     @Override
