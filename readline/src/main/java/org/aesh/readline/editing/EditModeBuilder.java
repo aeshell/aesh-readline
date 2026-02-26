@@ -257,6 +257,7 @@ public class EditModeBuilder {
         emacs.addAction(Key.ESC, "no-action");
         emacs.addAction(Key.CTRL_LEFT, "backward-word"); //ctrl-left
         emacs.addAction(Key.CTRL_RIGHT, "forward-word"); //ctrl-right
+        emacs.addAction(Key.META_RIGHT, "forward-word"); //alt-right
         emacs.addAction(Key.PGUP, "no-action"); //page-up
         emacs.addAction(Key.PGDOWN, "no-action"); //page-down
         if (Key.HOME.equalTo(Key.HOME_2.getKeyValues())) {

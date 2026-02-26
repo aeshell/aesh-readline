@@ -63,6 +63,7 @@ public class Readline {
     private CompletionHandler completionHandler;
     private EditMode editMode;
     private History history;
+    private SuggestionProvider suggestionProvider;
 
     /**
      * Creates a new Readline instance with default edit mode, in-memory history, and simple completion handler.
@@ -96,6 +97,15 @@ public class Readline {
         else
             this.completionHandler = completionHandler;
         this.decoder = new ActionDecoder(this.editMode);
+    }
+
+    /**
+     * Sets the suggestion provider for inline ghost text.
+     *
+     * @param provider the suggestion provider
+     */
+    public void setSuggestionProvider(SuggestionProvider provider) {
+        this.suggestionProvider = provider;
     }
 
     /**
@@ -342,9 +352,11 @@ public class Readline {
                     conn.disableSynchronizedOutput();
                 editMode.setPrevKey(event);
                 if (this.returnValue() != null) {
+                    consoleBuffer.clearGhostText();
                     conn.stdoutHandler().accept(Config.CR);
                     finish(this.returnValue());
                 } else {
+                    showGhostTextIfApplicable();
                     synchronized (Readline.this) {
                         paused = false;
                     }
@@ -353,8 +365,20 @@ public class Readline {
                         processInput();
                 }
             } else {
-                if (Key.isPrintable(event.buffer()) && notInCommandNode())
+                if (Key.isPrintable(event.buffer()) && notInCommandNode()) {
                     this.buffer().writeChar((char) event.buffer().array()[0]);
+                    showGhostTextIfApplicable();
+                }
+            }
+        }
+
+        private void showGhostTextIfApplicable() {
+            if (suggestionProvider != null && consoleBuffer.buffer().length() > 0) {
+                String bufferStr = Parser.fromCodePoints(consoleBuffer.buffer().multiLine());
+                String suggestion = suggestionProvider.suggest(bufferStr);
+                if (suggestion != null && !suggestion.isEmpty()) {
+                    consoleBuffer.showGhostText(suggestion);
+                }
             }
         }
 

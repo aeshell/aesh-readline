@@ -42,6 +42,11 @@ public class ForwardChar implements Action {
 
     @Override
     public void accept(InputProcessor inputProcessor) {
-        inputProcessor.buffer().moveCursor(1);
+        if (inputProcessor.buffer().buffer().cursor() >= inputProcessor.buffer().buffer().length()
+                && inputProcessor.buffer().getGhostText() != null) {
+            inputProcessor.buffer().acceptGhostText();
+        } else {
+            inputProcessor.buffer().moveCursor(1);
+        }
     }
 }

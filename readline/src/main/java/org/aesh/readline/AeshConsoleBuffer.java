@@ -36,6 +36,7 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
     private Size size;
 
     private final boolean ansiMode;
+    private String ghostText;
 
     private static final Logger LOGGER = LoggerUtil.getLogger(AeshConsoleBuffer.class.getName());
     private final CursorListener cursorListener;
@@ -140,6 +141,7 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
 
     @Override
     public void writeChar(char input) {
+        clearGhostText();
         buffer.insert(connection.stdoutHandler(), input, size().getWidth());
     }
 
@@ -155,13 +157,16 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
 
     @Override
     public void writeChars(int[] input) {
+        clearGhostText();
         buffer.insert(connection.stdoutHandler(), input, size().getWidth());
     }
 
     @Override
     public void writeString(String input) {
-        if (input != null && input.length() > 0)
+        if (input != null && input.length() > 0) {
+            clearGhostText();
             buffer.insert(connection.stdoutHandler(), input, size().getWidth());
+        }
     }
 
     @Override
@@ -181,6 +186,7 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
 
     @Override
     public void delete(int delta) {
+        clearGhostText();
         buffer.delete(connection.stdoutHandler(), delta, size().getWidth(), isViMode());
     }
 
@@ -201,21 +207,25 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
 
     @Override
     public void replace(int[] line) {
+        clearGhostText();
         buffer.replace(connection.stdoutHandler(), line, size().getWidth());
     }
 
     @Override
     public void replace(String line) {
+        clearGhostText();
         buffer.replace(connection.stdoutHandler(), line, size().getWidth());
     }
 
     @Override
     public void reset() {
+        ghostText = null;
         buffer.reset();
     }
 
     @Override
     public void clear(boolean includeBuffer) {
+        ghostText = null;
         //(windows fix)
         if (!Config.isOSPOSIXCompatible())
             connection.stdoutHandler().accept(Config.CR);
@@ -237,6 +247,80 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
 
         if (cursorPosition > -1)
             buffer.move(connection.stdoutHandler(), cursorPosition - buffer.length(), size().getWidth());
+    }
+
+    @Override
+    public void clearGhostText() {
+        if (ghostText != null) {
+            // Save cursor, erase from cursor to end of screen (handles wrapped text), restore cursor
+            connection.write(ANSI.CURSOR_SAVE);
+            connection.stdoutHandler().accept(ANSI.ERASE_SCREEN_FROM_CURSOR);
+            connection.write(ANSI.CURSOR_RESTORE);
+            ghostText = null;
+        }
+    }
+
+    @Override
+    public void showGhostText(String suggestion) {
+        if (suggestion == null || suggestion.isEmpty())
+            return;
+        clearGhostText();
+        // Save cursor, write dim text, erase rest of line, restore cursor
+        connection.write(ANSI.CURSOR_SAVE);
+        connection.stdoutHandler().accept(ANSI.DIM);
+        connection.write(suggestion);
+        connection.stdoutHandler().accept(ANSI.DIM_OFF);
+        connection.stdoutHandler().accept(ANSI.ERASE_LINE_FROM_CURSOR);
+        connection.write(ANSI.CURSOR_RESTORE);
+        ghostText = suggestion;
+    }
+
+    @Override
+    public void acceptGhostText() {
+        if (ghostText != null) {
+            String text = ghostText;
+            ghostText = null;
+            // Erase the ghost text display first (screen-level to handle wrapping), then insert into buffer
+            connection.write(ANSI.CURSOR_SAVE);
+            connection.stdoutHandler().accept(ANSI.ERASE_SCREEN_FROM_CURSOR);
+            connection.write(ANSI.CURSOR_RESTORE);
+            writeString(text);
+        }
+    }
+
+    @Override
+    public void acceptGhostTextWord() {
+        if (ghostText != null) {
+            // Find the end of the next word in the ghost text
+            int i = 0;
+            // Skip leading delimiters/whitespace
+            while (i < ghostText.length() && !Character.isLetterOrDigit(ghostText.charAt(i)))
+                i++;
+            // Skip the word characters
+            while (i < ghostText.length() && Character.isLetterOrDigit(ghostText.charAt(i)))
+                i++;
+
+            String accepted = ghostText.substring(0, i);
+            String remaining = ghostText.substring(i);
+
+            // Erase the ghost text display first (screen-level to handle wrapping)
+            connection.write(ANSI.CURSOR_SAVE);
+            connection.stdoutHandler().accept(ANSI.ERASE_SCREEN_FROM_CURSOR);
+            connection.write(ANSI.CURSOR_RESTORE);
+
+            ghostText = null;
+            writeString(accepted);
+
+            // Show remaining ghost text if any
+            if (!remaining.isEmpty()) {
+                showGhostText(remaining);
+            }
+        }
+    }
+
+    @Override
+    public String getGhostText() {
+        return ghostText;
     }
 
     private boolean isViMode() {

@@ -19,6 +19,7 @@
  */
 package org.aesh.readline.action.mappings;
 
+import org.aesh.readline.InputProcessor;
 import org.aesh.readline.editing.EditMode;
 
 /**
@@ -47,5 +48,15 @@ public class MoveForwardWord extends ForwardWord {
     @Override
     public String name() {
         return "forward-word";
+    }
+
+    @Override
+    public void accept(InputProcessor inputProcessor) {
+        if (inputProcessor.buffer().buffer().cursor() >= inputProcessor.buffer().buffer().length()
+                && inputProcessor.buffer().getGhostText() != null) {
+            inputProcessor.buffer().acceptGhostTextWord();
+        } else {
+            super.accept(inputProcessor);
+        }
     }
 }

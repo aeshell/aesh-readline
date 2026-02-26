@@ -374,6 +374,9 @@ public enum Key implements KeyAction {
     /** Control + Down arrow key. */
     CTRL_DOWN(new int[] { ESC.getFirstValue(), 91, 49, 59, 53, 66 }),
 
+    /** Meta (Alt) + Right arrow key. */
+    META_RIGHT(new int[] { ESC.getFirstValue(), 91, 49, 59, 51, 67 }),
+
     /** Enter key. */
     ENTER(Config.isOSPOSIXCompatible() ? new int[] { 10 } : new int[] { 13 }),
     /** Enter key (alternate encoding for Windows CR+LF). */

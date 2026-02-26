@@ -216,4 +216,40 @@ public interface ConsoleBuffer {
      */
     void clear(boolean includeBuffer);
 
+    /**
+     * Clear any currently displayed ghost text from the terminal.
+     */
+    default void clearGhostText() {
+    }
+
+    /**
+     * Display ghost text (dimmed inline suggestion) after the cursor.
+     *
+     * @param suggestion the suggestion suffix to display
+     */
+    default void showGhostText(String suggestion) {
+    }
+
+    /**
+     * Accept the currently displayed ghost text into the buffer.
+     */
+    default void acceptGhostText() {
+    }
+
+    /**
+     * Accept the next word from the currently displayed ghost text into the buffer.
+     * The remaining ghost text continues to be displayed.
+     */
+    default void acceptGhostTextWord() {
+    }
+
+    /**
+     * Get the currently displayed ghost text.
+     *
+     * @return the ghost text, or null if none
+     */
+    default String getGhostText() {
+        return null;
+    }
+
 }
