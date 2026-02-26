@@ -515,4 +515,42 @@ public class BufferTest {
         buffer.insert(outConsumer::add, "bar", 100);
         assertEquals("bar", buffer.asString());
     }
+
+    @Test
+    public void overwriteBasic() {
+        Buffer buffer = new Buffer(new Prompt(": "));
+        List<int[]> outConsumer = new ArrayList<>();
+        buffer.insert(outConsumer::add, "foo", 100);
+        assertEquals(3, buffer.cursor());
+        buffer.move(outConsumer::add, -3, 100);
+        assertEquals(0, buffer.cursor());
+        outConsumer.clear();
+        buffer.overwrite(outConsumer::add, 'X', 100);
+        assertEquals("Xoo", buffer.asString());
+    }
+
+    @Test
+    public void overwriteRespectsMasking() {
+        // With a visible mask character '#'
+        Buffer buffer = new Buffer(new Prompt(": ", '#'));
+        List<int[]> outConsumer = new ArrayList<>();
+        buffer.insert(outConsumer::add, "foo", 100);
+        assertEquals("cursor after insert", 3, buffer.cursor());
+        assertEquals("length after insert", 3, buffer.length());
+        // Move cursor back to position 0
+        buffer.move(outConsumer::add, -3, 100);
+        assertEquals("cursor after move", 0, buffer.cursor());
+        outConsumer.clear();
+
+        // Overwrite 'f' with 'X' — should output '#', not 'X'
+        buffer.overwrite(outConsumer::add, 'X', 100);
+        assertEquals("Xoo", buffer.asString());
+        // The output should contain the mask char, not the real char
+        int[] output = outConsumer.get(0);
+        assertEquals('#', output[0]);
+
+        // Note: zero-mask (char 0) mid-buffer overwrite can't be unit-tested
+        // because move() intentionally suppresses cursor updates for invisible
+        // input. The zero-mask branch in overwrite() simply emits nothing.
+    }
 }

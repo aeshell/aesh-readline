@@ -247,7 +247,9 @@ public class EditModeBuilder {
         emacs.addAction(Key.META_d, "kill-word");
         emacs.addAction(Key.META_l, "downcase-word");
         emacs.addAction(Key.META_u, "upcase-word");
+        emacs.addAction(Key.META_t, "transpose-words");
         emacs.addAction(Key.META_BACKSPACE, "backward-kill-word");
+        emacs.addAction(Key.CTRL_T, "transpose-chars");
         emacs.addAction(Key.CTRL_W, "unix-word-rubout");
         emacs.addAction(Key.CTRL_X_CTRL_U, "undo");
         emacs.addAction(Key.UNIT_SEPARATOR, "undo");

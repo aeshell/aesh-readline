@@ -55,6 +55,8 @@ public final class Buffer {
     private int[] multiLineBuffer = new int[0];
     private boolean isPromptDisplayed = false;
     private boolean deletingBackward = true;
+    private int mark = -1;
+    private boolean overwriteMode = false;
 
     private final CursorLocator locator;
 
@@ -989,6 +991,66 @@ public final class Buffer {
      */
     public void insert(Consumer<int[]> out, final String str, int width) {
         insert(out, Parser.toCodePoints(str), width);
+    }
+
+    /**
+     * Returns the current mark position.
+     *
+     * @return the mark position, or -1 if no mark is set
+     */
+    public int getMark() {
+        return mark;
+    }
+
+    /**
+     * Sets the mark at the specified position.
+     *
+     * @param position the position to set the mark at
+     */
+    public void setMark(int position) {
+        this.mark = position;
+    }
+
+    /**
+     * Returns whether overwrite mode is enabled.
+     *
+     * @return true if overwrite mode is active
+     */
+    public boolean isOverwriteMode() {
+        return overwriteMode;
+    }
+
+    /**
+     * Toggles between insert and overwrite mode.
+     */
+    public void toggleOverwriteMode() {
+        overwriteMode = !overwriteMode;
+    }
+
+    /**
+     * Replaces the character at the current cursor position without shifting.
+     * Used in overwrite mode.
+     *
+     * @param out the output consumer for terminal updates
+     * @param data the character to write
+     * @param width the terminal width
+     */
+    public void overwrite(Consumer<int[]> out, int data, int width) {
+        if (cursor < size) {
+            line[cursor] = data;
+            if (isMasking()) {
+                if (prompt.getMask() != 0)
+                    out.accept(new int[] { prompt.getMask() });
+                // else: no-output mask, emit nothing
+            } else {
+                out.accept(new int[] { data });
+            }
+            cursor++;
+        } else {
+            // At end of buffer, behave like normal insert
+            doInsert(data);
+            printInsertedData(out, width);
+        }
     }
 
     /**

@@ -326,6 +326,8 @@ public enum Key implements KeyAction {
     META_f(new int[] { ESC.getFirstValue(), f.getFirstValue() }),
     /** Meta (Alt) + l combination. */
     META_l(new int[] { ESC.getFirstValue(), l.getFirstValue() }),
+    /** Meta (Alt) + t combination. */
+    META_t(new int[] { ESC.getFirstValue(), t.getFirstValue() }),
     /** Meta (Alt) + u combination. */
     META_u(new int[] { ESC.getFirstValue(), u.getFirstValue() }),
 

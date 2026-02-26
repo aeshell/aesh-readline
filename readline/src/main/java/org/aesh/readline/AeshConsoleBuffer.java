@@ -142,7 +142,11 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
     @Override
     public void writeChar(char input) {
         clearGhostText();
-        buffer.insert(connection.stdoutHandler(), input, size().getWidth());
+        if (buffer.isOverwriteMode()) {
+            buffer.overwrite(connection.stdoutHandler(), input, size().getWidth());
+        } else {
+            buffer.insert(connection.stdoutHandler(), input, size().getWidth());
+        }
     }
 
     @Override

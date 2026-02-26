@@ -58,7 +58,7 @@ public class ActionMapper {
         else if (function.equals("backward-word"))
             return new MoveBackwardWord();
         else if (function.equals("beginning-of-history"))
-            return new NextHistory(); //TODO: need to add a proper Operation
+            return new BeginningOfHistory();
         else if (function.equals("beginning-of-line"))
             return new BeginningOfLine();
         else if (function.equals("call-last-kbd-macro"))
@@ -66,9 +66,9 @@ public class ActionMapper {
         else if (function.equals("capitalize-word"))
             return new CapitalizeForwardWord();
         else if (function.equals("character-search"))
-            return new NullAction(); //TODO: need to add a proper Operation
+            return new CharacterSearch();
         else if (function.equals("character-search-backward"))
-            return new NullAction(); //TODO: need to add a proper Operation
+            return new CharacterSearchBackward();
         else if (function.equals("clear-screen"))
             return new Clear();
         else if (function.equals("complete"))
@@ -86,9 +86,9 @@ public class ActionMapper {
         else if (function.equals("delete-char"))
             return new DeleteChar();
         else if (function.equals("delete-char-or-list"))
-            return new NullAction(); //TODO: need to add a proper Operation
+            return new DeleteCharOrList();
         else if (function.equals("delete-horizontal-space"))
-            return new NullAction(); //TODO: need to add a proper Operation
+            return new DeleteHorizontalSpace();
         else if (function.equals("digit-argument"))
             return new NullAction(); //TODO: need to add a proper Operation
         else if (function.equals("do-uppercase-version"))
@@ -106,11 +106,11 @@ public class ActionMapper {
         else if (function.equals("end-kbd-macro"))
             return new NullAction(); // TODO: need to add a proper Operation
         else if (function.equals("end-of-history"))
-            return new NullAction(); // TODO: need to add a proper Operation
+            return new EndOfHistory();
         else if (function.equals("end-of-line"))
             return new EndOfLine();
         else if (function.equals("exchange-point-and-mark"))
-            return new NullAction(); // TODO: need to add a proper Operation
+            return new ExchangePointAndMark();
         else if (function.equals("forward-backward-delete-char"))
             return new DeleteChar(); //TODO: need a proper impl
         else if (function.equals("forward-char"))
@@ -120,17 +120,17 @@ public class ActionMapper {
         else if (function.equals("forward-word"))
             return new MoveForwardWord();
         else if (function.equals("history-search-backward"))
-            return new NullAction(); // TODO: need to add a proper Operation
+            return new HistorySearchBackward();
         else if (function.equals("history-search-forward"))
-            return new NullAction(); // TODO: need to add a proper Operation
+            return new HistorySearchForward();
         else if (function.equals("insert-comment"))
-            return new NullAction(); // TODO: need to add a proper Operation
+            return new InsertComment();
         else if (function.equals("insert-completions"))
             return new NullAction(); // TODO: need to add a proper Operation
         else if (function.equals("kill-line"))
             return new DeleteEndOfLine();
         else if (function.equals("kill-region"))
-            return new NullAction(); // TODO: need to add a proper Operation
+            return new KillRegion();
         else if (function.equals("kill-whole-line"))
             return new DeleteLine();
         else if (function.equals("kill-word"))
@@ -142,47 +142,47 @@ public class ActionMapper {
         else if (function.equals("next-history"))
             return new NextHistory();
         else if (function.equals("non-incremental-forward-search-history"))
-            return new NullAction(); // TODO: need to add a proper Operation
+            return new NonIncrementalForwardSearchHistory();
         else if (function.equals("non-incremental-reverse-search-history"))
-            return new NullAction(); // TODO: need to add a proper Operation
+            return new NonIncrementalReverseSearchHistory();
         else if (function.equals("overwrite-mode"))
-            return new NullAction(); // TODO: need to add a proper Operation
+            return new OverwriteMode();
         else if (function.equals("possible-completions"))
-            return new NullAction(); // TODO: need to add a proper Operation
+            return new PossibleCompletions();
         else if (function.equals("prefix-meta"))
             return new NullAction(); // TODO: need to add a proper Operation
         else if (function.equals("previous-history"))
             return new PrevHistory();
         else if (function.equals("quoted-insert"))
-            return new NullAction(); // TODO: need to add a proper Operation
+            return new QuotedInsert();
         else if (function.equals("re-read-init-file"))
             return new NullAction(); // TODO: need to add a proper Operation
         else if (function.equals("redraw-current-line"))
-            return new NullAction(); // TODO: need to add a proper Operation
+            return new RedrawCurrentLine();
         else if (function.equals("reverse-search-history"))
             return new ReverseSearchHistory();
         else if (function.equals("revert-line"))
-            return new NullAction(); // TODO: need to add a proper Operation
+            return new RevertLine();
         else if (function.equals("self-insert"))
             return new NullAction(); // TODO: need to add a proper Operation
         else if (function.equals("set-mark"))
-            return new NullAction(); // TODO: need to add a proper Operation
+            return new SetMark();
         else if (function.equals("skip-csi-sequence"))
             return new NullAction(); // TODO: need to add a proper Operation
         else if (function.equals("start-kbd-macro"))
             return new NullAction(); // TODO: need to add a proper Operation
         else if (function.equals("tilde-expand"))
-            return new NullAction(); // TODO: need to add a proper Operation
+            return new TildeExpand();
         else if (function.equals("transpose-chars"))
-            return new NullAction(); // TODO: need to add a proper Operation
+            return new TransposeChars();
         else if (function.equals("transpose-words"))
-            return new NullAction(); // TODO: need to add a proper Operation
+            return new TransposeWords();
         else if (function.equals("undo"))
             return new Undo();
         else if (function.equals("universal-argument"))
             return new NullAction(); // TODO: need to add a proper Operation
         else if (function.equals("unix-filename-rubout"))
-            return new NullAction(); // TODO: need to add a proper Operation
+            return new UnixFilenameRubout();
         else if (function.equals("unix-line-discard"))
             return new DeleteStartOfLine();
         else if (function.equals("unix-word-rubout"))
@@ -196,11 +196,11 @@ public class ActionMapper {
         else if (function.equals("yank"))
             return new Yank();
         else if (function.equals("yank-last-arg"))
-            return new NullAction(); // TODO: need to add a proper Operation
+            return new YankLastArg();
         else if (function.equals("yank-nth-arg"))
-            return new NullAction(); // TODO: need to add a proper Operation
+            return new YankNthArg();
         else if (function.equals("yank-pop"))
-            return new NullAction(); // TODO: need to add a proper Operation
+            return new YankPop();
         else if (function.equals("yank-after"))
             return new YankAfter(); // TODO: need to add a proper Operation
         else if (function.equals("eof"))

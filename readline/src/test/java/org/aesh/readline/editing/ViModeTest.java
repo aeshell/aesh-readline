@@ -309,4 +309,427 @@ public class ViModeTest {
         term.assertBuffer("footing");
     }
 
+    @Test
+    public void testTransposeChars() {
+        EditMode editMode = EditModeBuilder.builder(EditMode.Mode.VI)
+                .addAction(Key.CTRL_T.getKeyValues(), "transpose-chars")
+                .create();
+        TestReadlineConnection term = new TestReadlineConnection(editMode);
+        // In insert mode: at end of line, swap last two chars
+        term.read("abcd");
+        term.read(Key.CTRL_T);
+        term.assertBuffer("abdc");
+        // Switch to command mode, move back, switch to insert mode and transpose
+        term.read(Key.ESC);
+        term.read(Key.ZERO);
+        term.read(Key.l);
+        term.read(Key.i);
+        term.read(Key.CTRL_T); // cursor at 1, swap a<->b
+        term.assertBuffer("badc");
+    }
+
+    @Test
+    public void testTransposeWords() {
+        EditMode editMode = EditModeBuilder.builder(EditMode.Mode.VI)
+                .addAction(Key.CTRL_T.getKeyValues(), "transpose-words")
+                .create();
+        TestReadlineConnection term = new TestReadlineConnection(editMode);
+        // At end of line: swap last two words
+        term.read("foo bar");
+        term.read(Key.CTRL_T);
+        term.assertBuffer("bar foo");
+        // With extra spaces preserved
+        TestReadlineConnection term2 = new TestReadlineConnection(editMode);
+        term2.read("hello   world");
+        term2.read(Key.CTRL_T);
+        term2.assertBuffer("world   hello");
+    }
+
+    @Test
+    public void testDeleteHorizontalSpace() {
+        EditMode editMode = EditModeBuilder.builder(EditMode.Mode.VI)
+                .addAction(Key.CTRL_G.getKeyValues(), "delete-horizontal-space")
+                .create();
+        TestReadlineConnection term = new TestReadlineConnection(editMode);
+        term.read("foo   bar");
+        // Use Vi command mode to navigate into the whitespace, then insert mode to trigger action
+        term.read(Key.ESC);
+        term.read(Key.ZERO);
+        term.read(Key.w); // move to 'b' in command mode
+        term.read(Key.i); // enter insert mode (cursor before 'b', inside trailing space)
+        term.read(Key.CTRL_G);
+        term.assertBuffer("foobar");
+    }
+
+    @Test
+    public void testUnixFilenameRubout() {
+        EditMode editMode = EditModeBuilder.builder(EditMode.Mode.VI)
+                .addAction(Key.CTRL_G.getKeyValues(), "unix-filename-rubout")
+                .create();
+        TestReadlineConnection term = new TestReadlineConnection(editMode);
+        term.read("/home/user/file.txt");
+        term.read(Key.CTRL_G);
+        term.assertBuffer("/home/user/");
+        term.read(Key.CTRL_G);
+        term.assertBuffer("/home/");
+        term.read(Key.CTRL_G);
+        term.assertBuffer("/");
+    }
+
+    @Test
+    public void testInsertComment() {
+        EditMode editMode = EditModeBuilder.builder(EditMode.Mode.VI)
+                .addAction(Key.CTRL_G.getKeyValues(), "insert-comment")
+                .create();
+        TestReadlineConnection term = new TestReadlineConnection(editMode);
+        term.read("ls -la");
+        term.read(Key.CTRL_G);
+        term.assertLine("#ls -la");
+    }
+
+    @Test
+    public void testInsertCommentAfterViEditing() {
+        EditMode editMode = EditModeBuilder.builder(EditMode.Mode.VI)
+                .addAction(Key.CTRL_G.getKeyValues(), "insert-comment")
+                .create();
+        TestReadlineConnection term = new TestReadlineConnection(editMode);
+        term.read("apt-get install vim");
+        // Use Vi commands to change "apt-get" to "apt-cache" using big-word change
+        term.read(Key.ESC);
+        term.read(Key.ZERO);
+        term.read(Key.c);
+        term.read(Key.W);
+        term.read("apt-cache ");
+        // Now comment out the edited line
+        term.read(Key.CTRL_G);
+        term.assertLine("#apt-cache install vim");
+    }
+
+    @Test
+    public void testRevertLineAfterViEdits() {
+        EditMode editMode = EditModeBuilder.builder(EditMode.Mode.VI)
+                .addAction(Key.CTRL_G.getKeyValues(), "revert-line")
+                .create();
+        TestReadlineConnection term = new TestReadlineConnection(editMode);
+        term.read("hello world");
+        term.assertBuffer("hello world");
+        // Make some changes using Vi commands
+        term.read(Key.ESC);
+        term.read(Key.ZERO);
+        term.read(Key.x); // delete 'h' -> "ello world"
+        term.read(Key.DOLLAR);
+        term.read(Key.x); // delete 'd' -> "ello worl"
+        // Switch back to insert mode and revert
+        term.read(Key.i);
+        term.read(Key.CTRL_G);
+        term.assertBuffer("hello world");
+    }
+
+    @Test
+    public void testHistorySearchBackward() {
+        EditMode editMode = EditModeBuilder.builder(EditMode.Mode.VI)
+                .addAction(Key.CTRL_G.getKeyValues(), "history-search-backward")
+                .create();
+        TestReadlineConnection term = new TestReadlineConnection(editMode);
+        term.read("git status\n");
+        term.assertLine("git status");
+        term.readline();
+        term.read("git commit\n");
+        term.assertLine("git commit");
+        term.readline();
+        term.read("ls -la\n");
+        term.assertLine("ls -la");
+        term.readline();
+        // Type prefix and search backward
+        term.read("git");
+        term.read(Key.CTRL_G);
+        term.assertBuffer("git commit");
+        term.read(Key.CTRL_G);
+        term.assertBuffer("git status");
+    }
+
+    @Test
+    public void testHistorySearchForward() {
+        EditMode editMode = EditModeBuilder.builder(EditMode.Mode.VI)
+                .addAction(Key.CTRL_G.getKeyValues(), "history-search-forward")
+                .create();
+        TestReadlineConnection term = new TestReadlineConnection(editMode);
+        term.read("git status\n");
+        term.assertLine("git status");
+        term.readline();
+        term.read("git commit\n");
+        term.assertLine("git commit");
+        term.readline();
+        term.read("ls -la\n");
+        term.assertLine("ls -la");
+        term.readline();
+        // Type prefix and search forward from beginning
+        term.read("git");
+        term.read(Key.CTRL_G);
+        term.assertBuffer("git status");
+        term.read(Key.CTRL_G);
+        term.assertBuffer("git commit");
+    }
+
+    @Test
+    public void testCharacterSearch() {
+        EditMode editMode = EditModeBuilder.builder(EditMode.Mode.VI)
+                .addAction(Key.CTRL_G.getKeyValues(), "character-search")
+                .create();
+        TestReadlineConnection term = new TestReadlineConnection(editMode);
+        term.read("abcdefgh");
+        // Move to beginning using Vi
+        term.read(Key.ESC);
+        term.read(Key.ZERO);
+        term.read(Key.i);
+        // Search forward for 'f'
+        term.read(Key.CTRL_G);
+        term.read(Key.f);
+        // Insert at cursor position to verify we moved to 'f'
+        term.read('X');
+        term.assertBuffer("abcdeXfgh");
+    }
+
+    @Test
+    public void testCharacterSearchBackward() {
+        EditMode editMode = EditModeBuilder.builder(EditMode.Mode.VI)
+                .addAction(Key.CTRL_G.getKeyValues(), "character-search-backward")
+                .create();
+        TestReadlineConnection term = new TestReadlineConnection(editMode);
+        term.read("abcdefgh");
+        // Cursor at end, search backward for 'c'
+        term.read(Key.CTRL_G);
+        term.read(Key.c);
+        // Insert at cursor to verify position
+        term.read('X');
+        term.assertBuffer("abXcdefgh");
+    }
+
+    @Test
+    public void testYankLastArg() {
+        EditMode editMode = EditModeBuilder.builder(EditMode.Mode.VI)
+                .addAction(Key.CTRL_G.getKeyValues(), "yank-last-arg")
+                .create();
+        TestReadlineConnection term = new TestReadlineConnection(editMode);
+        term.read("git commit -m message\n");
+        term.assertLine("git commit -m message");
+        term.readline();
+        // In insert mode, yank the last arg from previous command
+        term.read("echo ");
+        term.read(Key.CTRL_G);
+        term.assertBuffer("echo message");
+    }
+
+    @Test
+    public void testYankNthArg() {
+        EditMode editMode = EditModeBuilder.builder(EditMode.Mode.VI)
+                .addAction(Key.CTRL_G.getKeyValues(), "yank-nth-arg")
+                .create();
+        TestReadlineConnection term = new TestReadlineConnection(editMode);
+        term.read("git commit -m message\n");
+        term.assertLine("git commit -m message");
+        term.readline();
+        // Yank first arg (second word = "commit")
+        term.read("echo ");
+        term.read(Key.CTRL_G);
+        term.assertBuffer("echo commit");
+    }
+
+    @Test
+    public void testSetMarkAndKillRegion() {
+        EditMode editMode = EditModeBuilder.builder(EditMode.Mode.VI)
+                .addAction(Key.CTRL_G.getKeyValues(), "set-mark")
+                .addAction(Key.CTRL_X_CTRL_U.getKeyValues(), "kill-region")
+                .create();
+        TestReadlineConnection term = new TestReadlineConnection(editMode);
+        term.read("hello world");
+        // Navigate using Vi command mode to position 5
+        term.read(Key.ESC);
+        term.read(Key.ZERO);
+        term.read(Key.w); // move to 'w' in "world"
+        // Switch to insert mode and set mark (cursor before 'w' = position 6)
+        term.read(Key.i);
+        term.read(Key.CTRL_G);
+        // Move to beginning and kill region
+        term.read(Key.HOME);
+        term.read(Key.CTRL_X_CTRL_U);
+        term.assertBuffer("world");
+    }
+
+    @Test
+    public void testExchangePointAndMark() {
+        EditMode editMode = EditModeBuilder.builder(EditMode.Mode.VI)
+                .addAction(Key.CTRL_G.getKeyValues(), "set-mark")
+                .addAction(Key.CTRL_X_CTRL_U.getKeyValues(), "exchange-point-and-mark")
+                .create();
+        TestReadlineConnection term = new TestReadlineConnection(editMode);
+        term.read("abcdefgh");
+        // Move to position 3 using Vi
+        term.read(Key.ESC);
+        term.read(Key.ZERO);
+        term.read(Key.l);
+        term.read(Key.l);
+        term.read(Key.l);
+        // Enter insert mode and set mark at position 3
+        term.read(Key.i);
+        term.read(Key.CTRL_G);
+        // Move to end
+        term.read(Key.END);
+        // Exchange point and mark: cursor goes to 3
+        term.read(Key.CTRL_X_CTRL_U);
+        // Insert to verify cursor is at position 3
+        term.read('X');
+        term.assertBuffer("abcXdefgh");
+    }
+
+    @Test
+    public void testOverwriteMode() {
+        EditMode editMode = EditModeBuilder.builder(EditMode.Mode.VI)
+                .addAction(Key.CTRL_G.getKeyValues(), "overwrite-mode")
+                .create();
+        TestReadlineConnection term = new TestReadlineConnection(editMode);
+        term.read("abcdef");
+        // Navigate to position 2 using Vi command mode
+        term.read(Key.ESC);
+        term.read(Key.ZERO);
+        term.read(Key.l);
+        term.read(Key.l);
+        // Enter insert mode
+        term.read(Key.i);
+        // Toggle overwrite mode
+        term.read(Key.CTRL_G);
+        // Type 'X' — should replace 'c'
+        term.read('X');
+        term.assertBuffer("abXdef");
+        // Type 'Y' — should replace 'd'
+        term.read('Y');
+        term.assertBuffer("abXYef");
+        // Toggle back to insert mode
+        term.read(Key.CTRL_G);
+        // Type 'Z' — should insert before 'e'
+        term.read('Z');
+        term.assertBuffer("abXYZef");
+    }
+
+    @Test
+    public void testQuotedInsert() {
+        EditMode editMode = EditModeBuilder.builder(EditMode.Mode.VI)
+                .addAction(Key.CTRL_G.getKeyValues(), "quoted-insert")
+                .create();
+        TestReadlineConnection term = new TestReadlineConnection(editMode);
+        term.read("hello");
+        // Move to beginning with Vi
+        term.read(Key.ESC);
+        term.read(Key.ZERO);
+        term.read(Key.i);
+        // Use quoted-insert
+        term.read(Key.CTRL_G);
+        term.read(Key.x);
+        term.assertBuffer("xhello");
+    }
+
+    @Test
+    public void testTildeExpand() {
+        EditMode editMode = EditModeBuilder.builder(EditMode.Mode.VI)
+                .addAction(Key.CTRL_G.getKeyValues(), "tilde-expand")
+                .create();
+        TestReadlineConnection term = new TestReadlineConnection(editMode);
+        String home = System.getProperty("user.home");
+        term.read("cd ~/docs");
+        // Move cursor into the ~/docs word
+        term.read(Key.ESC);
+        term.read(Key.ZERO);
+        term.read(Key.w); // move to '~'
+        term.read(Key.i); // insert mode
+        term.read(Key.CTRL_G);
+        term.assertBuffer("cd " + home + "/docs");
+    }
+
+    @Test
+    public void testNonIncrementalReverseSearch() {
+        EditMode editMode = EditModeBuilder.builder(EditMode.Mode.VI)
+                .addAction(Key.CTRL_G.getKeyValues(), "non-incremental-reverse-search-history")
+                .create();
+        TestReadlineConnection term = new TestReadlineConnection(editMode);
+        term.read("echo hello\n");
+        term.assertLine("echo hello");
+        term.readline();
+        term.read("git status\n");
+        term.assertLine("git status");
+        term.readline();
+        term.read("echo world\n");
+        term.assertLine("echo world");
+        term.readline();
+        // Start non-incremental reverse search
+        term.read(Key.CTRL_G);
+        term.read("echo");
+        term.read(Key.ENTER);
+        // Should find "echo world" (most recent match searching backward)
+        term.assertBuffer("echo world");
+    }
+
+    @Test
+    public void testNonIncrementalForwardSearch() {
+        EditMode editMode = EditModeBuilder.builder(EditMode.Mode.VI)
+                .addAction(Key.CTRL_G.getKeyValues(), "non-incremental-forward-search-history")
+                .create();
+        TestReadlineConnection term = new TestReadlineConnection(editMode);
+        term.read("echo hello\n");
+        term.assertLine("echo hello");
+        term.readline();
+        term.read("git status\n");
+        term.assertLine("git status");
+        term.readline();
+        term.read("echo world\n");
+        term.assertLine("echo world");
+        term.readline();
+        // Start non-incremental forward search
+        term.read(Key.CTRL_G);
+        term.read("echo");
+        term.read(Key.ENTER);
+        // Should find "echo hello" (first match searching forward)
+        term.assertBuffer("echo hello");
+    }
+
+    @Test
+    public void testNonIncrementalSearchCancel() {
+        EditMode editMode = EditModeBuilder.builder(EditMode.Mode.VI)
+                .addAction(Key.CTRL_G.getKeyValues(), "non-incremental-reverse-search-history")
+                .create();
+        TestReadlineConnection term = new TestReadlineConnection(editMode);
+        term.read("echo hello\n");
+        term.assertLine("echo hello");
+        term.readline();
+        // Start search then cancel with ESC
+        term.read(Key.CTRL_G);
+        term.read("ech");
+        term.read(Key.ESC);
+        // Buffer should be empty after cancel
+        term.assertBuffer("");
+    }
+
+    @Test
+    public void testBeginningAndEndOfHistory() {
+        EditMode editMode = EditModeBuilder.builder(EditMode.Mode.VI)
+                .addAction(Key.CTRL_G.getKeyValues(), "beginning-of-history")
+                .addAction(Key.CTRL_X_CTRL_U.getKeyValues(), "end-of-history")
+                .create();
+        TestReadlineConnection term = new TestReadlineConnection(editMode);
+        term.read("first\n");
+        term.assertLine("first");
+        term.readline();
+        term.read("second\n");
+        term.assertLine("second");
+        term.readline();
+        term.read("third\n");
+        term.assertLine("third");
+        term.readline();
+        // Jump to beginning of history
+        term.read(Key.CTRL_G);
+        term.assertBuffer("first");
+        // Jump to end of history (should restore current empty line)
+        term.read(Key.CTRL_X_CTRL_U);
+        term.assertBuffer("");
+    }
+
 }
