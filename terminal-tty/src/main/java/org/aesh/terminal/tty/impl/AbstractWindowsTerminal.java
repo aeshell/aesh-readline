@@ -19,10 +19,6 @@
  */
 package org.aesh.terminal.tty.impl;
 
-import static org.jline.nativ.Kernel32.GetStdHandle;
-import static org.jline.nativ.Kernel32.STD_OUTPUT_HANDLE;
-import static org.jline.nativ.Kernel32.WriteConsoleW;
-
 import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -49,22 +45,20 @@ import org.aesh.terminal.tty.utils.ShutdownHooks;
 import org.aesh.terminal.tty.utils.Signals;
 import org.aesh.terminal.utils.Curses;
 import org.aesh.terminal.utils.LoggerUtil;
-import org.jline.jansi.WindowsSupport;
 
 abstract class AbstractWindowsTerminal extends AbstractTerminal {
 
     private static class ConsoleOutput implements Consumer<int[]> {
 
         private static final Logger LOGGER = LoggerUtil.getLogger(AbstractWindowsTerminal.class.getName());
-        private static final long console = GetStdHandle(STD_OUTPUT_HANDLE);
-        private final int[] writtenChars = new int[1];
+        private static final long console = WinConsoleNative.getStdHandle(WinConsoleNative.STD_OUTPUT_HANDLE);
 
         @Override
         public void accept(int[] input) {
             CharBuffer buffer = Encoder.toCharBuffer(input);
             char[] chars = buffer.array();
-            if (WriteConsoleW(console, chars, chars.length, writtenChars, 0) == 0) {
-                LOGGER.log(Level.WARNING, "Failed to write out.", WindowsSupport.getLastErrorMessage());
+            if (!WinConsoleNative.writeConsole(console, chars, chars.length)) {
+                LOGGER.log(Level.WARNING, "Failed to write out.");
             }
         }
 

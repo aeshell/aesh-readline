@@ -19,25 +19,25 @@
  */
 package org.aesh.terminal.tty.impl;
 
-import static org.jline.nativ.Kernel32.GetStdHandle;
-import static org.jline.nativ.Kernel32.STD_OUTPUT_HANDLE;
-
 import java.io.IOException;
 import java.util.logging.Level;
 
 import org.aesh.terminal.tty.Capability;
 import org.aesh.terminal.tty.Size;
-import org.jline.jansi.AnsiConsole;
-import org.jline.nativ.Kernel32;
-import org.jline.nativ.Kernel32.INPUT_RECORD;
-import org.jline.nativ.Kernel32.KEY_EVENT_RECORD;
 
 /**
- * Windows system terminal implementation using native console API.
+ * Windows system terminal implementation using native console API via JNI.
  */
 public class WinSysTerminal extends AbstractWindowsTerminal {
 
     private static final int VIRTUAL_TERMINAL_PROCESSING = 0x0004;
+
+    // Windows key modifier constants
+    private static final int RIGHT_ALT_PRESSED = 0x0001;
+    private static final int LEFT_ALT_PRESSED = 0x0002;
+    private static final int RIGHT_CTRL_PRESSED = 0x0004;
+    private static final int LEFT_CTRL_PRESSED = 0x0008;
+    private static final int SHIFT_PRESSED = 0x0010;
 
     /**
      * Create a new Windows system terminal with the specified name.
@@ -59,96 +59,100 @@ public class WinSysTerminal extends AbstractWindowsTerminal {
      * @throws IOException if an I/O error occurs
      */
     public WinSysTerminal(String name, boolean nativeSignals, SignalHandler signalHandler) throws IOException {
-        super(setVTMode(), AnsiConsole.out(), name, nativeSignals, signalHandler);
+        super(setVTMode(), System.out, name, nativeSignals, signalHandler);
     }
 
     protected int getConsoleOutputCP() {
-        return Kernel32.GetConsoleOutputCP();
+        return WinConsoleNative.getConsoleOutputCP();
     }
 
     @Override
     protected int getConsoleMode() {
-        long hConsole = Kernel32.GetStdHandle(Kernel32.STD_INPUT_HANDLE);
-        if (hConsole == (long) Kernel32.INVALID_HANDLE_VALUE) {
+        long hConsole = WinConsoleNative.getStdHandle(WinConsoleNative.STD_INPUT_HANDLE);
+        if (hConsole == WinConsoleNative.INVALID_HANDLE) {
             return -1;
-        } else {
-            int[] mode = new int[1];
-            return Kernel32.GetConsoleMode(hConsole, mode) == 0 ? -1 : mode[0];
         }
+        return WinConsoleNative.getConsoleMode(hConsole);
     }
 
     @Override
     protected void setConsoleMode(int mode) {
-        long hConsole = Kernel32.GetStdHandle(Kernel32.STD_INPUT_HANDLE);
-        if (hConsole != (long) Kernel32.INVALID_HANDLE_VALUE) {
-            Kernel32.SetConsoleMode(hConsole, mode);
+        long hConsole = WinConsoleNative.getStdHandle(WinConsoleNative.STD_INPUT_HANDLE);
+        if (hConsole != WinConsoleNative.INVALID_HANDLE) {
+            WinConsoleNative.setConsoleMode(hConsole, mode);
         }
     }
 
     public Size getSize() {
-        long outputHandle = Kernel32.GetStdHandle(Kernel32.STD_OUTPUT_HANDLE);
-        Kernel32.CONSOLE_SCREEN_BUFFER_INFO info = new Kernel32.CONSOLE_SCREEN_BUFFER_INFO();
-        Kernel32.GetConsoleScreenBufferInfo(outputHandle, info);
-        Size size = new Size(info.windowWidth(), info.windowHeight());
-        return size;
+        long outputHandle = WinConsoleNative.getStdHandle(WinConsoleNative.STD_OUTPUT_HANDLE);
+        int[] size = WinConsoleNative.getConsoleSize(outputHandle);
+        if (size == null) {
+            return new Size(80, 24);
+        }
+        return new Size(size[0], size[1]);
     }
 
     protected byte[] readConsoleInput() {
-        // XXX does how many events to read in one call matter?
-        INPUT_RECORD[] events = null;
-        long hConsole = Kernel32.GetStdHandle(Kernel32.STD_INPUT_HANDLE);
-        try {
-            events = hConsole == (long) Kernel32.INVALID_HANDLE_VALUE ? null
-                    : Kernel32.readConsoleInputHelper(hConsole, 1, false);
-        } catch (IOException e) {
-            LOGGER.log(Level.INFO, "read Windows terminal input error: ", e);
-        }
-        if (events == null) {
+        long hConsole = WinConsoleNative.getStdHandle(WinConsoleNative.STD_INPUT_HANDLE);
+        if (hConsole == WinConsoleNative.INVALID_HANDLE) {
             return new byte[0];
         }
-        StringBuilder sb = new StringBuilder();
-        for (INPUT_RECORD event : events) {
-            KEY_EVENT_RECORD keyEvent = event.keyEvent;
-            // support some C1 control sequences: ALT + [@-_] (and [a-z]?) => ESC <ascii>
-            // http://en.wikipedia.org/wiki/C0_and_C1_control_codes#C1_set
-            final int altState = KEY_EVENT_RECORD.LEFT_ALT_PRESSED | KEY_EVENT_RECORD.RIGHT_ALT_PRESSED;
-            // Pressing "Alt Gr" is translated to Alt-Ctrl, hence it has to be checked that Ctrl is _not_ pressed,
-            // otherwise inserting of "Alt Gr" codes on non-US keyboards would yield errors
-            final int ctrlState = KEY_EVENT_RECORD.LEFT_CTRL_PRESSED | KEY_EVENT_RECORD.RIGHT_CTRL_PRESSED;
-            // Compute the overall alt state
-            boolean isAlt = ((keyEvent.controlKeyState & altState) != 0) && ((keyEvent.controlKeyState & ctrlState) == 0);
+        int[] keyEvent;
+        try {
+            keyEvent = WinConsoleNative.readConsoleKeyEvent(hConsole);
+        } catch (Exception e) {
+            LOGGER.log(Level.INFO, "read Windows terminal input error: ", e);
+            return new byte[0];
+        }
+        if (keyEvent == null) {
+            return new byte[0];
+        }
+        // keyEvent: {keyDown, repeatCount, vKeyCode, unicodeChar, controlKeyState}
+        boolean keyDown = keyEvent[0] != 0;
+        int repeatCount = keyEvent[1];
+        short vKeyCode = (short) keyEvent[2];
+        char unicodeChar = (char) keyEvent[3];
+        int controlKeyState = keyEvent[4];
 
-            //Log.trace(keyEvent.keyDown? "KEY_DOWN" : "KEY_UP", "key code:", keyEvent.keyCode, "char:", (long)keyEvent.uchar);
-            if (keyEvent.keyDown) {
-                if (keyEvent.uchar > 0) {
-                    boolean shiftPressed = (keyEvent.controlKeyState & KEY_EVENT_RECORD.SHIFT_PRESSED) != 0;
-                    if (keyEvent.uchar == '\t' && shiftPressed) {
-                        sb.append(getSequence(Capability.key_btab));
-                    } else {
+        StringBuilder sb = new StringBuilder();
+        // support some C1 control sequences: ALT + [@-_] (and [a-z]?) => ESC <ascii>
+        // http://en.wikipedia.org/wiki/C0_and_C1_control_codes#C1_set
+        final int altState = LEFT_ALT_PRESSED | RIGHT_ALT_PRESSED;
+        // Pressing "Alt Gr" is translated to Alt-Ctrl, hence it has to be checked that Ctrl is _not_ pressed,
+        // otherwise inserting of "Alt Gr" codes on non-US keyboards would yield errors
+        final int ctrlState = LEFT_CTRL_PRESSED | RIGHT_CTRL_PRESSED;
+        // Compute the overall alt state
+        boolean isAlt = ((controlKeyState & altState) != 0)
+                && ((controlKeyState & ctrlState) == 0);
+
+        if (keyDown) {
+            if (unicodeChar > 0) {
+                boolean shiftPressed = (controlKeyState & SHIFT_PRESSED) != 0;
+                if (unicodeChar == '\t' && shiftPressed) {
+                    sb.append(getSequence(Capability.key_btab));
+                } else {
+                    if (isAlt) {
+                        sb.append('\033');
+                    }
+                    sb.append(unicodeChar);
+                }
+            } else {
+                // virtual keycodes: http://msdn.microsoft.com/en-us/library/windows/desktop/dd375731(v=vs.85).aspx
+                String escapeSequence = getEscapeSequence(vKeyCode);
+                if (escapeSequence != null) {
+                    for (int k = 0; k < repeatCount; k++) {
                         if (isAlt) {
                             sb.append('\033');
                         }
-                        sb.append(keyEvent.uchar);
-                    }
-                } else {
-                    // virtual keycodes: http://msdn.microsoft.com/en-us/library/windows/desktop/dd375731(v=vs.85).aspx
-                    // TODO: numpad keys, modifiers
-                    String escapeSequence = getEscapeSequence(keyEvent.keyCode);
-                    if (escapeSequence != null) {
-                        for (int k = 0; k < keyEvent.repeatCount; k++) {
-                            if (isAlt) {
-                                sb.append('\033');
-                            }
-                            sb.append(escapeSequence);
-                        }
+                        sb.append(escapeSequence);
                     }
                 }
-            } else {
-                // key up event
-                // support ALT+NumPad input method
-                if (keyEvent.keyCode == 0x12/* VK_MENU ALT key */ && keyEvent.uchar > 0) {
-                    sb.append(keyEvent.uchar);
-                }
+            }
+        } else {
+            // key up event
+            // support ALT+NumPad input method
+            if (vKeyCode == 0x12/* VK_MENU ALT key */ && unicodeChar > 0) {
+                sb.append(unicodeChar);
             }
         }
         return sb.toString().getBytes();
@@ -156,13 +160,16 @@ public class WinSysTerminal extends AbstractWindowsTerminal {
 
     // This allows to take benefit from Windows 10+ new features.
     private static boolean setVTMode() {
-        long console = GetStdHandle(STD_OUTPUT_HANDLE);
-        int[] mode = new int[1];
-        if (Kernel32.GetConsoleMode(console, mode) == 0) {
+        long console = WinConsoleNative.getStdHandle(WinConsoleNative.STD_OUTPUT_HANDLE);
+        if (console == WinConsoleNative.INVALID_HANDLE) {
+            return false;
+        }
+        int mode = WinConsoleNative.getConsoleMode(console);
+        if (mode == -1) {
             // No need to go further, not supported.
             return false;
         }
-        if (Kernel32.SetConsoleMode(console, mode[0] | VIRTUAL_TERMINAL_PROCESSING) == 0) {
+        if (!WinConsoleNative.setConsoleMode(console, mode | VIRTUAL_TERMINAL_PROCESSING)) {
             // No need to go further, not supported.
             return false;
         }

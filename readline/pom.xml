@@ -67,12 +67,6 @@
 
     <dependencies>
         <dependency>
-            <groupId>org.jline</groupId>
-            <artifactId>jansi</artifactId>
-            <version>${jansi.version}</version>
-        </dependency>
-      
-        <dependency>
             <groupId>org.aesh</groupId>
             <artifactId>terminal-api</artifactId>
             <version>${project.version}</version>
@@ -143,7 +137,6 @@
                   <configuration>
                     <artifactSet>
                       <excludes>
-                        <exclude>org.fusesource.jansi:jansi</exclude>
                         <exclude>junit:junit</exclude>
                         <!--
                         <exclude>org.apache.maven:lib:tests</exclude>

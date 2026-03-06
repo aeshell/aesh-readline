@@ -1,0 +1,14 @@
+[
+  {
+    "name": "org.aesh.terminal.tty.impl.WinConsoleNative",
+    "methods": [
+      { "name": "getStdHandle", "parameterTypes": ["int"] },
+      { "name": "getConsoleMode", "parameterTypes": ["long"] },
+      { "name": "setConsoleMode", "parameterTypes": ["long", "int"] },
+      { "name": "getConsoleOutputCP", "parameterTypes": [] },
+      { "name": "getConsoleSize", "parameterTypes": ["long"] },
+      { "name": "readConsoleKeyEvent", "parameterTypes": ["long"] },
+      { "name": "writeConsole", "parameterTypes": ["long", "char[]", "int"] }
+    ]
+  }
+]

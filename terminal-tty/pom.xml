@@ -73,12 +73,6 @@
         </dependency>
 
         <dependency>
-            <groupId>org.jline</groupId>
-            <artifactId>jansi</artifactId>
-            <version>${jansi.version}</version>
-        </dependency>
-
-        <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <version>${junit.version}</version>
