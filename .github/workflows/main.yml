@@ -32,12 +32,14 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
         cache: maven
+    - uses: ilammy/msvc-dev-cmd@v1
     - name: Compile native DLL
       shell: cmd
       run: >
-        "C:\msys64\mingw64\bin\gcc.exe" -shared -O2
-        -I"%JAVA_HOME%\include" -I"%JAVA_HOME%\include\win32"
-        -o terminal-tty\src\main\resources\native\windows-x86_64\aesh-console.dll
-        terminal-tty\src\main\native\WinConsoleNative.c -lkernel32
+        cl /LD /O2
+        /I"%JAVA_HOME%\include" /I"%JAVA_HOME%\include\win32"
+        /Fe:terminal-tty\src\main\resources\native\windows-x86_64\aesh-console.dll
+        terminal-tty\src\main\native\WinConsoleNative.c
+        kernel32.lib
     - name: Build and test
       run: mvn clean compile test -Dno-format
