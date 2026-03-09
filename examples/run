@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Resolve script path even when invoked via PATH as `run`.
+SCRIPT_SOURCE="${BASH_SOURCE[0]}"
+if [[ "${SCRIPT_SOURCE}" != */* ]]; then
+  SCRIPT_SOURCE="$(command -v -- "${SCRIPT_SOURCE}")"
+fi
+SCRIPT_DIR="$(cd "$(dirname "${SCRIPT_SOURCE}")" && pwd -P)"
+ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd -P)"
+CLASSES_DIR="${ROOT_DIR}/examples/target/classes"
+
+# Java on Cygwin/MSYS/MINGW expects ';' as classpath separator.
+case "$(uname -s)" in
+  CYGWIN*|MINGW*|MSYS*) CP_SEP=';' ;;
+  *) CP_SEP=':' ;;
+esac
+
+if [[ ! -d "${CLASSES_DIR}" ]]; then
+  echo "Missing directory: ${CLASSES_DIR}"
+  echo "Build examples first (eg: run 'mvn package' from the root of the project)."
+  exit 1
+fi
+
+mapfile -t classes < <(
+  cd "${CLASSES_DIR}"
+  find . -type f -name '*Example.class' \
+    | sed 's#^\./##; s#/#.#g; s#\.class$##' \
+    | sort
+)
+
+if [[ ${#classes[@]} -eq 0 ]]; then
+  echo "No classes ending with Example.class found in ${CLASSES_DIR}"
+  exit 1
+fi
+
+echo "Available examples:"
+for i in "${!classes[@]}"; do
+  printf "%2d) %s\n" "$((i + 1))" "${classes[i]}"
+done
+
+read -r -p "Select a number to run: " choice
+if ! [[ "${choice}" =~ ^[0-9]+$ ]] || (( choice < 1 || choice > ${#classes[@]} )); then
+  echo "Invalid selection."
+  exit 1
+fi
+
+name_of_class="${classes[$((choice - 1))]}"
+classpath="examples/target/classes${CP_SEP}terminal-tty/target/terminal-tty-3.4-dev.jar${CP_SEP}terminal-api/target/terminal-api-3.4-dev.jar${CP_SEP}readline/target/readline-3.4-dev.jar"
+
+cd "${ROOT_DIR}"
+java -cp "${classpath}" "${name_of_class}"
