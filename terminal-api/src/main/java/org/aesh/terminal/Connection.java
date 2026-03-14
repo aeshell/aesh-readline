@@ -19,6 +19,7 @@
  */
 package org.aesh.terminal;
 
+import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.EnumSet;
 import java.util.concurrent.CountDownLatch;
@@ -43,7 +44,7 @@ import org.aesh.terminal.utils.TerminalTheme;
  *
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
-public interface Connection extends AutoCloseable {
+public interface Connection extends Appendable, AutoCloseable {
 
     /**
      * Default timeout in milliseconds for terminal queries (OSC, DA1, DA2, etc.).
@@ -242,6 +243,21 @@ public interface Connection extends AutoCloseable {
             handler.accept(Parser.toCodePoints(s));
         }
         return this;
+    }
+
+    @Override
+    default Appendable append(char c) throws IOException {
+        return write(String.valueOf(c));
+    }
+
+    @Override
+    default Appendable append(CharSequence csq) throws IOException {
+        return write(csq.toString());
+    }
+
+    @Override
+    default Appendable append(CharSequence csq, int start, int end) throws IOException {
+        return write(csq.subSequence(start, end).toString());
     }
 
     /**
