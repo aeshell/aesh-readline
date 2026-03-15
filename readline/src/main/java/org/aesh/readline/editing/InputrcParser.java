@@ -132,7 +132,7 @@ public class InputrcParser {
             }
         }
 
-        return editMode.create();
+        return editMode.build();
     }
 
     /**

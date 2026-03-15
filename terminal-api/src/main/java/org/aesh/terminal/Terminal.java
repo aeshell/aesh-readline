@@ -42,6 +42,7 @@ public interface Terminal extends Closeable {
     /**
      * Handler for terminal signals.
      */
+    @FunctionalInterface
     interface SignalHandler {
         /**
          * Handle a terminal signal.

@@ -113,8 +113,14 @@ public enum Key implements KeyAction {
     /** Apostrophe (') key. */
     APOSTROPHE(new int[] { 39 }),
     /** Left parenthesis (() key. */
+    LEFT_PARENTHESIS(new int[] { 40 }),
+    /** @deprecated Use {@link #LEFT_PARENTHESIS} instead. Misspelled name kept for backward compatibility. */
+    @Deprecated
     LEFT_PARANTHESIS(new int[] { 40 }),
     /** Right parenthesis ()) key. */
+    RIGHT_PARENTHESIS(new int[] { 41 }),
+    /** @deprecated Use {@link #RIGHT_PARENTHESIS} instead. Misspelled name kept for backward compatibility. */
+    @Deprecated
     RIGHT_PARANTHESIS(new int[] { 41 }),
     /** Star (*) key. */
     STAR(new int[] { 42 }),

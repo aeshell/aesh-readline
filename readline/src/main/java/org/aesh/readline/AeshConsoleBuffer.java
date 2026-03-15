@@ -20,6 +20,10 @@ import org.aesh.terminal.utils.LoggerUtil;
 /**
  * Default implementation of the ConsoleBuffer interface for managing console input and output.
  *
+ * @apiNote This class is an internal implementation detail of the readline library
+ *          and is not intended for use by external consumers. It may change without notice
+ *          in future releases.
+ *
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public class AeshConsoleBuffer implements ConsoleBuffer {
@@ -82,8 +86,17 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
     }
 
     @Override
-    public CompletionHandler completer() {
+    public CompletionHandler completionHandler() {
         return completionHandler;
+    }
+
+    /**
+     * @deprecated Use {@link #completionHandler()} instead.
+     */
+    @Deprecated
+    @Override
+    public CompletionHandler completer() {
+        return completionHandler();
     }
 
     @Override
@@ -323,8 +336,17 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
     }
 
     @Override
-    public String getGhostText() {
+    public String ghostText() {
         return ghostText;
+    }
+
+    /**
+     * @deprecated Use {@link #ghostText()} instead.
+     */
+    @Deprecated
+    @Override
+    public String getGhostText() {
+        return ghostText();
     }
 
     private boolean isViMode() {

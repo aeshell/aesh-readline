@@ -165,11 +165,11 @@ public class EditModeBuilder {
     }
 
     /**
-     * Creates a simple EditMode with minimal key bindings (only accept-line).
+     * Builds a simple EditMode with minimal key bindings (only accept-line).
      *
      * @return a simple EditMode instance
      */
-    public EditMode createSimple() {
+    public EditMode buildSimple() {
         Emacs simpleEmacs = new Emacs();
         simpleEmacs.clearDefaultActions();
 
@@ -182,11 +182,30 @@ public class EditModeBuilder {
     }
 
     /**
-     * Creates an EditMode instance with all configured actions, variables, and device mappings.
+     * Creates a simple EditMode with minimal key bindings (only accept-line).
+     *
+     * @return a simple EditMode instance
+     * @deprecated Use {@link #buildSimple()} instead. This method will be removed in a future release.
+     */
+    @Deprecated
+    public EditMode createSimple() {
+        Emacs simpleEmacs = new Emacs();
+        simpleEmacs.clearDefaultActions();
+
+        simpleEmacs.addAction(Key.ENTER, "accept-line");
+        simpleEmacs.addAction(Key.ENTER_2, "accept-line");
+        simpleEmacs.addAction(Key.CTRL_L, "accept-line");
+        simpleEmacs.addAction(Key.CTRL_M, "accept-line");
+
+        return buildSimple();
+    }
+
+    /**
+     * Builds an EditMode instance with all configured actions, variables, and device mappings.
      *
      * @return a fully configured EditMode instance (either Emacs or Vi based on the editing-mode variable)
      */
-    public EditMode create() {
+    public EditMode build() {
         String mode = variables.getOrDefault(Variable.EDITING_MODE, "emacs");
         if (device == null)
             device = DeviceBuilder.builder().build();
@@ -205,6 +224,17 @@ public class EditModeBuilder {
                 editMode.remapKeysFromDevice(device);
             return editMode;
         }
+    }
+
+    /**
+     * Creates an EditMode instance with all configured actions, variables, and device mappings.
+     *
+     * @return a fully configured EditMode instance (either Emacs or Vi based on the editing-mode variable)
+     * @deprecated Use {@link #build()} instead. This method will be removed in a future release.
+     */
+    @Deprecated
+    public EditMode create() {
+        return build();
     }
 
     /**

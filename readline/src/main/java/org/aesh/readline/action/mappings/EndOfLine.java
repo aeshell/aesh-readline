@@ -43,7 +43,7 @@ public class EndOfLine implements Action {
     @Override
     public void accept(InputProcessor inputProcessor) {
         if (inputProcessor.buffer().buffer().cursor() >= inputProcessor.buffer().buffer().length()
-                && inputProcessor.buffer().getGhostText() != null) {
+                && inputProcessor.buffer().ghostText() != null) {
             inputProcessor.buffer().acceptGhostText();
         } else {
             inputProcessor.buffer().moveCursor(inputProcessor.buffer().buffer().length());

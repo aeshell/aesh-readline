@@ -41,7 +41,7 @@ public class KeyTest {
     @Test
     public void testOtherOperations() {
 
-        EditMode editMode = EditModeBuilder.builder(EditMode.Mode.EMACS).create();
+        EditMode editMode = EditModeBuilder.builder(EditMode.Mode.EMACS).build();
 
         Key up = Key.UP_2;
 

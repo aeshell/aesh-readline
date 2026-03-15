@@ -42,7 +42,7 @@ public class EndOfHistory implements Action {
         // Navigate forward past all entries to restore the current line
         int[] entry = null;
         for (int i = 0; i <= history.size(); i++) {
-            entry = history.getNextFetch();
+            entry = history.nextFetch().orElse(null);
         }
         if (entry != null) {
             inputProcessor.buffer().replace(entry);

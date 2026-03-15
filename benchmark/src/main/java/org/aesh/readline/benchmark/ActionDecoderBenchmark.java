@@ -85,8 +85,8 @@ public class ActionDecoderBenchmark {
     @Setup(Level.Trial)
     public void setup() {
         // Create EditModes once (simulates real application startup)
-        emacsMode = EditModeBuilder.builder().create();
-        viMode = EditModeBuilder.builder(EditMode.Mode.VI).create();
+        emacsMode = EditModeBuilder.builder().build();
+        viMode = EditModeBuilder.builder(EditMode.Mode.VI).build();
 
         // Decoder with Emacs mode mappings
         decoderEmacs = new ActionDecoder(emacsMode);

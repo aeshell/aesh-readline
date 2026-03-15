@@ -31,6 +31,10 @@ import org.aesh.terminal.Connection;
  *
  * It is also used by many of the different action classes that react to specific user input.
  *
+ * @apiNote This interface is an internal implementation detail of the readline library
+ *          and is not intended for use by external consumers. It may change without notice
+ *          in future releases.
+ *
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public interface InputProcessor {
@@ -55,6 +59,18 @@ public interface InputProcessor {
      * @param value return value
      */
     void setReturnValue(int[] value);
+
+    /**
+     * Set the return value as a String.
+     *
+     * @param value the return value
+     */
+    default void setReturnValue(String value) {
+        if (value != null)
+            setReturnValue(org.aesh.terminal.utils.Parser.toCodePoints(value));
+        else
+            setReturnValue((int[]) null);
+    }
 
     /**
      * Gets the current edit mode.

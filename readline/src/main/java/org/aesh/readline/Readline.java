@@ -69,7 +69,7 @@ public class Readline {
      * Creates a new Readline instance with default edit mode, in-memory history, and simple completion handler.
      */
     public Readline() {
-        this(EditModeBuilder.builder().create());
+        this(EditModeBuilder.builder().build());
     }
 
     /**
@@ -168,13 +168,43 @@ public class Readline {
     }
 
     /**
+     * Reads a line of input using a {@link ReadlineRequest} that encapsulates all parameters.
+     * This is the preferred way to invoke readline when optional parameters are needed.
+     *
+     * <p>
+     * Example usage:
+     *
+     * <pre>{@code
+     * ReadlineRequest request = ReadlineRequest.builder()
+     *         .connection(conn)
+     *         .prompt(new Prompt("$ "))
+     *         .requestHandler(line -> System.out.println("Got: " + line))
+     *         .completions(myCompletions)
+     *         .history(myHistory)
+     *         .build();
+     * readline.readline(request);
+     * }</pre>
+     *
+     * @param request the readline request containing all parameters
+     * @throws IllegalStateException if already reading a line
+     */
+    @SuppressWarnings("deprecation")
+    public void readline(ReadlineRequest request) {
+        readline(request.connection(), request.prompt(), request.requestHandler(),
+                request.completions(), request.preProcessors(), request.history(),
+                request.cursorListener(), request.flags());
+    }
+
+    /**
      * Reads a line of input from the connection with a Prompt object and completions.
      *
      * @param conn the terminal connection to read from
      * @param prompt the prompt to display
      * @param requestHandler the callback to receive the completed input line
      * @param completions the list of completions for tab completion
+     * @deprecated Use {@link #readline(ReadlineRequest)} with {@link ReadlineRequest.Builder} instead.
      */
+    @Deprecated
     public void readline(Connection conn, Prompt prompt, Consumer<String> requestHandler,
             List<Completion> completions) {
         readline(conn, prompt, requestHandler, completions, null);
@@ -188,7 +218,9 @@ public class Readline {
      * @param requestHandler the callback to receive the completed input line
      * @param completions the list of completions for tab completion
      * @param preProcessors the list of input pre-processors
+     * @deprecated Use {@link #readline(ReadlineRequest)} with {@link ReadlineRequest.Builder} instead.
      */
+    @Deprecated
     public void readline(Connection conn, Prompt prompt, Consumer<String> requestHandler,
             List<Completion> completions,
             List<Function<String, Optional<String>>> preProcessors) {
@@ -204,7 +236,9 @@ public class Readline {
      * @param completions the list of completions for tab completion
      * @param preProcessors the list of input pre-processors
      * @param history the history instance to use for this readline operation
+     * @deprecated Use {@link #readline(ReadlineRequest)} with {@link ReadlineRequest.Builder} instead.
      */
+    @Deprecated
     public void readline(Connection conn, Prompt prompt, Consumer<String> requestHandler,
             List<Completion> completions,
             List<Function<String, Optional<String>>> preProcessors, History history) {
@@ -221,7 +255,9 @@ public class Readline {
      * @param preProcessors the list of input pre-processors
      * @param history the history instance to use for this readline operation
      * @param listener the cursor listener to receive cursor movement events
+     * @deprecated Use {@link #readline(ReadlineRequest)} with {@link ReadlineRequest.Builder} instead.
      */
+    @Deprecated
     public void readline(Connection conn, Prompt prompt, Consumer<String> requestHandler,
             List<Completion> completions,
             List<Function<String, Optional<String>>> preProcessors,
@@ -242,7 +278,9 @@ public class Readline {
      * @param listener the cursor listener to receive cursor movement events
      * @param flags the readline flags controlling behavior
      * @throws IllegalStateException if already reading a line
+     * @deprecated Use {@link #readline(ReadlineRequest)} with {@link ReadlineRequest.Builder} instead.
      */
+    @Deprecated
     public void readline(Connection conn, Prompt prompt, Consumer<String> requestHandler,
             List<Completion> completions,
             List<Function<String, Optional<String>>> preProcessors,

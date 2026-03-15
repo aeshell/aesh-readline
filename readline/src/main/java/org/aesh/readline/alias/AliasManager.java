@@ -95,7 +95,7 @@ public class AliasManager {
             while ((line = br.readLine()) != null) {
                 if (line.startsWith(ALIAS)) {
                     try {
-                        parseAlias(line);
+                        addAlias(line);
                     } catch (Exception ignored) {
                     }
                 }
@@ -263,6 +263,17 @@ public class AliasManager {
     }
 
     /**
+     * Parse and add an alias definition.
+     *
+     * @param line the alias definition string
+     * @return an Optional containing an error message if parsing failed, or empty if successful
+     */
+    public Optional<String> addAlias(String line) {
+        String result = parseAlias(line);
+        return Optional.ofNullable(result);
+    }
+
+    /**
      * Parses an alias command and either creates a new alias, lists specified aliases,
      * or returns all aliases.
      * <p>
@@ -278,7 +289,9 @@ public class AliasManager {
      * @return null if an alias was successfully created, a string containing alias
      *         definitions when listing, an error message if the command is invalid,
      *         or usage information
+     * @deprecated Use {@link #addAlias(String)} instead which returns Optional&lt;String&gt; for error handling.
      */
+    @Deprecated
     public String parseAlias(String buffer) {
         if (buffer.trim().equals(ALIAS))
             return printAllAliases();

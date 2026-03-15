@@ -20,11 +20,12 @@
 package org.aesh.readline.alias;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Optional;
 
 import org.aesh.terminal.utils.Config;
 import org.junit.After;
@@ -58,37 +59,43 @@ public class AliasManagerTest {
     @Test
     public void testParseAlias() {
 
-        assertNull(manager.parseAlias("alias foo2='bar -s -h'"));
-        assertNull(manager.parseAlias("alias foo=bar"));
-        assertNull(manager.parseAlias("alias foo3=bar --help"));
+        assertFalse(manager.addAlias("alias foo2='bar -s -h'").isPresent());
+        assertFalse(manager.addAlias("alias foo=bar").isPresent());
+        assertFalse(manager.addAlias("alias foo3=bar --help").isPresent());
 
-        String out = manager.parseAlias("alias foo");
-        Assert.assertEquals("alias foo='bar'" + Config.getLineSeparator(), out);
-        out = manager.parseAlias("alias foo2");
-        assertEquals("alias foo2='bar -s -h'" + Config.getLineSeparator(), out);
-        out = manager.parseAlias("alias foo3");
-        assertEquals("alias foo3='bar --help'" + Config.getLineSeparator(), out);
-        out = manager.parseAlias("alias");
+        Optional<String> out = manager.addAlias("alias foo");
+        assertTrue(out.isPresent());
+        Assert.assertEquals("alias foo='bar'" + Config.getLineSeparator(), out.get());
+        out = manager.addAlias("alias foo2");
+        assertTrue(out.isPresent());
+        assertEquals("alias foo2='bar -s -h'" + Config.getLineSeparator(), out.get());
+        out = manager.addAlias("alias foo3");
+        assertTrue(out.isPresent());
+        assertEquals("alias foo3='bar --help'" + Config.getLineSeparator(), out.get());
+        out = manager.addAlias("alias");
+        assertTrue(out.isPresent());
         StringBuilder sb = new StringBuilder();
         sb.append("alias foo='bar'").append(Config.getLineSeparator())
                 .append("alias foo2='bar -s -h'").append(Config.getLineSeparator())
                 .append("alias foo3='bar --help'").append(Config.getLineSeparator());
-        assertEquals(sb.toString(), out);
+        assertEquals(sb.toString(), out.get());
 
         // the help information for the (un)alias itself
-        out = manager.parseAlias("alias --help");
-        assertEquals("alias: usage: alias [name[=value] ... ]" + Config.getLineSeparator(), out);
+        out = manager.addAlias("alias --help");
+        assertTrue(out.isPresent());
+        assertEquals("alias: usage: alias [name[=value] ... ]" + Config.getLineSeparator(), out.get());
 
-        out = manager.parseAlias("alias        --help");
-        assertEquals("alias: usage: alias [name[=value] ... ]" + Config.getLineSeparator(), out);
+        out = manager.addAlias("alias        --help");
+        assertTrue(out.isPresent());
+        assertEquals("alias: usage: alias [name[=value] ... ]" + Config.getLineSeparator(), out.get());
     }
 
     @Test
     public void testUnalias() {
 
-        manager.parseAlias("alias foo2='bar -s -h'");
-        manager.parseAlias("alias foo=bar");
-        manager.parseAlias("alias foo3=bar --help");
+        manager.addAlias("alias foo2='bar -s -h'");
+        manager.addAlias("alias foo=bar");
+        manager.addAlias("alias foo3=bar --help");
 
         manager.removeAlias("unalias foo3");
         assertEquals("unalias: foo3: not found" + Config.getLineSeparator(), manager.removeAlias("unalias foo3"));
@@ -103,7 +110,7 @@ public class AliasManagerTest {
     @Test
     public void testPrintAllAliases() {
         String alias = "alias foo='bar'";
-        manager.parseAlias(alias);
+        manager.addAlias(alias);
         Assert.assertEquals(alias + Config.getLineSeparator(), manager.printAllAliases());
     }
 

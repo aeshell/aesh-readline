@@ -25,6 +25,7 @@ package org.aesh.readline.completion;
  * @param <C> the type of complete operation this completion works with
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
+@FunctionalInterface
 public interface Completion<C extends CompleteOperation> {
 
     /**

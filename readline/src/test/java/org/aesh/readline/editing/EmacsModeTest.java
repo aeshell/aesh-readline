@@ -218,7 +218,7 @@ public class EmacsModeTest {
         // Bind delete-horizontal-space to Ctrl-G for testing
         EditMode editMode = EditModeBuilder.builder()
                 .addAction(Key.CTRL_G.getKeyValues(), "delete-horizontal-space")
-                .create();
+                .build();
         TestReadlineConnection term = new TestReadlineConnection(editMode);
         term.read("foo   bar");
         // Move cursor into the whitespace (position 4)
@@ -241,7 +241,7 @@ public class EmacsModeTest {
         // Bind unix-filename-rubout to Ctrl-G for testing
         EditMode editMode = EditModeBuilder.builder()
                 .addAction(Key.CTRL_G.getKeyValues(), "unix-filename-rubout")
-                .create();
+                .build();
         TestReadlineConnection term = new TestReadlineConnection(editMode);
         term.read("/home/user/file.txt");
         term.read(Key.CTRL_G);
@@ -257,7 +257,7 @@ public class EmacsModeTest {
         // Bind insert-comment to Ctrl-G for testing
         EditMode editMode = EditModeBuilder.builder()
                 .addAction(Key.CTRL_G.getKeyValues(), "insert-comment")
-                .create();
+                .build();
         TestReadlineConnection term = new TestReadlineConnection(editMode);
         term.read("echo hello");
         term.read(Key.CTRL_G);
@@ -295,7 +295,7 @@ public class EmacsModeTest {
     public void testRevertLine() {
         EditMode editMode = EditModeBuilder.builder()
                 .addAction(Key.CTRL_G.getKeyValues(), "revert-line")
-                .create();
+                .build();
         TestReadlineConnection term = new TestReadlineConnection(editMode);
         term.read("hello");
         term.assertBuffer("hello");
@@ -313,7 +313,7 @@ public class EmacsModeTest {
     public void testTildeExpand() {
         EditMode editMode = EditModeBuilder.builder()
                 .addAction(Key.CTRL_G.getKeyValues(), "tilde-expand")
-                .create();
+                .build();
         TestReadlineConnection term = new TestReadlineConnection(editMode);
         String home = System.getProperty("user.home");
         term.read("cd ~/docs");
@@ -329,7 +329,7 @@ public class EmacsModeTest {
     public void testYankLastArg() {
         EditMode editMode = EditModeBuilder.builder()
                 .addAction(Key.CTRL_G.getKeyValues(), "yank-last-arg")
-                .create();
+                .build();
         TestReadlineConnection term = new TestReadlineConnection(editMode);
         // Enter a command into history
         term.read("git commit -m message\n");
@@ -345,7 +345,7 @@ public class EmacsModeTest {
     public void testCharacterSearch() {
         EditMode editMode = EditModeBuilder.builder()
                 .addAction(Key.CTRL_G.getKeyValues(), "character-search")
-                .create();
+                .build();
         TestReadlineConnection term = new TestReadlineConnection(editMode);
         term.read("abcdefgh");
         term.read(Key.CTRL_A);
@@ -361,7 +361,7 @@ public class EmacsModeTest {
     public void testCharacterSearchBackward() {
         EditMode editMode = EditModeBuilder.builder()
                 .addAction(Key.CTRL_G.getKeyValues(), "character-search-backward")
-                .create();
+                .build();
         TestReadlineConnection term = new TestReadlineConnection(editMode);
         term.read("abcdefgh");
         // Cursor at end (pos 8), search backward for 'c'
@@ -376,7 +376,7 @@ public class EmacsModeTest {
     public void testQuotedInsert() {
         EditMode editMode = EditModeBuilder.builder()
                 .addAction(Key.CTRL_G.getKeyValues(), "quoted-insert")
-                .create();
+                .build();
         TestReadlineConnection term = new TestReadlineConnection(editMode);
         term.read("hello");
         term.read(Key.CTRL_A);
@@ -394,7 +394,7 @@ public class EmacsModeTest {
     public void testHistorySearchBackward() {
         EditMode editMode = EditModeBuilder.builder()
                 .addAction(Key.CTRL_G.getKeyValues(), "history-search-backward")
-                .create();
+                .build();
         TestReadlineConnection term = new TestReadlineConnection(editMode);
         // Enter some commands into history
         term.read("git status\n");
@@ -418,7 +418,7 @@ public class EmacsModeTest {
     public void testHistorySearchForward() {
         EditMode editMode = EditModeBuilder.builder()
                 .addAction(Key.CTRL_G.getKeyValues(), "history-search-forward")
-                .create();
+                .build();
         TestReadlineConnection term = new TestReadlineConnection(editMode);
         // Enter some commands into history
         term.read("git status\n");
@@ -445,7 +445,7 @@ public class EmacsModeTest {
         EditMode editMode = EditModeBuilder.builder()
                 .addAction(Key.CTRL_G.getKeyValues(), "set-mark")
                 .addAction(Key.CTRL_X_CTRL_U.getKeyValues(), "kill-region")
-                .create();
+                .build();
         TestReadlineConnection term = new TestReadlineConnection(editMode);
         term.read("hello world");
         // Move cursor to position 5 (after "hello")
@@ -466,7 +466,7 @@ public class EmacsModeTest {
         EditMode editMode = EditModeBuilder.builder()
                 .addAction(Key.CTRL_G.getKeyValues(), "set-mark")
                 .addAction(Key.CTRL_X_CTRL_U.getKeyValues(), "exchange-point-and-mark")
-                .create();
+                .build();
         TestReadlineConnection term = new TestReadlineConnection(editMode);
         term.read("abcdefgh");
         // Move cursor to position 3
@@ -489,7 +489,7 @@ public class EmacsModeTest {
     public void testOverwriteMode() {
         EditMode editMode = EditModeBuilder.builder()
                 .addAction(Key.CTRL_G.getKeyValues(), "overwrite-mode")
-                .create();
+                .build();
         TestReadlineConnection term = new TestReadlineConnection(editMode);
         term.read("abcdef");
         // Move cursor to position 2
@@ -515,7 +515,7 @@ public class EmacsModeTest {
     public void testYankNthArg() {
         EditMode editMode = EditModeBuilder.builder()
                 .addAction(Key.CTRL_G.getKeyValues(), "yank-nth-arg")
-                .create();
+                .build();
         TestReadlineConnection term = new TestReadlineConnection(editMode);
         // Enter a command into history
         term.read("git commit -m message\n");
@@ -533,7 +533,7 @@ public class EmacsModeTest {
         // We verify it doesn't crash when there's no completer
         EditMode editMode = EditModeBuilder.builder()
                 .addAction(Key.CTRL_G.getKeyValues(), "possible-completions")
-                .create();
+                .build();
         TestReadlineConnection term = new TestReadlineConnection(editMode);
         term.read("test");
         // Should be a no-op when no completer is set
@@ -545,7 +545,7 @@ public class EmacsModeTest {
     public void testNonIncrementalReverseSearch() {
         EditMode editMode = EditModeBuilder.builder()
                 .addAction(Key.CTRL_G.getKeyValues(), "non-incremental-reverse-search-history")
-                .create();
+                .build();
         TestReadlineConnection term = new TestReadlineConnection(editMode);
         // Build some history
         term.read("echo hello\n");
@@ -570,7 +570,7 @@ public class EmacsModeTest {
     public void testNonIncrementalForwardSearch() {
         EditMode editMode = EditModeBuilder.builder()
                 .addAction(Key.CTRL_G.getKeyValues(), "non-incremental-forward-search-history")
-                .create();
+                .build();
         TestReadlineConnection term = new TestReadlineConnection(editMode);
         // Build some history
         term.read("echo hello\n");
@@ -595,7 +595,7 @@ public class EmacsModeTest {
     public void testNonIncrementalSearchCancel() {
         EditMode editMode = EditModeBuilder.builder()
                 .addAction(Key.CTRL_G.getKeyValues(), "non-incremental-reverse-search-history")
-                .create();
+                .build();
         TestReadlineConnection term = new TestReadlineConnection(editMode);
         term.read("echo hello\n");
         term.assertLine("echo hello");

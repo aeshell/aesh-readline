@@ -19,6 +19,8 @@
  */
 package org.aesh.readline;
 
+import java.util.Optional;
+
 import org.aesh.readline.completion.CompletionHandler;
 import org.aesh.readline.history.History;
 import org.aesh.readline.paste.PasteManager;
@@ -40,11 +42,19 @@ public interface ConsoleBuffer {
     History history();
 
     /**
-     * Get the completion handler for tab completion.
+     * Get the completion handler for this console buffer.
      *
      * @return the completion handler
      */
-    CompletionHandler completer();
+    CompletionHandler completionHandler();
+
+    /**
+     * @deprecated Use {@link #completionHandler()} instead.
+     */
+    @Deprecated
+    default CompletionHandler completer() {
+        return completionHandler();
+    }
 
     /**
      * Set the terminal size.
@@ -244,12 +254,29 @@ public interface ConsoleBuffer {
     }
 
     /**
-     * Get the currently displayed ghost text.
+     * Get the ghost text for autocompletion preview, wrapped in Optional.
+     *
+     * @return an Optional containing the ghost text, or empty if none
+     */
+    default Optional<String> optionalGhostText() {
+        return Optional.ofNullable(ghostText());
+    }
+
+    /**
+     * Get the ghost text for autocompletion preview.
      *
      * @return the ghost text, or null if none
      */
-    default String getGhostText() {
+    default String ghostText() {
         return null;
+    }
+
+    /**
+     * @deprecated Use {@link #ghostText()} instead.
+     */
+    @Deprecated
+    default String getGhostText() {
+        return ghostText();
     }
 
 }

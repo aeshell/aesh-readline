@@ -41,7 +41,7 @@ public class ShellExample implements Consumer<Connection> {
             stopped = true;
         });
 
-        Readline readline = new Readline(EditModeBuilder.builder(EditMode.Mode.EMACS).create());
+        Readline readline = new Readline(EditModeBuilder.builder(EditMode.Mode.EMACS).build());
         read(connection, readline);
         connection.openBlocking();
     }

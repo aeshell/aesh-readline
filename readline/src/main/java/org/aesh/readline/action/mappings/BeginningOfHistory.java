@@ -39,10 +39,10 @@ public class BeginningOfHistory implements Action {
         if (history.size() == 0)
             return;
 
-        // Navigate to the oldest entry by calling getPreviousFetch until we reach index 0
+        // Navigate to the oldest entry by calling previousFetch until we reach index 0
         int[] entry = null;
         for (int i = 0; i < history.size(); i++) {
-            entry = history.getPreviousFetch();
+            entry = history.previousFetch().orElse(null);
         }
         if (entry != null) {
             inputProcessor.buffer().replace(entry);

@@ -140,7 +140,7 @@ public class ReadlineBuilder {
      */
     public Readline build() {
         if (editMode == null)
-            editMode = EditModeBuilder.builder().create();
+            editMode = EditModeBuilder.builder().build();
         if (!enableHistory) {
             history = null;
         } else if (history == null) {

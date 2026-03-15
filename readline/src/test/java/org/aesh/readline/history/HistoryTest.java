@@ -44,7 +44,7 @@ public class HistoryTest {
     @Test
     public void testHistory() throws Exception {
 
-        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).create());
+        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).build());
         term.read("1234" + Config.getLineSeparator());
         term.readline();
         term.read("567" + Config.getLineSeparator());
@@ -63,16 +63,16 @@ public class HistoryTest {
     @Test
     public void testEmptyHistory() {
 
-        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).create());
+        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).build());
         term.read(Key.UP);
         term.read(Key.ENTER);
         term.assertLine("");
 
-        term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).create());
+        term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).build());
         term.read(Key.CTRL_R);
         term.assertBuffer("(reverse-i-search) `': ");
 
-        term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).create());
+        term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).build());
         term.read(Key.CTRL_S);
         term.assertBuffer("(forward-i-search) `': ");
 
@@ -81,7 +81,7 @@ public class HistoryTest {
     @Test
     public void testHistoryMultiLine1() throws Exception {
 
-        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).create());
+        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).build());
         term.read("1234 \\" + Config.getLineSeparator());
         term.read("567" + Config.getLineSeparator());
         term.readline();
@@ -93,7 +93,7 @@ public class HistoryTest {
     @Test
     public void testHistoryMultiLine2() throws Exception {
 
-        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).create());
+        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).build());
         term.read("1234\\" + Config.getLineSeparator());
         term.read("567" + Config.getLineSeparator());
         term.readline();
@@ -105,7 +105,7 @@ public class HistoryTest {
     @Test
     public void testReverseSearch() throws Exception {
 
-        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).create());
+        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).build());
         term.read("1234" + Config.getLineSeparator());
         term.readline();
         term.read("567" + Config.getLineSeparator());
@@ -126,7 +126,7 @@ public class HistoryTest {
     @Test
     public void testForwardSearch() throws Exception {
 
-        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).create());
+        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).build());
         term.read("1234" + Config.getLineSeparator());
         term.readline();
         term.read("567" + Config.getLineSeparator());
@@ -147,7 +147,7 @@ public class HistoryTest {
     @Test
     public void testReverseSearchEscape() throws Exception {
 
-        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).create());
+        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).build());
         term.read("1234" + Config.getLineSeparator());
         term.readline();
         term.read("567" + Config.getLineSeparator());
@@ -208,7 +208,7 @@ public class HistoryTest {
 
         history.setSearchDirection(SearchDirection.REVERSE);
         assertArrayEquals(Parser.toCodePoints("foo3"), history.search(Parser.toCodePoints("foo")));
-        assertArrayEquals(Parser.toCodePoints("foo2"), history.getPreviousFetch());
+        assertArrayEquals(Parser.toCodePoints("foo2"), history.previousFetch().orElse(null));
     }
 
     @Test
@@ -219,7 +219,7 @@ public class HistoryTest {
             history.push(Parser.toCodePoints(String.valueOf(i)));
 
         assertEquals(20, history.size());
-        assertArrayEquals(Parser.toCodePoints("24"), history.getPreviousFetch());
+        assertArrayEquals(Parser.toCodePoints("24"), history.previousFetch().orElse(null));
     }
 
     @Test
@@ -228,9 +228,9 @@ public class HistoryTest {
         history.push(Parser.toCodePoints("1"));
         history.push(Parser.toCodePoints("2"));
 
-        assertArrayEquals(Parser.toCodePoints("2"), history.getPreviousFetch());
+        assertArrayEquals(Parser.toCodePoints("2"), history.previousFetch().orElse(null));
         history.clear();
-        assertArrayEquals(new int[] {}, history.getPreviousFetch());
+        assertFalse(history.previousFetch().isPresent());
     }
 
     @Test
@@ -241,12 +241,12 @@ public class HistoryTest {
         history.push(Parser.toCodePoints("3"));
         history.push(Parser.toCodePoints("1"));
         history.push(Parser.toCodePoints("1"));
-        assertArrayEquals(Parser.toCodePoints("1"), history.getPreviousFetch());
-        assertArrayEquals(Parser.toCodePoints("3"), history.getPreviousFetch());
-        assertArrayEquals(Parser.toCodePoints("1"), history.getNextFetch());
-        assertArrayEquals(Parser.toCodePoints("3"), history.getPreviousFetch());
-        assertArrayEquals(Parser.toCodePoints("2"), history.getPreviousFetch());
-        assertArrayEquals(Parser.toCodePoints("1"), history.getPreviousFetch());
+        assertArrayEquals(Parser.toCodePoints("1"), history.previousFetch().orElse(null));
+        assertArrayEquals(Parser.toCodePoints("3"), history.previousFetch().orElse(null));
+        assertArrayEquals(Parser.toCodePoints("1"), history.nextFetch().orElse(null));
+        assertArrayEquals(Parser.toCodePoints("3"), history.previousFetch().orElse(null));
+        assertArrayEquals(Parser.toCodePoints("2"), history.previousFetch().orElse(null));
+        assertArrayEquals(Parser.toCodePoints("1"), history.previousFetch().orElse(null));
         assertEquals(4, history.getAll().size());
     }
 
@@ -311,9 +311,9 @@ public class HistoryTest {
         history.push(Parser.toCodePoints("foo2"));
         history.push(Parser.toCodePoints("foo3"));
 
-        assertArrayEquals(Parser.toCodePoints("foo3"), history.getPreviousFetch());
+        assertArrayEquals(Parser.toCodePoints("foo3"), history.previousFetch().orElse(null));
         history.push(Parser.toCodePoints("foo3"));
-        assertArrayEquals(Parser.toCodePoints("foo3"), history.getPreviousFetch());
+        assertArrayEquals(Parser.toCodePoints("foo3"), history.previousFetch().orElse(null));
 
     }
 }

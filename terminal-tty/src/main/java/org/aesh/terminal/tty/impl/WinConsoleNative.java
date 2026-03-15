@@ -53,8 +53,8 @@ final class WinConsoleNative {
     /**
      * Read a console input event (key or window resize).
      * Returns int[] where first element is the event type:
-     *   KEY_EVENT (1): {1, keyDown, repeatCount, vKeyCode, unicodeChar, controlKeyState}
-     *   WINDOW_BUFFER_SIZE_EVENT (4): {4, width, height}
+     * KEY_EVENT (1): {1, keyDown, repeatCount, vKeyCode, unicodeChar, controlKeyState}
+     * WINDOW_BUFFER_SIZE_EVENT (4): {4, width, height}
      * Returns null for other event types or on error.
      */
     static native int[] readConsoleInputEvent(long handle);

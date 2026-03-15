@@ -34,8 +34,8 @@ public class PossibleCompletions implements Action {
 
     @Override
     public void accept(InputProcessor inputProcessor) {
-        if (inputProcessor.buffer().completer() != null) {
-            inputProcessor.buffer().completer().complete(inputProcessor);
+        if (inputProcessor.buffer().completionHandler() != null) {
+            inputProcessor.buffer().completionHandler().complete(inputProcessor);
         }
     }
 }

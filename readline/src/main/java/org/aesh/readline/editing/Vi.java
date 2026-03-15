@@ -102,6 +102,7 @@ public class Vi implements EditMode {
         variables.put(variable, value);
     }
 
+    @Deprecated
     @Override
     public String variableValue(Variable variable) {
         return variables.get(variable);

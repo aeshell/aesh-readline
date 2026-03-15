@@ -217,7 +217,7 @@ public class ReadlineTest {
         });
 
         Size termSize = new Size(10, 10);
-        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder().create(), completions, termSize);
+        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder().build(), completions, termSize);
 
         term.read("ff");
         term.read(Key.CTRL_I);

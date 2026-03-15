@@ -48,9 +48,9 @@ public class DeleteCharOrList implements Action {
             consoleBuffer.pasteManager().addText(
                     Arrays.copyOfRange(consoleBuffer.buffer().multiLine(), cursor, cursor + 1));
             consoleBuffer.delete(1);
-        } else if (consoleBuffer.completer() != null) {
+        } else if (consoleBuffer.completionHandler() != null) {
             // List completions
-            consoleBuffer.completer().complete(inputProcessor);
+            consoleBuffer.completionHandler().complete(inputProcessor);
         }
     }
 }

@@ -43,12 +43,11 @@ public class PrevHistory implements Action {
 
     @Override
     public void accept(InputProcessor inputProcessor) {
-        int[] history = inputProcessor.buffer().history().getPreviousFetch();
-        if (history != null) {
+        inputProcessor.buffer().history().previousFetch().ifPresent(history -> {
             inputProcessor.buffer().replace(history);
             if (inputProcessor.editMode().mode().equals(EditMode.Mode.VI) &&
                     inputProcessor.editMode().status().equals(EditMode.Status.COMMAND))
                 inputProcessor.buffer().moveCursor(-history.length);
-        }
+        });
     }
 }

@@ -50,7 +50,7 @@ public class TestReadlineConnection extends TestConnection {
 
     public TestReadlineConnection() {
         //default emacs mode
-        this(EditModeBuilder.builder().create(), null);
+        this(EditModeBuilder.builder().build(), null);
     }
 
     public TestReadlineConnection(boolean stripAnsi) {
@@ -60,7 +60,7 @@ public class TestReadlineConnection extends TestConnection {
 
     public TestReadlineConnection(Prompt prompt) {
         //default emacs mode
-        this(EditModeBuilder.builder().create(), null, prompt);
+        this(EditModeBuilder.builder().build(), null, prompt);
     }
 
     public TestReadlineConnection(EditMode editMode) {
@@ -72,7 +72,7 @@ public class TestReadlineConnection extends TestConnection {
     }
 
     public TestReadlineConnection(List<Completion> completions) {
-        this(EditModeBuilder.builder().create(), completions);
+        this(EditModeBuilder.builder().build(), completions);
     }
 
     public TestReadlineConnection(EditMode editMode, List<Completion> completions) {
@@ -108,7 +108,7 @@ public class TestReadlineConnection extends TestConnection {
             Attributes attributes, EnumMap<ReadlineFlag, Integer> flags, boolean stripAnsi) {
         super(size, DeviceBuilder.builder().name("xterm-256color").build());
         if (editMode == null)
-            editMode = EditModeBuilder.builder().create();
+            editMode = EditModeBuilder.builder().build();
         if (stripAnsi)
             stdOutHandler = ints -> bufferBuilder.append(Parser.stripAwayAnsiCodes(Parser.fromCodePoints(ints)));
         else
@@ -185,7 +185,7 @@ public class TestReadlineConnection extends TestConnection {
     }
 
     public String getPrompt() {
-        return Parser.fromCodePoints(prompt.getPromptAsString());
+        return Parser.fromCodePoints(prompt.getPromptCharacters());
     }
 
     public void setPrompt(Prompt prompt) {

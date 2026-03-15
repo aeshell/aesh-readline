@@ -22,6 +22,7 @@ package org.aesh.readline.history;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 import org.aesh.terminal.utils.Parser;
 
@@ -115,6 +116,7 @@ public class InMemoryHistory extends History {
         return searchDirection;
     }
 
+    @Deprecated
     @Override
     public int[] getPreviousFetch() {
         if (size() < 1)
@@ -127,6 +129,7 @@ public class InMemoryHistory extends History {
         }
     }
 
+    @Deprecated
     @Override
     public int[] getNextFetch() {
         if (size() < 1)
@@ -139,6 +142,32 @@ public class InMemoryHistory extends History {
             return getCurrent();
         } else
             return getCurrent();
+    }
+
+    @Override
+    public Optional<int[]> previousFetch() {
+        if (size() < 1)
+            return Optional.empty();
+
+        if (lastId > 0)
+            return Optional.of(get(--lastId));
+        else {
+            return Optional.of(get(lastId));
+        }
+    }
+
+    @Override
+    public Optional<int[]> nextFetch() {
+        if (size() < 1)
+            return Optional.empty();
+
+        if (lastId < size() - 1)
+            return Optional.of(get(++lastId));
+        else if (lastId == size() - 1) {
+            lastId++;
+            return Optional.of(getCurrent());
+        } else
+            return Optional.of(getCurrent());
     }
 
     @Override

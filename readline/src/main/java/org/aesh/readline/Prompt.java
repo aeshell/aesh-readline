@@ -203,12 +203,23 @@ public class Prompt {
     }
 
     /**
-     * Returns the prompt text as an array of Unicode code points.
+     * Returns the prompt as an int array of characters.
      *
-     * @return the prompt as code points
+     * @return the prompt characters as an int array
      */
-    public int[] getPromptAsString() {
+    public int[] getPromptCharacters() {
         return prompt;
+    }
+
+    /**
+     * Returns the prompt as an int array of characters.
+     *
+     * @return the prompt characters as an int array
+     * @deprecated Use {@link #getPromptCharacters()} instead. The name is misleading since this returns int[], not String.
+     */
+    @Deprecated
+    public int[] getPromptAsString() {
+        return getPromptCharacters();
     }
 
     /**
@@ -273,5 +284,150 @@ public class Prompt {
         result = 31 * result + Arrays.hashCode(prompt);
         result = 31 * result + (mask != null ? mask.hashCode() : 0);
         return result;
+    }
+
+    /**
+     * Creates a new PromptBuilder for constructing Prompt instances.
+     *
+     * @return a new PromptBuilder
+     */
+    public static PromptBuilder builder() {
+        return new PromptBuilder();
+    }
+
+    /**
+     * Builder for creating {@link Prompt} instances with a fluent API.
+     * <p>
+     * The builder supports all the input combinations that the Prompt constructors accept.
+     * When multiple prompt sources are set, the precedence is (highest to lowest):
+     * <ol>
+     * <li>{@code characters} (List&lt;TerminalCharacter&gt;)</li>
+     * <li>{@code terminalString} (TerminalString)</li>
+     * <li>{@code promptCodePoints} (int[])</li>
+     * <li>{@code promptString} (String), optionally combined with {@code ansiString}</li>
+     * </ol>
+     *
+     * <p>
+     * Example usage:
+     *
+     * <pre>{@code
+     * Prompt p = Prompt.builder()
+     *         .message("$ ")
+     *         .mask('*')
+     *         .build();
+     * }</pre>
+     */
+    public static class PromptBuilder {
+        private String promptString;
+        private String ansiString;
+        private Character mask;
+        private int[] promptCodePoints;
+        private TerminalString terminalString;
+        private List<TerminalCharacter> characters;
+
+        private PromptBuilder() {
+        }
+
+        /**
+         * Sets the prompt text.
+         *
+         * @param prompt the prompt text
+         * @return this builder
+         */
+        public PromptBuilder message(String prompt) {
+            this.promptString = prompt;
+            return this;
+        }
+
+        /**
+         * Sets the ANSI-formatted string for display.
+         * This is used in combination with {@link #message(String)} to provide
+         * a separate display representation with ANSI escape codes.
+         *
+         * @param ansiString the ANSI-formatted string
+         * @return this builder
+         */
+        public PromptBuilder ansi(String ansiString) {
+            this.ansiString = ansiString;
+            return this;
+        }
+
+        /**
+         * Sets the mask character for hiding user input (e.g., for passwords).
+         *
+         * @param mask the masking character
+         * @return this builder
+         */
+        public PromptBuilder mask(char mask) {
+            this.mask = mask;
+            return this;
+        }
+
+        /**
+         * Sets the prompt as an array of Unicode code points.
+         *
+         * @param codePoints the prompt code points
+         * @return this builder
+         */
+        public PromptBuilder promptCodePoints(int[] codePoints) {
+            this.promptCodePoints = codePoints;
+            return this;
+        }
+
+        /**
+         * Sets the prompt from a {@link TerminalString} with ANSI formatting.
+         *
+         * @param terminalString the terminal string containing the prompt
+         * @return this builder
+         */
+        public PromptBuilder terminalString(TerminalString terminalString) {
+            this.terminalString = terminalString;
+            return this;
+        }
+
+        /**
+         * Sets the prompt from a list of individually formatted {@link TerminalCharacter}s.
+         *
+         * @param characters the list of terminal characters
+         * @return this builder
+         */
+        public PromptBuilder characters(List<TerminalCharacter> characters) {
+            this.characters = characters;
+            return this;
+        }
+
+        /**
+         * Builds a new {@link Prompt} instance from the configured parameters.
+         * <p>
+         * The builder selects the appropriate constructor based on which fields have been set,
+         * using the precedence order: characters, terminalString, promptCodePoints, promptString.
+         *
+         * @return a new Prompt instance
+         */
+        public Prompt build() {
+            if (characters != null) {
+                if (mask != null)
+                    return new Prompt(characters, mask);
+                return new Prompt(characters);
+            }
+            if (terminalString != null) {
+                return new Prompt(terminalString);
+            }
+            if (promptCodePoints != null) {
+                return new Prompt(promptCodePoints, mask);
+            }
+            if (ansiString != null) {
+                if (mask != null)
+                    return new Prompt(promptString, ansiString, mask);
+                return new Prompt(promptString, ansiString);
+            }
+            if (mask != null) {
+                return new Prompt(promptString, mask);
+            }
+            if (promptString != null) {
+                return new Prompt(promptString);
+            }
+            return new Prompt();
+        }
     }
 }

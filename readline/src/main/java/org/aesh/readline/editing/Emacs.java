@@ -262,6 +262,7 @@ public class Emacs implements EditMode {
         return currentAction != null;
     }
 
+    @Deprecated
     @Override
     public String variableValue(Variable variable) {
         return variables.get(variable);

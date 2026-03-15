@@ -50,10 +50,9 @@ public class HistorySearchForward implements Action {
         String prefix = buffer.substring(0, cursor);
 
         if (prefix.isEmpty()) {
-            int[] entry = history.getNextFetch();
-            if (entry != null) {
+            history.nextFetch().ifPresent(entry -> {
                 inputProcessor.buffer().replace(entry);
-            }
+            });
             return;
         }
 

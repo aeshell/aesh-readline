@@ -50,10 +50,9 @@ public class HistorySearchBackward implements Action {
         String prefix = buffer.substring(0, cursor);
 
         if (prefix.isEmpty()) {
-            int[] entry = history.getPreviousFetch();
-            if (entry != null && entry.length > 0) {
+            history.previousFetch().ifPresent(entry -> {
                 inputProcessor.buffer().replace(entry);
-            }
+            });
             return;
         }
 

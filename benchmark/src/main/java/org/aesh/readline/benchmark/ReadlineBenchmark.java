@@ -143,9 +143,9 @@ public class ReadlineBenchmark {
         });
 
         // Create Readline instances once (simulates real application startup)
-        readlineDefault = new Readline(EditModeBuilder.builder().create());
-        readlineEmacs = new Readline(EditModeBuilder.builder(EditMode.Mode.EMACS).create());
-        readlineVi = new Readline(EditModeBuilder.builder(EditMode.Mode.VI).create());
+        readlineDefault = new Readline(EditModeBuilder.builder().build());
+        readlineEmacs = new Readline(EditModeBuilder.builder(EditMode.Mode.EMACS).build());
+        readlineVi = new Readline(EditModeBuilder.builder(EditMode.Mode.VI).build());
 
         // History for history-enabled readline
         history = new InMemoryHistory(100);
@@ -156,8 +156,8 @@ public class ReadlineBenchmark {
         history.push("grep pattern file".codePoints().toArray());
         history.push("make build".codePoints().toArray());
 
-        readlineWithHistory = new Readline(EditModeBuilder.builder().create(), history, null);
-        readlineWithCompletions = new Readline(EditModeBuilder.builder().create());
+        readlineWithHistory = new Readline(EditModeBuilder.builder().build(), history, null);
+        readlineWithCompletions = new Readline(EditModeBuilder.builder().build());
 
         // Create connection once
         connection = new BenchmarkConnection();
@@ -456,10 +456,10 @@ public class ReadlineBenchmark {
     public void historyNavigation(Blackhole bh) {
         // Navigate up and down through history
         for (int i = 0; i < 5; i++) {
-            bh.consume(history.getPreviousFetch());
+            bh.consume(history.previousFetch());
         }
         for (int i = 0; i < 3; i++) {
-            bh.consume(history.getNextFetch());
+            bh.consume(history.nextFetch());
         }
     }
 
@@ -467,19 +467,19 @@ public class ReadlineBenchmark {
 
     @Benchmark
     public void editModeEmacsCreate(Blackhole bh) {
-        EditMode mode = EditModeBuilder.builder(EditMode.Mode.EMACS).create();
+        EditMode mode = EditModeBuilder.builder(EditMode.Mode.EMACS).build();
         bh.consume(mode);
     }
 
     @Benchmark
     public void editModeViCreate(Blackhole bh) {
-        EditMode mode = EditModeBuilder.builder(EditMode.Mode.VI).create();
+        EditMode mode = EditModeBuilder.builder(EditMode.Mode.VI).build();
         bh.consume(mode);
     }
 
     @Benchmark
     public void editModeParse(Blackhole bh) {
-        EditMode mode = EditModeBuilder.builder().create();
+        EditMode mode = EditModeBuilder.builder().build();
         bh.consume(mode.parse(Key.a));
         bh.consume(mode.parse(Key.CTRL_A));
         bh.consume(mode.parse(Key.UP));
@@ -503,7 +503,7 @@ public class ReadlineBenchmark {
         InMemoryHistory hist = new InMemoryHistory(100);
         hist.enable();
         hist.push("command".codePoints().toArray());
-        bh.consume(hist.getPreviousFetch());
+        bh.consume(hist.previousFetch());
     }
 
     /**

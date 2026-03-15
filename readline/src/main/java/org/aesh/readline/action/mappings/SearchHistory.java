@@ -167,11 +167,11 @@ abstract class SearchHistory implements SearchAction {
                     }
                     break;
                 case SEARCH_MOVE_NEXT:
-                    searchResult = inputProcessor.buffer().history().getNextFetch();
+                    searchResult = inputProcessor.buffer().history().nextFetch().orElse(null);
                     inputProcessor.buffer().replace(searchResult);
                     break;
                 case SEARCH_MOVE_PREV:
-                    searchResult = inputProcessor.buffer().history().getPreviousFetch();
+                    searchResult = inputProcessor.buffer().history().previousFetch().orElse(null);
                     inputProcessor.buffer().replace(searchResult);
                     break;
                 case SEARCH_MOVE_RIGHT:

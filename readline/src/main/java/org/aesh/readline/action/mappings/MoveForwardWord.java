@@ -53,7 +53,7 @@ public class MoveForwardWord extends ForwardWord {
     @Override
     public void accept(InputProcessor inputProcessor) {
         if (inputProcessor.buffer().buffer().cursor() >= inputProcessor.buffer().buffer().length()
-                && inputProcessor.buffer().getGhostText() != null) {
+                && inputProcessor.buffer().ghostText() != null) {
             inputProcessor.buffer().acceptGhostTextWord();
         } else {
             super.accept(inputProcessor);

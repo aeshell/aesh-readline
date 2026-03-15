@@ -171,7 +171,7 @@ public abstract class CompletionHandler<C extends CompleteOperation> {
             displayCompletion(
                     possibleCompletions.get(0).getFormattedCompletionCandidatesTerminalString().get(0),
                     buffer, inputProcessor,
-                    possibleCompletions.get(0).hasAppendSeparator(),
+                    possibleCompletions.get(0).isAppendSeparator(),
                     possibleCompletions.get(0).getSeparator());
         }
         // more than one hit...
@@ -204,7 +204,7 @@ public abstract class CompletionHandler<C extends CompleteOperation> {
             startsWith = findStartsWithOperation(possibleCompletions);
 
         if (startsWith.length() > 0) {
-            if (startsWith.contains(" ") && !possibleCompletions.get(0).doIgnoreNonEscapedSpace())
+            if (startsWith.contains(" ") && !possibleCompletions.get(0).isIgnoreNonEscapedSpace())
                 displayCompletion(new TerminalString(Parser.switchSpacesToEscapedSpacesInWord(startsWith), true),
                         buffer, inputProcessor,
                         false, possibleCompletions.get(0).getSeparator());

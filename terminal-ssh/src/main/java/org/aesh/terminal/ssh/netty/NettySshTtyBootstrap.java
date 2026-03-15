@@ -85,9 +85,21 @@ public class NettySshTtyBootstrap {
      * @param host the host address
      * @return this bootstrap for method chaining
      */
-    public NettySshTtyBootstrap setHost(String host) {
+    public NettySshTtyBootstrap host(String host) {
         this.host = host;
         return this;
+    }
+
+    /**
+     * Sets the host address for the SSH server to bind to.
+     *
+     * @param host the host address
+     * @return this bootstrap for method chaining
+     * @deprecated Use {@link #host(String)} instead.
+     */
+    @Deprecated
+    public NettySshTtyBootstrap setHost(String host) {
+        return host(host);
     }
 
     /**
@@ -105,9 +117,21 @@ public class NettySshTtyBootstrap {
      * @param port the port number
      * @return this bootstrap for method chaining
      */
-    public NettySshTtyBootstrap setPort(int port) {
+    public NettySshTtyBootstrap port(int port) {
         this.port = port;
         return this;
+    }
+
+    /**
+     * Sets the port for the SSH server to listen on.
+     *
+     * @param port the port number
+     * @return this bootstrap for method chaining
+     * @deprecated Use {@link #port(int)} instead.
+     */
+    @Deprecated
+    public NettySshTtyBootstrap setPort(int port) {
+        return port(port);
     }
 
     /**
@@ -178,9 +202,22 @@ public class NettySshTtyBootstrap {
      * Sets the character set for encoding/decoding.
      *
      * @param charset the charset to use
+     * @return this bootstrap for method chaining
      */
-    public void setCharset(Charset charset) {
+    public NettySshTtyBootstrap charset(Charset charset) {
         this.charset = charset;
+        return this;
+    }
+
+    /**
+     * Sets the character set for encoding/decoding.
+     *
+     * @param charset the charset to use
+     * @deprecated Use {@link #charset(Charset)} instead.
+     */
+    @Deprecated
+    public void setCharset(Charset charset) {
+        charset(charset);
     }
 
     /**

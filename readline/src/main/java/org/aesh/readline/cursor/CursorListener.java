@@ -24,6 +24,7 @@ package org.aesh.readline.cursor;
  *
  * @author jdenise@redhat.com
  */
+@FunctionalInterface
 public interface CursorListener {
     /**
      * Called when the cursor has moved to a new position.

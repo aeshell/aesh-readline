@@ -23,6 +23,7 @@ import static org.aesh.terminal.utils.ANSIBuilder.Color.*;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import org.aesh.terminal.formatting.Color;
 import org.aesh.terminal.utils.ANSIBuilder.TextType;
 import org.junit.Test;
 
@@ -666,5 +667,24 @@ public class ANSIBuilderTest {
         assertTrue(result.contains("Something failed"));
         // Verify RGB format is used for category and threadName (HSL override)
         assertTrue(result.contains("38;2;"));
+    }
+
+    @Test
+    public void testFormattingColorOverloads() {
+        ANSIBuilder builder = ANSIBuilder.builder();
+
+        // Use org.aesh.terminal.formatting.Color for text color
+        String result = builder.text(Color.RED).append("Red").toString();
+        assertEquals(COLOR_START + "31mRed" + RESET, result);
+
+        builder.clear();
+        // Use org.aesh.terminal.formatting.Color for background color
+        result = builder.bg(Color.BLUE).append("BlueBg").toString();
+        assertEquals(COLOR_START + "44mBlueBg" + RESET, result);
+
+        builder.clear();
+        // Combine formatting.Color text and bg
+        result = builder.text(Color.YELLOW).bg(Color.BLACK).append("YellowOnBlack").toString();
+        assertEquals(COLOR_START + "33;40mYellowOnBlack" + RESET, result);
     }
 }

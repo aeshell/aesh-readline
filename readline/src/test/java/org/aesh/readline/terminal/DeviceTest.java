@@ -46,7 +46,7 @@ public class DeviceTest {
 
         EditMode emacs = EditModeBuilder.builder()
                 .addVariable(Variable.EDITING_MODE, "emacs")
-                .device(device).create();
+                .device(device).build();
 
         //by default only Key.HOME is set to beginning-of-line, but the ansi
         //device should remap it to Key.HOME_2

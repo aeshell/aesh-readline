@@ -31,7 +31,7 @@ public class ViModeTest {
 
     @Test
     public void testSimpleMovementAndEdit() {
-        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI).create());
+        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI).build());
         term.read("abcd");
         term.read(Key.ESC);
         term.read(Key.x);
@@ -63,7 +63,7 @@ public class ViModeTest {
 
     @Test
     public void testWordMovementAndEdit() throws Exception {
-        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI).create());
+        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI).build());
         term.read("  ..");
         term.read(Key.ESC);
         term.read(Key.b);
@@ -84,7 +84,7 @@ public class ViModeTest {
 
     @Test
     public void testWordMovementAndEdit2() throws Exception {
-        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI).create());
+        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI).build());
         term.read("foo  bar...  Foo-Bar.");
         term.read(Key.ESC);
         term.read(Key.B);
@@ -106,7 +106,7 @@ public class ViModeTest {
 
     @Test
     public void testWordMovementAndEdit3() throws Exception {
-        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI).create());
+        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI).build());
         term.read("foo bar... Bar");
         term.read(Key.ESC);
         term.read(Key.ZERO);
@@ -121,12 +121,12 @@ public class ViModeTest {
 
     @Test
     public void testEnter() throws Exception {
-        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI).create());
+        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI).build());
         term.read("foo bar");
         term.read(Key.ENTER);
         term.assertLine("foo bar");
 
-        term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI).create());
+        term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI).build());
         term.read("bar");
         term.read(Key.ESC);
         term.read(Key.CTRL_M);
@@ -136,7 +136,7 @@ public class ViModeTest {
 
     @Test
     public void testRepeatAndEdit() throws Exception {
-        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI).create());
+        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI).build());
 
         term.read("/cd /home/foo/ ls/ cd Desktop/ ls ../");
         term.read(Key.ESC);
@@ -182,7 +182,7 @@ public class ViModeTest {
 
     @Test
     public void testTildeAndEdit() throws Exception {
-        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI).create());
+        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI).build());
 
         term.read("apt-get install vIM");
         term.read(Key.ESC);
@@ -215,7 +215,7 @@ public class ViModeTest {
 
     @Test
     public void testPasteAndEdit() {
-        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI).create());
+        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI).build());
         term.read("apt-get install vIM");
         term.read(Key.ESC);
         term.read(Key.ZERO);
@@ -235,7 +235,7 @@ public class ViModeTest {
 
     @Test
     public void testSearch() {
-        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI).create());
+        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI).build());
         term.read("asdf jkl\n");
         term.readline();
         term.read("footing\n");
@@ -249,7 +249,7 @@ public class ViModeTest {
 
     @Test
     public void testSearchWithArrownRight() {
-        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI).create());
+        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI).build());
         term.read("asdf jkl\n");
         term.readline();
         term.read("footing\n");
@@ -267,7 +267,7 @@ public class ViModeTest {
 
     @Test
     public void testSearchWithArrownLeft() {
-        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI).create());
+        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI).build());
         term.read("asdf jkl\n");
         term.readline();
         term.read("footing\n");
@@ -282,7 +282,7 @@ public class ViModeTest {
 
     @Test
     public void testSearchWithArrownUp() {
-        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI).create());
+        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI).build());
         term.read("footing\n");
         term.readline();
         term.read("asdf jkl\n");
@@ -297,7 +297,7 @@ public class ViModeTest {
 
     @Test
     public void testSearchWithArrownDown() {
-        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI).create());
+        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI).build());
         term.read("asdf jkl\n");
         term.readline();
         term.read("footing\n");
@@ -313,7 +313,7 @@ public class ViModeTest {
     public void testTransposeChars() {
         EditMode editMode = EditModeBuilder.builder(EditMode.Mode.VI)
                 .addAction(Key.CTRL_T.getKeyValues(), "transpose-chars")
-                .create();
+                .build();
         TestReadlineConnection term = new TestReadlineConnection(editMode);
         // In insert mode: at end of line, swap last two chars
         term.read("abcd");
@@ -332,7 +332,7 @@ public class ViModeTest {
     public void testTransposeWords() {
         EditMode editMode = EditModeBuilder.builder(EditMode.Mode.VI)
                 .addAction(Key.CTRL_T.getKeyValues(), "transpose-words")
-                .create();
+                .build();
         TestReadlineConnection term = new TestReadlineConnection(editMode);
         // At end of line: swap last two words
         term.read("foo bar");
@@ -349,7 +349,7 @@ public class ViModeTest {
     public void testDeleteHorizontalSpace() {
         EditMode editMode = EditModeBuilder.builder(EditMode.Mode.VI)
                 .addAction(Key.CTRL_G.getKeyValues(), "delete-horizontal-space")
-                .create();
+                .build();
         TestReadlineConnection term = new TestReadlineConnection(editMode);
         term.read("foo   bar");
         // Use Vi command mode to navigate into the whitespace, then insert mode to trigger action
@@ -365,7 +365,7 @@ public class ViModeTest {
     public void testUnixFilenameRubout() {
         EditMode editMode = EditModeBuilder.builder(EditMode.Mode.VI)
                 .addAction(Key.CTRL_G.getKeyValues(), "unix-filename-rubout")
-                .create();
+                .build();
         TestReadlineConnection term = new TestReadlineConnection(editMode);
         term.read("/home/user/file.txt");
         term.read(Key.CTRL_G);
@@ -380,7 +380,7 @@ public class ViModeTest {
     public void testInsertComment() {
         EditMode editMode = EditModeBuilder.builder(EditMode.Mode.VI)
                 .addAction(Key.CTRL_G.getKeyValues(), "insert-comment")
-                .create();
+                .build();
         TestReadlineConnection term = new TestReadlineConnection(editMode);
         term.read("ls -la");
         term.read(Key.CTRL_G);
@@ -391,7 +391,7 @@ public class ViModeTest {
     public void testInsertCommentAfterViEditing() {
         EditMode editMode = EditModeBuilder.builder(EditMode.Mode.VI)
                 .addAction(Key.CTRL_G.getKeyValues(), "insert-comment")
-                .create();
+                .build();
         TestReadlineConnection term = new TestReadlineConnection(editMode);
         term.read("apt-get install vim");
         // Use Vi commands to change "apt-get" to "apt-cache" using big-word change
@@ -409,7 +409,7 @@ public class ViModeTest {
     public void testRevertLineAfterViEdits() {
         EditMode editMode = EditModeBuilder.builder(EditMode.Mode.VI)
                 .addAction(Key.CTRL_G.getKeyValues(), "revert-line")
-                .create();
+                .build();
         TestReadlineConnection term = new TestReadlineConnection(editMode);
         term.read("hello world");
         term.assertBuffer("hello world");
@@ -429,7 +429,7 @@ public class ViModeTest {
     public void testHistorySearchBackward() {
         EditMode editMode = EditModeBuilder.builder(EditMode.Mode.VI)
                 .addAction(Key.CTRL_G.getKeyValues(), "history-search-backward")
-                .create();
+                .build();
         TestReadlineConnection term = new TestReadlineConnection(editMode);
         term.read("git status\n");
         term.assertLine("git status");
@@ -452,7 +452,7 @@ public class ViModeTest {
     public void testHistorySearchForward() {
         EditMode editMode = EditModeBuilder.builder(EditMode.Mode.VI)
                 .addAction(Key.CTRL_G.getKeyValues(), "history-search-forward")
-                .create();
+                .build();
         TestReadlineConnection term = new TestReadlineConnection(editMode);
         term.read("git status\n");
         term.assertLine("git status");
@@ -475,7 +475,7 @@ public class ViModeTest {
     public void testCharacterSearch() {
         EditMode editMode = EditModeBuilder.builder(EditMode.Mode.VI)
                 .addAction(Key.CTRL_G.getKeyValues(), "character-search")
-                .create();
+                .build();
         TestReadlineConnection term = new TestReadlineConnection(editMode);
         term.read("abcdefgh");
         // Move to beginning using Vi
@@ -494,7 +494,7 @@ public class ViModeTest {
     public void testCharacterSearchBackward() {
         EditMode editMode = EditModeBuilder.builder(EditMode.Mode.VI)
                 .addAction(Key.CTRL_G.getKeyValues(), "character-search-backward")
-                .create();
+                .build();
         TestReadlineConnection term = new TestReadlineConnection(editMode);
         term.read("abcdefgh");
         // Cursor at end, search backward for 'c'
@@ -509,7 +509,7 @@ public class ViModeTest {
     public void testYankLastArg() {
         EditMode editMode = EditModeBuilder.builder(EditMode.Mode.VI)
                 .addAction(Key.CTRL_G.getKeyValues(), "yank-last-arg")
-                .create();
+                .build();
         TestReadlineConnection term = new TestReadlineConnection(editMode);
         term.read("git commit -m message\n");
         term.assertLine("git commit -m message");
@@ -524,7 +524,7 @@ public class ViModeTest {
     public void testYankNthArg() {
         EditMode editMode = EditModeBuilder.builder(EditMode.Mode.VI)
                 .addAction(Key.CTRL_G.getKeyValues(), "yank-nth-arg")
-                .create();
+                .build();
         TestReadlineConnection term = new TestReadlineConnection(editMode);
         term.read("git commit -m message\n");
         term.assertLine("git commit -m message");
@@ -540,7 +540,7 @@ public class ViModeTest {
         EditMode editMode = EditModeBuilder.builder(EditMode.Mode.VI)
                 .addAction(Key.CTRL_G.getKeyValues(), "set-mark")
                 .addAction(Key.CTRL_X_CTRL_U.getKeyValues(), "kill-region")
-                .create();
+                .build();
         TestReadlineConnection term = new TestReadlineConnection(editMode);
         term.read("hello world");
         // Navigate using Vi command mode to position 5
@@ -561,7 +561,7 @@ public class ViModeTest {
         EditMode editMode = EditModeBuilder.builder(EditMode.Mode.VI)
                 .addAction(Key.CTRL_G.getKeyValues(), "set-mark")
                 .addAction(Key.CTRL_X_CTRL_U.getKeyValues(), "exchange-point-and-mark")
-                .create();
+                .build();
         TestReadlineConnection term = new TestReadlineConnection(editMode);
         term.read("abcdefgh");
         // Move to position 3 using Vi
@@ -586,7 +586,7 @@ public class ViModeTest {
     public void testOverwriteMode() {
         EditMode editMode = EditModeBuilder.builder(EditMode.Mode.VI)
                 .addAction(Key.CTRL_G.getKeyValues(), "overwrite-mode")
-                .create();
+                .build();
         TestReadlineConnection term = new TestReadlineConnection(editMode);
         term.read("abcdef");
         // Navigate to position 2 using Vi command mode
@@ -615,7 +615,7 @@ public class ViModeTest {
     public void testQuotedInsert() {
         EditMode editMode = EditModeBuilder.builder(EditMode.Mode.VI)
                 .addAction(Key.CTRL_G.getKeyValues(), "quoted-insert")
-                .create();
+                .build();
         TestReadlineConnection term = new TestReadlineConnection(editMode);
         term.read("hello");
         // Move to beginning with Vi
@@ -632,7 +632,7 @@ public class ViModeTest {
     public void testTildeExpand() {
         EditMode editMode = EditModeBuilder.builder(EditMode.Mode.VI)
                 .addAction(Key.CTRL_G.getKeyValues(), "tilde-expand")
-                .create();
+                .build();
         TestReadlineConnection term = new TestReadlineConnection(editMode);
         String home = System.getProperty("user.home");
         term.read("cd ~/docs");
@@ -649,7 +649,7 @@ public class ViModeTest {
     public void testNonIncrementalReverseSearch() {
         EditMode editMode = EditModeBuilder.builder(EditMode.Mode.VI)
                 .addAction(Key.CTRL_G.getKeyValues(), "non-incremental-reverse-search-history")
-                .create();
+                .build();
         TestReadlineConnection term = new TestReadlineConnection(editMode);
         term.read("echo hello\n");
         term.assertLine("echo hello");
@@ -672,7 +672,7 @@ public class ViModeTest {
     public void testNonIncrementalForwardSearch() {
         EditMode editMode = EditModeBuilder.builder(EditMode.Mode.VI)
                 .addAction(Key.CTRL_G.getKeyValues(), "non-incremental-forward-search-history")
-                .create();
+                .build();
         TestReadlineConnection term = new TestReadlineConnection(editMode);
         term.read("echo hello\n");
         term.assertLine("echo hello");
@@ -695,7 +695,7 @@ public class ViModeTest {
     public void testNonIncrementalSearchCancel() {
         EditMode editMode = EditModeBuilder.builder(EditMode.Mode.VI)
                 .addAction(Key.CTRL_G.getKeyValues(), "non-incremental-reverse-search-history")
-                .create();
+                .build();
         TestReadlineConnection term = new TestReadlineConnection(editMode);
         term.read("echo hello\n");
         term.assertLine("echo hello");
@@ -713,7 +713,7 @@ public class ViModeTest {
         EditMode editMode = EditModeBuilder.builder(EditMode.Mode.VI)
                 .addAction(Key.CTRL_G.getKeyValues(), "beginning-of-history")
                 .addAction(Key.CTRL_X_CTRL_U.getKeyValues(), "end-of-history")
-                .create();
+                .build();
         TestReadlineConnection term = new TestReadlineConnection(editMode);
         term.read("first\n");
         term.assertLine("first");

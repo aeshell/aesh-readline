@@ -42,13 +42,13 @@ public class InputrcParserTest {
                         Config.isOSPOSIXCompatible() ? new File("src/test/resources/inputrc1")
                                 : new File("src\\test\\resources\\inputrc1")));
 
-        assertEquals("vi", editMode.variableValue(Variable.EDITING_MODE));
+        assertEquals("vi", editMode.variable(Variable.EDITING_MODE).orElse(null));
 
-        assertEquals("visible", editMode.variableValue(Variable.BELL_STYLE));
+        assertEquals("visible", editMode.variable(Variable.BELL_STYLE).orElse(null));
 
-        assertEquals(300, Integer.parseInt(editMode.variableValue(Variable.HISTORY_SIZE)));
+        assertEquals(300, Integer.parseInt(editMode.variable(Variable.HISTORY_SIZE).orElse("0")));
 
-        assertEquals("on", editMode.variableValue(Variable.DISABLE_COMPLETION));
+        assertEquals("on", editMode.variable(Variable.DISABLE_COMPLETION).orElse(null));
 
     }
 
@@ -56,7 +56,7 @@ public class InputrcParserTest {
     public void testParseInputrc2() throws IOException {
         if (Config.isOSPOSIXCompatible()) { //TODO: must fix this for windows
 
-            EditMode editMode = EditModeBuilder.builder().create();
+            EditMode editMode = EditModeBuilder.builder().build();
             ActionDecoder actionQueue = new ActionDecoder();
             actionQueue.add(new int[] { 27, 91, 68 });
             Assert.assertEquals("backward-char", editMode.parse(actionQueue.next()).name());

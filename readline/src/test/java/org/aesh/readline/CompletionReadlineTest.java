@@ -45,7 +45,7 @@ public class CompletionReadlineTest {
         completions.add(co -> {
             if (co.getBuffer().equals("bar")) {
                 co.addCompletionCandidate("barfoo");
-                co.doAppendSeparator(false);
+                co.setAppendSeparator(false);
             }
         });
 
@@ -171,12 +171,12 @@ public class CompletionReadlineTest {
         completions.add(co -> {
             if (co.getBuffer().trim().endsWith("1")) {
                 co.addCompletionCandidate(completionWord);
-                co.doAppendSeparator(false);
+                co.setAppendSeparator(false);
                 co.setIgnoreOffset(true);
             } else {
                 co.addCompletionCandidate(completionWord);
                 co.setIgnoreOffset(true);
-                co.doAppendSeparator(true);
+                co.setAppendSeparator(true);
             }
         });
 

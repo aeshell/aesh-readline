@@ -20,6 +20,7 @@
 package org.aesh.readline.editing;
 
 import java.util.Arrays;
+import java.util.Optional;
 
 import org.aesh.readline.action.Action;
 import org.aesh.terminal.Device;
@@ -92,11 +93,23 @@ public interface EditMode {
     void addVariable(Variable variable, String value);
 
     /**
+     * Get the value of a variable, wrapped in an Optional.
+     *
+     * @param variable the variable to look up
+     * @return an Optional containing the variable value, or empty if not set
+     */
+    default Optional<String> variable(Variable variable) {
+        return Optional.ofNullable(variableValue(variable));
+    }
+
+    /**
      * Get the value of a variable.
      *
      * @param variable the variable to look up
      * @return the variable's value, or null if not set
+     * @deprecated Use {@link #variable(Variable)} instead which returns Optional&lt;String&gt;.
      */
+    @Deprecated
     String variableValue(Variable variable);
 
     /**

@@ -36,6 +36,10 @@ import org.aesh.terminal.utils.WcWidth;
  * Buffer to keep track of text and cursor position in the console.
  * Is using ANSI-codes to clear text and move cursor in the terminal.
  *
+ * @apiNote This class is an internal implementation detail of the readline library
+ *          and is not intended for use by external consumers. It may change without notice
+ *          in future releases.
+ *
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public final class Buffer {

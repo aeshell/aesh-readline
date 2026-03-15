@@ -921,6 +921,61 @@ public class ANSIBuilder {
     }
 
     /**
+     * Sets the foreground text color using {@link org.aesh.terminal.formatting.Color}.
+     *
+     * @param color the formatting color to use for text
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder text(org.aesh.terminal.formatting.Color color) {
+        return text(fromFormattingColor(color));
+    }
+
+    /**
+     * Sets the background color using {@link org.aesh.terminal.formatting.Color}.
+     *
+     * @param color the formatting color to use for background
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder bg(org.aesh.terminal.formatting.Color color) {
+        return bg(fromFormattingColor(color));
+    }
+
+    /**
+     * Converts a {@link org.aesh.terminal.formatting.Color} to the nested {@link Color} enum.
+     *
+     * @param color the formatting color to convert
+     * @return the corresponding nested Color enum value
+     */
+    @SuppressWarnings("deprecation")
+    private static Color fromFormattingColor(org.aesh.terminal.formatting.Color color) {
+        if (color == null) {
+            return null;
+        }
+        switch (color) {
+            case BLACK:
+                return Color.BLACK;
+            case RED:
+                return Color.RED;
+            case GREEN:
+                return Color.GREEN;
+            case YELLOW:
+                return Color.YELLOW;
+            case BLUE:
+                return Color.BLUE;
+            case MAGENTA:
+                return Color.MAGENTA;
+            case CYAN:
+                return Color.CYAN;
+            case WHITE:
+                return Color.WHITE;
+            case DEFAULT:
+                return Color.DEFAULT;
+            default:
+                return Color.DEFAULT;
+        }
+    }
+
+    /**
      * Sets foreground text color to black.
      *
      * @return this builder for method chaining
@@ -2445,7 +2500,10 @@ public class ANSIBuilder {
 
     /**
      * Enumeration of ANSI color codes for text and background colors.
+     *
+     * @deprecated Use {@link org.aesh.terminal.formatting.Color} instead.
      */
+    @Deprecated
     public enum Color {
         /** Black color. */
         BLACK(0),

@@ -53,7 +53,7 @@ public class CompleteOperationImpl implements CompleteOperation {
     public CompleteOperationImpl(String buffer, int cursor) {
         setCursor(cursor);
         setSeparator(' ');
-        doAppendSeparator(true);
+        setAppendSeparator(true);
         completionCandidates = new ArrayList<>();
         setBuffer(buffer);
     }
@@ -137,8 +137,14 @@ public class CompleteOperationImpl implements CompleteOperation {
         this.ignoreOffset = ignoreOffset;
     }
 
+    @Deprecated
     @Override
     public boolean doIgnoreOffset() {
+        return ignoreOffset;
+    }
+
+    @Override
+    public boolean isIgnoreOffset() {
         return ignoreOffset;
     }
 
@@ -169,8 +175,14 @@ public class CompleteOperationImpl implements CompleteOperation {
      *
      * @return appendSeparator
      */
+    @Deprecated
     @Override
     public boolean hasAppendSeparator() {
+        return appendSeparator;
+    }
+
+    @Override
+    public boolean isAppendSeparator() {
         return appendSeparator;
     }
 
@@ -180,8 +192,14 @@ public class CompleteOperationImpl implements CompleteOperation {
      *
      * @param appendSeparator appendSeparator
      */
+    @Deprecated
     @Override
     public void doAppendSeparator(boolean appendSeparator) {
+        this.appendSeparator = appendSeparator;
+    }
+
+    @Override
+    public void setAppendSeparator(boolean appendSeparator) {
         this.appendSeparator = appendSeparator;
     }
 
@@ -299,8 +317,14 @@ public class CompleteOperationImpl implements CompleteOperation {
         this.ignoreStartsWith = ignoreStartsWith;
     }
 
+    @Deprecated
     @Override
     public boolean doIgnoreNonEscapedSpace() {
+        return ignoreNonEscapedSpace;
+    }
+
+    @Override
+    public boolean isIgnoreNonEscapedSpace() {
         return ignoreNonEscapedSpace;
     }
 

@@ -33,8 +33,8 @@ public class SSHTtyCommandTest {
     public void runCommandViaSSHTest() {
         // Configura il server SSH (basato su SshShellExample)
         NettySshTtyBootstrap bootstrap = new NettySshTtyBootstrap()
-                .setPort(5000)
-                .setHost("localhost");
+                .port(5000)
+                .host("localhost");
         try {
 
             bootstrap.start(new ShellExample()).get(10, TimeUnit.SECONDS);
