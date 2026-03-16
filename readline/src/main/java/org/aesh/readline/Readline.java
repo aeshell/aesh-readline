@@ -350,7 +350,7 @@ public class Readline {
             this.conn = conn;
             this.requestHandler = requestHandler;
             this.preProcessors = preProcessors;
-            attributes = conn.getAttributes();
+            attributes = conn.attributes();
             this.flags = flags;
         }
 
@@ -361,7 +361,7 @@ public class Readline {
             conn.setSignalHandler(prevSignalHandler);
             synchronized (Readline.this) {
                 if (graphemeClusterModeActive) {
-                    conn.disableGraphemeClusterMode();
+                    conn.terminal().disableGraphemeClusterMode();
                     graphemeClusterModeActive = false;
                 }
                 //revert back to the old attributes
@@ -385,16 +385,16 @@ public class Readline {
                     paused = true;
                 }
                 if (synchronizedOutputSupported)
-                    conn.enableSynchronizedOutput();
+                    conn.terminal().enableSynchronizedOutput();
                 action.accept(this);
                 if (synchronizedOutputSupported)
-                    conn.disableSynchronizedOutput();
+                    conn.terminal().disableSynchronizedOutput();
                 editMode.setPrevKey(event);
                 if (this.returnValue() != null) {
                     consoleBuffer.clearGhostText();
                     conn.stdoutHandler().accept(Config.CR);
                     if (shellIntegrationEnabled)
-                        conn.writeCommandStart();
+                        conn.terminal().writeCommandStart();
                     finish(this.returnValue());
                 } else {
                     showGhostTextIfApplicable();
@@ -432,9 +432,9 @@ public class Readline {
          * Make a copy of Connection's current handlers and then use our own.
          */
         private void start() {
-            prevReadHandler = conn.getStdinHandler();
-            prevSizeHandler = conn.getSizeHandler();
-            prevSignalHandler = conn.getSignalHandler();
+            prevReadHandler = conn.stdinHandler();
+            prevSizeHandler = conn.sizeHandler();
+            prevSignalHandler = conn.signalHandler();
 
             //we've made a backup of the current signal handler
             conn.setSignalHandler(signal -> {
@@ -461,7 +461,7 @@ public class Readline {
                             conn.enterRawMode();
                             // Re-enable Mode 2027 since terminal modes are lost during suspension
                             if (graphemeClusterModeActive) {
-                                conn.enableGraphemeClusterMode();
+                                conn.terminal().enableGraphemeClusterMode();
                             }
                             //just call resize since it will redraw the buffer and set size
                             resize(conn.size());
@@ -488,41 +488,41 @@ public class Readline {
 
             // Enable Mode 2027 for terminals that support grapheme cluster segmentation
             if (!flags.containsKey(ReadlineFlag.NO_GRAPHEME_CLUSTER_MODE)
-                    && conn.supportsGraphemeClusterMode()) {
-                conn.enableGraphemeClusterMode();
+                    && conn.terminal().supportsGraphemeClusterMode()) {
+                conn.terminal().enableGraphemeClusterMode();
                 graphemeClusterModeActive = true;
             }
 
             // Detect Mode 2026 (synchronized output) support
             if (!flags.containsKey(ReadlineFlag.NO_SYNCHRONIZED_OUTPUT)
-                    && conn.supportsSynchronizedOutput()) {
+                    && conn.terminal().supportsSynchronizedOutput()) {
                 synchronizedOutputSupported = true;
             }
 
             // Detect OSC 133 shell integration support
             if (!flags.containsKey(ReadlineFlag.NO_SHELL_INTEGRATION)
-                    && conn.supportsShellIntegration()) {
+                    && conn.terminal().supportsShellIntegration()) {
                 shellIntegrationEnabled = true;
             }
 
             // Wire OSC 52 clipboard writes for kill/copy actions
             if (!flags.containsKey(ReadlineFlag.NO_CLIPBOARD)
-                    && conn.supportsClipboard()) {
+                    && conn.terminal().supportsClipboard()) {
                 consoleBuffer.pasteManager().setClipboardWriter(codePoints -> {
-                    conn.writeClipboard(new String(codePoints, 0, codePoints.length));
+                    conn.terminal().writeClipboard(new String(codePoints, 0, codePoints.length));
                 });
             }
 
             //last, display prompt
             if (shellIntegrationEnabled)
-                conn.writePromptStart();
+                conn.terminal().writePromptStart();
             if (synchronizedOutputSupported)
-                conn.enableSynchronizedOutput();
+                conn.terminal().enableSynchronizedOutput();
             consoleBuffer.drawLine();
             if (synchronizedOutputSupported)
-                conn.disableSynchronizedOutput();
+                conn.terminal().disableSynchronizedOutput();
             if (shellIntegrationEnabled)
-                conn.writePromptEnd();
+                conn.terminal().writePromptEnd();
             //last process input, the readInput() can read/finish in one go
             //since EventDecoder might have queued up data
             conn.setStdinHandler(data -> {
@@ -536,7 +536,7 @@ public class Readline {
         private void resize(Size size) {
             //redraw the buffer when we resize
             if (synchronizedOutputSupported)
-                conn.enableSynchronizedOutput();
+                conn.terminal().enableSynchronizedOutput();
             if (inputProcessor.consoleBuffer.buffer().length() > 0) {
                 int[] buffer = inputProcessor.buffer().buffer().multiLine();
                 inputProcessor.consoleBuffer.setSize(size);
@@ -544,7 +544,7 @@ public class Readline {
             } else
                 inputProcessor.consoleBuffer.setSize(size);
             if (synchronizedOutputSupported)
-                conn.disableSynchronizedOutput();
+                conn.terminal().disableSynchronizedOutput();
         }
 
         @Override

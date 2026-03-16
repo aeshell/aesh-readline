@@ -332,7 +332,7 @@ public class ShellExample implements Consumer<Connection> {
             @Override
             public void execute(Connection conn, List<String> args) throws Exception {
                 conn.write("cursor position is: ");
-                Point p = conn.getCursorPosition();
+                Point p = conn.terminal().getCursorPosition();
                 conn.write(p.toString() + Config.getLineSeparator());
             }
 

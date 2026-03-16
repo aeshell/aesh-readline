@@ -34,7 +34,7 @@ import org.aesh.terminal.tty.Size;
 import org.junit.Test;
 
 /**
- * Tests for the Connection.queryOsc() method and related color query methods.
+ * Tests for the TerminalFeatures.queryOsc() method and related color query methods.
  * These tests verify that OSC queries work correctly and responses are captured
  * properly (addressing issue #94).
  *
@@ -62,7 +62,7 @@ public class ConnectionOscQueryTest {
         };
 
         // Trigger a query (will timeout since no response)
-        connection.queryOsc(10, "?", 50, input -> null);
+        connection.terminal().queryOsc(10, "?", 50, input -> null);
 
         assertEquals(1, sentQueries.size());
         assertEquals("\u001B]10;?\u0007", sentQueries.get(0));
@@ -97,7 +97,7 @@ public class ConnectionOscQueryTest {
         queryStarted.countDown();
 
         // Query foreground color
-        int[] rgb = connection.queryForegroundColor(500);
+        int[] rgb = connection.terminal().queryForegroundColor(500);
 
         responseThread.join(1000);
 
@@ -130,7 +130,7 @@ public class ConnectionOscQueryTest {
         responseThread.start();
 
         queryStarted.countDown();
-        int[] rgb = connection.queryBackgroundColor(500);
+        int[] rgb = connection.terminal().queryBackgroundColor(500);
         responseThread.join(1000);
 
         assertNotNull("queryBackgroundColor should return the parsed RGB values", rgb);
@@ -160,7 +160,7 @@ public class ConnectionOscQueryTest {
         responseThread.start();
 
         queryStarted.countDown();
-        int[] rgb = connection.queryCursorColor(500);
+        int[] rgb = connection.terminal().queryCursorColor(500);
         responseThread.join(1000);
 
         assertNotNull("queryCursorColor should return the parsed RGB values", rgb);
@@ -177,7 +177,7 @@ public class ConnectionOscQueryTest {
         MockConnection connection = new MockConnection();
 
         long start = System.currentTimeMillis();
-        int[] rgb = connection.queryForegroundColor(100);
+        int[] rgb = connection.terminal().queryForegroundColor(100);
         long elapsed = System.currentTimeMillis() - start;
 
         assertNull("Should return null when no response received", rgb);
@@ -216,7 +216,7 @@ public class ConnectionOscQueryTest {
         responseThread.start();
 
         queryStarted.countDown();
-        int[] rgb = connection.queryForegroundColor(500);
+        int[] rgb = connection.terminal().queryForegroundColor(500);
         responseThread.join(1000);
 
         assertNotNull("Query should succeed", rgb);
@@ -250,7 +250,7 @@ public class ConnectionOscQueryTest {
         queryStarted.countDown();
 
         // Query OSC 52 (clipboard) with custom parser
-        String result = connection.queryOsc(52, "c;?", 500, input -> {
+        String result = connection.terminal().queryOsc(52, "c;?", 500, input -> {
             StringBuilder sb = new StringBuilder();
             for (int cp : input) {
                 sb.appendCodePoint(cp);
@@ -296,7 +296,7 @@ public class ConnectionOscQueryTest {
         }
 
         @Override
-        public Consumer<Size> getSizeHandler() {
+        public Consumer<Size> sizeHandler() {
             return sizeHandler;
         }
 
@@ -306,7 +306,7 @@ public class ConnectionOscQueryTest {
         }
 
         @Override
-        public Consumer<Signal> getSignalHandler() {
+        public Consumer<Signal> signalHandler() {
             return signalHandler;
         }
 
@@ -316,7 +316,7 @@ public class ConnectionOscQueryTest {
         }
 
         @Override
-        public Consumer<int[]> getStdinHandler() {
+        public Consumer<int[]> stdinHandler() {
             return stdinHandler;
         }
 
@@ -342,7 +342,7 @@ public class ConnectionOscQueryTest {
         }
 
         @Override
-        public Consumer<Void> getCloseHandler() {
+        public Consumer<Void> closeHandler() {
             return closeHandler;
         }
 
@@ -372,7 +372,7 @@ public class ConnectionOscQueryTest {
         }
 
         @Override
-        public Attributes getAttributes() {
+        public Attributes attributes() {
             return attributes;
         }
 

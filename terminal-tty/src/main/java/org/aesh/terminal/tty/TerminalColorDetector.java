@@ -32,6 +32,7 @@ import org.aesh.terminal.Attributes;
 import org.aesh.terminal.Connection;
 import org.aesh.terminal.Device;
 import org.aesh.terminal.Terminal;
+import org.aesh.terminal.TerminalFeatures;
 import org.aesh.terminal.tty.utils.ColorUtils;
 import org.aesh.terminal.utils.ANSI;
 import org.aesh.terminal.utils.CodePointUtils;
@@ -60,7 +61,7 @@ import org.aesh.terminal.utils.TerminalTheme;
  * </ul>
  * <p>
  * The detector supports caching to avoid repeated detection overhead.
- * Use {@link #detectCached(Connection)} for cached detection.
+ * Use {@link #detectCached(TerminalFeatures)} for cached detection.
  *
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
@@ -90,16 +91,16 @@ public final class TerminalColorDetector {
     /**
      * Detect terminal color capabilities using cached result if available.
      *
-     * @param connection the terminal connection
+     * @param terminal the terminal features
      * @return detected color capabilities (may be cached)
      */
-    public static TerminalColorCapability detectCached(Connection connection) {
+    public static TerminalColorCapability detectCached(TerminalFeatures terminal) {
         TerminalColorCapability cached = cachedCapability;
         if (cached != null) {
             return cached;
         }
 
-        TerminalColorCapability result = detect(connection);
+        TerminalColorCapability result = detect(terminal);
         cachedCapability = result;
         return result;
     }
@@ -123,42 +124,42 @@ public final class TerminalColorDetector {
     /**
      * Detect terminal color capabilities using a fast OSC query (FG + BG only).
      *
-     * @param connection the terminal connection
+     * @param terminal the terminal features
      * @return detected color capabilities
      */
-    public static TerminalColorCapability detect(Connection connection) {
-        return detect(connection, true);
+    public static TerminalColorCapability detect(TerminalFeatures terminal) {
+        return detect(terminal, true);
     }
 
     /**
      * Detect terminal color capabilities.
      *
-     * @param connection the terminal connection
+     * @param terminal the terminal features
      * @param queryTerminal if true, send OSC queries to the terminal
      * @return detected color capabilities
      */
-    public static TerminalColorCapability detect(Connection connection, boolean queryTerminal) {
-        return doDetect(connection, queryTerminal, false);
+    public static TerminalColorCapability detect(TerminalFeatures terminal, boolean queryTerminal) {
+        return doDetect(terminal, queryTerminal, false);
     }
 
     /**
      * Detect terminal color capabilities including cursor and all 16 palette colors.
      *
-     * @param connection the terminal connection
+     * @param terminal the terminal features
      * @return detected color capabilities including palette colors
      */
-    public static TerminalColorCapability detectFull(Connection connection) {
-        return doDetect(connection, true, true);
+    public static TerminalColorCapability detectFull(TerminalFeatures terminal) {
+        return doDetect(terminal, true, true);
     }
 
     /**
      * Get a fast, non-blocking color capability based only on environment detection.
      *
-     * @param connection the terminal connection (may be null)
+     * @param terminal the terminal features (may be null)
      * @return detected color capabilities
      */
-    public static TerminalColorCapability detectFast(Connection connection) {
-        ColorDepth depth = detectColorDepth(connection);
+    public static TerminalColorCapability detectFast(TerminalFeatures terminal) {
+        ColorDepth depth = detectColorDepth(terminal);
         TerminalTheme theme = detectThemeFromEnvironment();
         return new TerminalColorCapability(depth, theme);
     }
@@ -166,10 +167,10 @@ public final class TerminalColorDetector {
     /**
      * Detect only the color depth without querying the terminal for colors.
      *
-     * @param connection the terminal connection
+     * @param terminal the terminal features
      * @return the detected color depth
      */
-    public static ColorDepth detectColorDepth(Connection connection) {
+    public static ColorDepth detectColorDepth(TerminalFeatures terminal) {
         TerminalEnvironment env = TerminalEnvironment.getInstance();
 
         // Check environment variables for true color support
@@ -228,8 +229,8 @@ public final class TerminalColorDetector {
         }
 
         // Check terminfo max_colors capability
-        if (connection != null && connection.device() != null) {
-            Device device = connection.device();
+        if (terminal != null && terminal.connection().device() != null) {
+            Device device = terminal.connection().device();
             Integer maxColors = device.getNumericCapability(Capability.max_colors);
             if (maxColors != null) {
                 return ColorDepth.fromColorCount(maxColors);
@@ -237,7 +238,7 @@ public final class TerminalColorDetector {
         }
 
         // Default to 8 colors if ANSI is supported
-        if (connection != null && connection.supportsAnsi()) {
+        if (terminal != null && terminal.connection().supportsAnsi()) {
             return ColorDepth.COLORS_8;
         }
 
@@ -313,17 +314,21 @@ public final class TerminalColorDetector {
     /**
      * Query terminal color capabilities using synchronous I/O.
      *
-     * @param connection the terminal connection (must be a TerminalConnection)
+     * @param terminal the terminal features (must wrap a TerminalConnection)
      * @param timeoutMs timeout in milliseconds to wait for all responses
      * @return TerminalColorCapability with detected colors, or null if not supported
      */
-    public static TerminalColorCapability queryColorCapability(TerminalConnection connection, long timeoutMs) {
-        if (connection == null || !connection.supportsAnsi()) {
+    public static TerminalColorCapability queryColorCapability(TerminalFeatures terminal, long timeoutMs) {
+        if (terminal == null || !terminal.connection().supportsAnsi()) {
             return null;
         }
 
-        Terminal terminal = connection.getTerminal();
-        if (terminal == null) {
+        if (!(terminal.connection() instanceof TerminalConnection)) {
+            return null;
+        }
+
+        Terminal rawTerminal = ((TerminalConnection) terminal.connection()).getTerminal();
+        if (rawTerminal == null) {
             return null;
         }
 
@@ -338,20 +343,20 @@ public final class TerminalColorDetector {
         boolean canUseTmuxPassthrough = shouldUseTmuxPassthrough(env);
 
         if (!inTmux) {
-            Device device = connection.device();
+            Device device = terminal.connection().device();
             if (device != null && !device.supportsOscQueries()) {
                 LOGGER.log(Level.FINE, "OSC queries not supported by device");
                 return null;
             }
         }
 
-        boolean supportsCursor = inTmux || connection.supportsOscCode(Device.OscCode.CURSOR_COLOR);
-        boolean supportsPalette = inTmux || connection.supportsPaletteQuery();
+        boolean supportsCursor = inTmux || terminal.supportsOscCode(Device.OscCode.CURSOR_COLOR);
+        boolean supportsPalette = inTmux || terminal.supportsPaletteQuery();
 
         // Try CSI ? 996 n for direct theme detection first
         TerminalTheme dsrTheme = null;
-        if (connection.supportsThemeQuery()) {
-            dsrTheme = queryThemeDsr(connection, Math.min(timeoutMs, FAST_TIMEOUT_MS));
+        if (terminal.supportsThemeQuery()) {
+            dsrTheme = queryThemeDsr(terminal, Math.min(timeoutMs, FAST_TIMEOUT_MS));
             if (dsrTheme != null) {
                 LOGGER.log(Level.FINE, "Theme detected via CSI ? 996 n: " + dsrTheme);
             }
@@ -359,7 +364,7 @@ public final class TerminalColorDetector {
 
         LOGGER.log(Level.FINE, "Trying plain OSC color query");
         TerminalColorCapability result = doSynchronousColorQuery(
-                connection, terminal, timeoutMs, supportsCursor, supportsPalette, false);
+                terminal, rawTerminal, timeoutMs, supportsCursor, supportsPalette, false);
 
         boolean needPalettePassthrough = inTmux && canUseTmuxPassthrough && supportsPalette
                 && (result == null || result.getPaletteColors() == null || result.getPaletteColors().isEmpty());
@@ -367,7 +372,7 @@ public final class TerminalColorDetector {
         if (needPalettePassthrough) {
             LOGGER.log(Level.FINE, "Trying tmux DCS passthrough for palette colors");
             TerminalColorCapability paletteResult = doSynchronousColorQuery(
-                    connection, terminal, timeoutMs / 2, false, true, true);
+                    terminal, rawTerminal, timeoutMs / 2, false, true, true);
 
             if (paletteResult != null && paletteResult.getPaletteColors() != null
                     && !paletteResult.getPaletteColors().isEmpty()) {
@@ -388,7 +393,7 @@ public final class TerminalColorDetector {
             if (inTmux && canUseTmuxPassthrough) {
                 LOGGER.log(Level.FINE, "Trying tmux DCS passthrough for all colors");
                 result = doSynchronousColorQuery(
-                        connection, terminal, timeoutMs, supportsCursor, supportsPalette, true);
+                        terminal, rawTerminal, timeoutMs, supportsCursor, supportsPalette, true);
             }
         }
 
@@ -413,20 +418,20 @@ public final class TerminalColorDetector {
     /**
      * Fast query for theme-relevant colors only (foreground and background).
      *
-     * @param connection the terminal connection
+     * @param terminal the terminal features
      * @param timeoutMs timeout in milliseconds
      * @return TerminalColorCapability with FG/BG colors, or null if not supported
      */
-    public static TerminalColorCapability queryThemeColors(Connection connection, long timeoutMs) {
-        if (connection == null || !connection.supportsAnsi()) {
+    public static TerminalColorCapability queryThemeColors(TerminalFeatures terminal, long timeoutMs) {
+        if (terminal == null || !terminal.connection().supportsAnsi()) {
             return null;
         }
 
-        Terminal terminal = null;
-        if (connection instanceof TerminalConnection) {
-            terminal = ((TerminalConnection) connection).getTerminal();
+        Terminal rawTerminal = null;
+        if (terminal.connection() instanceof TerminalConnection) {
+            rawTerminal = ((TerminalConnection) terminal.connection()).getTerminal();
         }
-        if (terminal == null) {
+        if (rawTerminal == null) {
             return null;
         }
 
@@ -439,7 +444,7 @@ public final class TerminalColorDetector {
         boolean inTmux = env.isInTmux();
 
         if (!inTmux) {
-            Device device = connection.device();
+            Device device = terminal.connection().device();
             if (device != null && !device.supportsOscQueries()) {
                 return null;
             }
@@ -447,13 +452,13 @@ public final class TerminalColorDetector {
 
         LOGGER.log(Level.FINE, "Trying fast OSC color query (FG+BG only)");
         TerminalColorCapability result = doSynchronousColorQuery(
-                connection, terminal, timeoutMs, false, false, false);
+                terminal, rawTerminal, timeoutMs, false, false, false);
 
         if (result == null || !hasColors(result)) {
             if (inTmux && shouldUseTmuxPassthrough(env)) {
                 LOGGER.log(Level.FINE, "Trying tmux DCS passthrough for FG+BG");
                 result = doSynchronousColorQuery(
-                        connection, terminal, timeoutMs, false, false, true);
+                        terminal, rawTerminal, timeoutMs, false, false, true);
             }
         }
 
@@ -463,74 +468,74 @@ public final class TerminalColorDetector {
     /**
      * Query foreground, background, and cursor colors in a single batch operation.
      *
-     * @param connection the terminal connection
+     * @param terminal the terminal features
      * @param timeoutMs timeout in milliseconds to wait for all responses
      * @return map from OSC code to RGB array [r, g, b] (0-255 each)
      */
-    public static Map<Integer, int[]> queryColors(Connection connection, long timeoutMs) {
-        if (connection == null) {
+    public static Map<Integer, int[]> queryColors(TerminalFeatures terminal, long timeoutMs) {
+        if (terminal == null) {
             return Collections.emptyMap();
         }
 
-        if (!isOscColorQuerySupported(connection)) {
+        if (!isOscColorQuerySupported(terminal)) {
             LOGGER.log(Level.FINE, "OSC color queries not supported, returning empty result");
             return Collections.emptyMap();
         }
 
-        return connection.queryColors(timeoutMs);
+        return terminal.queryColors(timeoutMs);
     }
 
     /**
      * Query multiple palette colors in a single batch operation.
      *
-     * @param connection the terminal connection
+     * @param terminal the terminal features
      * @param timeoutMs timeout in milliseconds to wait for all responses
      * @param indices the palette color indices to query (0-255)
      * @return map from palette index to RGB array [r, g, b] (0-255 each)
      */
-    public static Map<Integer, int[]> queryPaletteColors(Connection connection, long timeoutMs, int... indices) {
-        if (connection == null) {
+    public static Map<Integer, int[]> queryPaletteColors(TerminalFeatures terminal, long timeoutMs, int... indices) {
+        if (terminal == null) {
             return Collections.emptyMap();
         }
 
-        if (!connection.supportsPaletteQuery()) {
+        if (!terminal.supportsPaletteQuery()) {
             LOGGER.log(Level.FINE, "OSC 4 palette queries not supported");
             return Collections.emptyMap();
         }
 
-        return connection.queryPaletteColors(timeoutMs, indices);
+        return terminal.queryPaletteColors(timeoutMs, indices);
     }
 
     /**
      * Query the ANSI 16-color palette (colors 0-15) in a single batch operation.
      *
-     * @param connection the terminal connection
+     * @param terminal the terminal features
      * @param timeoutMs timeout in milliseconds to wait for all responses
      * @return map from palette index (0-15) to RGB array [r, g, b] (0-255 each)
      */
-    public static Map<Integer, int[]> queryAnsi16Colors(Connection connection, long timeoutMs) {
-        if (connection == null) {
+    public static Map<Integer, int[]> queryAnsi16Colors(TerminalFeatures terminal, long timeoutMs) {
+        if (terminal == null) {
             return Collections.emptyMap();
         }
 
-        if (!connection.supportsPaletteQuery()) {
+        if (!terminal.supportsPaletteQuery()) {
             LOGGER.log(Level.FINE, "OSC 4 palette queries not supported");
             return Collections.emptyMap();
         }
 
-        return connection.queryAnsi16Colors(timeoutMs);
+        return terminal.queryAnsi16Colors(timeoutMs);
     }
 
     /**
      * Query colors with automatic fallback to environment-based detection.
      *
-     * @param connection the terminal connection
+     * @param terminal the terminal features
      * @param timeoutMs timeout in milliseconds for OSC queries
      * @return map from OSC code to RGB array; always contains at least
      *         estimated foreground and background colors
      */
-    public static Map<Integer, int[]> queryColorsWithFallback(Connection connection, long timeoutMs) {
-        Map<Integer, int[]> results = queryColors(connection, timeoutMs);
+    public static Map<Integer, int[]> queryColorsWithFallback(TerminalFeatures terminal, long timeoutMs) {
+        Map<Integer, int[]> results = queryColors(terminal, timeoutMs);
 
         if (!results.isEmpty()) {
             return results;
@@ -555,11 +560,11 @@ public final class TerminalColorDetector {
     /**
      * Check if the terminal likely supports OSC color queries.
      *
-     * @param connection the terminal connection to check
+     * @param terminal the terminal features to check
      * @return true if OSC color queries are likely supported
      */
-    public static boolean isOscColorQuerySupported(Connection connection) {
-        return connection != null && connection.supportsColorQuery();
+    public static boolean isOscColorQuerySupported(TerminalFeatures terminal) {
+        return terminal != null && terminal.supportsColorQuery();
     }
 
     /**
@@ -574,20 +579,20 @@ public final class TerminalColorDetector {
 
     // ==================== Internal Methods ====================
 
-    private static TerminalColorCapability doDetect(Connection connection, boolean queryTerminal,
+    private static TerminalColorCapability doDetect(TerminalFeatures terminal, boolean queryTerminal,
             boolean fullDetection) {
-        ColorDepth colorDepth = detectColorDepth(connection);
+        ColorDepth colorDepth = detectColorDepth(terminal);
         TerminalTheme theme = TerminalTheme.UNKNOWN;
         int[] foregroundRGB = null;
         int[] backgroundRGB = null;
         int[] cursorRGB = null;
         Map<Integer, int[]> paletteColors = null;
 
-        if (queryTerminal && connection != null && connection.supportsAnsi()) {
+        if (queryTerminal && terminal != null && terminal.connection().supportsAnsi()) {
             // Try CSI ? 996 n theme DSR first — it's faster and simpler than OSC 10/11
-            if (connection.supportsThemeQuery()) {
+            if (terminal.supportsThemeQuery()) {
                 try {
-                    TerminalTheme dsrTheme = queryThemeDsr(connection, FAST_TIMEOUT_MS);
+                    TerminalTheme dsrTheme = queryThemeDsr(terminal, FAST_TIMEOUT_MS);
                     if (dsrTheme != null) {
                         theme = dsrTheme;
                         LOGGER.log(Level.FINE, "Theme detected via CSI ? 996 n: " + theme);
@@ -602,9 +607,9 @@ public final class TerminalColorDetector {
                 long timeoutMs = fullDetection ? DEFAULT_TIMEOUT_MS : FAST_TIMEOUT_MS;
                 TerminalColorCapability queryResult;
                 if (fullDetection) {
-                    queryResult = connection.queryColorCapability(timeoutMs);
+                    queryResult = queryColorCapability(terminal, timeoutMs);
                 } else {
-                    queryResult = queryThemeColors(connection, timeoutMs);
+                    queryResult = queryThemeColors(terminal, timeoutMs);
                 }
                 if (queryResult != null) {
                     foregroundRGB = queryResult.getForegroundRGB();
@@ -616,7 +621,7 @@ public final class TerminalColorDetector {
                         theme = queryResult.getTheme();
                     }
 
-                    LOGGER.log(Level.FINE, "Queried colors via Connection: FG=" + (foregroundRGB != null) +
+                    LOGGER.log(Level.FINE, "Queried colors: FG=" + (foregroundRGB != null) +
                             ", BG=" + (backgroundRGB != null) + ", cursor=" + (cursorRGB != null) +
                             ", palette=" + (paletteColors != null ? paletteColors.size() : 0));
                 }
@@ -715,24 +720,26 @@ public final class TerminalColorDetector {
      * tmux, VTE 0.82.0+), this is faster than OSC 10/11 because it returns a
      * direct dark/light answer.
      *
-     * @param connection the terminal connection
+     * @param terminal the terminal features
      * @param timeoutMs timeout in milliseconds
      * @return {@link TerminalTheme#DARK} or {@link TerminalTheme#LIGHT},
      *         or null if not supported or timeout
      */
-    private static TerminalTheme queryThemeDsr(Connection connection, long timeoutMs) {
+    private static TerminalTheme queryThemeDsr(TerminalFeatures terminal, long timeoutMs) {
+        Connection connection = terminal.connection();
+
         if (!(connection instanceof TerminalConnection)) {
             // For non-TerminalConnection, try the handler-based approach
-            return connection.queryThemeMode(timeoutMs);
+            return terminal.queryThemeMode(timeoutMs);
         }
 
         TerminalConnection termConn = (TerminalConnection) connection;
-        Terminal terminal = termConn.getTerminal();
-        if (terminal == null) {
+        Terminal rawTerminal = termConn.getTerminal();
+        if (rawTerminal == null) {
             return null;
         }
 
-        Attributes savedAttributes = connection.getAttributes();
+        Attributes savedAttributes = connection.attributes();
         Attributes rawAttributes = new Attributes(savedAttributes);
         rawAttributes.setLocalFlags(
                 EnumSet.of(Attributes.LocalFlag.ICANON, Attributes.LocalFlag.ECHO),
@@ -742,7 +749,7 @@ public final class TerminalColorDetector {
         connection.setAttributes(rawAttributes);
 
         try {
-            InputStream input = terminal.input();
+            InputStream input = rawTerminal.input();
 
             // Drain any pending input
             while (input.available() > 0) {
@@ -751,7 +758,7 @@ public final class TerminalColorDetector {
 
             // Send CSI ? 996 n
             connection.write(ANSI.THEME_MODE_QUERY);
-            terminal.output().flush();
+            rawTerminal.output().flush();
 
             // Read response — expecting ESC [ ? 997 ; Ps n
             StringBuilder response = new StringBuilder();
@@ -804,7 +811,7 @@ public final class TerminalColorDetector {
     // ==================== Synchronous Color Query ====================
 
     private static TerminalColorCapability doSynchronousColorQuery(
-            Connection connection, Terminal terminal, long timeoutMs,
+            TerminalFeatures terminal, Terminal rawTerminal, long timeoutMs,
             boolean supportsCursor, boolean supportsPalette, boolean useDcsPassthrough) {
 
         int[] foregroundRGB = null;
@@ -812,7 +819,8 @@ public final class TerminalColorDetector {
         int[] cursorRGB = null;
         Map<Integer, int[]> paletteColors = null;
 
-        Attributes savedAttributes = connection.getAttributes();
+        Connection connection = terminal.connection();
+        Attributes savedAttributes = connection.attributes();
         Attributes rawAttributes = new Attributes(savedAttributes);
         rawAttributes.setLocalFlags(
                 EnumSet.of(Attributes.LocalFlag.ICANON, Attributes.LocalFlag.ECHO),
@@ -822,7 +830,7 @@ public final class TerminalColorDetector {
         connection.setAttributes(rawAttributes);
 
         try {
-            InputStream input = terminal.input();
+            InputStream input = rawTerminal.input();
 
             while (input.available() > 0) {
                 input.read();
@@ -831,7 +839,7 @@ public final class TerminalColorDetector {
             String combinedQuery = buildSyncColorQuery(supportsCursor, supportsPalette, useDcsPassthrough);
             connection.write(combinedQuery);
 
-            terminal.output().flush();
+            rawTerminal.output().flush();
 
             int expectedResponses = 2; // FG + BG
             if (supportsCursor)
@@ -900,7 +908,7 @@ public final class TerminalColorDetector {
             connection.setAttributes(savedAttributes);
         }
 
-        ColorDepth colorDepth = connection.getColorDepth();
+        ColorDepth colorDepth = terminal.colorDepth();
         TerminalTheme theme = TerminalTheme.UNKNOWN;
         if (backgroundRGB != null) {
             theme = TerminalTheme.fromRGB(backgroundRGB[0], backgroundRGB[1], backgroundRGB[2]);

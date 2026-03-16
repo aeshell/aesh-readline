@@ -100,7 +100,7 @@ public class TestTerminalConnection {
         // Replace Readline behavior: echo ^C when ECHOCTL is set, then send newline
         connection.setSignalHandler(signal -> {
             if (signal == Signal.INT) {
-                Attributes attr = connection.getAttributes();
+                Attributes attr = connection.attributes();
                 if (attr != null && attr.getLocalFlag(Attributes.LocalFlag.ECHOCTL))
                     connection.stdoutHandler().accept(new int[] { '^', 'C' });
                 connection.stdoutHandler().accept(Config.CR);

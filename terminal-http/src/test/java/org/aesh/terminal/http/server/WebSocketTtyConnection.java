@@ -119,7 +119,7 @@ public class WebSocketTtyConnection extends HttpTtyConnection {
 
     @Override
     public void close() {
-        Consumer<Void> closeHandler = getCloseHandler();
+        Consumer<Void> closeHandler = closeHandler();
         if (closeHandler != null) {
             closeHandler.accept(null);
         }

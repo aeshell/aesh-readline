@@ -96,7 +96,7 @@ public class ReadlineTest {
     public void testEmptyPrompt() {
         TestReadlineConnection term = new TestReadlineConnection(new Prompt(""));
         term.read("foo");
-        term.getSizeHandler().accept(new Size(80, 80));
+        term.sizeHandler().accept(new Size(80, 80));
 
         assertEquals("foofoo", term.getOutputBuffer());
     }

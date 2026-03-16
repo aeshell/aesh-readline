@@ -153,7 +153,7 @@ public class SynchronizedOutputTest {
             try {
                 // Wait until querySynchronizedOutput() installs its stdin handler
                 long deadline = System.currentTimeMillis() + 1000;
-                while (connection.getStdinHandler() == null && System.currentTimeMillis() < deadline) {
+                while (connection.stdinHandler() == null && System.currentTimeMillis() < deadline) {
                     Thread.sleep(5);
                 }
                 // Terminal responds: Mode 2026 is reset (recognized but disabled)
@@ -165,7 +165,7 @@ public class SynchronizedOutputTest {
         });
         responseThread.start();
 
-        Boolean result = connection.querySynchronizedOutput(500);
+        Boolean result = connection.terminal().querySynchronizedOutput(500);
         responseThread.join(1000);
 
         assertNotNull("Should get a response from terminal", result);
@@ -180,7 +180,7 @@ public class SynchronizedOutputTest {
             try {
                 // Wait until querySynchronizedOutput() installs its stdin handler
                 long deadline = System.currentTimeMillis() + 1000;
-                while (connection.getStdinHandler() == null && System.currentTimeMillis() < deadline) {
+                while (connection.stdinHandler() == null && System.currentTimeMillis() < deadline) {
                     Thread.sleep(5);
                 }
                 // Terminal responds: Mode 2026 is not recognized
@@ -192,7 +192,7 @@ public class SynchronizedOutputTest {
         });
         responseThread.start();
 
-        Boolean result = connection.querySynchronizedOutput(500);
+        Boolean result = connection.terminal().querySynchronizedOutput(500);
         responseThread.join(1000);
 
         assertNotNull("Should get a response from terminal", result);
@@ -204,7 +204,7 @@ public class SynchronizedOutputTest {
         MockConnection connection = new MockConnection();
 
         // No response simulated - should timeout
-        Boolean result = connection.querySynchronizedOutput(100);
+        Boolean result = connection.terminal().querySynchronizedOutput(100);
 
         assertNull("Should return null on timeout", result);
     }
@@ -225,7 +225,7 @@ public class SynchronizedOutputTest {
             }
         };
 
-        connection.enableSynchronizedOutput();
+        connection.terminal().enableSynchronizedOutput();
 
         assertFalse("Should have sent output", sentOutput.isEmpty());
         assertTrue("Should have sent Mode 2026 enable sequence",
@@ -248,7 +248,7 @@ public class SynchronizedOutputTest {
             }
         };
 
-        connection.disableSynchronizedOutput();
+        connection.terminal().disableSynchronizedOutput();
 
         assertFalse("Should have sent output", sentOutput.isEmpty());
         assertTrue("Should have sent Mode 2026 disable sequence",
@@ -265,7 +265,7 @@ public class SynchronizedOutputTest {
         };
 
         assertFalse("Should return false when device is null",
-                connection.supportsSynchronizedOutput());
+                connection.terminal().supportsSynchronizedOutput());
     }
 
     @Test
@@ -278,7 +278,7 @@ public class SynchronizedOutputTest {
         };
 
         assertFalse("Should return false when ANSI not supported",
-                connection.supportsSynchronizedOutput());
+                connection.terminal().supportsSynchronizedOutput());
     }
 
     // ==================== Mock Connection ====================
@@ -307,7 +307,7 @@ public class SynchronizedOutputTest {
         }
 
         @Override
-        public Consumer<Size> getSizeHandler() {
+        public Consumer<Size> sizeHandler() {
             return sizeHandler;
         }
 
@@ -317,7 +317,7 @@ public class SynchronizedOutputTest {
         }
 
         @Override
-        public Consumer<Signal> getSignalHandler() {
+        public Consumer<Signal> signalHandler() {
             return signalHandler;
         }
 
@@ -327,7 +327,7 @@ public class SynchronizedOutputTest {
         }
 
         @Override
-        public Consumer<int[]> getStdinHandler() {
+        public Consumer<int[]> stdinHandler() {
             return stdinHandler;
         }
 
@@ -353,7 +353,7 @@ public class SynchronizedOutputTest {
         }
 
         @Override
-        public Consumer<Void> getCloseHandler() {
+        public Consumer<Void> closeHandler() {
             return closeHandler;
         }
 
@@ -383,7 +383,7 @@ public class SynchronizedOutputTest {
         }
 
         @Override
-        public Attributes getAttributes() {
+        public Attributes attributes() {
             return attributes;
         }
 

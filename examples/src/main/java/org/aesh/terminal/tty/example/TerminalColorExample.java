@@ -94,12 +94,12 @@ public class TerminalColorExample {
 
         // Fast detect (FG+BG only, for theme detection)
         long fastStart = System.currentTimeMillis();
-        TerminalColorCapability fastCap = TerminalColorDetector.detect(connection);
+        TerminalColorCapability fastCap = TerminalColorDetector.detect(connection.terminal());
         long fastTime = System.currentTimeMillis() - fastStart;
 
         // Full detect (FG+BG+cursor+palette)
         long fullStart = System.currentTimeMillis();
-        TerminalColorCapability fullCap = TerminalColorDetector.detectFull(connection);
+        TerminalColorCapability fullCap = TerminalColorDetector.detectFull(connection.terminal());
         long fullTime = System.currentTimeMillis() - fullStart;
 
         // Create a single reusable ANSIBuilder with the detected capability

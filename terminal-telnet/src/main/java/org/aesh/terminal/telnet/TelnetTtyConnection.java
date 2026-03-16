@@ -232,7 +232,7 @@ public final class TelnetTtyConnection extends TelnetHandler implements Connecti
     }
 
     @Override
-    public Consumer<Size> getSizeHandler() {
+    public Consumer<Size> sizeHandler() {
         return sizeHandler;
     }
 
@@ -242,7 +242,7 @@ public final class TelnetTtyConnection extends TelnetHandler implements Connecti
     }
 
     @Override
-    public Consumer<Signal> getSignalHandler() {
+    public Consumer<Signal> signalHandler() {
         return eventDecoder.getSignalHandler();
     }
 
@@ -252,7 +252,7 @@ public final class TelnetTtyConnection extends TelnetHandler implements Connecti
     }
 
     @Override
-    public Consumer<int[]> getStdinHandler() {
+    public Consumer<int[]> stdinHandler() {
         return eventDecoder.getInputHandler();
     }
 
@@ -272,7 +272,7 @@ public final class TelnetTtyConnection extends TelnetHandler implements Connecti
     }
 
     @Override
-    public Consumer<Void> getCloseHandler() {
+    public Consumer<Void> closeHandler() {
         return closeHandler;
     }
 
@@ -308,7 +308,7 @@ public final class TelnetTtyConnection extends TelnetHandler implements Connecti
     }
 
     @Override
-    public Attributes getAttributes() {
+    public Attributes attributes() {
         return attributes;
     }
 

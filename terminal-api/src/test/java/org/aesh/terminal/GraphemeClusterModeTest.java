@@ -148,7 +148,7 @@ public class GraphemeClusterModeTest {
         responseThread.start();
 
         queryStarted.countDown();
-        Boolean result = connection.queryGraphemeClusterMode(500);
+        Boolean result = connection.terminal().queryGraphemeClusterMode(500);
         responseThread.join(1000);
 
         assertNotNull("Should get a response from terminal", result);
@@ -174,7 +174,7 @@ public class GraphemeClusterModeTest {
         responseThread.start();
 
         queryStarted.countDown();
-        Boolean result = connection.queryGraphemeClusterMode(500);
+        Boolean result = connection.terminal().queryGraphemeClusterMode(500);
         responseThread.join(1000);
 
         assertNotNull("Should get a response from terminal", result);
@@ -186,7 +186,7 @@ public class GraphemeClusterModeTest {
         MockConnection connection = new MockConnection();
 
         // No response simulated - should timeout
-        Boolean result = connection.queryGraphemeClusterMode(100);
+        Boolean result = connection.terminal().queryGraphemeClusterMode(100);
 
         assertNull("Should return null on timeout", result);
     }
@@ -207,7 +207,7 @@ public class GraphemeClusterModeTest {
             }
         };
 
-        connection.enableGraphemeClusterMode();
+        connection.terminal().enableGraphemeClusterMode();
 
         assertFalse("Should have sent output", sentOutput.isEmpty());
         assertTrue("Should have sent Mode 2027 enable sequence",
@@ -230,7 +230,7 @@ public class GraphemeClusterModeTest {
             }
         };
 
-        connection.disableGraphemeClusterMode();
+        connection.terminal().disableGraphemeClusterMode();
 
         assertFalse("Should have sent output", sentOutput.isEmpty());
         assertTrue("Should have sent Mode 2027 disable sequence",
@@ -247,7 +247,7 @@ public class GraphemeClusterModeTest {
         };
 
         assertFalse("Should return false when device is null",
-                connection.supportsGraphemeClusterMode());
+                connection.terminal().supportsGraphemeClusterMode());
     }
 
     @Test
@@ -260,7 +260,7 @@ public class GraphemeClusterModeTest {
         };
 
         assertFalse("Should return false when ANSI not supported",
-                connection.supportsGraphemeClusterMode());
+                connection.terminal().supportsGraphemeClusterMode());
     }
 
     // ==================== Mock Connection ====================
@@ -290,7 +290,7 @@ public class GraphemeClusterModeTest {
         }
 
         @Override
-        public Consumer<Size> getSizeHandler() {
+        public Consumer<Size> sizeHandler() {
             return sizeHandler;
         }
 
@@ -300,7 +300,7 @@ public class GraphemeClusterModeTest {
         }
 
         @Override
-        public Consumer<Signal> getSignalHandler() {
+        public Consumer<Signal> signalHandler() {
             return signalHandler;
         }
 
@@ -310,7 +310,7 @@ public class GraphemeClusterModeTest {
         }
 
         @Override
-        public Consumer<int[]> getStdinHandler() {
+        public Consumer<int[]> stdinHandler() {
             return stdinHandler;
         }
 
@@ -336,7 +336,7 @@ public class GraphemeClusterModeTest {
         }
 
         @Override
-        public Consumer<Void> getCloseHandler() {
+        public Consumer<Void> closeHandler() {
             return closeHandler;
         }
 
@@ -366,7 +366,7 @@ public class GraphemeClusterModeTest {
         }
 
         @Override
-        public Attributes getAttributes() {
+        public Attributes attributes() {
             return attributes;
         }
 

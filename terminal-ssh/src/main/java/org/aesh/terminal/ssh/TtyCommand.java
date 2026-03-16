@@ -195,8 +195,8 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
             }
             if (size != null) {
                 this.size = size;
-                if (conn != null && conn.getSizeHandler() != null) {
-                    conn.getSizeHandler().accept(size);
+                if (conn != null && conn.sizeHandler() != null) {
+                    conn.sizeHandler().accept(size);
                 }
             }
         }
@@ -214,8 +214,8 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
         ioOut.close(false).addListener(future -> {
             exitCallback.onExit(exit);
             if (closed.compareAndSet(false, true)) {
-                if (conn != null && conn.getCloseHandler() != null) {
-                    conn.getCloseHandler().accept(null);
+                if (conn != null && conn.closeHandler() != null) {
+                    conn.closeHandler().accept(null);
                 }
             }
         });

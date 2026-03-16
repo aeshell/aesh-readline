@@ -68,7 +68,7 @@ public class SynchronizedOutputExample {
             connection = new TerminalConnection();
             savedAttributes = connection.enterRawMode();
 
-            boolean terminalSupportsSync = connection.supportsSynchronizedOutput();
+            boolean terminalSupportsSync = connection.terminal().supportsSynchronizedOutput();
 
             connection.setSignalHandler(signal -> {
                 if (signal == Signal.INT) {

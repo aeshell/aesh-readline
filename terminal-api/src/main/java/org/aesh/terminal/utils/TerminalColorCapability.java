@@ -722,7 +722,7 @@ public class TerminalColorCapability {
      * This allows you to start with detected values and customize specific colors:
      *
      * <pre>
-     * TerminalColorCapability detected = TerminalColorDetector.detect(connection);
+     * TerminalColorCapability detected = TerminalColorDetector.detect(connection.terminal());
      * TerminalColorCapability custom = TerminalColorCapability.builder(detected)
      *         .errorCode(196) // Override just the error color
      *         .build();

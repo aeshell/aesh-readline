@@ -32,6 +32,7 @@ import org.aesh.terminal.Attributes;
 import org.aesh.terminal.BaseDevice;
 import org.aesh.terminal.Connection;
 import org.aesh.terminal.Device;
+import org.aesh.terminal.TerminalFeatures;
 import org.aesh.terminal.tty.Capability;
 import org.aesh.terminal.tty.Signal;
 import org.aesh.terminal.tty.Size;
@@ -118,17 +119,17 @@ public class ShellIntegrationTest {
         List<String> output = new ArrayList<>();
         MockShellIntegrationConnection conn = new MockShellIntegrationConnection(output);
 
-        conn.writeCommandFinished();
+        conn.terminal().writeCommandFinished();
         assertTrue("writeCommandFinished() should emit OSC 133;D",
                 output.stream().anyMatch(s -> s.contains(ANSI.OSC_133_COMMAND_FINISHED)));
 
         output.clear();
-        conn.writeCommandFinished(0);
+        conn.terminal().writeCommandFinished(0);
         assertTrue("writeCommandFinished(0) should emit OSC 133;D;0",
                 output.stream().anyMatch(s -> s.contains(ANSI.osc133CommandFinished(0))));
 
         output.clear();
-        conn.writeCommandFinished(1);
+        conn.terminal().writeCommandFinished(1);
         assertTrue("writeCommandFinished(1) should emit OSC 133;D;1",
                 output.stream().anyMatch(s -> s.contains(ANSI.osc133CommandFinished(1))));
     }
@@ -159,7 +160,7 @@ public class ShellIntegrationTest {
         }
 
         @Override
-        public Consumer<Size> getSizeHandler() {
+        public Consumer<Size> sizeHandler() {
             return sizeHandler;
         }
 
@@ -169,7 +170,7 @@ public class ShellIntegrationTest {
         }
 
         @Override
-        public Consumer<Signal> getSignalHandler() {
+        public Consumer<Signal> signalHandler() {
             return signalHandler;
         }
 
@@ -179,7 +180,7 @@ public class ShellIntegrationTest {
         }
 
         @Override
-        public Consumer<int[]> getStdinHandler() {
+        public Consumer<int[]> stdinHandler() {
             return stdinHandler;
         }
 
@@ -205,7 +206,7 @@ public class ShellIntegrationTest {
         }
 
         @Override
-        public Consumer<Void> getCloseHandler() {
+        public Consumer<Void> closeHandler() {
             return closeHandler;
         }
 
@@ -230,7 +231,7 @@ public class ShellIntegrationTest {
         }
 
         @Override
-        public Attributes getAttributes() {
+        public Attributes attributes() {
             return attributes;
         }
 
@@ -250,13 +251,18 @@ public class ShellIntegrationTest {
         }
 
         @Override
-        public boolean supportsShellIntegration() {
+        public boolean supportsAnsi() {
             return true;
         }
 
         @Override
-        public boolean supportsAnsi() {
-            return true;
+        public TerminalFeatures terminal() {
+            return new TerminalFeatures(this) {
+                @Override
+                public boolean supportsShellIntegration() {
+                    return true;
+                }
+            };
         }
 
         public void simulateInput(int[] data) {

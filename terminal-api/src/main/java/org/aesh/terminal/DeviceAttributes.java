@@ -34,7 +34,7 @@ import java.util.Set;
  * <li>Firmware/version information</li>
  * </ul>
  * <p>
- * Use {@link org.aesh.terminal.Connection#queryDeviceAttributes(long)} to
+ * Use {@link org.aesh.terminal.TerminalFeatures#queryDeviceAttributes(long)} to
  * obtain an instance of this class.
  *
  * @author Ståle Pedersen

@@ -452,7 +452,7 @@ public class TuiOutputBenchmark {
         }
 
         @Override
-        public Consumer<Size> getSizeHandler() {
+        public Consumer<Size> sizeHandler() {
             return sizeHandler;
         }
 
@@ -462,7 +462,7 @@ public class TuiOutputBenchmark {
         }
 
         @Override
-        public Consumer<Signal> getSignalHandler() {
+        public Consumer<Signal> signalHandler() {
             return eventDecoder.getSignalHandler();
         }
 
@@ -472,7 +472,7 @@ public class TuiOutputBenchmark {
         }
 
         @Override
-        public Consumer<int[]> getStdinHandler() {
+        public Consumer<int[]> stdinHandler() {
             return eventDecoder.getInputHandler();
         }
 
@@ -492,7 +492,7 @@ public class TuiOutputBenchmark {
         }
 
         @Override
-        public Consumer<Void> getCloseHandler() {
+        public Consumer<Void> closeHandler() {
             return closeHandler;
         }
 
@@ -517,7 +517,7 @@ public class TuiOutputBenchmark {
         }
 
         @Override
-        public Attributes getAttributes() {
+        public Attributes attributes() {
             return attributes;
         }
 

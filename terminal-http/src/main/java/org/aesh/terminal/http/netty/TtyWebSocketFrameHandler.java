@@ -100,7 +100,7 @@ public class TtyWebSocketFrameHandler extends SimpleChannelInboundHandler<TextWe
         context = null;
         conn = null;
         if (tmp != null) {
-            Consumer<Void> closeHandler = tmp.getCloseHandler();
+            Consumer<Void> closeHandler = tmp.closeHandler();
             if (closeHandler != null) {
                 closeHandler.accept(null);
             }

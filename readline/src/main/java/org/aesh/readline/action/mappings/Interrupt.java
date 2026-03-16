@@ -44,8 +44,8 @@ public class Interrupt implements Action {
     @Override
     public void accept(InputProcessor inputProcessor) {
         //if the terminal cant raise the int signal, we'll do it manually
-        if (inputProcessor.connection().getSignalHandler() != null)
-            inputProcessor.connection().getSignalHandler().accept(Signal.INT);
+        if (inputProcessor.connection().signalHandler() != null)
+            inputProcessor.connection().signalHandler().accept(Signal.INT);
     }
 
 }

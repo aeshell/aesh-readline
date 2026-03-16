@@ -153,21 +153,21 @@ public class TerminalConnection extends AbstractConnection {
         attributes = this.terminal.getAttributes();
         //interrupt signal
         prevIntrHandler = this.terminal.handle(Signal.INT, s -> {
-            if (getSignalHandler() != null) {
-                getSignalHandler().accept(s);
+            if (signalHandler() != null) {
+                signalHandler().accept(s);
             } else {
                 LOGGER.log(Level.FINE, "No signal handler is registered, lets stop");
                 close();
             }
         });
         prevContHandler = this.terminal.handle(Signal.CONT, s -> {
-            if (getSignalHandler() != null)
-                getSignalHandler().accept(s);
+            if (signalHandler() != null)
+                signalHandler().accept(s);
         });
         //window resize signal
         prevWincHandler = this.terminal.handle(Signal.WINCH, s -> {
-            if (getSizeHandler() != null) {
-                getSizeHandler().accept(size());
+            if (sizeHandler() != null) {
+                sizeHandler().accept(size());
             }
         });
 
@@ -204,7 +204,7 @@ public class TerminalConnection extends AbstractConnection {
     }
 
     @Override
-    public Attributes getAttributes() {
+    public Attributes attributes() {
         return terminal.getAttributes();
     }
 
@@ -356,28 +356,13 @@ public class TerminalConnection extends AbstractConnection {
             awake();
     }
 
-    /**
-     * Query terminal color capabilities using synchronous I/O.
-     * <p>
-     * This method delegates to {@link TerminalColorDetector#queryColorCapability(TerminalConnection, long)}
-     * which uses direct terminal I/O and does NOT require an active reading thread.
-     * It can be called before {@link #openBlocking()} or {@link #openNonBlocking()}.
-     *
-     * @param timeoutMs timeout in milliseconds to wait for all responses
-     * @return TerminalColorCapability with detected colors, or null if not supported
-     */
-    @Override
-    public org.aesh.terminal.utils.TerminalColorCapability queryColorCapability(long timeoutMs) {
-        return TerminalColorDetector.queryColorCapability(this, timeoutMs);
-    }
-
     @Override
     public void close() {
         try {
             reading = false;
             //call closeHandler before we close the terminal stream
-            if (getCloseHandler() != null)
-                getCloseHandler().accept(null);
+            if (closeHandler() != null)
+                closeHandler().accept(null);
             //reset signal/size handlers
             terminal.handle(Signal.INT, prevIntrHandler);
             terminal.handle(Signal.WINCH, prevWincHandler);

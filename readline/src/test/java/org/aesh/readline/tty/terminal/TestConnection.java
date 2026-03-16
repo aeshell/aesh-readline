@@ -57,7 +57,7 @@ public class TestConnection implements Connection {
     }
 
     @Override
-    public Consumer<Size> getSizeHandler() {
+    public Consumer<Size> sizeHandler() {
         return sizeHandler;
     }
 
@@ -67,7 +67,7 @@ public class TestConnection implements Connection {
     }
 
     @Override
-    public Consumer<Signal> getSignalHandler() {
+    public Consumer<Signal> signalHandler() {
         return eventDecoder.getSignalHandler();
     }
 
@@ -77,7 +77,7 @@ public class TestConnection implements Connection {
     }
 
     @Override
-    public Consumer<int[]> getStdinHandler() {
+    public Consumer<int[]> stdinHandler() {
         return eventDecoder.getInputHandler();
     }
 
@@ -97,7 +97,7 @@ public class TestConnection implements Connection {
     }
 
     @Override
-    public Consumer<Void> getCloseHandler() {
+    public Consumer<Void> closeHandler() {
         return closeHandler;
     }
 
@@ -122,7 +122,7 @@ public class TestConnection implements Connection {
     }
 
     @Override
-    public Attributes getAttributes() {
+    public Attributes attributes() {
         return attributes;
     }
 

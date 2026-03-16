@@ -122,7 +122,7 @@ public class ConsoleBufferTest {
         }
 
         @Override
-        public Consumer<Size> getSizeHandler() {
+        public Consumer<Size> sizeHandler() {
             return null;
         }
 
@@ -132,7 +132,7 @@ public class ConsoleBufferTest {
         }
 
         @Override
-        public Consumer<Signal> getSignalHandler() {
+        public Consumer<Signal> signalHandler() {
             return null;
         }
 
@@ -142,7 +142,7 @@ public class ConsoleBufferTest {
         }
 
         @Override
-        public Consumer<int[]> getStdinHandler() {
+        public Consumer<int[]> stdinHandler() {
             return null;
         }
 
@@ -162,7 +162,7 @@ public class ConsoleBufferTest {
         }
 
         @Override
-        public Consumer<Void> getCloseHandler() {
+        public Consumer<Void> closeHandler() {
             return null;
         }
 
@@ -184,7 +184,7 @@ public class ConsoleBufferTest {
         }
 
         @Override
-        public Attributes getAttributes() {
+        public Attributes attributes() {
             return null;
         }
 

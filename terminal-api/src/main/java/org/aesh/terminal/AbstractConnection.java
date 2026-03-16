@@ -43,9 +43,18 @@ public abstract class AbstractConnection implements Connection {
     protected Consumer<Void> closeHandler;
     protected Attributes attributes;
     protected volatile boolean reading;
+    private TerminalFeatures terminalFeatures;
 
     @Override
-    public Consumer<Signal> getSignalHandler() {
+    public TerminalFeatures terminal() {
+        if (terminalFeatures == null) {
+            terminalFeatures = new TerminalFeatures(this);
+        }
+        return terminalFeatures;
+    }
+
+    @Override
+    public Consumer<Signal> signalHandler() {
         return eventDecoder.getSignalHandler();
     }
 
@@ -55,7 +64,7 @@ public abstract class AbstractConnection implements Connection {
     }
 
     @Override
-    public Consumer<int[]> getStdinHandler() {
+    public Consumer<int[]> stdinHandler() {
         return eventDecoder.getInputHandler();
     }
 
@@ -70,7 +79,7 @@ public abstract class AbstractConnection implements Connection {
     }
 
     @Override
-    public Consumer<Size> getSizeHandler() {
+    public Consumer<Size> sizeHandler() {
         return sizeHandler;
     }
 
@@ -85,7 +94,7 @@ public abstract class AbstractConnection implements Connection {
     }
 
     @Override
-    public Consumer<Void> getCloseHandler() {
+    public Consumer<Void> closeHandler() {
         return closeHandler;
     }
 
@@ -95,7 +104,7 @@ public abstract class AbstractConnection implements Connection {
     }
 
     @Override
-    public Consumer<TerminalTheme> getThemeChangeHandler() {
+    public Consumer<TerminalTheme> themeChangeHandler() {
         return eventDecoder.getThemeChangeHandler();
     }
 
@@ -105,7 +114,7 @@ public abstract class AbstractConnection implements Connection {
     }
 
     @Override
-    public Attributes getAttributes() {
+    public Attributes attributes() {
         return attributes;
     }
 

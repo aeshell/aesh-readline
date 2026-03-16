@@ -97,7 +97,7 @@ public class AsciiArtExample {
             Size size = conn.size();
             conn.write("Terminal size: " + size.getWidth() + "x" + size.getHeight() + "\n");
             conn.write("Device: " + conn.device().type() + "\n");
-            conn.write("Color depth: " + conn.getColorDepth() + "\n");
+            conn.write("Color depth: " + conn.terminal().colorDepth() + "\n");
             conn.write("\n");
 
             // Print ASCII art logo with color

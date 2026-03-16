@@ -32,6 +32,7 @@ import org.aesh.terminal.Attributes;
 import org.aesh.terminal.BaseDevice;
 import org.aesh.terminal.Connection;
 import org.aesh.terminal.Device;
+import org.aesh.terminal.TerminalFeatures;
 import org.aesh.terminal.tty.Capability;
 import org.aesh.terminal.tty.Signal;
 import org.aesh.terminal.tty.Size;
@@ -137,8 +138,13 @@ public class GraphemeClusterModeReadlineTest {
         }
 
         @Override
-        public boolean supportsGraphemeClusterMode() {
-            return graphemeSupport;
+        public TerminalFeatures terminal() {
+            return new TerminalFeatures(this) {
+                @Override
+                public boolean supportsGraphemeClusterMode() {
+                    return graphemeSupport;
+                }
+            };
         }
 
         @Override
@@ -152,7 +158,7 @@ public class GraphemeClusterModeReadlineTest {
         }
 
         @Override
-        public Consumer<Size> getSizeHandler() {
+        public Consumer<Size> sizeHandler() {
             return sizeHandler;
         }
 
@@ -162,7 +168,7 @@ public class GraphemeClusterModeReadlineTest {
         }
 
         @Override
-        public Consumer<Signal> getSignalHandler() {
+        public Consumer<Signal> signalHandler() {
             return signalHandler;
         }
 
@@ -172,7 +178,7 @@ public class GraphemeClusterModeReadlineTest {
         }
 
         @Override
-        public Consumer<int[]> getStdinHandler() {
+        public Consumer<int[]> stdinHandler() {
             return stdinHandler;
         }
 
@@ -198,7 +204,7 @@ public class GraphemeClusterModeReadlineTest {
         }
 
         @Override
-        public Consumer<Void> getCloseHandler() {
+        public Consumer<Void> closeHandler() {
             return closeHandler;
         }
 
@@ -223,7 +229,7 @@ public class GraphemeClusterModeReadlineTest {
         }
 
         @Override
-        public Attributes getAttributes() {
+        public Attributes attributes() {
             return attributes;
         }
 

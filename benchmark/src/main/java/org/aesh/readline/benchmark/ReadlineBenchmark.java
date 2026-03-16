@@ -540,7 +540,7 @@ public class ReadlineBenchmark {
         }
 
         @Override
-        public Consumer<Size> getSizeHandler() {
+        public Consumer<Size> sizeHandler() {
             return sizeHandler;
         }
 
@@ -550,7 +550,7 @@ public class ReadlineBenchmark {
         }
 
         @Override
-        public Consumer<Signal> getSignalHandler() {
+        public Consumer<Signal> signalHandler() {
             return eventDecoder.getSignalHandler();
         }
 
@@ -560,7 +560,7 @@ public class ReadlineBenchmark {
         }
 
         @Override
-        public Consumer<int[]> getStdinHandler() {
+        public Consumer<int[]> stdinHandler() {
             return eventDecoder.getInputHandler();
         }
 
@@ -580,7 +580,7 @@ public class ReadlineBenchmark {
         }
 
         @Override
-        public Consumer<Void> getCloseHandler() {
+        public Consumer<Void> closeHandler() {
             return closeHandler;
         }
 
@@ -605,7 +605,7 @@ public class ReadlineBenchmark {
         }
 
         @Override
-        public Attributes getAttributes() {
+        public Attributes attributes() {
             return attributes;
         }
 
