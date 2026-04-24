@@ -22,6 +22,7 @@ package org.aesh.terminal.io;
 import static org.junit.Assert.assertEquals;
 
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 
 import org.junit.Test;
@@ -32,18 +33,13 @@ import org.junit.Test;
 public class EncoderTest {
 
     public void decodeEndcode(String incoming, String[] expected) {
-        Charset charset = Charset.forName("UTF-8");
+        Charset charset = StandardCharsets.UTF_8;
         //ArrayList<String> decodeResult = new ArrayList<>();
         final ArrayList<int[]> result = new ArrayList<>();
-        Decoder decoder = new Decoder(charset, event -> {
-            result.add(event);
-        });
+        Decoder decoder = new Decoder(charset, result::add);
 
         final byte[] output = new byte[4];
-        Encoder encoder = new Encoder(charset, event -> {
-            for (int i = 0; i < event.length; i++)
-                output[i] = event[i];
-        });
+        Encoder encoder = new Encoder(charset, event -> System.arraycopy(event, 0, output, 0, event.length));
 
         decoder.write(incoming.getBytes());
 

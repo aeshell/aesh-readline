@@ -99,7 +99,7 @@ public abstract class HttpTtyConnection extends AbstractConnection {
     public static final Size DEFAULT_SIZE = new Size(80, 24);
     private final Device device;
 
-    private Charset charset;
+    private final Charset charset;
     private Size size;
     private final Decoder decoder;
     private Consumer<String> termHandler;

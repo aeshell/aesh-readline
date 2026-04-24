@@ -70,60 +70,6 @@ public class ExecPtyTest {
             "-tostop echoctl -echoprt echoke -defecho -flusho -pendin iexten \n" +
             "opost -olcuc onlcr -ocrnl -onocr -onlret -ofill -ofdel tab3";
 
-    private final String aixSttySample = "speed 38400 baud; 85 rows; 244 columns;\n" +
-            "eucw 1:1:0:0, scrw 1:1:0:0:\n" +
-            "intr = ^C; quit = ^\\; erase = ^?; kill = ^U; eof = ^D; eol = <undef>\n" +
-            "eol2 = <undef>; start = ^Q; stop = ^S; susp = ^Z; dsusp = ^Y; reprint = ^R\n" +
-            "discard = ^O; werase = ^W; lnext = ^V\n" +
-            "-parenb -parodd cs8 -cstopb -hupcl cread -clocal -parext \n" +
-            "-ignbrk brkint -ignpar -parmrk -inpck -istrip -inlcr -igncr icrnl -iuclc \n" +
-            "ixon ixany -ixoff imaxbel \n" +
-            "isig icanon -xcase echo echoe echok -echonl -noflsh \n" +
-            "-tostop echoctl -echoprt echoke -flusho -pending iexten \n" +
-            "opost -olcuc onlcr -ocrnl -onocr -onlret -ofill -ofdel tab3";
-
-    private final String macOsSttySample = "speed 9600 baud; 85 rows; 244 columns;\n" +
-            "lflags: icanon isig iexten echo echoe -echok echoke -echonl echoctl\n" +
-            "-echoprt -altwerase -noflsh -tostop -flusho pendin -nokerninfo\n" +
-            "-extproc\n" +
-            "iflags: -istrip icrnl -inlcr -igncr ixon -ixoff ixany imaxbel iutf8\n" +
-            "-ignbrk brkint -inpck -ignpar -parmrk\n" +
-            "oflags: opost onlcr -oxtabs -onocr -onlret\n" +
-            "cflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n" +
-            "-dtrflow -mdmbuf\n" +
-            "cchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n" +
-            "eol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n" +
-            "min = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n" +
-            "stop = ^S; susp = ^Z; time = 0; werase = ^W;";
-
-    private final String netBsdSttySample = "speed 38400 baud; 85 rows; 244 columns;\n" +
-            "lflags: icanon isig iexten echo echoe echok echoke -echonl echoctl\n" +
-            "        -echoprt -altwerase -noflsh -tostop -flusho pendin -nokerninfo\n" +
-            "        -extproc\n" +
-            "iflags: -istrip icrnl -inlcr -igncr ixon -ixoff ixany imaxbel -ignbrk\n" +
-            "        brkint -inpck -ignpar -parmrk\n" +
-            "oflags: opost onlcr -ocrnl oxtabs onocr onlret\n" +
-            "cflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -mdmbuf\n" +
-            "        -cdtrcts\n" +
-            "cchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n" +
-            "        eol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n" +
-            "        min = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n" +
-            "        stop = ^S; susp = ^Z; time = 0; werase = ^W;";
-
-    private final String freeBsdSttySample = "speed 9600 baud; 85 rows; 244 columns;\n" +
-            "lflags: icanon isig iexten echo echoe echok echoke -echonl echoctl\n" +
-            "        -echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n" +
-            "        -extproc\n" +
-            "iflags: -istrip icrnl -inlcr -igncr ixon -ixoff ixany imaxbel -ignbrk\n" +
-            "        brkint -inpck -ignpar -parmrk\n" +
-            "oflags: opost onlcr -ocrnl tab0 -onocr -onlret\n" +
-            "cflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n" +
-            "        -dtrflow -mdmbuf\n" +
-            "cchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n" +
-            "        eol2 = <undef>; erase = ^?; erase2 = ^H; intr = ^C; kill = ^U;\n" +
-            "        lnext = ^V; min = 1; quit = ^\\; reprint = ^R; start = ^Q;\n" +
-            "        status = ^T; stop = ^S; susp = ^Z; time = 0; werase = ^W;";
-
     private final String hpuxSttySample = "speed 38400 baud; line = 0;\n" +
             "rows = 85; columns = 244;\n" +
             "min = 4; time = 0;\n" +
@@ -142,21 +88,71 @@ public class ExecPtyTest {
     public void testParseSize() throws IOException {
         assertEquals(new Size(244, 85), ExecPty.doGetSize(linuxSttySample));
         assertEquals(new Size(244, 85), ExecPty.doGetSize(solarisSttySample));
+        String aixSttySample = "speed 38400 baud; 85 rows; 244 columns;\n" +
+                "eucw 1:1:0:0, scrw 1:1:0:0:\n" +
+                "intr = ^C; quit = ^\\; erase = ^?; kill = ^U; eof = ^D; eol = <undef>\n" +
+                "eol2 = <undef>; start = ^Q; stop = ^S; susp = ^Z; dsusp = ^Y; reprint = ^R\n" +
+                "discard = ^O; werase = ^W; lnext = ^V\n" +
+                "-parenb -parodd cs8 -cstopb -hupcl cread -clocal -parext \n" +
+                "-ignbrk brkint -ignpar -parmrk -inpck -istrip -inlcr -igncr icrnl -iuclc \n" +
+                "ixon ixany -ixoff imaxbel \n" +
+                "isig icanon -xcase echo echoe echok -echonl -noflsh \n" +
+                "-tostop echoctl -echoprt echoke -flusho -pending iexten \n" +
+                "opost -olcuc onlcr -ocrnl -onocr -onlret -ofill -ofdel tab3";
         assertEquals(new Size(244, 85), ExecPty.doGetSize(aixSttySample));
+        String macOsSttySample = "speed 9600 baud; 85 rows; 244 columns;\n" +
+                "lflags: icanon isig iexten echo echoe -echok echoke -echonl echoctl\n" +
+                "-echoprt -altwerase -noflsh -tostop -flusho pendin -nokerninfo\n" +
+                "-extproc\n" +
+                "iflags: -istrip icrnl -inlcr -igncr ixon -ixoff ixany imaxbel iutf8\n" +
+                "-ignbrk brkint -inpck -ignpar -parmrk\n" +
+                "oflags: opost onlcr -oxtabs -onocr -onlret\n" +
+                "cflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n" +
+                "-dtrflow -mdmbuf\n" +
+                "cchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n" +
+                "eol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n" +
+                "min = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n" +
+                "stop = ^S; susp = ^Z; time = 0; werase = ^W;";
         assertEquals(new Size(244, 85), ExecPty.doGetSize(macOsSttySample));
+        String netBsdSttySample = "speed 38400 baud; 85 rows; 244 columns;\n" +
+                "lflags: icanon isig iexten echo echoe echok echoke -echonl echoctl\n" +
+                "        -echoprt -altwerase -noflsh -tostop -flusho pendin -nokerninfo\n" +
+                "        -extproc\n" +
+                "iflags: -istrip icrnl -inlcr -igncr ixon -ixoff ixany imaxbel -ignbrk\n" +
+                "        brkint -inpck -ignpar -parmrk\n" +
+                "oflags: opost onlcr -ocrnl oxtabs onocr onlret\n" +
+                "cflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -mdmbuf\n" +
+                "        -cdtrcts\n" +
+                "cchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n" +
+                "        eol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n" +
+                "        min = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n" +
+                "        stop = ^S; susp = ^Z; time = 0; werase = ^W;";
         assertEquals(new Size(244, 85), ExecPty.doGetSize(netBsdSttySample));
+        String freeBsdSttySample = "speed 9600 baud; 85 rows; 244 columns;\n" +
+                "lflags: icanon isig iexten echo echoe echok echoke -echonl echoctl\n" +
+                "        -echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n" +
+                "        -extproc\n" +
+                "iflags: -istrip icrnl -inlcr -igncr ixon -ixoff ixany imaxbel -ignbrk\n" +
+                "        brkint -inpck -ignpar -parmrk\n" +
+                "oflags: opost onlcr -ocrnl tab0 -onocr -onlret\n" +
+                "cflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n" +
+                "        -dtrflow -mdmbuf\n" +
+                "cchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n" +
+                "        eol2 = <undef>; erase = ^?; erase2 = ^H; intr = ^C; kill = ^U;\n" +
+                "        lnext = ^V; min = 1; quit = ^\\; reprint = ^R; start = ^Q;\n" +
+                "        status = ^T; stop = ^S; susp = ^Z; time = 0; werase = ^W;";
         assertEquals(new Size(244, 85), ExecPty.doGetSize(freeBsdSttySample));
         assertEquals(new Size(244, 85), ExecPty.doGetSize(hpuxSttySample));
     }
 
     @Test
-    public void testParseAttributesLinux() throws IOException {
+    public void testParseAttributesLinux() {
         Attributes attributes = ExecPty.doGetAttr(linuxSttySample);
         checkAttributestLinux(attributes);
     }
 
     @Test
-    public void testOptimizedParseAttributesLinux() throws IOException {
+    public void testOptimizedParseAttributesLinux() {
         if (Config.isOSPOSIXCompatible()) {
             Attributes attributes = ExecPty.doGetLinuxAttr(linuxSttySample);
             checkAttributestLinux(attributes);
@@ -164,7 +160,7 @@ public class ExecPtyTest {
     }
 
     @Test
-    public void testParseAttributesUbuntu() throws IOException {
+    public void testParseAttributesUbuntu() {
         if (Config.isOSPOSIXCompatible()) {
             Attributes attributes = ExecPty.doGetAttr(ubuntuSttySample);
             checkAttributestUbuntu(attributes);
@@ -172,7 +168,7 @@ public class ExecPtyTest {
     }
 
     @Test
-    public void testOptimizedParseAttributesUbuntu() throws IOException {
+    public void testOptimizedParseAttributesUbuntu() {
         if (Config.isOSPOSIXCompatible()) {
             Attributes attributes = ExecPty.doGetLinuxAttr(ubuntuSttySample);
             checkAttributestUbuntu(attributes);
@@ -227,7 +223,7 @@ public class ExecPtyTest {
     }
 
     @Test
-    public void testParseAttributesSolaris() throws IOException {
+    public void testParseAttributesSolaris() {
         Attributes attributes = ExecPty.doGetAttr(solarisSttySample);
         assertEquals(EnumSet.of(InputFlag.BRKINT, InputFlag.ICRNL, InputFlag.IXON, InputFlag.IXANY, InputFlag.IMAXBEL),
                 attributes.getInputFlags());
@@ -251,7 +247,7 @@ public class ExecPtyTest {
     }
 
     @Test
-    public void testParseAttributesHpux() throws IOException {
+    public void testParseAttributesHpux() {
         Attributes attributes = ExecPty.doGetAttr(hpuxSttySample);
         assertEquals(EnumSet.of(InputFlag.BRKINT, InputFlag.IGNPAR, InputFlag.ISTRIP, InputFlag.ICRNL, InputFlag.IXON,
                 InputFlag.IXANY), attributes.getInputFlags());

@@ -263,7 +263,7 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
         throw new UnsupportedOperationException("Can not resize windows terminal");
     }
 
-    public void close() throws IOException {
+    public void close() {
         closing = true;
         pump.interrupt();
         // Restore original console input mode before closing
@@ -403,27 +403,26 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
 
     private void processInputByte(byte[] buf) throws IOException {
         for (byte b : buf) {
-            int c = b;
             if (attributes.getLocalFlag(Attributes.LocalFlag.ISIG)) {
-                if (c == attributes.getControlChar(Attributes.ControlChar.VINTR)) {
+                if ((int) b == attributes.getControlChar(Attributes.ControlChar.VINTR)) {
                     raise(Signal.INT);
-                } else if (c == attributes.getControlChar(Attributes.ControlChar.VQUIT)) {
+                } else if ((int) b == attributes.getControlChar(Attributes.ControlChar.VQUIT)) {
                     raise(Signal.QUIT);
-                } else if (c == attributes.getControlChar(Attributes.ControlChar.VSUSP)) {
+                } else if ((int) b == attributes.getControlChar(Attributes.ControlChar.VSUSP)) {
                     raise(Signal.SUSP);
-                } else if (c == attributes.getControlChar(Attributes.ControlChar.VSTATUS)) {
+                } else if ((int) b == attributes.getControlChar(Attributes.ControlChar.VSTATUS)) {
                     raise(Signal.INFO);
                 }
             }
-            if (c == '\r') {
+            if ((int) b == '\r') {
                 if (attributes.getInputFlag(Attributes.InputFlag.ICRNL)) {
                     slaveInputPipe.write('\n');
                 } else
-                    slaveInputPipe.write(c);
-            } else if (c == '\n' && attributes.getInputFlag(Attributes.InputFlag.INLCR)) {
+                    slaveInputPipe.write((int) b);
+            } else if ((int) b == '\n' && attributes.getInputFlag(Attributes.InputFlag.INLCR)) {
                 slaveInputPipe.write('\r');
             } else {
-                slaveInputPipe.write(c);
+                slaveInputPipe.write((int) b);
             }
         }
         slaveInputPipe.flush();

@@ -19,8 +19,6 @@
  */
 package org.aesh.terminal.tty.utils;
 
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 
 /**
@@ -62,12 +60,10 @@ public final class Signals {
             Class<?> signalHandlerClass = Class.forName("sun.misc.SignalHandler");
             // Implement signal handler
             Object signalHandler = Proxy.newProxyInstance(loader,
-                    new Class<?>[] { signalHandlerClass }, new InvocationHandler() {
-                        public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-                            // only method we are proxying is handle()
-                            handler.run();
-                            return null;
-                        }
+                    new Class<?>[] { signalHandlerClass }, (proxy, method, args) -> {
+                        // only method we are proxying is handle()
+                        handler.run();
+                        return null;
                     });
             return doRegister(name, signalHandler);
         } catch (Exception e) {

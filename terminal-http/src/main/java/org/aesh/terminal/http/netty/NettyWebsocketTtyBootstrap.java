@@ -52,7 +52,6 @@ public class NettyWebsocketTtyBootstrap {
     private int port;
     private String resourcePath;
     private boolean serveStaticFiles;
-    private EventLoopGroup group;
     private Channel channel;
 
     /**
@@ -156,7 +155,7 @@ public class NettyWebsocketTtyBootstrap {
      * @param doneHandler the callback invoked when startup completes (with null on success, or the error)
      */
     public void start(Consumer<Connection> handler, Consumer<Throwable> doneHandler) {
-        group = new NioEventLoopGroup();
+        EventLoopGroup group = new NioEventLoopGroup();
 
         ServerBootstrap b = new ServerBootstrap();
         b.group(group)
@@ -180,9 +179,8 @@ public class NettyWebsocketTtyBootstrap {
      *
      * @param handler the handler to invoke for each new connection
      * @return a CompletableFuture that completes when the server has started
-     * @throws Exception if an error occurs during startup
      */
-    public CompletableFuture<Void> start(Consumer<Connection> handler) throws Exception {
+    public CompletableFuture<Void> start(Consumer<Connection> handler) {
         CompletableFuture<Void> fut = new CompletableFuture<>();
         start(handler, startedHandler(fut));
         return fut;
@@ -208,9 +206,8 @@ public class NettyWebsocketTtyBootstrap {
      * Stops the server asynchronously and returns a CompletableFuture.
      *
      * @return a CompletableFuture that completes when the server has stopped
-     * @throws InterruptedException if the thread is interrupted while waiting
      */
-    public CompletableFuture<Void> stop() throws InterruptedException {
+    public CompletableFuture<Void> stop() {
         CompletableFuture<Void> fut = new CompletableFuture<>();
         stop(stoppedHandler(fut));
         return fut;
@@ -227,8 +224,6 @@ public class NettyWebsocketTtyBootstrap {
     }
 
     private Consumer<Throwable> stoppedHandler(CompletableFuture<?> fut) {
-        return err -> {
-            fut.complete(null);
-        };
+        return err -> fut.complete(null);
     }
 }

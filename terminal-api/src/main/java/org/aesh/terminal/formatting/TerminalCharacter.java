@@ -29,8 +29,8 @@ import org.aesh.terminal.utils.ANSI;
 public class TerminalCharacter {
 
     private char character;
-    private TerminalTextStyle style;
-    private TerminalColor color;
+    private final TerminalTextStyle style;
+    private final TerminalColor color;
     private String cache;
 
     /**
@@ -135,9 +135,9 @@ public class TerminalCharacter {
             if (!this.color.equals(prev.color)) {
                 if (prev.getStyle().isInvert()) {
                     if (builder.charAt(builder.length() - 1) == '[')
-                        builder.append(this.color.toString());
+                        builder.append(this.color);
                     else
-                        builder.append(';').append(this.color.toString());
+                        builder.append(';').append(this.color);
                 } else {
                     if (builder.charAt(builder.length() - 1) == '[')
                         builder.append(this.color.toString(prev.color));

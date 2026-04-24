@@ -20,6 +20,7 @@
 package org.aesh.terminal;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
@@ -42,16 +43,16 @@ public class AttributesTest {
 
         attributes.setLocalFlag(Attributes.LocalFlag.ECHO, true);
         attributes.setLocalFlag(Attributes.LocalFlag.ECHONL, true);
-        assertEquals(true, attributes.getLocalFlag(Attributes.LocalFlag.ECHO));
-        assertEquals(true, attributes.getLocalFlag(Attributes.LocalFlag.ECHONL));
+        assertTrue(attributes.getLocalFlag(Attributes.LocalFlag.ECHO));
+        assertTrue(attributes.getLocalFlag(Attributes.LocalFlag.ECHONL));
 
         Attributes copy = new Attributes();
         copy.copy(attributes);
 
         assertEquals(43, copy.getControlChar(Attributes.ControlChar.VDISCARD));
         assertEquals(24, copy.getControlChar(Attributes.ControlChar.VDSUSP));
-        assertEquals(true, copy.getLocalFlag(Attributes.LocalFlag.ECHO));
-        assertEquals(true, copy.getLocalFlag(Attributes.LocalFlag.ECHONL));
+        assertTrue(copy.getLocalFlag(Attributes.LocalFlag.ECHO));
+        assertTrue(copy.getLocalFlag(Attributes.LocalFlag.ECHONL));
 
     }
 }

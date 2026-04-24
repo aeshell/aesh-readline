@@ -46,7 +46,7 @@ public class ThreadSafetyTest {
         for (int i = 'a'; i <= 'f'; i++) {
             final char finalI = (char) i;
             threads.add(new Thread() {
-                TestReadlineConnection connection = new TestReadlineConnection(readline, null, null, null, null);
+                final TestReadlineConnection connection = new TestReadlineConnection(readline, null, null, null, null);
 
                 @Override
                 public void run() {

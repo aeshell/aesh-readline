@@ -96,17 +96,14 @@ public class AsyncAuthTest extends TestBase {
         startServer();
         authenticator = (username, password, sess) -> {
             AsyncAuthException auth = new AsyncAuthException();
-            new Thread() {
-                @Override
-                public void run() {
-                    try {
-                        Thread.sleep(200);
-                    } catch (InterruptedException ignore) {
-                    } finally {
-                        auth.setAuthed(false);
-                    }
+            new Thread(() -> {
+                try {
+                    Thread.sleep(200);
+                } catch (InterruptedException ignore) {
+                } finally {
+                    auth.setAuthed(false);
                 }
-            }.start();
+            }).start();
             throw auth;
         };
         Assert.assertFalse(authenticate());
@@ -117,17 +114,14 @@ public class AsyncAuthTest extends TestBase {
         startServer();
         authenticator = (username, password, sess) -> {
             AsyncAuthException auth = new AsyncAuthException();
-            new Thread() {
-                @Override
-                public void run() {
-                    try {
-                        Thread.sleep(200);
-                    } catch (InterruptedException ignore) {
-                    } finally {
-                        auth.setAuthed(true);
-                    }
+            new Thread(() -> {
+                try {
+                    Thread.sleep(200);
+                } catch (InterruptedException ignore) {
+                } finally {
+                    auth.setAuthed(true);
                 }
-            }.start();
+            }).start();
             throw auth;
         };
         Assert.assertTrue(authenticate());
@@ -147,23 +141,20 @@ public class AsyncAuthTest extends TestBase {
         startServer(500);
         authenticator = (username, password, sess) -> {
             AsyncAuthException auth = new AsyncAuthException();
-            new Thread() {
-                @Override
-                public void run() {
-                    try {
-                        Thread.sleep(1000);
-                    } catch (InterruptedException ignore) {
-                    } finally {
-                        auth.setAuthed(true);
-                    }
+            new Thread(() -> {
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException ignore) {
+                } finally {
+                    auth.setAuthed(true);
                 }
-            }.start();
+            }).start();
             throw auth;
         };
         Assert.assertFalse(authenticate());
     }
 
-    protected boolean authenticate() throws Exception {
+    protected boolean authenticate() {
         try (SshClient client = SshClient.setUpDefaultClient()) {
             client.start();
             ClientSession sess = client

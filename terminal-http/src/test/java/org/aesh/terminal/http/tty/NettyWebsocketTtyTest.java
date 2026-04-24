@@ -47,7 +47,7 @@ public class NettyWebsocketTtyTest extends WebsocketTtyTestBase {
     }
 
     @After
-    public void afterNettyWebsocket() throws Exception {
+    public void afterNettyWebsocket() {
         if (bootstrap != null) {
             try {
                 bootstrap.stop().get(10, TimeUnit.SECONDS);

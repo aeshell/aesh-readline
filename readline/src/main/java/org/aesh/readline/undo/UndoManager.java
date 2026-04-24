@@ -28,9 +28,9 @@ import java.util.Stack;
  */
 public class UndoManager {
 
-    private static short UNDO_SIZE = 50;
+    private static final short UNDO_SIZE = 50;
 
-    private Stack<UndoAction> undoStack;
+    private final Stack<UndoAction> undoStack;
     private int counter;
 
     /**

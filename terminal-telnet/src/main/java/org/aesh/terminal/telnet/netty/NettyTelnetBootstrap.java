@@ -48,8 +48,8 @@ import io.netty.util.concurrent.ImmediateEventExecutor;
  */
 public class NettyTelnetBootstrap extends TelnetBootstrap {
 
-    private EventLoopGroup group;
-    private ChannelGroup channelGroup;
+    private final EventLoopGroup group;
+    private final ChannelGroup channelGroup;
 
     /**
      * Creates a new NettyTelnetBootstrap with default NIO event loop group.
@@ -88,7 +88,7 @@ public class NettyTelnetBootstrap extends TelnetBootstrap {
                 .handler(new LoggingHandler(LogLevel.INFO))
                 .childHandler(new ChannelInitializer<SocketChannel>() {
                     @Override
-                    public void initChannel(SocketChannel ch) throws Exception {
+                    public void initChannel(SocketChannel ch) {
                         channelGroup.add(ch);
                         ChannelPipeline p = ch.pipeline();
                         TelnetChannelHandler handler = new TelnetChannelHandler(factory);
@@ -107,9 +107,7 @@ public class NettyTelnetBootstrap extends TelnetBootstrap {
 
     @Override
     public void stop(Consumer<Throwable> doneHandler) {
-        GenericFutureListener<Future<Object>> adapter = (Future<Object> future) -> {
-            doneHandler.accept(future.cause());
-        };
+        GenericFutureListener<Future<Object>> adapter = (Future<Object> future) -> doneHandler.accept(future.cause());
         channelGroup.close().addListener(adapter);
         group.shutdownGracefully();
     }

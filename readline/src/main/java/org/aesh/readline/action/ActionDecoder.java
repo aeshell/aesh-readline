@@ -35,7 +35,7 @@ import org.aesh.terminal.KeyAction;
 public class ActionDecoder {
 
     private KeyAction[] mappings;
-    private KeyMappingTrie trie;
+    private final KeyMappingTrie trie;
     private final Queue<KeyAction> actions = new LinkedList<>();
     private int[] buffer = new int[0];
 
@@ -162,7 +162,7 @@ public class ActionDecoder {
         return new DefaultKeyAction(buffer[0]);
     }
 
-    private class DefaultKeyAction implements KeyAction {
+    private static class DefaultKeyAction implements KeyAction {
 
         private final int code;
 

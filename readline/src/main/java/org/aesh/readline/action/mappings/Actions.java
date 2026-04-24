@@ -181,9 +181,6 @@ public enum Actions {
     /** Yank text after the cursor position (vi mode). */
     YANK_AFTER("yank-after");
 
-    private final String name;
-
     Actions(String name) {
-        this.name = name;
     }
 }

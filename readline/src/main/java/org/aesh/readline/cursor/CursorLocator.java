@@ -89,8 +89,7 @@ public class CursorLocator {
         }
         int cumulated = 0;
 
-        List<Integer> allLines = new ArrayList<>();
-        allLines.addAll(linesSize);
+        List<Integer> allLines = new ArrayList<>(linesSize);
         allLines.add(buffer.length());
         allLines.add(buffer.prompt().getLength());
         int lineIndex = 0;

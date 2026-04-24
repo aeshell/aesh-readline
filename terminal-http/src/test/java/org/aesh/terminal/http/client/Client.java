@@ -56,7 +56,7 @@ public class Client {
 
     private static final Logger LOGGER = Logger.getLogger(Client.class.getName());
 
-    ProgramaticClientEndpoint endpoint = new ProgramaticClientEndpoint();
+    final ProgramaticClientEndpoint endpoint = new ProgramaticClientEndpoint();
     private Consumer<Session> onOpenConsumer;
     private Consumer<String> onStringMessageConsumer;
     private Consumer<byte[]> onBinaryMessageConsumer;
@@ -107,22 +107,16 @@ public class Client {
             LOGGER.log(Level.FINE, "Client received open.");
             this.session = session;
 
-            session.addMessageHandler(new MessageHandler.Whole<String>() {
-                @Override
-                public void onMessage(String message) {
-                    LOGGER.log(Level.FINEST, "Client received text MESSAGE: {}", message);
-                    if (onStringMessageConsumer != null) {
-                        onStringMessageConsumer.accept(message);
-                    }
+            session.addMessageHandler((MessageHandler.Whole<String>) message -> {
+                LOGGER.log(Level.FINEST, "Client received text MESSAGE: {}", message);
+                if (onStringMessageConsumer != null) {
+                    onStringMessageConsumer.accept(message);
                 }
             });
-            session.addMessageHandler(new MessageHandler.Whole<byte[]>() {
-                @Override
-                public void onMessage(byte[] bytes) {
-                    LOGGER.log(Level.FINEST, "Client received binary MESSAGE: {}", new String(bytes));
-                    if (onBinaryMessageConsumer != null) {
-                        onBinaryMessageConsumer.accept(bytes);
-                    }
+            session.addMessageHandler((MessageHandler.Whole<byte[]>) bytes -> {
+                LOGGER.log(Level.FINEST, "Client received binary MESSAGE: {}", new String(bytes));
+                if (onBinaryMessageConsumer != null) {
+                    onBinaryMessageConsumer.accept(bytes);
                 }
             });
             if (onOpenConsumer != null) {
@@ -149,13 +143,9 @@ public class Client {
     public static Client initializeDefault() {
         Client client = new Client();
 
-        Consumer<Session> onOpen = (session) -> {
-            LOGGER.info("Client connection opened.");
-        };
+        Consumer<Session> onOpen = (session) -> LOGGER.info("Client connection opened.");
 
-        Consumer<CloseReason> onClose = (closeReason) -> {
-            LOGGER.info("Client connection closed. " + closeReason);
-        };
+        Consumer<CloseReason> onClose = (closeReason) -> LOGGER.info("Client connection closed. " + closeReason);
 
         client.onOpen(onOpen);
         client.onClose(onClose);
@@ -207,7 +197,6 @@ public class Client {
                 connected.set(true);
             } else {
                 responseDataConsumer.ifPresent((rdc) -> rdc.accept(responseData));
-                ;
             }
         };
         client.onBinaryMessage(responseConsumer);
@@ -220,7 +209,7 @@ public class Client {
         } catch (Exception e) {
             throw new AssertionError("Failed to connect to remote client.", e);
         }
-        Wait.forCondition(() -> connected.get(), 5, ChronoUnit.SECONDS, "Client was not connected within given timeout.");
+        Wait.forCondition(connected::get, 5, ChronoUnit.SECONDS, "Client was not connected within given timeout.");
         return client;
     }
 

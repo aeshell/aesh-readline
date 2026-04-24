@@ -56,9 +56,8 @@ public abstract class AbstractTerminal implements Terminal {
      *
      * @param name the terminal name
      * @param type the terminal type
-     * @throws IOException if an I/O error occurs during initialization
      */
-    public AbstractTerminal(String name, String type) throws IOException {
+    public AbstractTerminal(String name, String type) {
         this(name, type, SignalHandlers.SIG_DFL);
     }
 
@@ -68,9 +67,8 @@ public abstract class AbstractTerminal implements Terminal {
      * @param name the terminal name
      * @param type the terminal type
      * @param signalHandler the default handler for all signals
-     * @throws IOException if an I/O error occurs during initialization
      */
-    public AbstractTerminal(String name, String type, SignalHandler signalHandler) throws IOException {
+    public AbstractTerminal(String name, String type, SignalHandler signalHandler) {
         this.name = name;
         this.type = type;
         for (Signal signal : Signal.values()) {

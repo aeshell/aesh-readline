@@ -40,7 +40,7 @@ import org.junit.Test;
 public class DeviceTest {
 
     @Test
-    public void testAnsiCapabilities() throws Exception {
+    public void testAnsiCapabilities() {
         Device device = DeviceBuilder.builder().name("ansi").build();
 
         assertNotNull(device.getStringCapability(Capability.enter_alt_charset_mode));
@@ -63,7 +63,7 @@ public class DeviceTest {
     }
 
     @Test
-    public void testWindowsCapabilities() throws Exception {
+    public void testWindowsCapabilities() {
         Device device = DeviceBuilder.builder().name("windows").build();
         assertTrue(device.getBooleanCapability(Capability.move_standout_mode));
         assertEquals(8, device.getNumericCapability(Capability.max_colors).intValue());
@@ -73,7 +73,7 @@ public class DeviceTest {
     }
 
     @Test
-    public void testXTermCapabilities() throws Exception {
+    public void testXTermCapabilities() {
         Device device = DeviceBuilder.builder().name("xterm-256color").build();
         String deviceCap = device.getStringCapability(Capability.enter_ca_mode);
         assertNotNull(deviceCap);
@@ -86,7 +86,7 @@ public class DeviceTest {
     }
 
     @Test
-    public void testScreen256Capabilities() throws Exception {
+    public void testScreen256Capabilities() {
         Device device = DeviceBuilder.builder().name("screen-256color").build();
         String deviceCap = device.getStringCapability(Capability.enter_ca_mode);
         assertNotNull(deviceCap);
@@ -99,7 +99,7 @@ public class DeviceTest {
     }
 
     @Test
-    public void testMovementCapabilities() throws Exception {
+    public void testMovementCapabilities() {
         Device device = DeviceBuilder.builder().name("xterm-256color").build();
 
         String cup = device.getStringCapability(Capability.cursor_address);

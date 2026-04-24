@@ -45,7 +45,7 @@ import org.aesh.terminal.utils.Parser;
  */
 public class TestReadlineConnection extends TestConnection {
 
-    private TestReadline readline;
+    private final TestReadline readline;
 
     private Prompt prompt = new Prompt(": ");
 
@@ -144,7 +144,7 @@ public class TestReadlineConnection extends TestConnection {
 
     public void readline() {
         clearOutputBuffer();
-        readline.readline(this, prompt, out -> this.out.add(out));
+        readline.readline(this, prompt, this.out::add);
     }
 
     public void assertBuffer(String expected) {
@@ -159,7 +159,7 @@ public class TestReadlineConnection extends TestConnection {
     public void readline(List<Completion> completions) {
         clearOutputBuffer();
         readline.readline(ReadlineRequest.builder().connection(this).prompt(prompt)
-                .requestHandler(out -> this.out.add(out)).completions(completions).build());
+                .requestHandler(this.out::add).completions(completions).build());
     }
 
     public void readline(List<Completion> completions, Consumer<String> out) {
@@ -171,7 +171,7 @@ public class TestReadlineConnection extends TestConnection {
     public void readline(EnumMap<ReadlineFlag, Integer> flags) {
         clearOutputBuffer();
         readline.readline(ReadlineRequest.builder().connection(this).prompt(prompt)
-                .requestHandler(out -> this.out.add(out)).flags(flags).build());
+                .requestHandler(this.out::add).flags(flags).build());
     }
 
     public void clearOutputBuffer() {
@@ -180,7 +180,7 @@ public class TestReadlineConnection extends TestConnection {
     }
 
     public void clearLineBuffer() {
-        if (out.size() > 0)
+        if (!out.isEmpty())
             out.clear();
     }
 

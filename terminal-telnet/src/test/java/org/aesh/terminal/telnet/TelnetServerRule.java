@@ -57,7 +57,7 @@ public class TelnetServerRule extends ExternalResource {
                 .handler(new LoggingHandler(LogLevel.INFO))
                 .childHandler(new ChannelInitializer<SocketChannel>() {
                     @Override
-                    public void initChannel(SocketChannel ch) throws Exception {
+                    public void initChannel(SocketChannel ch) {
                         ChannelPipeline p = ch.pipeline();
                         TelnetChannelHandler handler = new TelnetChannelHandler(handlerFactory);
                         p.addLast(handler);

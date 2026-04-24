@@ -60,13 +60,13 @@ public class TelnetChannelHandler extends ChannelInboundHandlerAdapter {
     }
 
     @Override
-    public void channelActive(ChannelHandlerContext ctx) throws Exception {
+    public void channelActive(ChannelHandlerContext ctx) {
         this.conn = new NettyTelnetConnection(factory.get(), ctx);
         conn.onInit();
     }
 
     @Override
-    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+    public void channelInactive(ChannelHandlerContext ctx) {
         conn.onClose();
         this.conn = null;
     }

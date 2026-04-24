@@ -32,8 +32,8 @@ import org.aesh.terminal.utils.CodePointUtils;
 public class TerminalString implements Comparable<TerminalString> {
 
     private String characters;
-    private TerminalTextStyle style;
-    private TerminalColor color;
+    private final TerminalTextStyle style;
+    private final TerminalColor color;
     private boolean ignoreRendering;
     private int ansiLength = 0;
     private String hyperlinkUrl;
@@ -241,7 +241,7 @@ public class TerminalString implements Comparable<TerminalString> {
 
             if (!this.color.equals(prev.color)) {
                 if (prev.getStyle().isInvert())
-                    builder.append(';').append(this.color.toString());
+                    builder.append(';').append(this.color);
                 else
                     builder.append(';').append(this.color.toString(prev.color));
             }
@@ -297,10 +297,7 @@ public class TerminalString implements Comparable<TerminalString> {
             return false;
         if (ignoreRendering != that.ignoreRendering)
             return false;
-        if (!color.equals(that.color))
-            return false;
-
-        return true;
+        return color.equals(that.color);
     }
 
     @Override
@@ -320,10 +317,7 @@ public class TerminalString implements Comparable<TerminalString> {
             return false;
         if (!color.equals(that.color))
             return false;
-        if (style != that.style)
-            return false;
-
-        return true;
+        return style == that.style;
     }
 
     @Override

@@ -49,7 +49,7 @@ import org.aesh.terminal.utils.Parser;
 /**
  * Readline is a simple way to read a single input line from the terminal/shell/console.
  * Readline reads/writes from/to a {@link org.aesh.terminal.Connection}.
- *
+ * <p>
  * Readline is thread safe and will not accept new {@link org.aesh.readline.Readline#readline} calls
  * while currently reading input.
  */
@@ -60,9 +60,9 @@ public class Readline {
     private final ActionDecoder decoder;
     private AeshInputProcessor inputProcessor;
 
-    private CompletionHandler completionHandler;
+    private final CompletionHandler<?> completionHandler;
     private EditMode editMode;
-    private History history;
+    private final History history;
     private SuggestionProvider suggestionProvider;
 
     /**
@@ -89,7 +89,7 @@ public class Readline {
      * @param history the history implementation to use for command history
      * @param completionHandler the completion handler for tab completion, or null for default
      */
-    public Readline(EditMode editMode, History history, CompletionHandler completionHandler) {
+    public Readline(EditMode editMode, History history, CompletionHandler<?> completionHandler) {
         this.editMode = editMode;
         this.history = history;
         if (completionHandler == null)
@@ -247,7 +247,7 @@ public class Readline {
         private boolean paused;
         private final ConsoleBuffer consoleBuffer;
         private String returnValue;
-        private List<Function<String, Optional<String>>> preProcessors;
+        private final List<Function<String, Optional<String>>> preProcessors;
         private Attributes attributes;
         private final EnumMap<ReadlineFlag, Integer> flags;
         private boolean graphemeClusterModeActive;
@@ -430,9 +430,8 @@ public class Readline {
             // Wire OSC 52 clipboard writes for kill/copy actions
             if (!flags.containsKey(ReadlineFlag.NO_CLIPBOARD)
                     && conn.terminal().supportsClipboard()) {
-                consoleBuffer.pasteManager().setClipboardWriter(codePoints -> {
-                    conn.terminal().writeClipboard(new String(codePoints, 0, codePoints.length));
-                });
+                consoleBuffer.pasteManager().setClipboardWriter(
+                        codePoints -> conn.terminal().writeClipboard(new String(codePoints, 0, codePoints.length)));
             }
 
             //last, display prompt
@@ -482,7 +481,7 @@ public class Readline {
         @Override
         public void setReturnValue(int[] in) {
             String input = Parser.fromCodePoints(in);
-            if (preProcessors != null && preProcessors.size() > 0) {
+            if (preProcessors != null && !preProcessors.isEmpty()) {
                 preProcessors.forEach(pre -> pre.apply(input).ifPresent(v -> returnValue = v));
             }
             if (returnValue == null)

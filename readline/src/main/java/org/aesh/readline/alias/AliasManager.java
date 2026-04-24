@@ -49,13 +49,13 @@ public class AliasManager {
     private final List<Alias> aliases;
     private final Pattern aliasPattern = Pattern.compile("^(alias)\\s+(\\w+)\\s*=\\s*(.*)$");
     private final Pattern listAliasPattern = Pattern.compile("^(alias)((\\s+\\w+)+)$");
-    private final Pattern aliasHelpPattern = Pattern.compile("^(" + ALIAS + ")\\s+\\-\\-help$");
-    private final Pattern unaliasHelpPattern = Pattern.compile("^(" + UNALIAS + ")\\s+\\-\\-help$");
+    private final Pattern aliasHelpPattern = Pattern.compile("^(" + ALIAS + ")\\s+--help$");
+    private final Pattern unaliasHelpPattern = Pattern.compile("^(" + UNALIAS + ")\\s+--help$");
     private static final String ALIAS = "alias";
     private static final String ALIAS_SPACE = "alias ";
     private static final String UNALIAS = "unalias";
     private File aliasFile;
-    private boolean persistAlias = false;
+    private final boolean persistAlias;
 
     private static final Logger LOGGER = LoggerUtil.getLogger(AliasManager.class.getName());
 
@@ -65,9 +65,8 @@ public class AliasManager {
      *
      * @param aliasFile the file to read and persist aliases from/to, may be null
      * @param persistAlias if true, aliases will be persisted to the alias file
-     * @throws IOException if an I/O error occurs while reading the alias file
      */
-    public AliasManager(File aliasFile, boolean persistAlias) throws IOException {
+    public AliasManager(File aliasFile, boolean persistAlias) {
         this.persistAlias = persistAlias;
         aliases = new ArrayList<>();
         if (aliasFile != null) {
@@ -82,9 +81,8 @@ public class AliasManager {
      *
      * @param aliasName name of the alias
      * @return true if there is no conflict
-     * @throws AliasConflictException if the alias name conflicts with an existing command
      */
-    public boolean verifyNoNewAliasConflict(String aliasName) throws AliasConflictException {
+    public boolean verifyNoNewAliasConflict(String aliasName) {
         //default impl just returns true, designed to be overridden
         return true;
     }
@@ -147,9 +145,7 @@ public class AliasManager {
 
     void addAlias(String name, String value) {
         Alias alias = new Alias(name, value);
-        if (aliases.contains(alias)) {
-            aliases.remove(alias);
-        }
+        aliases.remove(alias);
         aliases.add(alias);
     }
 
@@ -159,7 +155,6 @@ public class AliasManager {
      *
      * @return a string representation of all aliases, with each alias on a separate line
      */
-    @SuppressWarnings("unchecked")
     public String printAllAliases() {
         StringBuilder sb = new StringBuilder();
         /*
@@ -217,8 +212,8 @@ public class AliasManager {
      */
     public List<String> findAllMatchingNames(String name) {
         return aliases.stream()
-                .filter(a -> a.getName().startsWith(name))
                 .map(Alias::getName)
+                .filter(aName -> aName.startsWith(name))
                 .collect(Collectors.toList());
     }
 
@@ -251,13 +246,11 @@ public class AliasManager {
         buffer = buffer.substring(UNALIAS.length()).trim();
 
         for (String s : buffer.split(" ")) {
-            if (s != null) {
-                Optional<Alias> a = getAlias(s.trim());
-                if (a.isPresent()) {
-                    aliases.remove(a.get());
-                } else
-                    return "unalias: " + s + ": not found" + Config.getLineSeparator();
-            }
+            Optional<Alias> a = getAlias(s.trim());
+            if (a.isPresent()) {
+                aliases.remove(a.get());
+            } else
+                return "unalias: " + s + ": not found" + Config.getLineSeparator();
         }
         return null;
     }
@@ -287,9 +280,7 @@ public class AliasManager {
         if (aliasHelpPattern.matcher(buffer).matches())
             return aliasUsage();
         Matcher aliasMatcher = aliasPattern.matcher(buffer);
-        boolean aliasMatched = false;
         if (aliasMatcher.matches()) {
-            aliasMatched = true;
             String name = aliasMatcher.group(2);
             String value = aliasMatcher.group(3);
             if (value.startsWith("'")) {
@@ -306,40 +297,29 @@ public class AliasManager {
             if (name.contains(" "))
                 return aliasUsage();
 
-            try {
-                if (verifyNoNewAliasConflict(name)) {
-                    addAlias(name, value);
-                    return null;
-                } else
-                    return "Alias " + name + " is in conflict with an existing command";
-            } catch (AliasConflictException ace) {
-                return ace.getMessage();
-            }
+            if (verifyNoNewAliasConflict(name)) {
+                addAlias(name, value);
+                return null;
+            } else
+                return "Alias " + name + " is in conflict with an existing command";
         }
 
         Matcher listMatcher = listAliasPattern.matcher(buffer);
         if (listMatcher.matches()) {
             StringBuilder sb = new StringBuilder();
             for (String s : listMatcher.group(2).trim().split(" ")) {
-                if (s != null) {
-                    Optional<Alias> a = getAlias(s.trim());
-                    if (a.isPresent())
-                        sb.append(ALIAS_SPACE).append(a.get().getName()).append("='")
-                                .append(a.get().getValue()).append("'").append(Config.getLineSeparator());
-                    else
-                        sb.append("alias: ").append(s)
-                                .append(" : not found").append(Config.getLineSeparator());
-                }
+                Optional<Alias> a = getAlias(s.trim());
+                if (a.isPresent())
+                    sb.append(ALIAS_SPACE).append(a.get().getName()).append("='")
+                            .append(a.get().getValue()).append("'").append(Config.getLineSeparator());
+                else
+                    sb.append("alias: ").append(s)
+                            .append(" : not found").append(Config.getLineSeparator());
             }
             return sb.toString();
         }
-        if (!aliasMatched) {
-            StringBuilder sb = new StringBuilder();
-            sb.append(buffer).append(" is not valid command, make sure alias name is among of [a-zA-Z0-9_]")
-                    .append(Config.getLineSeparator());
-            return sb.toString();
-        }
-        return null;
+        return buffer + " is not valid command, make sure alias name is among of [a-zA-Z0-9_]" +
+                Config.getLineSeparator();
     }
 
     /**

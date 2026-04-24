@@ -95,7 +95,7 @@ public class TtyWebSocketFrameHandler extends SimpleChannelInboundHandler<TextWe
     }
 
     @Override
-    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+    public void channelInactive(ChannelHandlerContext ctx) {
         HttpTtyConnection tmp = conn;
         context = null;
         conn = null;
@@ -112,9 +112,8 @@ public class TtyWebSocketFrameHandler extends SimpleChannelInboundHandler<TextWe
      *
      * @param ctx the channel handler context
      * @param msg the text WebSocket frame
-     * @throws Exception if an error occurs during processing
      */
-    public void channelRead0(ChannelHandlerContext ctx, TextWebSocketFrame msg) throws Exception {
+    public void channelRead0(ChannelHandlerContext ctx, TextWebSocketFrame msg) {
         conn.writeToDecoder(msg.text());
     }
 }

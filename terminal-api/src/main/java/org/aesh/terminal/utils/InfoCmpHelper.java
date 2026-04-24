@@ -38,9 +38,9 @@ public class InfoCmpHelper {
     }
 
     private static boolean initialized = false;
-    private static Set<Capability> bools = new HashSet<>();
-    private static Map<Capability, Integer> ints = new HashMap<>();
-    private static Map<Capability, String> strings = new HashMap<>();
+    private static final Set<Capability> bools = new HashSet<>();
+    private static final Map<Capability, Integer> ints = new HashMap<>();
+    private static final Map<Capability, String> strings = new HashMap<>();
 
     /**
      * Get a terminal capability as an array of code points.
@@ -52,7 +52,7 @@ public class InfoCmpHelper {
      */
     public static int[] getCurrentTranslatedCapabilityAsInts(String cap, int[] defaultValue) {
         String s = getCurrentTranslatedCapability(cap, new String(defaultValue, 0, defaultValue.length));
-        if (s.length() == 0)
+        if (s.isEmpty())
             return defaultValue;
         return CodePointUtils.toCodePoints(s);
     }

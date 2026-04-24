@@ -38,33 +38,29 @@ public interface Pty extends Closeable {
      * Returns the master side input stream.
      *
      * @return the master input stream
-     * @throws IOException if an I/O error occurs
      */
-    InputStream getMasterInput() throws IOException;
+    InputStream getMasterInput();
 
     /**
      * Returns the master side output stream.
      *
      * @return the master output stream
-     * @throws IOException if an I/O error occurs
      */
-    OutputStream getMasterOutput() throws IOException;
+    OutputStream getMasterOutput();
 
     /**
      * Returns the slave side input stream.
      *
      * @return the slave input stream
-     * @throws IOException if an I/O error occurs
      */
-    InputStream getSlaveInput() throws IOException;
+    InputStream getSlaveInput();
 
     /**
      * Returns the slave side output stream.
      *
      * @return the slave output stream
-     * @throws IOException if an I/O error occurs
      */
-    OutputStream getSlaveOutput() throws IOException;
+    OutputStream getSlaveOutput();
 
     /**
      * Returns the current terminal attributes.

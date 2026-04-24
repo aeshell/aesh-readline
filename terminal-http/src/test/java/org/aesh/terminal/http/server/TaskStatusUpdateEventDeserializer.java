@@ -24,7 +24,6 @@ import java.io.IOException;
 import org.aesh.terminal.http.Status;
 
 import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -35,7 +34,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 class TaskStatusUpdateEventDeserializer extends JsonDeserializer<TaskStatusUpdateEvent> {
     @Override
     public TaskStatusUpdateEvent deserialize(JsonParser jp, DeserializationContext ctxt)
-            throws IOException, JsonProcessingException {
+            throws IOException {
         JsonNode node = jp.getCodec().readTree(jp);
         String taskId = node.get("taskId").asText();
         String oldStatus = node.get("oldStatus").asText();

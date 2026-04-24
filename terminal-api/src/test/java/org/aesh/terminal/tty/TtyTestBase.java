@@ -101,9 +101,7 @@ public abstract class TtyTestBase extends TestBase {
         StringBuilder buffer = new StringBuilder();
         AtomicInteger count = new AtomicInteger();
         server(conn -> {
-            conn.setStdinHandler(event -> {
-                appendCodePoints(event, buffer);
-            });
+            conn.setStdinHandler(event -> appendCodePoints(event, buffer));
             conn.setSignalHandler(event -> {
                 if (event == Signal.INT) {
                     switch (count.get()) {
@@ -163,12 +161,8 @@ public abstract class TtyTestBase extends TestBase {
     public void testServerDisconnect() throws Exception {
         CountDownLatch closedLatch = new CountDownLatch(1);
         server(conn -> {
-            conn.setStdinHandler(bytes -> {
-                conn.close();
-            });
-            conn.setCloseHandler(v -> {
-                closedLatch.countDown();
-            });
+            conn.setStdinHandler(bytes -> conn.close());
+            conn.setCloseHandler(v -> closedLatch.countDown());
         });
         assertConnect();
         assertWrite("whatever");
@@ -190,9 +184,7 @@ public abstract class TtyTestBase extends TestBase {
         CountDownLatch closedLatch = new CountDownLatch(1);
         server(conn -> {
             disconnectLatch.countDown();
-            conn.setCloseHandler(v -> {
-                closedLatch.countDown();
-            });
+            conn.setCloseHandler(v -> closedLatch.countDown());
         });
         assertConnect();
         assertTrue(disconnectLatch.await(10, TimeUnit.SECONDS));
@@ -244,13 +236,11 @@ public abstract class TtyTestBase extends TestBase {
 
     @Test
     public void testResize() throws Exception {
-        server(conn -> {
-            conn.setSizeHandler(size -> {
-                assertEquals(40, conn.size().getWidth());
-                assertEquals(12, conn.size().getHeight());
-                testComplete();
-            });
-        });
+        server(conn -> conn.setSizeHandler(size -> {
+            assertEquals(40, conn.size().getWidth());
+            assertEquals(12, conn.size().getHeight());
+            testComplete();
+        }));
         assertConnect();
         resize(40, 12);
         await();
@@ -287,24 +277,19 @@ public abstract class TtyTestBase extends TestBase {
     @Test
     public void testConnectionCloseImmediatly() throws Exception {
         server(conn -> {
-            conn.setCloseHandler(v -> {
-                new Thread() {
-                    @Override
-                    public void run() {
-                        for (int i = 0; i < 100; i++) {
-                            if (checkDisconnected()) {
-                                testComplete();
-                                return;
-                            }
-                            try {
-                                Thread.sleep(10);
-                            } catch (InterruptedException e) {
-                                fail(e);
-                            }
-                        }
+            conn.setCloseHandler(v -> new Thread(() -> {
+                for (int i = 0; i < 100; i++) {
+                    if (checkDisconnected()) {
+                        testComplete();
+                        return;
                     }
-                }.start();
-            });
+                    try {
+                        Thread.sleep(10);
+                    } catch (InterruptedException e) {
+                        fail(e);
+                    }
+                }
+            }).start());
             conn.close();
         });
         assertConnect();
@@ -331,7 +316,7 @@ public abstract class TtyTestBase extends TestBase {
      * }
      */
 
-    protected void assertThreading(Thread connThread, Thread schedulerThread) throws Exception {
+    protected void assertThreading(Thread connThread, Thread schedulerThread) {
     }
 
     /*

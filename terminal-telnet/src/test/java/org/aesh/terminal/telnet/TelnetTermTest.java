@@ -38,29 +38,27 @@ public abstract class TelnetTermTest extends TelnetTestBase {
         final CountDownLatch latch2 = new CountDownLatch(1);
         server.start(() -> {
             final AtomicInteger count = new AtomicInteger();
-            return new TelnetTtyConnection(false, false, StandardCharsets.UTF_8, conn -> {
-                conn.setSizeHandler(size -> {
-                    switch (count.getAndIncrement()) {
-                        case 0:
-                            assertEquals(20, size.getWidth());
-                            assertEquals(10, size.getHeight());
-                            latch1.countDown();
-                            break;
-                        case 1:
-                            assertEquals(80, size.getWidth());
-                            assertEquals(24, size.getHeight());
-                            latch2.countDown();
-                            break;
-                        case 2:
-                            assertEquals(180, size.getWidth());
-                            assertEquals(160, size.getHeight());
-                            testComplete();
-                            break;
-                        default:
-                            fail("Was not expecting that");
-                    }
-                });
-            });
+            return new TelnetTtyConnection(false, false, StandardCharsets.UTF_8, conn -> conn.setSizeHandler(size -> {
+                switch (count.getAndIncrement()) {
+                    case 0:
+                        assertEquals(20, size.getWidth());
+                        assertEquals(10, size.getHeight());
+                        latch1.countDown();
+                        break;
+                    case 1:
+                        assertEquals(80, size.getWidth());
+                        assertEquals(24, size.getHeight());
+                        latch2.countDown();
+                        break;
+                    case 2:
+                        assertEquals(180, size.getWidth());
+                        assertEquals(160, size.getHeight());
+                        testComplete();
+                        break;
+                    default:
+                        fail("Was not expecting that");
+                }
+            }));
         });
         WindowSizeOptionHandler optionHandler = new WindowSizeOptionHandler(20, 10, false, false, true, false);
         client.setOptionHandler(optionHandler);

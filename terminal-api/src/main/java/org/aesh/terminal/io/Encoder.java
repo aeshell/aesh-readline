@@ -218,8 +218,7 @@ public class Encoder implements Consumer<int[]> {
             charBuf = new char[len + (len >> 1)];
 
         int pos = 0;
-        for (int i = 0; i < len; i++) {
-            int cp = input[i];
+        for (int cp : input) {
             if (Character.isBmpCodePoint(cp)) {
                 charBuf[pos++] = (char) cp;
             } else {

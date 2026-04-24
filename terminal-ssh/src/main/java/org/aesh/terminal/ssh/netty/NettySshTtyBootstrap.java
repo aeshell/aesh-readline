@@ -49,8 +49,7 @@ public class NettySshTtyBootstrap {
     private String host;
     private int port;
     private Charset charset;
-    private EventLoopGroup parentGroup;
-    private EventLoopGroup childGroup;
+    private final EventLoopGroup childGroup;
     private SshServer server;
     private KeyPairProvider keyPairProvider;
     private PasswordAuthenticator passwordAuthenticator;
@@ -64,7 +63,7 @@ public class NettySshTtyBootstrap {
         this.host = "localhost";
         this.port = 5000;
         this.charset = StandardCharsets.UTF_8;
-        this.parentGroup = new NioEventLoopGroup(1);
+        EventLoopGroup parentGroup = new NioEventLoopGroup(1);
         this.childGroup = new NioEventLoopGroup();
         this.keyPairProvider = new SimpleGeneratorHostKeyProvider(new File("hostkey.ser").toPath());
         this.passwordAuthenticator = (username, password, session) -> true;
@@ -161,9 +160,8 @@ public class NettySshTtyBootstrap {
      *
      * @param handler the connection handler for new SSH sessions
      * @return a CompletableFuture that completes when the server has started
-     * @throws Exception if the server fails to start
      */
-    public CompletableFuture<Void> start(Consumer<Connection> handler) throws Exception {
+    public CompletableFuture<Void> start(Consumer<Connection> handler) {
         CompletableFuture<Void> fut = new CompletableFuture<>();
         start(handler, Helper.startedHandler(fut));
         return fut;
@@ -248,9 +246,8 @@ public class NettySshTtyBootstrap {
      * Stops the SSH server asynchronously.
      *
      * @return a CompletableFuture that completes when the server has stopped
-     * @throws InterruptedException if interrupted while stopping
      */
-    public CompletableFuture<Void> stop() throws InterruptedException {
+    public CompletableFuture<Void> stop() {
         CompletableFuture<Void> fut = new CompletableFuture<>();
         stop(Helper.stoppedHandler(fut));
         return fut;

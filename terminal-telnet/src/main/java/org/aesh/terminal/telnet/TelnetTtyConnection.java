@@ -53,7 +53,7 @@ public final class TelnetTtyConnection extends TelnetHandler implements Connecti
     private Consumer<Size> sizeHandler;
     private Consumer<Void> closeHandler;
     /** The underlying telnet connection. */
-    protected TelnetConnection conn;
+    private TelnetConnection conn;
     private final Charset charset;
     private final EventDecoder eventDecoder = new EventDecoder(3, 4, 26);
     private final ReadBuffer readBuffer = new ReadBuffer(this::execute);

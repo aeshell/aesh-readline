@@ -21,11 +21,11 @@ package org.aesh.terminal.io;
 
 import static org.junit.Assert.assertEquals;
 
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
-import java.util.function.Consumer;
 
 import org.junit.Test;
 
@@ -36,7 +36,7 @@ public class DecoderTest {
 
     private void assertDecode(int initialSize, List<String> chars, int... bytes) {
         final List<String> abc = new ArrayList<>();
-        Decoder decoder = new Decoder(initialSize, Charset.forName("UTF-8"), event -> {
+        Decoder decoder = new Decoder(initialSize, StandardCharsets.UTF_8, event -> {
             StringBuilder sb = new StringBuilder();
             for (int cp : event) {
                 sb.appendCodePoint(cp);
@@ -54,8 +54,8 @@ public class DecoderTest {
     @Test
     public void testDecoder() {
         assertDecode(4, Arrays.asList("ABCD", "E"), 65, 66, 67, 68, 69);
-        assertDecode(4, Arrays.asList("\rfoo"), 13, 102, 111, 111);
-        assertDecode(4, Arrays.asList("\u001B["), 27, 91);
+        assertDecode(4, Collections.singletonList("\rfoo"), 13, 102, 111, 111);
+        assertDecode(4, Collections.singletonList("\u001B["), 27, 91);
     }
 
     @Test
@@ -63,19 +63,14 @@ public class DecoderTest {
         assertDecode(2, Arrays.asList("AB", "CD", "E"), 65, 66, 67, 68, 69);
         assertDecode(3, Arrays.asList("ABC", "DE"), 65, 66, 67, 68, 69);
         assertDecode(4, Arrays.asList("ABCD", "E"), 65, 66, 67, 68, 69);
-        assertDecode(5, Arrays.asList("ABCDE"), 65, 66, 67, 68, 69);
-        assertDecode(6, Arrays.asList("ABCDE"), 65, 66, 67, 68, 69);
+        assertDecode(5, Collections.singletonList("ABCDE"), 65, 66, 67, 68, 69);
+        assertDecode(6, Collections.singletonList("ABCDE"), 65, 66, 67, 68, 69);
     }
 
     @Test
     public void testDecoderUnderflow() {
         final ArrayList<Integer> codePoints = new ArrayList<>();
-        Decoder decoder = new Decoder(10, Charset.forName("UTF-8"), new Consumer<int[]>() {
-            @Override
-            public void accept(int[] event) {
-                codePoints.addAll(list(event));
-            }
-        });
+        Decoder decoder = new Decoder(10, StandardCharsets.UTF_8, event -> codePoints.addAll(list(event)));
         decoder.write(new byte[] { (byte) 0xE2 });
         assertEquals(0, codePoints.size());
         decoder.write(new byte[] { (byte) 0x82 });

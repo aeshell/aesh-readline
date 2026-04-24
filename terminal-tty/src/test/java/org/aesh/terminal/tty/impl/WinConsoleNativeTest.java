@@ -19,7 +19,10 @@
  */
 package org.aesh.terminal.tty.impl;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Assume;
@@ -70,14 +73,14 @@ public class WinConsoleNativeTest {
     public void testGetConsoleModeGracefulOnInvalidHandle() {
         // Should return -1 on an invalid handle, not crash
         int mode = WinConsoleNative.getConsoleMode(WinConsoleNative.INVALID_HANDLE);
-        assertTrue("Should return -1 for invalid handle", mode == -1);
+        assertEquals("Should return -1 for invalid handle", -1, mode);
     }
 
     @Test
     public void testSetConsoleModeGracefulOnInvalidHandle() {
         // Should return false on an invalid handle, not crash
         boolean result = WinConsoleNative.setConsoleMode(WinConsoleNative.INVALID_HANDLE, 0);
-        assertTrue("Should return false for invalid handle", !result);
+        assertFalse("Should return false for invalid handle", result);
     }
 
     @Test
@@ -85,14 +88,14 @@ public class WinConsoleNativeTest {
         // Should return null on an invalid handle, not crash
         int[] size = WinConsoleNative.getConsoleSize(WinConsoleNative.INVALID_HANDLE);
         // null is acceptable for invalid handle
-        assertTrue("Should return null for invalid handle", size == null);
+        assertNull("Should return null for invalid handle", size);
     }
 
     @Test
     public void testWriteConsoleGracefulOnInvalidHandle() {
         // Should return false on an invalid handle, not crash
         boolean result = WinConsoleNative.writeConsole(WinConsoleNative.INVALID_HANDLE, new char[] { 'x' }, 1);
-        assertTrue("Should return false for invalid handle", !result);
+        assertFalse("Should return false for invalid handle", result);
     }
 
     @Test

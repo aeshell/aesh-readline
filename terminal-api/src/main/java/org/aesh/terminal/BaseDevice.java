@@ -49,7 +49,7 @@ public class BaseDevice implements Device {
     /** Map of string capabilities and their values. */
     protected final Map<Capability, String> strings = new HashMap<>();
     /** The terminal type identifier. */
-    protected String type;
+    protected final String type;
 
     /**
      * Creates a new BaseDevice with the default "ansi" terminal type.
@@ -120,7 +120,7 @@ public class BaseDevice implements Device {
 
     private static int[] parseKeySeq(String keyseq) {
         ArrayList<Integer> builder = new ArrayList<>();
-        while (keyseq.length() > 0) {
+        while (!keyseq.isEmpty()) {
             if (keyseq.startsWith("\\C-") && keyseq.length() > 3) {
                 int c = (Character.toUpperCase(keyseq.charAt(3)) - '@') & 0x7F;
                 builder.add(c);

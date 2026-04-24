@@ -143,7 +143,7 @@ public interface EditMode {
             return key;
         else {
             return new KeyAction() {
-                private int[] key = input;
+                private final int[] key = input;
 
                 @Override
                 public int getCodePointAt(int index) throws IndexOutOfBoundsException {

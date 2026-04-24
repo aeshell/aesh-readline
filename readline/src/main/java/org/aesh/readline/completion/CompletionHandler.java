@@ -127,7 +127,7 @@ public abstract class CompletionHandler<C extends CompleteOperation> {
      * @param completions the list of completions to add
      */
     public void addCompletions(List<Completion> completions) {
-        if (completions != null && completions.size() > 0)
+        if (completions != null && !completions.isEmpty())
             this.completionList.addAll(completions);
     }
 
@@ -150,18 +150,18 @@ public abstract class CompletionHandler<C extends CompleteOperation> {
      * @param inputProcessor the input processor handling the completion
      */
     public void complete(InputProcessor inputProcessor) {
-        if (completionList.size() == 0)
+        if (completionList.isEmpty())
             return;
         Buffer buffer = inputProcessor.buffer().buffer();
 
-        if (completionList.size() < 1)
+        if (completionList.isEmpty())
             return;
 
         List<C> possibleCompletions = createCompletionList(buffer);
 
         //LOGGER.info("Found completions: "+possibleCompletions);
 
-        if (possibleCompletions.size() == 0) {
+        if (possibleCompletions.isEmpty()) {
             //do nothing
         }
         // only one hit, do a completion
@@ -182,16 +182,16 @@ public abstract class CompletionHandler<C extends CompleteOperation> {
 
     private List<C> createCompletionList(Buffer buffer) {
         List<C> possibleCompletions = new ArrayList<>();
-        for (int i = 0; i < completionList.size(); i++) {
+        for (Completion completion : completionList) {
             final C co;
             if (aliasHandler == null)
                 co = createCompleteOperation(buffer.asString(), buffer.multiCursor());
             else
                 co = aliasHandler.apply(buffer);
 
-            completionList.get(i).complete(co);
+            completion.complete(co);
 
-            if (co.getCompletionCandidates() != null && co.getCompletionCandidates().size() > 0)
+            if (co.getCompletionCandidates() != null && !co.getCompletionCandidates().isEmpty())
                 possibleCompletions.add(co);
         }
         return possibleCompletions;
@@ -203,7 +203,7 @@ public abstract class CompletionHandler<C extends CompleteOperation> {
         if (!possibleCompletions.get(0).isIgnoreStartsWith())
             startsWith = findStartsWithOperation(possibleCompletions);
 
-        if (startsWith.length() > 0) {
+        if (!startsWith.isEmpty()) {
             if (startsWith.contains(" ") && !possibleCompletions.get(0).isIgnoreNonEscapedSpace())
                 displayCompletion(new TerminalString(Parser.switchSpacesToEscapedSpacesInWord(startsWith), true),
                         buffer, inputProcessor,
@@ -216,8 +216,8 @@ public abstract class CompletionHandler<C extends CompleteOperation> {
         // check size
         else {
             List<TerminalString> completions = new ArrayList<>();
-            for (int i = 0; i < possibleCompletions.size(); i++)
-                completions.addAll(possibleCompletions.get(i).getCompletionCandidates());
+            for (C possibleCompletion : possibleCompletions)
+                completions.addAll(possibleCompletion.getCompletionCandidates());
 
             if (completions.size() > 100) {
                 if (status == CompletionStatus.ASKING_FOR_COMPLETIONS) {
@@ -267,7 +267,7 @@ public abstract class CompletionHandler<C extends CompleteOperation> {
         List<String> tmpList = new ArrayList<>();
         for (CompleteOperation co : coList) {
             String s = Parser.findStartsWith(co.getFormattedCompletionCandidates());
-            if (s.length() > 0)
+            if (!s.isEmpty())
                 tmpList.add(s);
             else
                 return "";
@@ -308,7 +308,7 @@ public abstract class CompletionHandler<C extends CompleteOperation> {
         /** Waiting for user confirmation to display all completions */
         ASKING_FOR_COMPLETIONS,
         /** Completion process is finished */
-        COMPLETE;
+        COMPLETE
     }
 
     private static class CaseInsensitiveComparator implements Comparator<TerminalString> {

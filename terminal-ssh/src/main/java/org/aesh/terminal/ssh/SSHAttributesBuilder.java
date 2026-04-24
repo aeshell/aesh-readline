@@ -19,6 +19,7 @@
  */
 package org.aesh.terminal.ssh;
 
+import java.util.HashMap;
 import java.util.Map;
 
 import org.aesh.terminal.Attributes;
@@ -32,39 +33,55 @@ import org.apache.sshd.server.Environment;
  */
 public class SSHAttributesBuilder {
 
-    private static final Map<PtyMode, Attributes.ControlChar> CONTROL_CHARS = Map.ofEntries(
-            Map.entry(PtyMode.VINTR, Attributes.ControlChar.VINTR),
-            Map.entry(PtyMode.VQUIT, Attributes.ControlChar.VQUIT),
-            Map.entry(PtyMode.VERASE, Attributes.ControlChar.VERASE),
-            Map.entry(PtyMode.VKILL, Attributes.ControlChar.VKILL),
-            Map.entry(PtyMode.VEOF, Attributes.ControlChar.VEOF),
-            Map.entry(PtyMode.VEOL, Attributes.ControlChar.VEOL),
-            Map.entry(PtyMode.VEOL2, Attributes.ControlChar.VEOL2),
-            Map.entry(PtyMode.VSTART, Attributes.ControlChar.VSTART),
-            Map.entry(PtyMode.VSTOP, Attributes.ControlChar.VSTOP),
-            Map.entry(PtyMode.VSUSP, Attributes.ControlChar.VSUSP),
-            Map.entry(PtyMode.VDSUSP, Attributes.ControlChar.VDSUSP),
-            Map.entry(PtyMode.VREPRINT, Attributes.ControlChar.VREPRINT),
-            Map.entry(PtyMode.VWERASE, Attributes.ControlChar.VWERASE),
-            Map.entry(PtyMode.VLNEXT, Attributes.ControlChar.VLNEXT),
-            Map.entry(PtyMode.VSTATUS, Attributes.ControlChar.VSTATUS),
-            Map.entry(PtyMode.VDISCARD, Attributes.ControlChar.VDISCARD));
+    private static final Map<PtyMode, Attributes.ControlChar> CONTROL_CHARS;
 
-    private static final Map<PtyMode, Attributes.LocalFlag> LOCAL_FLAGS = Map.of(
-            PtyMode.ECHO, Attributes.LocalFlag.ECHO,
-            PtyMode.ICANON, Attributes.LocalFlag.ICANON,
-            PtyMode.ISIG, Attributes.LocalFlag.ISIG);
+    static {
+        CONTROL_CHARS = new HashMap<>();
+        CONTROL_CHARS.put(PtyMode.VINTR, Attributes.ControlChar.VINTR);
+        CONTROL_CHARS.put(PtyMode.VQUIT, Attributes.ControlChar.VQUIT);
+        CONTROL_CHARS.put(PtyMode.VERASE, Attributes.ControlChar.VERASE);
+        CONTROL_CHARS.put(PtyMode.VKILL, Attributes.ControlChar.VKILL);
+        CONTROL_CHARS.put(PtyMode.VEOF, Attributes.ControlChar.VEOF);
+        CONTROL_CHARS.put(PtyMode.VEOL, Attributes.ControlChar.VEOL);
+        CONTROL_CHARS.put(PtyMode.VEOL2, Attributes.ControlChar.VEOL2);
+        CONTROL_CHARS.put(PtyMode.VSTART, Attributes.ControlChar.VSTART);
+        CONTROL_CHARS.put(PtyMode.VSTOP, Attributes.ControlChar.VSTOP);
+        CONTROL_CHARS.put(PtyMode.VSUSP, Attributes.ControlChar.VSUSP);
+        CONTROL_CHARS.put(PtyMode.VDSUSP, Attributes.ControlChar.VDSUSP);
+        CONTROL_CHARS.put(PtyMode.VREPRINT, Attributes.ControlChar.VREPRINT);
+        CONTROL_CHARS.put(PtyMode.VWERASE, Attributes.ControlChar.VWERASE);
+        CONTROL_CHARS.put(PtyMode.VLNEXT, Attributes.ControlChar.VLNEXT);
+        CONTROL_CHARS.put(PtyMode.VSTATUS, Attributes.ControlChar.VSTATUS);
+        CONTROL_CHARS.put(PtyMode.VDISCARD, Attributes.ControlChar.VDISCARD);
+    }
 
-    private static final Map<PtyMode, Attributes.InputFlag> INPUT_FLAGS = Map.of(
-            PtyMode.ICRNL, Attributes.InputFlag.ICRNL,
-            PtyMode.INLCR, Attributes.InputFlag.INLCR,
-            PtyMode.IGNCR, Attributes.InputFlag.IGNCR);
+    private static final Map<PtyMode, Attributes.LocalFlag> LOCAL_FLAGS;
 
-    private static final Map<PtyMode, Attributes.OutputFlag> OUTPUT_FLAGS = Map.of(
-            PtyMode.OCRNL, Attributes.OutputFlag.OCRNL,
-            PtyMode.ONLCR, Attributes.OutputFlag.ONLCR,
-            PtyMode.ONLRET, Attributes.OutputFlag.ONLRET,
-            PtyMode.OPOST, Attributes.OutputFlag.OPOST);
+    static {
+        LOCAL_FLAGS = new HashMap<>();
+        LOCAL_FLAGS.put(PtyMode.ECHO, Attributes.LocalFlag.ECHO);
+        LOCAL_FLAGS.put(PtyMode.ICANON, Attributes.LocalFlag.ICANON);
+        LOCAL_FLAGS.put(PtyMode.ISIG, Attributes.LocalFlag.ISIG);
+    }
+
+    private static final Map<PtyMode, Attributes.InputFlag> INPUT_FLAGS;
+
+    static {
+        INPUT_FLAGS = new HashMap<>();
+        INPUT_FLAGS.put(PtyMode.ICRNL, Attributes.InputFlag.ICRNL);
+        INPUT_FLAGS.put(PtyMode.INLCR, Attributes.InputFlag.INLCR);
+        INPUT_FLAGS.put(PtyMode.IGNCR, Attributes.InputFlag.IGNCR);
+    }
+
+    private static final Map<PtyMode, Attributes.OutputFlag> OUTPUT_FLAGS;
+
+    static {
+        OUTPUT_FLAGS = new HashMap<>();
+        OUTPUT_FLAGS.put(PtyMode.OCRNL, Attributes.OutputFlag.OCRNL);
+        OUTPUT_FLAGS.put(PtyMode.ONLCR, Attributes.OutputFlag.ONLCR);
+        OUTPUT_FLAGS.put(PtyMode.ONLRET, Attributes.OutputFlag.ONLRET);
+        OUTPUT_FLAGS.put(PtyMode.OPOST, Attributes.OutputFlag.OPOST);
+    }
 
     private Environment environment;
 

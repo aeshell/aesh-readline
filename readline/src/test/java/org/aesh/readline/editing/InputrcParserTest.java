@@ -22,8 +22,8 @@ package org.aesh.readline.editing;
 import static org.junit.Assert.assertEquals;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
+import java.nio.file.Files;
 
 import org.aesh.readline.action.ActionDecoder;
 import org.aesh.terminal.utils.Config;
@@ -38,9 +38,8 @@ public class InputrcParserTest {
     @Test
     public void testParseInputrc() throws IOException {
         EditMode editMode = InputrcParser.parseInputrc(
-                new FileInputStream(
-                        Config.isOSPOSIXCompatible() ? new File("src/test/resources/inputrc1")
-                                : new File("src\\test\\resources\\inputrc1")));
+                Files.newInputStream((Config.isOSPOSIXCompatible() ? new File("src/test/resources/inputrc1")
+                        : new File("src\\test\\resources\\inputrc1")).toPath()));
 
         assertEquals("vi", editMode.variable(Variable.EDITING_MODE).orElse(null));
 
@@ -66,8 +65,8 @@ public class InputrcParserTest {
             Assert.assertEquals("beginning-of-line", editMode.parse(actionQueue.next()).name());
 
             editMode = InputrcParser.parseInputrc(
-                    new FileInputStream(Config.isOSPOSIXCompatible() ? new File("src/test/resources/inputrc2")
-                            : new File("src\\test\\resources\\inputrc2")));
+                    Files.newInputStream((Config.isOSPOSIXCompatible() ? new File("src/test/resources/inputrc2")
+                            : new File("src\\test\\resources\\inputrc2")).toPath()));
 
             actionQueue.add(new int[] { 27, 91, 68 });
             Assert.assertEquals("forward-char", editMode.parse(actionQueue.next()).name());

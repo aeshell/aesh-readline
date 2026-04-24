@@ -72,18 +72,14 @@ public class TestBase {
     }
 
     public static AssertionError failure(String msg, Throwable cause) {
-        AssertionError afe = new AssertionError(msg);
-        afe.initCause(cause);
-        return afe;
+        return new AssertionError(msg, cause);
     }
 
     public static AssertionError failure(Throwable cause) {
         if (cause instanceof AssertionError) {
             return (AssertionError) cause;
         } else {
-            AssertionError ae = new AssertionError();
-            ae.initCause(cause);
-            return ae;
+            return new AssertionError(cause);
         }
     }
 
@@ -190,8 +186,9 @@ public class TestBase {
 
     public void assertEquals(int[] expected, int[] actual) {
         try {
-            Assert.assertTrue("Was expecting " + Arrays.toString(expected) + " to be equals to " + Arrays.toString(actual),
-                    Arrays.equals(expected, actual));
+            Assert.assertArrayEquals(
+                    "Was expecting " + Arrays.toString(expected) + " to be equals to " + Arrays.toString(actual), expected,
+                    actual);
         } catch (AssertionError e) {
             handleThrowable(e);
         }

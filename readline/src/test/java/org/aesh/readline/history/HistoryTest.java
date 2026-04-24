@@ -25,7 +25,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
-import java.io.IOException;
 
 import org.aesh.readline.editing.EditMode;
 import org.aesh.readline.editing.EditModeBuilder;
@@ -42,7 +41,7 @@ import org.junit.Test;
 public class HistoryTest {
 
     @Test
-    public void testHistory() throws Exception {
+    public void testHistory() {
 
         TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).build());
         term.read("1234" + Config.getLineSeparator());
@@ -79,7 +78,7 @@ public class HistoryTest {
     }
 
     @Test
-    public void testHistoryMultiLine1() throws Exception {
+    public void testHistoryMultiLine1() {
 
         TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).build());
         term.read("1234 \\" + Config.getLineSeparator());
@@ -91,7 +90,7 @@ public class HistoryTest {
     }
 
     @Test
-    public void testHistoryMultiLine2() throws Exception {
+    public void testHistoryMultiLine2() {
 
         TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).build());
         term.read("1234\\" + Config.getLineSeparator());
@@ -103,7 +102,7 @@ public class HistoryTest {
     }
 
     @Test
-    public void testReverseSearch() throws Exception {
+    public void testReverseSearch() {
 
         TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).build());
         term.read("1234" + Config.getLineSeparator());
@@ -124,7 +123,7 @@ public class HistoryTest {
     }
 
     @Test
-    public void testForwardSearch() throws Exception {
+    public void testForwardSearch() {
 
         TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).build());
         term.read("1234" + Config.getLineSeparator());
@@ -145,7 +144,7 @@ public class HistoryTest {
     }
 
     @Test
-    public void testReverseSearchEscape() throws Exception {
+    public void testReverseSearchEscape() {
 
         TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).build());
         term.read("1234" + Config.getLineSeparator());
@@ -251,7 +250,7 @@ public class HistoryTest {
     }
 
     @Test
-    public void testFileHistoryPermission() throws IOException {
+    public void testFileHistoryPermission() {
         if (Config.isOSPOSIXCompatible()) {
             File historyFile = new File(System.getProperty("java.io.tmpdir"), "aesh-history-file.test.1");
             historyFile.deleteOnExit();

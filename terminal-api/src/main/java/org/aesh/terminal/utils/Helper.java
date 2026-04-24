@@ -58,9 +58,7 @@ public class Helper {
      * @return a consumer that handles the completion result
      */
     public static Consumer<Throwable> stoppedHandler(CompletableFuture<?> fut) {
-        return err -> {
-            fut.complete(null);
-        };
+        return err -> fut.complete(null);
     }
 
 }

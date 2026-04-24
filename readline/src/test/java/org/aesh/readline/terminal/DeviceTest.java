@@ -54,7 +54,7 @@ public class DeviceTest {
     }
 
     @Test
-    public void testCapabilityIsPushedToTestConnection() throws Exception {
+    public void testCapabilityIsPushedToTestConnection() {
         TestReadlineConnection connection = new TestReadlineConnection(false);
         connection.clearOutputBuffer();
         connection.put(Capability.enter_ca_mode);

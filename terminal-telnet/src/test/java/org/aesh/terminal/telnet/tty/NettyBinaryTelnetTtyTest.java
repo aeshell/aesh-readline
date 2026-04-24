@@ -41,7 +41,7 @@ public class NettyBinaryTelnetTtyTest extends TelnetTtyTestBase {
     }
 
     @Override
-    protected void assertThreading(Thread connThread, Thread schedulerThread) throws Exception {
+    protected void assertThreading(Thread connThread, Thread schedulerThread) {
         assertTrue(connThread.getName().startsWith("nioEventLoopGroup"));
         assertTrue(schedulerThread.getName().startsWith("nioEventLoopGroup"));
     }

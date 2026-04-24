@@ -27,7 +27,7 @@ import org.aesh.readline.editing.EditMode;
  */
 abstract class BackwardWord extends ChangeAction {
 
-    private boolean viMode;
+    private final boolean viMode;
 
     BackwardWord() {
         super(EditMode.Status.MOVE);

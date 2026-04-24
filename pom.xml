@@ -17,7 +17,7 @@
 -->
 
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/maven-v4_0_0.xsd">
 
     <!-- Parent -->
     <!-- <parent> -->
@@ -50,24 +50,24 @@
         <module>terminal-telnet</module>
         <module>terminal-http</module>
     </modules>
-    
+
     <!-- Licenses -->
     <licenses>
         <license>
             <name>Apache License, Version 2.0</name>
-            <url>http://www.apache.org/licenses/LICENSE-2.0</url>
+            <url>https://www.apache.org/licenses/LICENSE-2.0</url>
         </license>
     </licenses>
-  
+
     <properties>
       <version.org.slf4j>1.7.12</version.org.slf4j>
       <netty.version>4.2.12.Final</netty.version>
-      <jackson.version>2.7.4</jackson.version>
+      <jackson.version>2.21.2</jackson.version>
       <junit.version>4.13.2</junit.version>
+      <tyrus.version>2.1.5</tyrus.version>
 
       <!-- maven-compiler-plugin -->
-      <maven.compiler.target>1.8</maven.compiler.target>
-      <maven.compiler.source>1.8</maven.compiler.source>
+      <maven.compiler.release>8</maven.compiler.release>
 
       <!-- Code formatting -->
       <version.formatter.plugin>2.29.0</version.formatter.plugin>
@@ -91,19 +91,19 @@
       <version.deploy.plugin>3.1.3</version.deploy.plugin>
       <version.site.plugin>3.21.0</version.site.plugin>
     </properties>
- 
+
     <developers>
         <developer>
             <name>Jean-Francois Denise</name>
             <email>jdenise@redhat.com</email>
             <organization>Red Hat</organization>
-            <organizationUrl>http://www.redhat.com</organizationUrl>
+            <organizationUrl>https://www.redhat.com</organizationUrl>
         </developer>
         <developer>
             <name>Ståle Pedersen</name>
             <email>spederse@redhat.com</email>
             <organization>Red Hat</organization>
-            <organizationUrl>http://www.redhat.com</organizationUrl>
+            <organizationUrl>https://www.redhat.com</organizationUrl>
         </developer>
     </developers>
 
@@ -192,7 +192,7 @@
                   <configuration>
                     <useAgent>true</useAgent>
                     <keyname>${gpg.keyname}</keyname>
-                    <passphraseServerId>${gpg.keyname}</passphraseServerId> 
+                    <passphraseServerId>${gpg.keyname}</passphraseServerId>
                     <gpgArguments>
                       <arg>--pinentry-mode</arg>
                       <arg>loopback</arg>

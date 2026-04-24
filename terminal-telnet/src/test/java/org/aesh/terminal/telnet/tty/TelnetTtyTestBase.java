@@ -42,13 +42,12 @@ import org.junit.Rule;
 public abstract class TelnetTtyTestBase extends TtyTestBase {
 
     protected boolean binary;
-    private WindowSizeOptionHandler wsHandler;
 
     @Rule
-    public TelnetServerRule server = new TelnetServerRule(serverFactory());
+    public final TelnetServerRule server = new TelnetServerRule(serverFactory());
 
     @Rule
-    public TelnetClientRule client = new TelnetClientRule();
+    public final TelnetClientRule client = new TelnetClientRule();
 
     protected abstract Function<Supplier<TelnetHandler>, Closeable> serverFactory();
 
@@ -99,13 +98,13 @@ public abstract class TelnetTtyTestBase extends TtyTestBase {
 
     @Override
     public void testSize() throws Exception {
-        wsHandler = new WindowSizeOptionHandler(80, 24, false, false, true, true);
+        WindowSizeOptionHandler wsHandler = new WindowSizeOptionHandler(80, 24, false, false, true, true);
         client.setOptionHandler(wsHandler);
         super.testSize();
     }
 
     @Override
-    public void testResize() throws Exception {
+    public void testResize() {
         // Cannot be tested with this client that does not support resize
     }
 }

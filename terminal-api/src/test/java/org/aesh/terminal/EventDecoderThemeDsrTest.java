@@ -311,7 +311,7 @@ public class EventDecoderThemeDsrTest {
 
         // Set new handler and send another partial DSR
         List<TerminalTheme> newThemes = new ArrayList<>();
-        decoder.setThemeChangeHandler(theme -> newThemes.add(theme));
+        decoder.setThemeChangeHandler(newThemes::add);
 
         // The old partial should be gone — this should work as a fresh sequence
         decoder.accept(DSR_DARK);

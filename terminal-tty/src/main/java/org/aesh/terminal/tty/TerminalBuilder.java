@@ -199,7 +199,7 @@ public final class TerminalBuilder {
     private Terminal createWindowsTerminal(String name) throws IOException {
         try {
             Console console = System.console();
-            if (console != null && isTerminal(console)) // a native terminal, not redirects etc
+            if (isTerminal(console)) // a native terminal, not redirects etc
                 return new WinSysTerminal(name, nativeSignals);
             else {
                 return new WinExternalTerminal(name, type, (in == null) ? System.in : in,

@@ -27,9 +27,7 @@ public class EOFTest {
         EnumMap<ReadlineFlag, Integer> flags = new EnumMap<>(ReadlineFlag.class);
         TestReadlineConnection term = new TestReadlineConnection(flags);
 
-        term.setCloseHandler(v -> {
-            closeCalled[0]++;
-        });
+        term.setCloseHandler(v -> closeCalled[0]++);
 
         term.read("foo".getBytes());
         term.read(Key.CTRL_D);
@@ -54,9 +52,7 @@ public class EOFTest {
         flags.put(ReadlineFlag.IGNORE_EOF, 2);
         TestReadlineConnection term = new TestReadlineConnection(flags);
 
-        term.setCloseHandler(v -> {
-            closeCalled[0]++;
-        });
+        term.setCloseHandler(v -> closeCalled[0]++);
 
         term.read("foo".getBytes());
         term.read(Key.CTRL_D);
@@ -84,9 +80,7 @@ public class EOFTest {
         flags.put(ReadlineFlag.IGNORE_EOF, 2);
         TestReadlineConnection term = new TestReadlineConnection(flags);
 
-        term.setCloseHandler(v -> {
-            closeCalled[0]++;
-        });
+        term.setCloseHandler(v -> closeCalled[0]++);
 
         term.read("foo".getBytes());
         term.read(Key.CTRL_D);

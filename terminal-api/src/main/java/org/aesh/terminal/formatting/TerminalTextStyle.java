@@ -40,15 +40,6 @@ public class TerminalTextStyle {
 
     private int length = -1;
 
-    private static byte BOLD_OFF = 22;
-    private static byte ITALIC_OFF = 23;
-    private static byte UNDERLINE_OFF = 24;
-    private static byte BLINK_OFF = 25;
-    private static byte INVERT_OFF = 27;
-    private static byte REVEAL = 28;
-    private static byte CROSSED_OUT_OFF = 29;
-    private static char SEPARATOR = ';';
-
     /**
      * Create a default text style with no formatting.
      */
@@ -347,46 +338,54 @@ public class TerminalTextStyle {
      */
     public String getValueComparedToPrev(TerminalTextStyle prev) {
         StringBuilder builder = new StringBuilder();
+        char SEPARATOR = ';';
         if (!this.equals(prev)) {
             if (prev.isBold() || prev.isFaint()) {
                 if (builder.length() > 0)
                     builder.append(SEPARATOR);
+                byte BOLD_OFF = 22;
                 builder.append(BOLD_OFF);
             }
             if (prev.isUnderline()) {
                 if (builder.length() > 0)
                     builder.append(SEPARATOR);
+                byte UNDERLINE_OFF = 24;
                 builder.append(UNDERLINE_OFF);
             }
             if (prev.isItalic()) {
                 if (builder.length() > 0)
                     builder.append(SEPARATOR);
+                byte ITALIC_OFF = 23;
                 builder.append(ITALIC_OFF);
             }
             if (prev.isBlink()) {
                 if (builder.length() > 0)
                     builder.append(SEPARATOR);
+                byte BLINK_OFF = 25;
                 builder.append(BLINK_OFF);
             }
             if (prev.isInvert()) {
                 if (builder.length() > 0)
                     builder.append(SEPARATOR);
+                byte INVERT_OFF = 27;
                 builder.append(INVERT_OFF);
             }
             if (prev.isCrossedOut()) {
                 if (builder.length() > 0)
                     builder.append(SEPARATOR);
+                byte CROSSED_OUT_OFF = 29;
                 builder.append(CROSSED_OUT_OFF);
             }
             if (prev.isConceal()) {
                 if (builder.length() > 0)
                     builder.append(SEPARATOR);
+                byte REVEAL = 28;
                 builder.append(REVEAL);
             }
         }
 
         String str = toString();
-        if (str.length() > 0 && builder.length() > 0)
+        if (!str.isEmpty() && builder.length() > 0)
             return builder.append(SEPARATOR).append(str).toString();
         else
             return builder.append(str).toString();

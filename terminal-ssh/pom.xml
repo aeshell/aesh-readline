@@ -18,7 +18,7 @@
 -->
 
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/maven-v4_0_0.xsd">
 
     <!-- Parent -->
     <parent>
@@ -42,10 +42,10 @@
     <licenses>
         <license>
             <name>Apache License, Version 2.0</name>
-            <url>http://www.apache.org/licenses/LICENSE-2.0</url>
+            <url>https://www.apache.org/licenses/LICENSE-2.0</url>
         </license>
     </licenses>
-   
+
     <properties>
         <javaModuleName>org.aesh.terminal.ssh</javaModuleName>
         <version.org.slf4j>1.7.12</version.org.slf4j>
@@ -58,13 +58,13 @@
             <name>Jean-Francois Denise</name>
             <email>jdenise@redhat.com</email>
             <organization>Red Hat</organization>
-            <organizationUrl>http://www.redhat.com</organizationUrl>
+            <organizationUrl>https://www.redhat.com</organizationUrl>
         </developer>
         <developer>
             <name>Ståle Pedersen</name>
             <email>spederse@redhat.com</email>
             <organization>Red Hat</organization>
-            <organizationUrl>http://www.redhat.com</organizationUrl>
+            <organizationUrl>https://www.redhat.com</organizationUrl>
         </developer>
     </developers>
 

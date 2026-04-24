@@ -43,168 +43,170 @@ public class ActionMapper {
      */
     public static Action mapToAction(String function) {
 
-        if (function.equals("abort"))
-            return new NullAction();
-        else if (function.equals("accept-line"))
-            return new Enter();
-        else if (function.equals("backward-char"))
-            return new BackwardChar();
-        else if (function.equals("backward-delete-char"))
-            return new DeletePrevChar();
-        else if (function.equals("backward-kill-line"))
-            return new DeleteStartOfLine();
-        else if (function.equals("backward-kill-word"))
-            return new DeleteBackwardWord();
-        else if (function.equals("backward-word"))
-            return new MoveBackwardWord();
-        else if (function.equals("beginning-of-history"))
-            return new BeginningOfHistory();
-        else if (function.equals("beginning-of-line"))
-            return new BeginningOfLine();
-        else if (function.equals("call-last-kbd-macro"))
-            return new NullAction(); //TODO: need to add a proper Operation
-        else if (function.equals("capitalize-word"))
-            return new CapitalizeForwardWord();
-        else if (function.equals("character-search"))
-            return new CharacterSearch();
-        else if (function.equals("character-search-backward"))
-            return new CharacterSearchBackward();
-        else if (function.equals("clear-screen"))
-            return new Clear();
-        else if (function.equals("complete"))
-            return new Complete();
-        else if (function.equals("copy-backward-word"))
-            return new CopyBackwardWord();
-        else if (function.equals("copy-backward-big-word"))
-            return new CopyBackwardBigWord();
-        else if (function.equals("copy-forward-word"))
-            return new CopyForwardWord();
-        else if (function.equals("copy-forward-big-word"))
-            return new CopyForwardBigWord();
-        else if (function.equals("copy-line"))
-            return new CopyLine();
-        else if (function.equals("delete-char"))
-            return new DeleteChar();
-        else if (function.equals("delete-char-or-list"))
-            return new DeleteCharOrList();
-        else if (function.equals("delete-horizontal-space"))
-            return new DeleteHorizontalSpace();
-        else if (function.equals("digit-argument"))
-            return new NullAction(); //TODO: need to add a proper Operation
-        else if (function.equals("do-uppercase-version"))
-            return new NullAction(); //TODO: need to add a proper Operation
-        else if (function.equals("downcase-word"))
-            return new DownCaseForwardWord();
-        else if (function.equals("dump-functions"))
-            return new NullAction(); //TODO: need to add a proper Operation
-        else if (function.equals("dump-macros"))
-            return new NullAction(); //TODO: need to add a proper Operation
-        else if (function.equals("dump-variables"))
-            return new NullAction(); //TODO: need to add a proper Operation
-        else if (function.equals("emacs-editing-mode"))
-            return new EmacsEditingMode();
-        else if (function.equals("end-kbd-macro"))
-            return new NullAction(); // TODO: need to add a proper Operation
-        else if (function.equals("end-of-history"))
-            return new EndOfHistory();
-        else if (function.equals("end-of-line"))
-            return new EndOfLine();
-        else if (function.equals("exchange-point-and-mark"))
-            return new ExchangePointAndMark();
-        else if (function.equals("forward-backward-delete-char"))
-            return new DeleteChar(); //TODO: need a proper impl
-        else if (function.equals("forward-char"))
-            return new ForwardChar();
-        else if (function.equals("forward-search-history"))
-            return new ForwardSearchHistory();
-        else if (function.equals("forward-word"))
-            return new MoveForwardWord();
-        else if (function.equals("history-search-backward"))
-            return new HistorySearchBackward();
-        else if (function.equals("history-search-forward"))
-            return new HistorySearchForward();
-        else if (function.equals("insert-comment"))
-            return new InsertComment();
-        else if (function.equals("insert-completions"))
-            return new NullAction(); // TODO: need to add a proper Operation
-        else if (function.equals("kill-line"))
-            return new DeleteEndOfLine();
-        else if (function.equals("kill-region"))
-            return new KillRegion();
-        else if (function.equals("kill-whole-line"))
-            return new DeleteLine();
-        else if (function.equals("kill-word"))
-            return new DeleteForwardWord();
-        else if (function.equals("menu-complete"))
-            return new NullAction(); // TODO: need to add a proper Operation
-        else if (function.equals("menu-complete-backward"))
-            return new NullAction(); // TODO: need to add a proper Operation
-        else if (function.equals("next-history"))
-            return new NextHistory();
-        else if (function.equals("non-incremental-forward-search-history"))
-            return new NonIncrementalForwardSearchHistory();
-        else if (function.equals("non-incremental-reverse-search-history"))
-            return new NonIncrementalReverseSearchHistory();
-        else if (function.equals("overwrite-mode"))
-            return new OverwriteMode();
-        else if (function.equals("possible-completions"))
-            return new PossibleCompletions();
-        else if (function.equals("prefix-meta"))
-            return new NullAction(); // TODO: need to add a proper Operation
-        else if (function.equals("previous-history"))
-            return new PrevHistory();
-        else if (function.equals("quoted-insert"))
-            return new QuotedInsert();
-        else if (function.equals("re-read-init-file"))
-            return new NullAction(); // TODO: need to add a proper Operation
-        else if (function.equals("redraw-current-line"))
-            return new RedrawCurrentLine();
-        else if (function.equals("reverse-search-history"))
-            return new ReverseSearchHistory();
-        else if (function.equals("revert-line"))
-            return new RevertLine();
-        else if (function.equals("self-insert"))
-            return new NullAction(); // TODO: need to add a proper Operation
-        else if (function.equals("set-mark"))
-            return new SetMark();
-        else if (function.equals("skip-csi-sequence"))
-            return new NullAction(); // TODO: need to add a proper Operation
-        else if (function.equals("start-kbd-macro"))
-            return new NullAction(); // TODO: need to add a proper Operation
-        else if (function.equals("tilde-expand"))
-            return new TildeExpand();
-        else if (function.equals("transpose-chars"))
-            return new TransposeChars();
-        else if (function.equals("transpose-words"))
-            return new TransposeWords();
-        else if (function.equals("undo"))
-            return new Undo();
-        else if (function.equals("universal-argument"))
-            return new NullAction(); // TODO: need to add a proper Operation
-        else if (function.equals("unix-filename-rubout"))
-            return new UnixFilenameRubout();
-        else if (function.equals("unix-line-discard"))
-            return new DeleteStartOfLine();
-        else if (function.equals("unix-word-rubout"))
-            return new DeleteBackwardBigWord();
-        else if (function.equals("upcase-word"))
-            return new UpCaseForwardWord();
-        else if (function.equals("upcase-char"))
-            return new UpCaseChar();
-        else if (function.equals("vi-editing-mode"))
-            return new ViEditingMode();
-        else if (function.equals("yank"))
-            return new Yank();
-        else if (function.equals("yank-last-arg"))
-            return new YankLastArg();
-        else if (function.equals("yank-nth-arg"))
-            return new YankNthArg();
-        else if (function.equals("yank-pop"))
-            return new YankPop();
-        else if (function.equals("yank-after"))
-            return new YankAfter(); // TODO: need to add a proper Operation
-        else if (function.equals("eof"))
-            return new EndOfFile();
+        switch (function) {
+            case "abort":
+                return new NullAction();
+            case "accept-line":
+                return new Enter();
+            case "backward-char":
+                return new BackwardChar();
+            case "backward-delete-char":
+                return new DeletePrevChar();
+            case "backward-kill-line":
+                return new DeleteStartOfLine();
+            case "backward-kill-word":
+                return new DeleteBackwardWord();
+            case "backward-word":
+                return new MoveBackwardWord();
+            case "beginning-of-history":
+                return new BeginningOfHistory();
+            case "beginning-of-line":
+                return new BeginningOfLine();
+            case "call-last-kbd-macro":
+                return new NullAction(); //TODO: need to add a proper Operation
+            case "capitalize-word":
+                return new CapitalizeForwardWord();
+            case "character-search":
+                return new CharacterSearch();
+            case "character-search-backward":
+                return new CharacterSearchBackward();
+            case "clear-screen":
+                return new Clear();
+            case "complete":
+                return new Complete();
+            case "copy-backward-word":
+                return new CopyBackwardWord();
+            case "copy-backward-big-word":
+                return new CopyBackwardBigWord();
+            case "copy-forward-word":
+                return new CopyForwardWord();
+            case "copy-forward-big-word":
+                return new CopyForwardBigWord();
+            case "copy-line":
+                return new CopyLine();
+            case "delete-char":
+                return new DeleteChar();
+            case "delete-char-or-list":
+                return new DeleteCharOrList();
+            case "delete-horizontal-space":
+                return new DeleteHorizontalSpace();
+            case "digit-argument":
+                return new NullAction(); //TODO: need to add a proper Operation
+            case "do-uppercase-version":
+                return new NullAction(); //TODO: need to add a proper Operation
+            case "downcase-word":
+                return new DownCaseForwardWord();
+            case "dump-functions":
+                return new NullAction(); //TODO: need to add a proper Operation
+            case "dump-macros":
+                return new NullAction(); //TODO: need to add a proper Operation
+            case "dump-variables":
+                return new NullAction(); //TODO: need to add a proper Operation
+            case "emacs-editing-mode":
+                return new EmacsEditingMode();
+            case "end-kbd-macro":
+                return new NullAction(); // TODO: need to add a proper Operation
+            case "end-of-history":
+                return new EndOfHistory();
+            case "end-of-line":
+                return new EndOfLine();
+            case "exchange-point-and-mark":
+                return new ExchangePointAndMark();
+            case "forward-backward-delete-char":
+                return new DeleteChar(); //TODO: need a proper impl
+            case "forward-char":
+                return new ForwardChar();
+            case "forward-search-history":
+                return new ForwardSearchHistory();
+            case "forward-word":
+                return new MoveForwardWord();
+            case "history-search-backward":
+                return new HistorySearchBackward();
+            case "history-search-forward":
+                return new HistorySearchForward();
+            case "insert-comment":
+                return new InsertComment();
+            case "insert-completions":
+                return new NullAction(); // TODO: need to add a proper Operation
+            case "kill-line":
+                return new DeleteEndOfLine();
+            case "kill-region":
+                return new KillRegion();
+            case "kill-whole-line":
+                return new DeleteLine();
+            case "kill-word":
+                return new DeleteForwardWord();
+            case "menu-complete":
+                return new NullAction(); // TODO: need to add a proper Operation
+            case "menu-complete-backward":
+                return new NullAction(); // TODO: need to add a proper Operation
+            case "next-history":
+                return new NextHistory();
+            case "non-incremental-forward-search-history":
+                return new NonIncrementalForwardSearchHistory();
+            case "non-incremental-reverse-search-history":
+                return new NonIncrementalReverseSearchHistory();
+            case "overwrite-mode":
+                return new OverwriteMode();
+            case "possible-completions":
+                return new PossibleCompletions();
+            case "prefix-meta":
+                return new NullAction(); // TODO: need to add a proper Operation
+            case "previous-history":
+                return new PrevHistory();
+            case "quoted-insert":
+                return new QuotedInsert();
+            case "re-read-init-file":
+                return new NullAction(); // TODO: need to add a proper Operation
+            case "redraw-current-line":
+                return new RedrawCurrentLine();
+            case "reverse-search-history":
+                return new ReverseSearchHistory();
+            case "revert-line":
+                return new RevertLine();
+            case "self-insert":
+                return new NullAction(); // TODO: need to add a proper Operation
+            case "set-mark":
+                return new SetMark();
+            case "skip-csi-sequence":
+                return new NullAction(); // TODO: need to add a proper Operation
+            case "start-kbd-macro":
+                return new NullAction(); // TODO: need to add a proper Operation
+            case "tilde-expand":
+                return new TildeExpand();
+            case "transpose-chars":
+                return new TransposeChars();
+            case "transpose-words":
+                return new TransposeWords();
+            case "undo":
+                return new Undo();
+            case "universal-argument":
+                return new NullAction(); // TODO: need to add a proper Operation
+            case "unix-filename-rubout":
+                return new UnixFilenameRubout();
+            case "unix-line-discard":
+                return new DeleteStartOfLine();
+            case "unix-word-rubout":
+                return new DeleteBackwardBigWord();
+            case "upcase-word":
+                return new UpCaseForwardWord();
+            case "upcase-char":
+                return new UpCaseChar();
+            case "vi-editing-mode":
+                return new ViEditingMode();
+            case "yank":
+                return new Yank();
+            case "yank-last-arg":
+                return new YankLastArg();
+            case "yank-nth-arg":
+                return new YankNthArg();
+            case "yank-pop":
+                return new YankPop();
+            case "yank-after":
+                return new YankAfter(); // TODO: need to add a proper Operation
+            case "eof":
+                return new EndOfFile();
+        }
 
         return new NullAction();
     }

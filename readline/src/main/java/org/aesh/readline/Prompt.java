@@ -21,6 +21,7 @@ package org.aesh.readline;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 import org.aesh.terminal.formatting.TerminalCharacter;
 import org.aesh.terminal.formatting.TerminalString;
@@ -261,7 +262,7 @@ public class Prompt {
         if (ansiString != null ? !Arrays.equals(ansiString, prompt1.ansiString) : prompt1.ansiString != null)
             return false;
 
-        if (mask != null ? !mask.equals(prompt1.mask) : prompt1.mask != null)
+        if (!Objects.equals(mask, prompt1.mask))
             return false;
 
         return Arrays.equals(prompt, prompt1.prompt);

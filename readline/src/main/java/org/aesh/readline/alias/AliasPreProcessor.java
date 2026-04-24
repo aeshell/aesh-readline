@@ -50,7 +50,6 @@ public class AliasPreProcessor implements Function<String, Optional<String>> {
     @Override
     public Optional<String> apply(String input) {
         //return manager.getAliasName(input);
-        Optional<String> out = manager.getAliasName(input);
-        return out;
+        return manager.getAliasName(input);
     }
 }

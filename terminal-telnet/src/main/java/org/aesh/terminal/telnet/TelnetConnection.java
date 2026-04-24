@@ -44,7 +44,7 @@ public abstract class TelnetConnection {
     /** Telnet SE (subnegotiation end) byte. */
     public static final byte BYTE_SE = (byte) 0xF0;
 
-    private byte[] pendingBuffer = new byte[256];
+    private final byte[] pendingBuffer = new byte[256];
     private int pendingLength = 0;
     Status status;
     Byte paramsOptionCode;
@@ -245,7 +245,7 @@ public abstract class TelnetConnection {
     /**
      * Handle option parameters call back. The implementation will try to find a matching option
      * via the {@code Option#values()} and invoke it's {@link Option#handleParameters(TelnetConnection, byte[])} method.
-     *
+     * <p>
      * This method can be subclassed to handle an option.
      *
      * @param optionCode the option code

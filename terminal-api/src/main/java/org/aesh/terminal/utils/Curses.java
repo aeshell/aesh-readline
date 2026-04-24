@@ -473,7 +473,7 @@ public final class Curses {
         } else if (pop instanceof Boolean) {
             return (Boolean) pop ? 1 : 0;
         } else {
-            return Integer.valueOf(pop.toString());
+            return Integer.parseInt(pop.toString());
         }
     }
 

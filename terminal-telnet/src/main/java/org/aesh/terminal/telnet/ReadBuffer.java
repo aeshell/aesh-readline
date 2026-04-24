@@ -48,7 +48,7 @@ public class ReadBuffer implements Consumer<int[]> {
     @Override
     public void accept(int[] data) {
         queue.add(data);
-        while (readHandler != null && queue.size() > 0) {
+        while (readHandler != null && !queue.isEmpty()) {
             data = queue.poll();
             if (data != null) {
                 readHandler.accept(data);
@@ -85,7 +85,7 @@ public class ReadBuffer implements Consumer<int[]> {
     }
 
     private void drainQueue() {
-        if (queue.size() > 0 && readHandler != null) {
+        if (!queue.isEmpty() && readHandler != null) {
             executor.execute(() -> {
                 if (readHandler != null) {
                     final int[] data = queue.poll();

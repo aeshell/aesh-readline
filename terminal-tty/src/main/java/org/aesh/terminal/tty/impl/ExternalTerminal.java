@@ -26,7 +26,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Console implementation with embedded line disciplined.
- *
+ * <p>
  * This console is well-suited for supporting incoming external
  * connections, such as from the network (through telnet, ssh,
  * or any kind of protocol).
@@ -56,7 +56,7 @@ public class ExternalTerminal extends LineDisciplineTerminal {
             InputStream masterInput, OutputStream masterOutput) throws IOException {
         super(name, type, masterOutput);
         this.masterInput = masterInput;
-        this.pumpThread = new Thread(this::pump, toString() + " input pump thread");
+        this.pumpThread = new Thread(this::pump, this + " input pump thread");
         this.pumpThread.setDaemon(true);
         this.pumpThread.start();
     }

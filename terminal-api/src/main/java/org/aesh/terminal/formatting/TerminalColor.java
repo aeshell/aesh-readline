@@ -676,7 +676,7 @@ public class TerminalColor {
      * @return the complete ANSI color code
      */
     public String fullString() {
-        return ANSI.START + toString() + "m";
+        return ANSI.START + this + "m";
     }
 
     @Override
@@ -736,7 +736,7 @@ public class TerminalColor {
      * @param out the output stream to write to
      */
     public void write(PrintStream out) {
-        out.print(toString());
+        out.print(this);
     }
 
     /**
@@ -752,7 +752,7 @@ public class TerminalColor {
         else {
             String txt = textString(prev);
             String bg = backgroundString(prev);
-            if (txt.length() > 0 && bg.length() > 0)
+            if (!txt.isEmpty() && !bg.isEmpty())
                 return txt + ';' + bg;
             else
                 return txt + bg;

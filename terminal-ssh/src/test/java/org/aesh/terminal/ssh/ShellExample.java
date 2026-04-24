@@ -37,9 +37,7 @@ public class ShellExample implements Consumer<Connection> {
             connection.close();
         });
 
-        connection.setCloseHandler(close -> {
-            stopped = true;
-        });
+        connection.setCloseHandler(close -> stopped = true);
 
         Readline readline = new Readline(EditModeBuilder.builder(EditMode.Mode.EMACS).build());
         read(connection, readline);
@@ -176,21 +174,21 @@ public class ShellExample implements Consumer<Connection> {
                 }
                 if (time > 0) {
                     // Sleep until timeout or Ctrl-C interrupted
-                    Thread.sleep(time * 1000);
+                    Thread.sleep(time * 1000L);
                 }
             }
         },
 
         exit() {
             @Override
-            public void execute(Connection conn, List<String> args) throws Exception {
+            public void execute(Connection conn, List<String> args) {
                 conn.close();
             }
         },
 
         echo() {
             @Override
-            public void execute(Connection conn, List<String> args) throws Exception {
+            public void execute(Connection conn, List<String> args) {
                 for (int i = 0; i < args.size(); i++) {
                     if (i > 0) {
                         conn.write(" ");
@@ -207,9 +205,7 @@ public class ShellExample implements Consumer<Connection> {
                 conn.write("Current window size " + conn.size() + ", try resize it\n");
 
                 // Refresh the screen with the new size
-                conn.setSizeHandler(size -> {
-                    conn.write("Window resized " + size + "\n");
-                });
+                conn.setSizeHandler(size -> conn.write("Window resized " + size + "\n"));
 
                 try {
                     // Wait until interrupted
@@ -222,7 +218,7 @@ public class ShellExample implements Consumer<Connection> {
 
         help() {
             @Override
-            public void execute(Connection conn, List<String> args) throws Exception {
+            public void execute(Connection conn, List<String> args) {
                 StringBuilder msg = new StringBuilder("Demo term, try commands: ");
                 Command[] commands = Command.values();
                 for (int i = 0; i < commands.length; i++) {
@@ -330,7 +326,7 @@ public class ShellExample implements Consumer<Connection> {
 
         cursor() {
             @Override
-            public void execute(Connection conn, List<String> args) throws Exception {
+            public void execute(Connection conn, List<String> args) {
                 conn.write("cursor position is: ");
                 Point p = conn.terminal().getCursorPosition();
                 conn.write(p.toString() + Config.getLineSeparator());

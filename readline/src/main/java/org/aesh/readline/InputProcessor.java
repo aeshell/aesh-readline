@@ -28,7 +28,7 @@ import org.aesh.terminal.Connection;
  * InputProcessor is used by {@link org.aesh.readline.Readline} to process the input.
  * InputProcessor is using an instance of {@link org.aesh.readline.ConsoleBuffer} to do
  * provide easy access to writing/reading from the stream, and access to history/undo/etc.
- *
+ * <p>
  * It is also used by many of the different action classes that react to specific user input.
  *
  * @apiNote This interface is an internal implementation detail of the readline library

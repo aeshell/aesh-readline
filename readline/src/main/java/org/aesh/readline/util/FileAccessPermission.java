@@ -22,7 +22,7 @@ package org.aesh.readline.util;
 
 /**
  * <code>FileAccessPermission</code> defines file access permission like readable, writable.
- *
+ * <p>
  * <i>readable</i> and <i>writable</i> will be true by default.
  *
  * @author <a href="mailto:lgao@redhat.com">Lin Gao</a>

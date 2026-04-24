@@ -15,7 +15,7 @@ public enum ReadlineFlag {
 
     /**
      * Do not redraw prompt on INTR signal
-     *
+     * <p>
      * Default behaviour is to redraw .
      */
     NO_PROMPT_REDRAW_ON_INTR,

@@ -40,7 +40,7 @@ abstract class SearchHistory implements SearchAction {
     private SearchAction.Status status = Status.SEARCH_NOT_STARTED;
     private IntArrayBuilder searchArgument;
     private int[] searchResult;
-    private SearchAction.Status defaultAction;
+    private final SearchAction.Status defaultAction;
 
     private static final int[] REVERSE_SEARCH_TEXT = Parser.toCodePoints("(reverse-i-search) `");
     private static final int[] FORWARD_SEARCH_TEXT = Parser.toCodePoints("(forward-i-search) `");

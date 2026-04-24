@@ -59,7 +59,7 @@ public abstract class AbstractExecPty implements Pty {
     }
 
     @Override
-    public void close() throws IOException {
+    public void close() {
     }
 
     @Override
@@ -72,7 +72,7 @@ public abstract class AbstractExecPty implements Pty {
         throw new UnsupportedOperationException();
     }
 
-    static Attributes doGetAttr(String cfg) throws IOException {
+    static Attributes doGetAttr(String cfg) {
         Attributes attributes = new Attributes();
         for (Attributes.InputFlag flag : Attributes.InputFlag.values()) {
             Boolean value = doGetFlag(cfg, flag);
@@ -177,7 +177,7 @@ public abstract class AbstractExecPty implements Pty {
     }
 
     protected static String exec(final String... cmd) throws IOException {
-        assert cmd != null && cmd[0].length() > 0;
+        assert cmd != null && !cmd[0].isEmpty();
         try {
             LOGGER.log(Level.FINE, "Running: " + Arrays.toString(cmd));
             ProcessBuilder processBuilder = new ProcessBuilder(cmd);

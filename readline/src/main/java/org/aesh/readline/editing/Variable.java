@@ -201,7 +201,7 @@ public enum Variable {
     /**
      * The inputrc string representation of this variable.
      */
-    private String value;
+    private final String value;
 
     /**
      * Constructs a Variable with the specified inputrc string value.

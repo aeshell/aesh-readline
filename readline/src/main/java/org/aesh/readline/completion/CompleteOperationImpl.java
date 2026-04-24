@@ -232,7 +232,7 @@ public class CompleteOperationImpl implements CompleteOperation {
 
     @Override
     public List<String> getFormattedCompletionCandidates() {
-        List<String> fixedCandidates = new ArrayList<String>(completionCandidates.size());
+        List<String> fixedCandidates = new ArrayList<>(completionCandidates.size());
         for (TerminalString c : completionCandidates) {
             if (!ignoreOffset && offset < cursor) {
                 int pos = cursor - offset;

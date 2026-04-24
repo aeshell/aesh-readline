@@ -21,6 +21,7 @@ package org.aesh.terminal.http.netty;
 
 import java.io.InputStream;
 import java.net.URL;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -35,6 +36,7 @@ import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.DefaultHttpResponse;
 import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.FullHttpResponse;
+import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
@@ -52,10 +54,14 @@ public class HttpRequestHandler extends SimpleChannelInboundHandler<FullHttpRequ
     private final String resourcePath;
 
     private static final Logger LOGGER = Logger.getLogger(HttpRequestHandler.class.getName());
-    private static final Map<String, String> CONTENT_TYPES = Map.of(
-            "html", "text/html",
-            "js", "application/javascript",
-            "css", "text/css");
+    private static final Map<String, String> CONTENT_TYPES;
+
+    static {
+        CONTENT_TYPES = new HashMap<>();
+        CONTENT_TYPES.put("html", "text/html");
+        CONTENT_TYPES.put("js", "application/javascript");
+        CONTENT_TYPES.put("css", "text/css");
+    }
 
     /**
      * Creates a new HTTP request handler with the specified WebSocket URI.
@@ -79,15 +85,15 @@ public class HttpRequestHandler extends SimpleChannelInboundHandler<FullHttpRequ
     }
 
     @Override
-    protected void channelRead0(ChannelHandlerContext ctx, FullHttpRequest request) throws Exception {
-        if (wsUri.equalsIgnoreCase(request.getUri())) {
+    protected void channelRead0(ChannelHandlerContext ctx, FullHttpRequest request) {
+        if (wsUri.equalsIgnoreCase(request.uri())) {
             ctx.fireChannelRead(request.retain());
         } else {
             if (HttpHeaders.is100ContinueExpected(request)) {
                 send100Continue(ctx);
             }
 
-            HttpResponse response = new DefaultHttpResponse(request.getProtocolVersion(),
+            HttpResponse response = new DefaultHttpResponse(request.protocolVersion(),
                     HttpResponseStatus.INTERNAL_SERVER_ERROR);
 
             // If static file serving is disabled, return 404
@@ -99,14 +105,14 @@ public class HttpRequestHandler extends SimpleChannelInboundHandler<FullHttpRequ
                 return;
             }
 
-            String path = request.getUri();
+            String path = request.uri();
             if ("/".equals(path)) {
                 path = "/index.html";
             }
             URL res = HttpTtyConnection.class.getResource(resourcePath + path);
             try {
                 if (res != null) {
-                    DefaultFullHttpResponse fullResp = new DefaultFullHttpResponse(request.getProtocolVersion(),
+                    DefaultFullHttpResponse fullResp = new DefaultFullHttpResponse(request.protocolVersion(),
                             HttpResponseStatus.OK);
                     InputStream in = res.openStream();
                     byte[] tmp = new byte[256];
@@ -115,10 +121,10 @@ public class HttpRequestHandler extends SimpleChannelInboundHandler<FullHttpRequ
                     }
                     int li = path.lastIndexOf('.');
                     if (li != -1 && li != path.length() - 1) {
-                        String ext = path.substring(li + 1, path.length());
+                        String ext = path.substring(li + 1);
                         String contentType = CONTENT_TYPES.get(ext);
                         if (contentType != null) {
-                            fullResp.headers().set(HttpHeaders.Names.CONTENT_TYPE, contentType);
+                            fullResp.headers().set(HttpHeaderNames.CONTENT_TYPE, contentType);
                         }
                     }
                     response = fullResp;
@@ -145,9 +151,8 @@ public class HttpRequestHandler extends SimpleChannelInboundHandler<FullHttpRequ
      *
      * @param ctx the channel handler context
      * @param cause the exception that was caught
-     * @throws Exception if an error occurs during handling
      */
-    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
         LOGGER.log(Level.WARNING, "Exception caught during io, closing.", cause);
         ctx.close();
     }

@@ -48,11 +48,11 @@ public class Vi implements EditMode {
 
     private ActionEvent currentAction;
 
-    private Map<Key, ActionStatus> actions;
-    private Map<KeyAction, ActionStatus> keyEventActions;
-    private Map<Key, ActionStatusGroup> actionGroups;
-    private Map<KeyAction, ActionStatusGroup> keyEventActionGroups;
-    private Map<Variable, String> variables;
+    private final Map<Key, ActionStatus> actions;
+    private final Map<KeyAction, ActionStatus> keyEventActions;
+    private final Map<Key, ActionStatusGroup> actionGroups;
+    private final Map<KeyAction, ActionStatusGroup> keyEventActionGroups;
+    private final Map<Variable, String> variables;
 
     Vi() {
         actions = new EnumMap<>(Key.class);
@@ -270,11 +270,11 @@ public class Vi implements EditMode {
     public KeyAction[] keys() {
         List<KeyAction> keys = new ArrayList<>(actions.size()
                 + keyEventActions.size() + actionGroups.size() + keyEventActionGroups.size());
-        actions.keySet().forEach(keys::add);
-        actionGroups.keySet().forEach(keys::add);
-        keyEventActions.keySet().forEach(keys::add);
-        keyEventActionGroups.keySet().forEach(keys::add);
-        return keys.toArray(new KeyAction[keys.size()]);
+        keys.addAll(actions.keySet());
+        keys.addAll(actionGroups.keySet());
+        keys.addAll(keyEventActions.keySet());
+        keys.addAll(keyEventActionGroups.keySet());
+        return keys.toArray(new KeyAction[0]);
     }
 
     @Override

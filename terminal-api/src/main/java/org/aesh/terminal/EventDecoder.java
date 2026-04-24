@@ -50,7 +50,7 @@ public class EventDecoder implements Consumer<int[]> {
     private Consumer<int[]> inputHandler;
     private Consumer<TerminalTheme> themeChangeHandler;
 
-    private Queue<int[]> inputQueue = new ArrayDeque<>(10);
+    private final Queue<int[]> inputQueue = new ArrayDeque<>(10);
 
     // ---- Theme DSR state machine ----
     // The prefix we're matching: ESC [ ? 9 9 7 ;

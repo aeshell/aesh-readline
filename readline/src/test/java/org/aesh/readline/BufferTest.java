@@ -21,7 +21,6 @@ package org.aesh.readline;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -57,7 +56,7 @@ public class BufferTest {
         buffer.reset();
         outConsumer.clear();
         buffer.print(outConsumer::add, 120);
-        assertTrue(outConsumer.get(0).length == 0);
+        assertEquals(0, outConsumer.get(0).length);
 
         buffer.insert(outConsumer::add, 'A', 10);
         buffer.insert(outConsumer::add, 'B', 10);
@@ -344,7 +343,7 @@ public class BufferTest {
         buffer.replace(outConsumer::add, "foo", 100);
 
         //first move back width
-        String out = Parser.fromCodePoints(buffer.moveNumberOfColumns(100, 'D'));
+        String out = Parser.fromCodePoints(Buffer.moveNumberOfColumns(100, 'D'));
         //then erase
         out = out + Parser.fromCodePoints(ANSI.ERASE_LINE_FROM_CURSOR);
 

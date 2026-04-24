@@ -123,10 +123,7 @@ public final class PlatformThemeDetector {
 
         // Alacritty: check config file
         if (env.isAlacritty()) {
-            TerminalTheme theme = detectAlacrittyTheme();
-            if (theme != TerminalTheme.UNKNOWN) {
-                return theme;
-            }
+            return detectAlacrittyTheme();
         }
 
         return TerminalTheme.UNKNOWN;

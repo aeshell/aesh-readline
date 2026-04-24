@@ -510,13 +510,12 @@ public class ANSIBuilder {
         boolean hasExtendedColors = textCode != null || bgCode != null ||
                 text256 != null || bg256 != null ||
                 textRgb != null || bgRgb != null || bright;
-        if (!hasBasicColors && !hasExtendedColors)
-            return this;
-        else {
+        if (!hasBasicColors && !hasExtendedColors) {
+        } else {
             doResetColors();
             b.append(ANSI_RESET);
-            return this;
         }
+        return this;
     }
 
     private void doResetColors() {
@@ -622,7 +621,6 @@ public class ANSIBuilder {
      * @param color the formatting color to convert
      * @return the corresponding nested Color enum value
      */
-    @SuppressWarnings("deprecation")
     private static Color fromFormattingColor(org.aesh.terminal.formatting.Color color) {
         if (color == null) {
             return null;

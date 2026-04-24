@@ -37,7 +37,7 @@ import org.aesh.terminal.tty.utils.LinePipedInputStream;
  * The {@link Terminal} interface represents the slave
  * side of a PTY, but implementations derived from this class
  * will handle both the slave and master side of things.
- *
+ * <p>
  * In order to correctly handle line discipline, the console
  * needs to read the input in advance in order to raise the
  * signals as fast as possible.

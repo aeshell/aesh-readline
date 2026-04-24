@@ -486,10 +486,7 @@ public class DeviceAttributes {
             return org.aesh.terminal.utils.ColorDepth.COLORS_256;
         }
 
-        if (deviceClass >= 62) {
-            // VT220+ supports 8 colors
-            return org.aesh.terminal.utils.ColorDepth.COLORS_8;
-        }
+        // VT220+ supports 8 colors
 
         // VT100 level - minimal color support
         return org.aesh.terminal.utils.ColorDepth.COLORS_8;
@@ -520,13 +517,9 @@ public class DeviceAttributes {
         }
 
         // Check ANSI color - most modern terminals should have this
-        if (expectedType.supportsTrueColor() &&
-                !supportsAnsiColor() && deviceClass < 62) {
-            // Expected true color but terminal doesn't even report ANSI color
-            return false;
-        }
-
-        return true;
+        // Expected true color but terminal doesn't even report ANSI color
+        return !expectedType.supportsTrueColor() ||
+                supportsAnsiColor() || deviceClass >= 62;
     }
 
     /**

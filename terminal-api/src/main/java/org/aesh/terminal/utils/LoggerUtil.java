@@ -95,8 +95,7 @@ public class LoggerUtil {
      */
     public static synchronized Logger getLogger(String name) {
         if (!doLog) {
-            Logger log = Logger.getLogger(name);
-            return log;
+            return Logger.getLogger(name);
         } else {
             if (logHandler == null) {
                 createLogHandler(Config.getTmpDir() + Config.getPathSeparator() + "aesh.log");

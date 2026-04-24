@@ -116,7 +116,6 @@ public class TerminalFeatures {
 
         Consumer<int[]> prevInputHandler = connection.stdinHandler();
         CountDownLatch latch = new CountDownLatch(1);
-        @SuppressWarnings("unchecked")
         final Object[] result = { null };
         Attributes savedAttributes = connection.enterRawMode();
 

@@ -31,7 +31,7 @@ import org.junit.Test;
 public class PasteReadlineTest {
 
     @Test
-    public void paste() throws Exception {
+    public void paste() {
         TestReadlineConnection connection = new TestReadlineConnection();
         connection.read("connect" + Config.getLineSeparator() +
                 "admin" + Config.getLineSeparator() +

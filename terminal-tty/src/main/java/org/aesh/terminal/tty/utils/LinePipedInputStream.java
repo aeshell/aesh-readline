@@ -72,7 +72,7 @@ public class LinePipedInputStream extends PipedInputStream {
         if (c == NEW_LINE) {
             return rlen;
         }
-        int enter = -1;
+        int enter;
         while ((in >= 0) && (len > 1)) {
 
             int available;

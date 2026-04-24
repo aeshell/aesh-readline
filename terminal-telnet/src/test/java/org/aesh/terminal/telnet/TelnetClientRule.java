@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.net.SocketException;
+import java.nio.charset.StandardCharsets;
 import java.util.function.BiConsumer;
 
 import org.aesh.terminal.TestBase;
@@ -42,7 +43,7 @@ public class TelnetClientRule extends ExternalResource {
     public TelnetClient client;
 
     public String assertReadString(int length) throws Exception {
-        return new String(assertReadBytes(length), 0, length, "UTF-8");
+        return new String(assertReadBytes(length), 0, length, StandardCharsets.UTF_8);
     }
 
     private void checkNotConnected() {
@@ -136,7 +137,7 @@ public class TelnetClientRule extends ExternalResource {
     }
 
     @Override
-    protected void before() throws Throwable {
+    protected void before() {
         client = new TelnetClient() {
             @Override
             protected void _connectAction_() throws IOException {

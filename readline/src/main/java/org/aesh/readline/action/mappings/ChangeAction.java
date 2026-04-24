@@ -31,9 +31,9 @@ import org.aesh.readline.editing.EditMode;
  */
 abstract class ChangeAction extends MovementAction {
 
-    private EditMode.Status status;
+    private final EditMode.Status status;
     /** Whether this action operates in vi mode. */
-    protected boolean viMode;
+    protected final boolean viMode;
 
     /**
      * Creates a new change action with the specified status.

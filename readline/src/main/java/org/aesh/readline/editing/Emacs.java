@@ -43,14 +43,12 @@ public class Emacs implements EditMode {
 
     private ActionEvent currentAction;
 
-    private Map<Key, Action> actions;
-    private Map<Variable, String> variables;
-    private Map<KeyAction, Action> keyEventActions;
+    private final Map<Key, Action> actions;
+    private final Map<Variable, String> variables;
+    private final Map<KeyAction, Action> keyEventActions;
 
     //counting how many times eof been pressed
     private int eofCounter;
-    //default value
-    private int ignoreEOFSize = 0;
     private boolean ctrlX;
     private KeyAction prevKey;
 
@@ -202,7 +200,7 @@ public class Emacs implements EditMode {
 
     @Override
     public void updateIgnoreEOF(int eof) {
-        ignoreEOFSize = eof;
+        //default value
     }
 
     /**
@@ -231,7 +229,7 @@ public class Emacs implements EditMode {
         List<KeyAction> keys = new ArrayList<>(actions.size() + keyEventActions.size());
         keys.addAll(actions.keySet());
         keys.addAll(keyEventActions.keySet());
-        return keys.toArray(new KeyAction[keys.size()]);
+        return keys.toArray(new KeyAction[0]);
     }
 
     @Override

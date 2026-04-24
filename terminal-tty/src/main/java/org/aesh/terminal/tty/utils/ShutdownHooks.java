@@ -41,7 +41,7 @@ public final class ShutdownHooks {
 
     private static final Logger LOGGER = LoggerUtil.getLogger(ShutdownHooks.class.getName());
 
-    private static final List<Task> tasks = new ArrayList<Task>();
+    private static final List<Task> tasks = new ArrayList<>();
 
     private static Thread hook;
 
@@ -77,7 +77,7 @@ public final class ShutdownHooks {
         LOGGER.log(Level.FINE, "Running all shutdown-hook tasks");
 
         // Iterate through copy of tasks list
-        for (Task task : tasks.toArray(new Task[tasks.size()])) {
+        for (Task task : tasks.toArray(new Task[0])) {
             LOGGER.log(Level.FINE, "Running task: ", task);
             try {
                 task.run();

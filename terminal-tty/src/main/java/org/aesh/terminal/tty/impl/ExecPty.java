@@ -90,7 +90,7 @@ public class ExecPty extends AbstractExecPty {
     }
 
     @Override
-    public InputStream getSlaveInput() throws IOException {
+    public InputStream getSlaveInput() {
         try {
             if (!validTTYFile) {
                 return System.in;
@@ -104,7 +104,7 @@ public class ExecPty extends AbstractExecPty {
     }
 
     @Override
-    public OutputStream getSlaveOutput() throws IOException {
+    public OutputStream getSlaveOutput() {
         try {
             if (!validTTYFile) {
                 return System.out;
@@ -187,18 +187,18 @@ public class ExecPty extends AbstractExecPty {
         if (!commands.isEmpty()) {
             if (OSUtils.IS_HPUX || OSUtils.IS_SUNOS) {
                 commands.add(0, OSUtils.STTY_COMMAND);
-                exec(commands.toArray(new String[commands.size()]));
+                exec(commands.toArray(new String[0]));
             } else {
                 commands.add(0, OSUtils.STTY_COMMAND);
                 commands.add(1, OSUtils.STTY_F_OPTION);
                 commands.add(2, getName());
                 try {
-                    exec(commands.toArray(new String[commands.size()]));
+                    exec(commands.toArray(new String[0]));
                 } catch (IOException ex) {
                     // Try a fallback without -f
                     commands.remove(2);
                     commands.remove(1);
-                    exec(commands.toArray(new String[commands.size()]));
+                    exec(commands.toArray(new String[0]));
                 }
             }
         }
@@ -212,12 +212,8 @@ public class ExecPty extends AbstractExecPty {
             String config = doGetConfig();
             return new Size(doGetInt("columns", config), doGetInt("rows", config));
         } else {
-            try {
-                return doGetOptimalSize(exec(OSUtils.STTY_COMMAND, OSUtils.STTY_F_OPTION, getName(), "size"));
-            } catch (IOException ex) {
-                // Try a fallback without -f
-                return doGetOptimalSize(exec(OSUtils.STTY_COMMAND, "size"));
-            }
+            return doGetOptimalSize(exec(OSUtils.STTY_COMMAND, OSUtils.STTY_F_OPTION, getName(), "size"));
+
         }
 
     }
@@ -278,7 +274,7 @@ public class ExecPty extends AbstractExecPty {
             for (String option : line.trim().split(" ")) {
                 //options starting with - are ignored
                 option = option.trim();
-                if (option.length() > 0 && option.charAt(0) != '-') {
+                if (!option.isEmpty() && option.charAt(0) != '-') {
                     Attributes.ControlFlag controlFlag = getEnumFromString(Attributes.ControlFlag.class, option);
                     if (controlFlag != null)
                         attributes.setControlFlag(controlFlag, true);
@@ -328,7 +324,7 @@ public class ExecPty extends AbstractExecPty {
                 Integer.parseInt(tokens[2].substring(7)));
     }
 
-    private static Size doGetOptimalSize(String cfg) throws IOException {
+    private static Size doGetOptimalSize(String cfg) {
         final String[] size = cfg.split(" ");
         return new Size(Integer.parseInt(size[1].trim()), Integer.parseInt(size[0].trim()));
     }

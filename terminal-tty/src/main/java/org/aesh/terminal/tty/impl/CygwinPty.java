@@ -72,12 +72,12 @@ public class CygwinPty extends AbstractExecPty {
     }
 
     @Override
-    public InputStream getSlaveInput() throws IOException {
+    public InputStream getSlaveInput() {
         return new FileInputStream(FileDescriptor.in);
     }
 
     @Override
-    public OutputStream getSlaveOutput() throws IOException {
+    public OutputStream getSlaveOutput() {
         return new FileOutputStream(FileDescriptor.out);
     }
 
@@ -137,7 +137,7 @@ public class CygwinPty extends AbstractExecPty {
         }
         if (!commands.isEmpty()) {
             commands.add(0, OSUtils.STTY_COMMAND);
-            exec(commands.toArray(new String[commands.size()]));
+            exec(commands.toArray(new String[0]));
         }
     }
 

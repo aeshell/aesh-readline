@@ -98,10 +98,6 @@ public enum Option {
         }
 
         @Override
-        void handleWont(TelnetConnection session) {
-        }
-
-        @Override
         void handleParameters(TelnetConnection session, byte[] parameters) {
             if (parameters.length > 0 && parameters[0] == BYTE_IS) {
                 String terminalType = new String(parameters, 1, parameters.length - 1);

@@ -278,7 +278,7 @@ public class InputReaderTest {
     }
 
     @Test
-    public void testHandlerAfterClose() throws Exception {
+    public void testHandlerAfterClose() {
         InputReader reader = new InputReader();
         reader.close();
         // Should not throw — push is simply dropped
@@ -286,7 +286,7 @@ public class InputReaderTest {
     }
 
     @Test
-    public void testDoubleClose() throws Exception {
+    public void testDoubleClose() {
         InputReader reader = new InputReader();
         reader.close();
         // Second close should be a no-op

@@ -93,7 +93,7 @@ public class TestTerminal {
     }
 
     public String getLine() {
-        if (output.size() > 0)
+        if (!output.isEmpty())
             return output.remove(0);
         else
             return null;

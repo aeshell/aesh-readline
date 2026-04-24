@@ -30,8 +30,6 @@ import org.junit.Test;
  */
 public class TerminalCharacterTest {
 
-    private static byte BOLD_OFF = 22;
-
     @Test
     public void testTerminalCharacterAsString() {
         TerminalCharacter character = new TerminalCharacter('c', new TerminalTextStyle(CharacterType.BOLD));
@@ -58,6 +56,7 @@ public class TerminalCharacterTest {
         TerminalCharacter c2 = new TerminalCharacter('f', new TerminalColor(Color.DEFAULT, Color.BLUE),
                 new TerminalTextStyle(CharacterType.CROSSED_OUT));
 
+        byte BOLD_OFF = 22;
         assertEquals(ANSI.START +
                 BOLD_OFF + ";" +
                 CharacterType.CROSSED_OUT.getValue() + ";" +

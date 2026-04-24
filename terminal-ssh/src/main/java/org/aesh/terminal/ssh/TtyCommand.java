@@ -90,7 +90,7 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
     }
 
     @Override
-    public int data(ChannelSession channel, byte[] buf, int start, int len) throws IOException {
+    public int data(ChannelSession channel, byte[] buf, int start, int len) {
         if (decoder != null) {
             lastAccessedTime = System.currentTimeMillis();
             decoder.write(buf, start, len);
@@ -152,7 +152,7 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
     }
 
     @Override
-    public void start(ChannelSession channelSession, Environment env) throws IOException {
+    public void start(ChannelSession channelSession, Environment env) {
         String lcctype = env.getEnv().get("LC_CTYPE");
         if (lcctype != null) {
             charset = parseCharset(lcctype);
@@ -203,11 +203,11 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
     }
 
     @Override
-    public void close() throws IOException {
+    public void close() {
         close(0);
     }
 
-    private void close(int exit) throws IOException {
+    private void close(int exit) {
         if (conn != null) {
             conn.setReading(false);
         }
@@ -222,7 +222,7 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
     }
 
     @Override
-    public void destroy(ChannelSession channelSession) throws Exception {
+    public void destroy(ChannelSession channelSession) {
         // Test this
     }
 
@@ -301,18 +301,12 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
 
         @Override
         public void close() {
-            try {
-                TtyCommand.this.close();
-            } catch (IOException ignore) {
-            }
+            TtyCommand.this.close();
         }
 
         @Override
         public void close(int exit) {
-            try {
-                TtyCommand.this.close(exit);
-            } catch (IOException ignore) {
-            }
+            TtyCommand.this.close(exit);
         }
 
         @Override

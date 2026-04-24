@@ -61,15 +61,13 @@ public class TestTerminalConnection {
         Thread.sleep(150);
         connection.openBlocking();
 
-        assertArrayEquals(result.get(0), new int[] { 70, 79, 79 });
+        assertArrayEquals(new int[] { 70, 79, 79 }, result.get(0));
     }
 
     @Test
     public void testTestConnection() {
         TestTerminal testConnection = new TestTerminal();
-        testConnection.read(read -> {
-            assertEquals("foo", read);
-        });
+        testConnection.read(read -> assertEquals("foo", read));
 
         testConnection.write("foo\n");
         testConnection.close();

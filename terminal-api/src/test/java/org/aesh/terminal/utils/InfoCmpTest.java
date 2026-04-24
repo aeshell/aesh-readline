@@ -83,8 +83,8 @@ public class InfoCmpTest {
                 assertEquals(256, ints.get(Capability.max_colors).intValue());
                 assertTrue(ints.get(Capability.columns) > 0);
                 assertTrue(ints.get(Capability.lines) > 0);
-                assertTrue(bools.size() > 0);
-                assertTrue(strings.size() > 0);
+                assertTrue(!bools.isEmpty());
+                assertTrue(!strings.isEmpty());
                 assertNotNull(strings.get(Capability.byName("smcup")));
             }
         }

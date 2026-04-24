@@ -66,7 +66,7 @@ public class InMemoryHistory extends History {
     public void push(int[] entry) {
         if (isEnabled() && entry != null && !Parser.isTrimmedArrayEmpty(entry)) {
             // Don't add repeated lines to the history
-            if (historyList.size() > 0 &&
+            if (!historyList.isEmpty() &&
                     Arrays.equals(historyList.get(historyList.size() - 1), entry)) {
                 //historyList.get(historyList.size()-1).equals(entry.trim())) {
                 lastId = size();

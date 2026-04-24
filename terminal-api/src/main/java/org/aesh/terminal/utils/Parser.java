@@ -79,7 +79,7 @@ public final class Parser {
      * @return formatted string to be outputted
      */
     public static String formatDisplayList(List<String> displayList, int termHeight, int termWidth) {
-        if (displayList == null || displayList.size() < 1) {
+        if (displayList == null || displayList.isEmpty()) {
             return "";
         }
         // make sure that termWidth is > 0
@@ -130,7 +130,7 @@ public final class Parser {
      * @return formatted string to be outputted
      */
     public static String formatDisplayListTerminalString(List<TerminalString> displayList, int termHeight, int termWidth) {
-        if (displayList == null || displayList.size() < 1)
+        if (displayList == null || displayList.isEmpty())
             return "";
         // make sure that termWidth is > 0
         if (termWidth < 1)
@@ -184,7 +184,7 @@ public final class Parser {
      * @return formatted string to be outputted
      */
     public static String formatDisplayCompactListTerminalString(List<TerminalString> displayList, int termWidth) {
-        if (displayList == null || displayList.size() < 1)
+        if (displayList == null || displayList.isEmpty())
             return "";
         // make sure that termWidth is > 0
         if (termWidth < 1)
@@ -325,7 +325,6 @@ public final class Parser {
         List<String> out = new ArrayList<>();
         if (words.length() <= size) {
             out.add(words);
-            return out;
         } else {
             while (words.length() > size) {
                 int i = words.lastIndexOf(' ', size);
@@ -337,10 +336,10 @@ public final class Parser {
                     break;
                 }
             }
-            if (words.length() > 0)
+            if (!words.isEmpty())
                 out.add(words);
-            return out;
         }
+        return out;
     }
 
     /**
@@ -429,7 +428,7 @@ public final class Parser {
             cursor = text.length() - 1;
             startOutsideText = true;
         }
-        if (cursor < 0 || text.trim().length() == 0)
+        if (cursor < 0 || text.trim().isEmpty())
             return "";
 
         boolean foundBackslash = false;
@@ -655,7 +654,7 @@ public final class Parser {
      * @return a new list with escaped spaces converted
      */
     public static List<String> switchEscapedSpacesToSpacesInList(List<String> list) {
-        List<String> newList = new ArrayList<String>(list.size());
+        List<String> newList = new ArrayList<>(list.size());
         for (String s : list)
             newList.add(switchEscapedSpacesToSpacesInWord(s));
         return newList;

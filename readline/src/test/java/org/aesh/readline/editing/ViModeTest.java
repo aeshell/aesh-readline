@@ -62,7 +62,7 @@ public class ViModeTest {
     }
 
     @Test
-    public void testWordMovementAndEdit() throws Exception {
+    public void testWordMovementAndEdit() {
         TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI).build());
         term.read("  ..");
         term.read(Key.ESC);
@@ -83,7 +83,7 @@ public class ViModeTest {
     }
 
     @Test
-    public void testWordMovementAndEdit2() throws Exception {
+    public void testWordMovementAndEdit2() {
         TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI).build());
         term.read("foo  bar...  Foo-Bar.");
         term.read(Key.ESC);
@@ -105,7 +105,7 @@ public class ViModeTest {
     }
 
     @Test
-    public void testWordMovementAndEdit3() throws Exception {
+    public void testWordMovementAndEdit3() {
         TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI).build());
         term.read("foo bar... Bar");
         term.read(Key.ESC);
@@ -120,7 +120,7 @@ public class ViModeTest {
     }
 
     @Test
-    public void testEnter() throws Exception {
+    public void testEnter() {
         TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI).build());
         term.read("foo bar");
         term.read(Key.ENTER);
@@ -135,7 +135,7 @@ public class ViModeTest {
     }
 
     @Test
-    public void testRepeatAndEdit() throws Exception {
+    public void testRepeatAndEdit() {
         TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI).build());
 
         term.read("/cd /home/foo/ ls/ cd Desktop/ ls ../");
@@ -181,7 +181,7 @@ public class ViModeTest {
     }
 
     @Test
-    public void testTildeAndEdit() throws Exception {
+    public void testTildeAndEdit() {
         TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI).build());
 
         term.read("apt-get install vIM");

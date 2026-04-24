@@ -140,12 +140,7 @@ public abstract class WebsocketTtyTestBase extends TtyTestBase {
 
     @Override
     protected void assertDisconnect(boolean clean) throws Exception {
-        if (clean) {
-            session.close();
-        } else {
-            // No way ???
-            session.close();
-        }
+        session.close();
     }
 
     @Override
@@ -160,7 +155,7 @@ public abstract class WebsocketTtyTestBase extends TtyTestBase {
     }
 
     @Override
-    public void testDifferentCharset() throws Exception {
+    public void testDifferentCharset() {
         // Don't test, charset in this case is always UTF-8 for text frames
     }
 }

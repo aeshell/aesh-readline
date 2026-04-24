@@ -970,7 +970,7 @@ public final class Buffer {
             System.arraycopy(line, cursor, line, cursor + delta, size - cursor);
             size += delta;
             cursor += delta;
-            this.delta = +delta;
+            this.delta = delta;
             deletingBackward = true;
         }
 

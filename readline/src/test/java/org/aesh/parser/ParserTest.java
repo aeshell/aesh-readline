@@ -227,32 +227,32 @@ public class ParserTest {
         TerminalString terminalLonger3 = new TerminalString("longer3");
 
         assertEquals(
-                terminalLong.toString() + Config.getLineSeparator(),
+                terminalLong + Config.getLineSeparator(),
                 Parser.formatDisplayCompactListTerminalString(Collections.singletonList(terminalLong), 10));
 
         assertEquals(
-                terminalShort1.toString() + "  " + terminalShort2.toString() + Config.getLineSeparator(),
+                terminalShort1 + "  " + terminalShort2 + Config.getLineSeparator(),
                 Parser.formatDisplayCompactListTerminalString(Arrays.asList(terminalShort1, terminalShort2), 20));
 
         assertEquals(
-                terminalShort1.toString() + Config.getLineSeparator() + terminalShort2.toString() + Config.getLineSeparator(),
+                terminalShort1 + Config.getLineSeparator() + terminalShort2 + Config.getLineSeparator(),
                 Parser.formatDisplayCompactListTerminalString(Arrays.asList(terminalShort1, terminalShort2), 10));
 
         assertEquals(
-                terminalShort1.toString() + "  " + terminalShort3.toString() + Config.getLineSeparator()
-                        + terminalShort2.toString() + Config.getLineSeparator(),
+                terminalShort1 + "  " + terminalShort3 + Config.getLineSeparator()
+                        + terminalShort2 + Config.getLineSeparator(),
                 Parser.formatDisplayCompactListTerminalString(Arrays.asList(terminalShort1, terminalShort2, terminalShort3),
                         15));
 
         assertEquals(
-                terminalShort1.toString() + "  " + terminalShort3.toString() + Config.getLineSeparator() +
-                        terminalShort2.toString() + "  " + terminalShort4.toString() + Config.getLineSeparator(),
+                terminalShort1 + "  " + terminalShort3 + Config.getLineSeparator() +
+                        terminalShort2 + "  " + terminalShort4 + Config.getLineSeparator(),
                 Parser.formatDisplayCompactListTerminalString(
                         Arrays.asList(terminalShort1, terminalShort2, terminalShort3, terminalShort4), 15));
 
         assertEquals(
-                terminalLonger1.toString() + "  " + terminalShort1.toString() + Config.getLineSeparator() +
-                        terminalLonger2.toString() + Config.getLineSeparator() + terminalLonger3.toString()
+                terminalLonger1 + "  " + terminalShort1 + Config.getLineSeparator() +
+                        terminalLonger2 + Config.getLineSeparator() + terminalLonger3
                         + Config.getLineSeparator(),
                 Parser.formatDisplayCompactListTerminalString(
                         Arrays.asList(terminalLonger1, terminalLonger2, terminalLonger3, terminalShort1), 15));

@@ -62,7 +62,7 @@ public class InputrcParser {
      * set variablename value
      * keyname: function-name or macro
      * "keyseq": function-name or macro
-     *
+     * <p>
      * Lines starting with # are comments
      * Lines starting with $ are conditional init constructs
      *
@@ -97,7 +97,7 @@ public class InputrcParser {
         boolean constructMode = false;
         while (scanner.hasNext()) {
             line = scanner.next();
-            if (line.trim().length() < 1)
+            if (line.trim().isEmpty())
                 continue;
             //first check if its a comment
             if (commentPattern.matcher(line).matches())
@@ -171,7 +171,7 @@ public class InputrcParser {
      */
     private static void parseVariables(Variable variable, String value, EditModeBuilder editMode) {
 
-        if (VariableValues.getValuesByVariable(variable).size() > 0) {
+        if (!VariableValues.getValuesByVariable(variable).isEmpty()) {
             if (VariableValues.getValuesByVariable(variable).contains(value))
                 editMode.addVariable(variable, value);
             else
@@ -304,9 +304,7 @@ public class InputrcParser {
         }
         if (index != length) {
             final int[] trimmedArray = new int[index];
-            for (int i = 0; i < index; i++) {
-                trimmedArray[i] = tmpArray[i];
-            }
+            System.arraycopy(tmpArray, 0, trimmedArray, 0, index);
             return trimmedArray;
         } else {
             return tmpArray;

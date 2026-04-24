@@ -80,7 +80,7 @@ public class CompletionReadlineTest {
     public void testMultipleCompletionsSorted() {
         List<Completion> completions = new ArrayList<>();
         completions.add(co -> {
-            if (co.getBuffer().trim().equals("")) {
+            if (co.getBuffer().trim().isEmpty()) {
                 co.addCompletionCandidate("foo");
                 co.addCompletionCandidate("arg");
                 co.addCompletionCandidate("Arg");
@@ -97,7 +97,7 @@ public class CompletionReadlineTest {
     public void testCompletionEmptyLine() {
         List<Completion> completions = new ArrayList<>();
         completions.add(co -> {
-            if (co.getBuffer().trim().equals("")) {
+            if (co.getBuffer().trim().isEmpty()) {
                 co.addCompletionCandidate("bar");
                 co.addCompletionCandidate("foo");
             }

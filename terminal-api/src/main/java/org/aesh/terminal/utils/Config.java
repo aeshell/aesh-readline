@@ -19,6 +19,8 @@
  */
 package org.aesh.terminal.utils;
 
+import java.nio.file.FileSystems;
+
 /**
  * Configuration utility class providing system and environment information
  * such as OS type, line separators, and path separators.
@@ -32,8 +34,8 @@ public class Config {
 
     private static final boolean macOS = OSUtils.IS_OSX;
     private static final boolean windows = OSUtils.IS_WINDOWS;
-    private static final String lineSeparator = System.getProperty("line.separator");
-    private static final String pathSeparator = System.getProperty("file.separator");
+    private static final String lineSeparator = System.lineSeparator();
+    private static final String pathSeparator = FileSystems.getDefault().getSeparator();
     private static final String tmpDir = System.getProperty("java.io.tmpdir");
     private static final boolean posixCompatible = checkPosixCompability();
 
@@ -41,7 +43,7 @@ public class Config {
      * The line separator as an array of code points.
      */
     public static final int[] CR = lineSeparator.codePoints().toArray();
-    private static boolean cygwin = OSUtils.IS_CYGWIN;
+    private static final boolean cygwin = OSUtils.IS_CYGWIN;
 
     /**
      * Check if the operating system is POSIX compatible.

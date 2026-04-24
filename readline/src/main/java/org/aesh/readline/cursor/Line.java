@@ -43,7 +43,7 @@ public class Line {
     /**
      * A CursorAction is an action that modifies the cursor.
      */
-    public abstract class CursorAction {
+    public abstract static class CursorAction {
 
         /**
          * Default constructor for CursorAction.
@@ -134,7 +134,7 @@ public class Line {
      */
     public class MoveBackwardAction extends CursorAction {
 
-        int move;
+        final int move;
 
         MoveBackwardAction(int move) {
             this.move = move;
@@ -151,7 +151,7 @@ public class Line {
      */
     public class MoveForwardAction extends CursorAction {
 
-        int move;
+        final int move;
 
         MoveForwardAction(int move) {
             this.move = move;
@@ -168,7 +168,7 @@ public class Line {
      */
     public class MoveUpAction extends CursorAction {
 
-        int move;
+        final int move;
 
         MoveUpAction(int move) {
             this.move = move;
@@ -185,7 +185,7 @@ public class Line {
      */
     public class MoveDownAction extends CursorAction {
 
-        int move;
+        final int move;
 
         MoveDownAction(int move) {
             this.move = move;
@@ -441,7 +441,7 @@ public class Line {
 
     private void move(int delta, char action) {
         if (delta > 0) {
-            connection.stdoutHandler().accept(buffer.moveNumberOfColumns(delta, action));
+            connection.stdoutHandler().accept(Buffer.moveNumberOfColumns(delta, action));
         }
     }
 

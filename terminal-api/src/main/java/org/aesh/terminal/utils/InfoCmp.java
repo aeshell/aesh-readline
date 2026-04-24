@@ -198,12 +198,11 @@ public final class InfoCmp {
                     // escaped comma -> include literal comma
                     sb.append(',');
                     i++; // skip next
-                    continue;
                 } else {
                     // keep the backslash for other escapes
                     sb.append(ch);
-                    continue;
                 }
+                continue;
             }
             if (ch == ',') {
                 tokens.add(sb.toString().trim());

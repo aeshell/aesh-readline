@@ -62,9 +62,9 @@ import org.aesh.terminal.tty.DeviceBuilder;
  */
 public class EditModeBuilder {
 
-    private Map<int[], String> actions;
+    private final Map<int[], String> actions;
 
-    private Map<Variable, String> variables;
+    private final Map<Variable, String> variables;
 
     private Device device;
 

@@ -19,14 +19,14 @@ public class TestConnection implements Connection {
     protected Decoder decoder;
     protected Consumer<int[]> stdOutHandler;
     protected EventDecoder eventDecoder;
-    protected StringBuilder bufferBuilder;
-    protected Queue<String> out;
-    protected Size size;
-    protected Device device;
+    protected final StringBuilder bufferBuilder;
+    protected final Queue<String> out;
+    protected final Size size;
+    protected final Device device;
     protected Attributes attributes;
     private Consumer<Size> sizeHandler;
     private Consumer<Void> closeHandler;
-    private boolean stripAnsi = true;
+    private final boolean stripAnsi = true;
 
     public TestConnection(Size size) {
         this(size, null);

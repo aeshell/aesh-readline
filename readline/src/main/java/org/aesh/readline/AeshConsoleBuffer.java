@@ -28,7 +28,7 @@ import org.aesh.terminal.utils.LoggerUtil;
  */
 public class AeshConsoleBuffer implements ConsoleBuffer {
 
-    private EditMode editMode;
+    private final EditMode editMode;
 
     private final Buffer buffer;
     private final Connection connection;
@@ -39,7 +39,6 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
     private final CompletionHandler completionHandler;
     private Size size;
 
-    private final boolean ansiMode;
     private String ghostText;
 
     private static final Logger LOGGER = LoggerUtil.getLogger(AeshConsoleBuffer.class.getName());
@@ -61,7 +60,6 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
             CompletionHandler completionHandler,
             boolean ansi, CursorListener listener) {
         this.connection = connection;
-        this.ansiMode = ansi;
         this.buffer = new Buffer(prompt);
         pasteManager = new PasteManager();
         undoManager = new UndoManager();
@@ -171,7 +169,7 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
 
     @Override
     public void writeString(String input) {
-        if (input != null && input.length() > 0) {
+        if (input != null && !input.isEmpty()) {
             clearGhostText();
             buffer.insert(connection.stdoutHandler(), input, size().getWidth());
         }

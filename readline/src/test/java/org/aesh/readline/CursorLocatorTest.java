@@ -19,7 +19,8 @@
  */
 package org.aesh.readline;
 
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 import java.io.IOException;
 
@@ -53,7 +54,7 @@ public class CursorLocatorTest {
             Buffer buffer = new Buffer(new Prompt(PROMPT));
             CursorLocator locator = buffer.getCursorLocator();
             CursorLocation loc = locator.locate(10, WIDTH);
-            assertTrue(loc == null);
+            assertNull(loc);
         }
 
         { // Nominal, retrieve index after the prompt inside a cmd.
@@ -166,7 +167,7 @@ public class CursorLocatorTest {
         Line line = new Line(buffer, connection, WIDTH);
         String s = line.getLineToCursor();
         Assert.assertEquals(cmd, s);
-        Assert.assertFalse(line.getCursorLocator() == null);
+        Assert.assertNotNull(line.getCursorLocator());
         Assert.assertEquals(buffer.multiCursor(), s.length());
         line.newCursorTransactionBuilder().move(10).build().run();
         Assert.assertEquals(buffer.multiCursor(), s.length());
@@ -190,10 +191,8 @@ public class CursorLocatorTest {
 
     private static void check(Buffer buffer, int offset, int row, int col, int width) {
         CursorLocation cursorLoc = buffer.getCursorLocator().locate(offset, width);
-        assertTrue("Invalid column " + cursorLoc.getColumn()
-                + ". Expected " + col,
-                cursorLoc.getColumn() == col);
-        assertTrue("Invalid row " + cursorLoc.getRow() + ". Expected " + row,
-                cursorLoc.getRow() == row);
+        assertEquals("Invalid column " + cursorLoc.getColumn()
+                + ". Expected " + col, cursorLoc.getColumn(), col);
+        assertEquals("Invalid row " + cursorLoc.getRow() + ". Expected " + row, cursorLoc.getRow(), row);
     }
 }

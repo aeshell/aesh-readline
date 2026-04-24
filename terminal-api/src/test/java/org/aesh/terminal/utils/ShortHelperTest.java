@@ -20,7 +20,6 @@
 package org.aesh.terminal.utils;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
@@ -39,10 +38,10 @@ public class ShortHelperTest {
         short[] shorts = ShortHelper.toShortPoints(input);
         int[] ints = Parser.toCodePoints(input);
 
-        assertTrue(shorts.length == ints.length);
+        assertEquals(shorts.length, ints.length);
 
         for (int i = 0; i < shorts.length; i++) {
-            assertTrue(shorts[i] == ints[i]);
+            assertEquals(shorts[i], ints[i]);
         }
     }
 

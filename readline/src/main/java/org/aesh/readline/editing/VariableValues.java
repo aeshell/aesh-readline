@@ -36,17 +36,17 @@ public enum VariableValues {
     /** Bind TTY special chars: on/off. */
     BIND_TTY_SPECIAL_CHARS(Variable.BIND_TTY_SPECIAL_CHARS, Arrays.asList("on", "off")),
     /** Comment begin string (free-form). */
-    COMMENT_BEGIN(Variable.COMMENT_BEGIN, new ArrayList<String>()),
+    COMMENT_BEGIN(Variable.COMMENT_BEGIN, new ArrayList<>()),
     /** Completion display width (numeric). */
-    COMPLETION_DISPLAY_WIDTH(Variable.COMPLETION_DISPLAY_WIDTH, new ArrayList<String>()),
+    COMPLETION_DISPLAY_WIDTH(Variable.COMPLETION_DISPLAY_WIDTH, new ArrayList<>()),
     /** Completion ignore case: on/off. */
     COMPLETION_IGNORE_CASE(Variable.COMPLETION_IGNORE_CASE, Arrays.asList("on", "off")),
     /** Completion map case: on/off. */
     COMPLETION_MAP_CASE(Variable.COMPLETION_MAP_CASE, Arrays.asList("on", "off")),
     /** Completion prefix display length (numeric). */
-    COMPLETION_PREFIX_DISPLAY_LENGTH(Variable.COMPLETION_PREFIX_DISPLAY_LENGTH, new ArrayList<String>()),
+    COMPLETION_PREFIX_DISPLAY_LENGTH(Variable.COMPLETION_PREFIX_DISPLAY_LENGTH, new ArrayList<>()),
     /** Completion query items threshold (numeric). */
-    COMPLETION_QUERY_ITEMS(Variable.COMPLETION_QUERY_ITEMS, new ArrayList<String>()),
+    COMPLETION_QUERY_ITEMS(Variable.COMPLETION_QUERY_ITEMS, new ArrayList<>()),
     /** Convert meta characters: on/off. */
     CONVERT_META(Variable.CONVERT_META, Arrays.asList("on", "off")),
     /** Disable completion: on/off. */
@@ -62,13 +62,13 @@ public enum VariableValues {
     /** History preserve point: on/off. */
     HISTORY_PRESERVE_POINT(Variable.HISTORY_PRESERVE_POINT, Arrays.asList("on", "off")),
     /** History size (numeric). */
-    HISTORY_SIZE(Variable.HISTORY_SIZE, new ArrayList<String>()),
+    HISTORY_SIZE(Variable.HISTORY_SIZE, new ArrayList<>()),
     /** History scroll mode: on/off. */
     HISTORY_SCROLL_MODE(Variable.HISTORY_SCROLL_MODE, Arrays.asList("on", "off")),
     /** Input meta: on/off. */
     INPUT_META(Variable.INPUT_META, Arrays.asList("on", "off")),
     /** Isearch terminators (free-form). */
-    ISEARCH_TERMINATORS(Variable.ISEARCH_TERMINATORS, new ArrayList<String>()),
+    ISEARCH_TERMINATORS(Variable.ISEARCH_TERMINATORS, new ArrayList<>()),
     /** Keymap names for different editing contexts. */
     KEYMAP(Variable.KEYMAP,
             Arrays.asList("emacs", "vi", "emacs-standard", "emacs-meta", "emacs-ctlx", "vi-move", "vi-command", "vi-insert")),
@@ -99,8 +99,8 @@ public enum VariableValues {
     /** Visible stats: on/off. */
     VISIBLE_STATS(Variable.VISIBLE_STATS, Arrays.asList("on", "off"));
 
-    private Variable variable;
-    private List<String> values;
+    private final Variable variable;
+    private final List<String> values;
 
     VariableValues(Variable variable, List<String> values) {
         this.variable = variable;
@@ -127,6 +127,6 @@ public enum VariableValues {
      * @return true if there are allowed values defined
      */
     public boolean hasValue() {
-        return values.size() > 0;
+        return !values.isEmpty();
     }
 }

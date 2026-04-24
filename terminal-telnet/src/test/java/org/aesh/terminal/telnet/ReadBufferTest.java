@@ -21,7 +21,6 @@ package org.aesh.terminal.telnet;
 
 import java.util.ArrayList;
 import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.Executor;
 
 import org.aesh.terminal.TestBase;
 import org.junit.Before;
@@ -39,19 +38,14 @@ public class ReadBufferTest extends TestBase {
     @Before
     public void setUp() {
         commands = new ArrayBlockingQueue<>(1);
-        buf = new ReadBuffer(new Executor() {
-            @Override
-            public void execute(Runnable command) {
-                commands.add(command);
-            }
-        });
+        buf = new ReadBuffer(command -> commands.add(command));
         reads = new ArrayList<>();
     }
 
     @Test
     public void testFoo() {
         final ArrayList<int[]> reads = new ArrayList<>();
-        buf.setReadHandler(event -> reads.add(event));
+        buf.setReadHandler(reads::add);
         buf.accept(new int[] { 'f', 'o', 'o' });
         assertEquals(0, commands.size());
         assertEquals(1, reads.size());
@@ -59,7 +53,7 @@ public class ReadBufferTest extends TestBase {
     }
 
     @Test
-    public void testBar() throws Exception {
+    public void testBar() {
         buf.accept(new int[] { 'f', 'o', 'o' });
         assertEquals(0, reads.size());
         assertEquals(0, commands.size());
@@ -73,7 +67,7 @@ public class ReadBufferTest extends TestBase {
     }
 
     @Test
-    public void testJuu() throws Exception {
+    public void testJuu() {
         buf.accept(new int[] { 'f', 'o', 'o' });
         buf.accept(new int[] { 'b', 'a', 'r' });
         assertEquals(0, reads.size());
@@ -92,7 +86,7 @@ public class ReadBufferTest extends TestBase {
     }
 
     @Test
-    public void testBilto() throws Exception {
+    public void testBilto() {
         buf.accept(new int[] { 'f', 'o', 'o' });
         buf.accept(new int[] { 'b', 'a', 'r' });
         assertEquals(0, reads.size());

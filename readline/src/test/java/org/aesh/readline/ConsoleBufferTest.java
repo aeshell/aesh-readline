@@ -22,7 +22,6 @@ package org.aesh.readline;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.function.Consumer;
 
@@ -54,7 +53,7 @@ public class ConsoleBufferTest {
     }
 
     @Test
-    public void testSimpleWrites() throws IOException {
+    public void testSimpleWrites() {
         SimpleConnection connection = new SimpleConnection();
         ConsoleBuffer consoleBuffer = createConsoleBuffer(connection);
 
@@ -71,7 +70,7 @@ public class ConsoleBufferTest {
     }
 
     @Test
-    public void testMovement() throws IOException {
+    public void testMovement() {
 
         SimpleConnection connection = new SimpleConnection();
         ConsoleBuffer consoleBuffer = createConsoleBuffer(connection, "");
@@ -94,17 +93,15 @@ public class ConsoleBufferTest {
         assertEquals("1f2oo0", consoleBuffer.buffer().asString());
     }
 
-    class SimpleConnection implements Connection {
+    static class SimpleConnection implements Connection {
 
-        private Consumer<int[]> stdOutHandler;
-        private StringBuilder bufferBuilder;
+        private final Consumer<int[]> stdOutHandler;
+        private final StringBuilder bufferBuilder;
 
         SimpleConnection() {
 
             bufferBuilder = new StringBuilder();
-            stdOutHandler = ints -> {
-                bufferBuilder.append(Parser.fromCodePoints(ints));
-            };
+            stdOutHandler = ints -> bufferBuilder.append(Parser.fromCodePoints(ints));
         }
 
         public String getBuffer() {

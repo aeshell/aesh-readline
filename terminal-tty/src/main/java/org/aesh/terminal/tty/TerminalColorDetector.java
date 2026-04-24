@@ -389,7 +389,7 @@ public final class TerminalColorDetector {
                     result = paletteResult;
                 }
             }
-        } else if (result == null || !hasColors(result)) {
+        } else if (!hasColors(result)) {
             if (inTmux && canUseTmuxPassthrough) {
                 LOGGER.log(Level.FINE, "Trying tmux DCS passthrough for all colors");
                 result = doSynchronousColorQuery(
@@ -397,7 +397,7 @@ public final class TerminalColorDetector {
             }
         }
 
-        if (result != null && hasColors(result)) {
+        if (hasColors(result)) {
             LOGGER.log(Level.FINE, "Color query succeeded");
         }
 
@@ -454,7 +454,7 @@ public final class TerminalColorDetector {
         TerminalColorCapability result = doSynchronousColorQuery(
                 terminal, rawTerminal, timeoutMs, false, false, false);
 
-        if (result == null || !hasColors(result)) {
+        if (!hasColors(result)) {
             if (inTmux && shouldUseTmuxPassthrough(env)) {
                 LOGGER.log(Level.FINE, "Trying tmux DCS passthrough for FG+BG");
                 result = doSynchronousColorQuery(

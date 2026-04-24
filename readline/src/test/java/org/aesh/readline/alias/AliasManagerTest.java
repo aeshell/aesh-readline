@@ -24,7 +24,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.Optional;
 
 import org.aesh.terminal.utils.Config;
@@ -43,12 +42,8 @@ public class AliasManagerTest {
 
     @Before
     public void setTup() {
-        try {
-            fooFile = new File("foo");
-            manager = new AliasManager(fooFile, true);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        fooFile = new File("foo");
+        manager = new AliasManager(fooFile, true);
     }
 
     @After
@@ -115,7 +110,7 @@ public class AliasManagerTest {
     }
 
     @Test
-    public void testPersist() throws Exception {
+    public void testPersist() {
         manager.persist();
         assertTrue("The persistent file should be a file", fooFile.isFile());
     }

@@ -28,7 +28,7 @@ import java.nio.charset.CoderResult;
 
 /**
  * Ascii based telnet charset.
- *
+ * <p>
  * The decoder transforms {@code \r\n} sequence and {@code \r0} to {@code \r}.
  *
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>

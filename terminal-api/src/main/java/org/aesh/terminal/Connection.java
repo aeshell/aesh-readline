@@ -19,7 +19,6 @@
  */
 package org.aesh.terminal;
 
-import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.Writer;
 import java.nio.charset.Charset;
@@ -279,17 +278,17 @@ public interface Connection extends Appendable, AutoCloseable {
     // ==================== Appendable ====================
 
     @Override
-    default Appendable append(char c) throws IOException {
+    default Appendable append(char c) {
         return write(String.valueOf(c));
     }
 
     @Override
-    default Appendable append(CharSequence csq) throws IOException {
+    default Appendable append(CharSequence csq) {
         return write(csq.toString());
     }
 
     @Override
-    default Appendable append(CharSequence csq, int start, int end) throws IOException {
+    default Appendable append(CharSequence csq, int start, int end) {
         return write(csq.subSequence(start, end).toString());
     }
 

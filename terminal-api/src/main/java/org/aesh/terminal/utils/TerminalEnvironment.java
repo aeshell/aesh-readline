@@ -58,7 +58,6 @@ public final class TerminalEnvironment {
     private final String conEmuPid;
     private final String conEmuAnsi;
     private final String alacrittySocket;
-    private final String tmux;
     private final String tmuxPassthrough;
 
     // Theme/color environment variables
@@ -92,7 +91,7 @@ public final class TerminalEnvironment {
         this.conEmuPid = System.getenv("ConEmuPID");
         this.conEmuAnsi = System.getenv("ConEmuANSI");
         this.alacrittySocket = System.getenv("ALACRITTY_SOCKET");
-        this.tmux = System.getenv("TMUX");
+        String tmux = System.getenv("TMUX");
         this.tmuxPassthrough = System.getenv("TMUX_PASSTHROUGH");
 
         this.colorFgBg = System.getenv("COLORFGBG");

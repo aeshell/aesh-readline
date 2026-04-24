@@ -19,8 +19,8 @@
  */
 package org.aesh.readline;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 
 import org.junit.Test;
 
@@ -31,16 +31,16 @@ public class PromptTest {
         Prompt p1 = new Prompt("[foo@bar]");
         Prompt p2 = new Prompt("[disconnected]");
 
-        assertFalse(p1.equals(p2));
+        assertNotEquals(p1, p2);
         p1 = new Prompt("[disconnected]");
-        assertTrue(p1.equals(p2));
+        assertEquals(p1, p2);
 
         p1 = new Prompt("[disconnected]", '\0');
-        assertFalse(p1.equals(p2));
+        assertNotEquals(p1, p2);
 
         p2 = new Prompt("[disconnected]", '#');
-        assertFalse(p1.equals(p2));
+        assertNotEquals(p1, p2);
         p1 = new Prompt("[disconnected]", '#');
-        assertTrue(p1.equals(p2));
+        assertEquals(p1, p2);
     }
 }

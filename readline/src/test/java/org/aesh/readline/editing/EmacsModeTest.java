@@ -49,7 +49,7 @@ public class EmacsModeTest {
     }
 
     @Test
-    public void testWordMovementAndEdit() throws Exception {
+    public void testWordMovementAndEdit() {
         TestReadlineConnection term = new TestReadlineConnection();
         term.read("foo  bar...  Foo-Bar.");
         term.read(Key.META_b);
@@ -70,7 +70,7 @@ public class EmacsModeTest {
     }
 
     @Test
-    public void testWordMovementWithEndAndHome() throws Exception {
+    public void testWordMovementWithEndAndHome() {
         TestReadlineConnection term = new TestReadlineConnection();
         term.read("o  ba");
         term.read(Key.HOME);
@@ -86,7 +86,7 @@ public class EmacsModeTest {
     }
 
     @Test
-    public void testSwitchingEditModes() throws Exception {
+    public void testSwitchingEditModes() {
         TestReadlineConnection term = new TestReadlineConnection();
         term.read("foo  bar...  Foo-Bar.");
         term.read(Key.CTRL_A);

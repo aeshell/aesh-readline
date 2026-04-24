@@ -80,7 +80,7 @@ public class AliasCompletion implements Completion {
 
         //only includeAliasIncCompletion if we're running in pure readline, not if we're running in æsh
         if (includeAliasInCompletion) {
-            if (completeOperation.getBuffer() == null || completeOperation.getBuffer().length() < 1) {
+            if (completeOperation.getBuffer() == null || completeOperation.getBuffer().isEmpty()) {
                 completeOperation.addCompletionCandidate(ALIAS);
                 completeOperation.addCompletionCandidate(UNALIAS);
             } else if (ALIAS.startsWith(completeOperation.getBuffer()))

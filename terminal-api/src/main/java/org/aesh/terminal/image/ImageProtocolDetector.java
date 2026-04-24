@@ -72,11 +72,7 @@ public final class ImageProtocolDetector {
             return ImageProtocol.SIXEL;
         }
 
-        if (envProtocol != ImageProtocol.NONE) {
-            return envProtocol;
-        }
-
-        return ImageProtocol.NONE;
+        return envProtocol;
     }
 
     /**
@@ -98,12 +94,7 @@ public final class ImageProtocolDetector {
             return typeProtocol;
         }
 
-        ImageProtocol envProtocol = checkEnvironment();
-        if (envProtocol != ImageProtocol.NONE) {
-            return envProtocol;
-        }
-
-        return ImageProtocol.NONE;
+        return checkEnvironment();
     }
 
     /**
