@@ -29,6 +29,10 @@ import org.aesh.readline.action.Action;
  */
 public class ExchangePointAndMark implements Action {
 
+    /** Constructor. */
+    public ExchangePointAndMark() {
+    }
+
     @Override
     public String name() {
         return "exchange-point-and-mark";

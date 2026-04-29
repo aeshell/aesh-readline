@@ -30,6 +30,10 @@ import org.aesh.terminal.KeyAction;
  */
 public class QuotedInsert implements ActionEvent {
 
+    /** Constructor. */
+    public QuotedInsert() {
+    }
+
     private boolean waitingForInput = false;
     private int[] storedKey = null;
 

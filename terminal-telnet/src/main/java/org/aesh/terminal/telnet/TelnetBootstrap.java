@@ -33,6 +33,10 @@ import org.aesh.terminal.utils.Helper;
  */
 public abstract class TelnetBootstrap {
 
+    /** Constructor. */
+    protected TelnetBootstrap() {
+    }
+
     private String host = "localhost";
     private int port = 4000;
 

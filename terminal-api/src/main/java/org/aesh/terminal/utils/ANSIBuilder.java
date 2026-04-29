@@ -184,224 +184,488 @@ public class ANSIBuilder {
 
     // ==================== Semantic Color Overrides ====================
 
-    /** Overrides the error color code. @see #semanticCode(SemanticColor, int) */
+    /**
+     * Overrides the error color code. @see #semanticCode(SemanticColor, int)
+     *
+     * @param code ANSI color code
+     * @return this builder
+     */
     public ANSIBuilder errorCode(int code) {
         return semanticCode(SemanticColor.ERROR, code);
     }
 
-    /** Overrides the success color code. */
+    /**
+     * Overrides the success color code.
+     *
+     * @param code ANSI color code
+     * @return this builder
+     */
     public ANSIBuilder successCode(int code) {
         return semanticCode(SemanticColor.SUCCESS, code);
     }
 
-    /** Overrides the warning color code. */
+    /**
+     * Overrides the warning color code.
+     *
+     * @param code ANSI color code
+     * @return this builder
+     */
     public ANSIBuilder warningCode(int code) {
         return semanticCode(SemanticColor.WARNING, code);
     }
 
-    /** Overrides the info color code. */
+    /**
+     * Overrides the info color code.
+     *
+     * @param code ANSI color code
+     * @return this builder
+     */
     public ANSIBuilder infoCode(int code) {
         return semanticCode(SemanticColor.INFO, code);
     }
 
-    /** Overrides the debug color code. */
+    /**
+     * Overrides the debug color code.
+     *
+     * @param code ANSI color code
+     * @return this builder
+     */
     public ANSIBuilder debugCode(int code) {
         return semanticCode(SemanticColor.DEBUG, code);
     }
 
-    /** Overrides the trace color code. */
+    /**
+     * Overrides the trace color code.
+     *
+     * @param code ANSI color code
+     * @return this builder
+     */
     public ANSIBuilder traceCode(int code) {
         return semanticCode(SemanticColor.TRACE, code);
     }
 
-    /** Overrides the timestamp color code. */
+    /**
+     * Overrides the timestamp color code.
+     *
+     * @param code ANSI color code
+     * @return this builder
+     */
     public ANSIBuilder timestampCode(int code) {
         return semanticCode(SemanticColor.TIMESTAMP, code);
     }
 
-    /** Overrides the message color code. */
+    /**
+     * Overrides the message color code.
+     *
+     * @param code ANSI color code
+     * @return this builder
+     */
     public ANSIBuilder messageCode(int code) {
         return semanticCode(SemanticColor.MESSAGE, code);
     }
 
-    /** Overrides the category color code. */
+    /**
+     * Overrides the category color code.
+     *
+     * @param code ANSI color code
+     * @return this builder
+     */
     public ANSIBuilder categoryCode(int code) {
         return semanticCode(SemanticColor.CATEGORY, code);
     }
 
-    /** Overrides the thread name color code. */
+    /**
+     * Overrides the thread name color code.
+     *
+     * @param code ANSI color code
+     * @return this builder
+     */
     public ANSIBuilder threadNameCode(int code) {
         return semanticCode(SemanticColor.THREAD_NAME, code);
     }
 
-    /** Overrides the fatal color code. */
+    /**
+     * Overrides the fatal color code.
+     *
+     * @param code ANSI color code
+     * @return this builder
+     */
     public ANSIBuilder fatalCode(int code) {
         return semanticCode(SemanticColor.FATAL, code);
     }
 
     // ==================== RGB Semantic Color Overrides ====================
 
-    /** Overrides the error color using RGB values (true color). RGB overrides take precedence over code overrides. */
+    /**
+     * Overrides the error color using RGB values (true color). RGB overrides take precedence over code overrides.
+     *
+     * @param r red component
+     * @param g green component
+     * @param b blue component
+     * @return this builder
+     */
     public ANSIBuilder errorRgb(int r, int g, int b) {
         return semanticRgb(SemanticColor.ERROR, r, g, b);
     }
 
-    /** Overrides the error color using a hex color value (e.g., "#FF5733" or "FF5733"). */
+    /**
+     * Overrides the error color using a hex color value (e.g., "#FF5733" or "FF5733").
+     *
+     * @param hex color in hex format
+     * @return this builder
+     */
     public ANSIBuilder errorHex(String hex) {
         return semanticHex(SemanticColor.ERROR, hex);
     }
 
-    /** Overrides the error color using HSL values. */
+    /**
+     * Overrides the error color using HSL values.
+     *
+     * @param h hue in degrees
+     * @param s saturation percentage
+     * @param l lightness percentage
+     * @return this builder
+     */
     public ANSIBuilder errorHsl(float h, float s, float l) {
         return semanticHsl(SemanticColor.ERROR, h, s, l);
     }
 
-    /** Overrides the success color using RGB values (true color). */
+    /**
+     * Overrides the success color using RGB values (true color).
+     *
+     * @param r red component
+     * @param g green component
+     * @param b blue component
+     * @return this builder
+     */
     public ANSIBuilder successRgb(int r, int g, int b) {
         return semanticRgb(SemanticColor.SUCCESS, r, g, b);
     }
 
-    /** Overrides the success color using a hex color value. */
+    /**
+     * Overrides the success color using a hex color value.
+     *
+     * @param hex color in hex format
+     * @return this builder
+     */
     public ANSIBuilder successHex(String hex) {
         return semanticHex(SemanticColor.SUCCESS, hex);
     }
 
-    /** Overrides the success color using HSL values. */
+    /**
+     * Overrides the success color using HSL values.
+     *
+     * @param h hue in degrees
+     * @param s saturation percentage
+     * @param l lightness percentage
+     * @return this builder
+     */
     public ANSIBuilder successHsl(float h, float s, float l) {
         return semanticHsl(SemanticColor.SUCCESS, h, s, l);
     }
 
-    /** Overrides the warning color using RGB values (true color). */
+    /**
+     * Overrides the warning color using RGB values (true color).
+     *
+     * @param r red component
+     * @param g green component
+     * @param b blue component
+     * @return this builder
+     */
     public ANSIBuilder warningRgb(int r, int g, int b) {
         return semanticRgb(SemanticColor.WARNING, r, g, b);
     }
 
-    /** Overrides the warning color using a hex color value. */
+    /**
+     * Overrides the warning color using a hex color value.
+     *
+     * @param hex color in hex format
+     * @return this builder
+     */
     public ANSIBuilder warningHex(String hex) {
         return semanticHex(SemanticColor.WARNING, hex);
     }
 
-    /** Overrides the warning color using HSL values. */
+    /**
+     * Overrides the warning color using HSL values.
+     *
+     * @param h hue in degrees
+     * @param s saturation percentage
+     * @param l lightness percentage
+     * @return this builder
+     */
     public ANSIBuilder warningHsl(float h, float s, float l) {
         return semanticHsl(SemanticColor.WARNING, h, s, l);
     }
 
-    /** Overrides the info color using RGB values (true color). */
+    /**
+     * Overrides the info color using RGB values (true color).
+     *
+     * @param r red component
+     * @param g green component
+     * @param b blue component
+     * @return this builder
+     */
     public ANSIBuilder infoRgb(int r, int g, int b) {
         return semanticRgb(SemanticColor.INFO, r, g, b);
     }
 
-    /** Overrides the info color using a hex color value. */
+    /**
+     * Overrides the info color using a hex color value.
+     *
+     * @param hex color in hex format
+     * @return this builder
+     */
     public ANSIBuilder infoHex(String hex) {
         return semanticHex(SemanticColor.INFO, hex);
     }
 
-    /** Overrides the info color using HSL values. */
+    /**
+     * Overrides the info color using HSL values.
+     *
+     * @param h hue in degrees
+     * @param s saturation percentage
+     * @param l lightness percentage
+     * @return this builder
+     */
     public ANSIBuilder infoHsl(float h, float s, float l) {
         return semanticHsl(SemanticColor.INFO, h, s, l);
     }
 
-    /** Overrides the debug color using RGB values (true color). */
+    /**
+     * Overrides the debug color using RGB values (true color).
+     *
+     * @param r red component
+     * @param g green component
+     * @param b blue component
+     * @return this builder
+     */
     public ANSIBuilder debugRgb(int r, int g, int b) {
         return semanticRgb(SemanticColor.DEBUG, r, g, b);
     }
 
-    /** Overrides the debug color using a hex color value. */
+    /**
+     * Overrides the debug color using a hex color value.
+     *
+     * @param hex color in hex format
+     * @return this builder
+     */
     public ANSIBuilder debugHex(String hex) {
         return semanticHex(SemanticColor.DEBUG, hex);
     }
 
-    /** Overrides the debug color using HSL values. */
+    /**
+     * Overrides the debug color using HSL values.
+     *
+     * @param h hue in degrees
+     * @param s saturation percentage
+     * @param l lightness percentage
+     * @return this builder
+     */
     public ANSIBuilder debugHsl(float h, float s, float l) {
         return semanticHsl(SemanticColor.DEBUG, h, s, l);
     }
 
-    /** Overrides the trace color using RGB values (true color). */
+    /**
+     * Overrides the trace color using RGB values (true color).
+     *
+     * @param r red component
+     * @param g green component
+     * @param b blue component
+     * @return this builder
+     */
     public ANSIBuilder traceRgb(int r, int g, int b) {
         return semanticRgb(SemanticColor.TRACE, r, g, b);
     }
 
-    /** Overrides the trace color using a hex color value. */
+    /**
+     * Overrides the trace color using a hex color value.
+     *
+     * @param hex color in hex format
+     * @return this builder
+     */
     public ANSIBuilder traceHex(String hex) {
         return semanticHex(SemanticColor.TRACE, hex);
     }
 
-    /** Overrides the trace color using HSL values. */
+    /**
+     * Overrides the trace color using HSL values.
+     *
+     * @param h hue in degrees
+     * @param s saturation percentage
+     * @param l lightness percentage
+     * @return this builder
+     */
     public ANSIBuilder traceHsl(float h, float s, float l) {
         return semanticHsl(SemanticColor.TRACE, h, s, l);
     }
 
-    /** Overrides the timestamp color using RGB values (true color). */
+    /**
+     * Overrides the timestamp color using RGB values (true color).
+     *
+     * @param r red component
+     * @param g green component
+     * @param b blue component
+     * @return this builder
+     */
     public ANSIBuilder timestampRgb(int r, int g, int b) {
         return semanticRgb(SemanticColor.TIMESTAMP, r, g, b);
     }
 
-    /** Overrides the timestamp color using a hex color value. */
+    /**
+     * Overrides the timestamp color using a hex color value.
+     *
+     * @param hex color in hex format
+     * @return this builder
+     */
     public ANSIBuilder timestampHex(String hex) {
         return semanticHex(SemanticColor.TIMESTAMP, hex);
     }
 
-    /** Overrides the timestamp color using HSL values. */
+    /**
+     * Overrides the timestamp color using HSL values.
+     *
+     * @param h hue in degrees
+     * @param s saturation percentage
+     * @param l lightness percentage
+     * @return this builder
+     */
     public ANSIBuilder timestampHsl(float h, float s, float l) {
         return semanticHsl(SemanticColor.TIMESTAMP, h, s, l);
     }
 
-    /** Overrides the message color using RGB values (true color). */
+    /**
+     * Overrides the message color using RGB values (true color).
+     *
+     * @param r red component
+     * @param g green component
+     * @param b blue component
+     * @return this builder
+     */
     public ANSIBuilder messageRgb(int r, int g, int b) {
         return semanticRgb(SemanticColor.MESSAGE, r, g, b);
     }
 
-    /** Overrides the message color using a hex color value. */
+    /**
+     * Overrides the message color using a hex color value.
+     *
+     * @param hex color in hex format
+     * @return this builder
+     */
     public ANSIBuilder messageHex(String hex) {
         return semanticHex(SemanticColor.MESSAGE, hex);
     }
 
-    /** Overrides the message color using HSL values. */
+    /**
+     * Overrides the message color using HSL values.
+     *
+     * @param h hue in degrees
+     * @param s saturation percentage
+     * @param l lightness percentage
+     * @return this builder
+     */
     public ANSIBuilder messageHsl(float h, float s, float l) {
         return semanticHsl(SemanticColor.MESSAGE, h, s, l);
     }
 
-    /** Overrides the category color using RGB values (true color). */
+    /**
+     * Overrides the category color using RGB values (true color).
+     *
+     * @param r red component
+     * @param g green component
+     * @param b blue component
+     * @return this builder
+     */
     public ANSIBuilder categoryRgb(int r, int g, int b) {
         return semanticRgb(SemanticColor.CATEGORY, r, g, b);
     }
 
-    /** Overrides the category color using a hex color value. */
+    /**
+     * Overrides the category color using a hex color value.
+     *
+     * @param hex color in hex format
+     * @return this builder
+     */
     public ANSIBuilder categoryHex(String hex) {
         return semanticHex(SemanticColor.CATEGORY, hex);
     }
 
-    /** Overrides the category color using HSL values. */
+    /**
+     * Overrides the category color using HSL values.
+     *
+     * @param h hue in degrees
+     * @param s saturation percentage
+     * @param l lightness percentage
+     * @return this builder
+     */
     public ANSIBuilder categoryHsl(float h, float s, float l) {
         return semanticHsl(SemanticColor.CATEGORY, h, s, l);
     }
 
-    /** Overrides the thread name color using RGB values (true color). */
+    /**
+     * Overrides the thread name color using RGB values (true color).
+     *
+     * @param r red component
+     * @param g green component
+     * @param b blue component
+     * @return this builder
+     */
     public ANSIBuilder threadNameRgb(int r, int g, int b) {
         return semanticRgb(SemanticColor.THREAD_NAME, r, g, b);
     }
 
-    /** Overrides the thread name color using a hex color value. */
+    /**
+     * Overrides the thread name color using a hex color value.
+     *
+     * @param hex color in hex format
+     * @return this builder
+     */
     public ANSIBuilder threadNameHex(String hex) {
         return semanticHex(SemanticColor.THREAD_NAME, hex);
     }
 
-    /** Overrides the thread name color using HSL values. */
+    /**
+     * Overrides the thread name color using HSL values.
+     *
+     * @param h hue in degrees
+     * @param s saturation percentage
+     * @param l lightness percentage
+     * @return this builder
+     */
     public ANSIBuilder threadNameHsl(float h, float s, float l) {
         return semanticHsl(SemanticColor.THREAD_NAME, h, s, l);
     }
 
-    /** Overrides the fatal color using RGB values (true color). */
+    /**
+     * Overrides the fatal color using RGB values (true color).
+     *
+     * @param r red component
+     * @param g green component
+     * @param b blue component
+     * @return this builder
+     */
     public ANSIBuilder fatalRgb(int r, int g, int b) {
         return semanticRgb(SemanticColor.FATAL, r, g, b);
     }
 
-    /** Overrides the fatal color using a hex color value. */
+    /**
+     * Overrides the fatal color using a hex color value.
+     *
+     * @param hex color in hex format
+     * @return this builder
+     */
     public ANSIBuilder fatalHex(String hex) {
         return semanticHex(SemanticColor.FATAL, hex);
     }
 
-    /** Overrides the fatal color using HSL values. */
+    /**
+     * Overrides the fatal color using HSL values.
+     *
+     * @param h hue in degrees
+     * @param s saturation percentage
+     * @param l lightness percentage
+     * @return this builder
+     */
     public ANSIBuilder fatalHsl(float h, float s, float l) {
         return semanticHsl(SemanticColor.FATAL, h, s, l);
     }
@@ -1636,112 +1900,211 @@ public class ANSIBuilder {
     // All semantic color methods delegate to applySemantic().
     // Color priority: RGB override > code override > capability > default.
 
-    /** Sets the foreground color to the theme-appropriate error color (red). */
+    /**
+     * Sets the foreground color to the theme-appropriate error color (red).
+     *
+     * @return this builder
+     */
     public ANSIBuilder error() {
         return applySemantic(SemanticColor.ERROR);
     }
 
-    /** Appends text with error styling (red) and resets. */
+    /**
+     * Appends text with error styling (red) and resets.
+     *
+     * @param text the text to append
+     * @return this builder
+     */
     public ANSIBuilder error(String text) {
         return applySemantic(SemanticColor.ERROR, text);
     }
 
-    /** Sets the foreground color to the theme-appropriate success color (green). */
+    /**
+     * Sets the foreground color to the theme-appropriate success color (green).
+     *
+     * @return this builder
+     */
     public ANSIBuilder success() {
         return applySemantic(SemanticColor.SUCCESS);
     }
 
-    /** Appends text with success styling (green) and resets. */
+    /**
+     * Appends text with success styling (green) and resets.
+     *
+     * @param text the text to append
+     * @return this builder
+     */
     public ANSIBuilder success(String text) {
         return applySemantic(SemanticColor.SUCCESS, text);
     }
 
-    /** Sets the foreground color to the theme-appropriate warning color (yellow). */
+    /**
+     * Sets the foreground color to the theme-appropriate warning color (yellow).
+     *
+     * @return this builder
+     */
     public ANSIBuilder warning() {
         return applySemantic(SemanticColor.WARNING);
     }
 
-    /** Appends text with warning styling (yellow) and resets. */
+    /**
+     * Appends text with warning styling (yellow) and resets.
+     *
+     * @param text the text to append
+     * @return this builder
+     */
     public ANSIBuilder warning(String text) {
         return applySemantic(SemanticColor.WARNING, text);
     }
 
-    /** Sets the foreground color to the theme-appropriate info color (green). */
+    /**
+     * Sets the foreground color to the theme-appropriate info color (green).
+     *
+     * @return this builder
+     */
     public ANSIBuilder info() {
         return applySemantic(SemanticColor.INFO);
     }
 
-    /** Appends text with info styling (green) and resets. */
+    /**
+     * Appends text with info styling (green) and resets.
+     *
+     * @param text the text to append
+     * @return this builder
+     */
     public ANSIBuilder info(String text) {
         return applySemantic(SemanticColor.INFO, text);
     }
 
-    /** Sets the foreground color to the theme-appropriate debug color (cyan). */
+    /**
+     * Sets the foreground color to the theme-appropriate debug color (cyan).
+     *
+     * @return this builder
+     */
     public ANSIBuilder debug() {
         return applySemantic(SemanticColor.DEBUG);
     }
 
-    /** Appends text with debug styling and resets. */
+    /**
+     * Appends text with debug styling and resets.
+     *
+     * @param text the text to append
+     * @return this builder
+     */
     public ANSIBuilder debug(String text) {
         return applySemantic(SemanticColor.DEBUG, text);
     }
 
-    /** Sets the foreground color to the theme-appropriate trace color (gray). */
+    /**
+     * Sets the foreground color to the theme-appropriate trace color (gray).
+     *
+     * @return this builder
+     */
     public ANSIBuilder trace() {
         return applySemantic(SemanticColor.TRACE);
     }
 
-    /** Appends text with trace styling and resets. */
+    /**
+     * Appends text with trace styling and resets.
+     *
+     * @param text the text to append
+     * @return this builder
+     */
     public ANSIBuilder trace(String text) {
         return applySemantic(SemanticColor.TRACE, text);
     }
 
-    /** Sets the foreground color to the theme-appropriate timestamp color (gray). */
+    /**
+     * Sets the foreground color to the theme-appropriate timestamp color (gray).
+     *
+     * @return this builder
+     */
     public ANSIBuilder timestamp() {
         return applySemantic(SemanticColor.TIMESTAMP);
     }
 
-    /** Appends text with timestamp styling (gray) and resets. */
+    /**
+     * Appends text with timestamp styling (gray) and resets.
+     *
+     * @param text the text to append
+     * @return this builder
+     */
     public ANSIBuilder timestamp(String text) {
         return applySemantic(SemanticColor.TIMESTAMP, text);
     }
 
-    /** Sets the foreground color to the theme-appropriate message color. */
+    /**
+     * Sets the foreground color to the theme-appropriate message color.
+     *
+     * @return this builder
+     */
     public ANSIBuilder message() {
         return applySemantic(SemanticColor.MESSAGE);
     }
 
-    /** Appends text with message styling and resets. */
+    /**
+     * Appends text with message styling and resets.
+     *
+     * @param text the text to append
+     * @return this builder
+     */
     public ANSIBuilder message(String text) {
         return applySemantic(SemanticColor.MESSAGE, text);
     }
 
-    /** Sets the foreground color to the theme-appropriate category color (blue). */
+    /**
+     * Sets the foreground color to the theme-appropriate category color (blue).
+     *
+     * @return this builder
+     */
     public ANSIBuilder category() {
         return applySemantic(SemanticColor.CATEGORY);
     }
 
-    /** Appends text with category styling (blue) and resets. */
+    /**
+     * Appends text with category styling (blue) and resets.
+     *
+     * @param text the text to append
+     * @return this builder
+     */
     public ANSIBuilder category(String text) {
         return applySemantic(SemanticColor.CATEGORY, text);
     }
 
-    /** Sets the foreground color to the theme-appropriate thread name color (green). */
+    /**
+     * Sets the foreground color to the theme-appropriate thread name color (green).
+     *
+     * @return this builder
+     */
     public ANSIBuilder threadName() {
         return applySemantic(SemanticColor.THREAD_NAME);
     }
 
-    /** Appends text with thread name styling (green) and resets. */
+    /**
+     * Appends text with thread name styling (green) and resets.
+     *
+     * @param text the text to append
+     * @return this builder
+     */
     public ANSIBuilder threadName(String text) {
         return applySemantic(SemanticColor.THREAD_NAME, text);
     }
 
-    /** Sets the foreground color to the theme-appropriate fatal color (red). */
+    /**
+     * Sets the foreground color to the theme-appropriate fatal color (red).
+     *
+     * @return this builder
+     */
     public ANSIBuilder fatal() {
         return applySemantic(SemanticColor.FATAL);
     }
 
-    /** Appends text with fatal styling (red) and resets. */
+    /**
+     * Appends text with fatal styling (red) and resets.
+     *
+     * @param text the text to append
+     * @return this builder
+     */
     public ANSIBuilder fatal(String text) {
         return applySemantic(SemanticColor.FATAL, text);
     }
@@ -1982,16 +2345,27 @@ public class ANSIBuilder {
      * for resolving the theme-appropriate code at runtime.
      */
     public enum SemanticColor {
+        /** Error color (red). */
         ERROR(91, TerminalColorCapability::getSuggestedErrorCode),
+        /** Success color (green). */
         SUCCESS(92, TerminalColorCapability::getSuggestedSuccessCode),
+        /** Warning color (yellow). */
         WARNING(93, TerminalColorCapability::getSuggestedWarningCode),
+        /** Info color (green). */
         INFO(92, TerminalColorCapability::getSuggestedInfoCode),
+        /** Debug color (cyan). */
         DEBUG(96, TerminalColorCapability::getSuggestedDebugCode),
+        /** Trace color (gray). */
         TRACE(90, TerminalColorCapability::getSuggestedTraceCode),
+        /** Timestamp color (gray). */
         TIMESTAMP(252, TerminalColorCapability::getSuggestedTimestampCode),
+        /** Message color (white). */
         MESSAGE(37, TerminalColorCapability::getSuggestedMessageCode),
+        /** Category color (blue). */
         CATEGORY(94, TerminalColorCapability::getSuggestedCategoryCode),
+        /** Thread name color (green). */
         THREAD_NAME(92, TerminalColorCapability::getSuggestedThreadNameCode),
+        /** Fatal color (red). */
         FATAL(91, TerminalColorCapability::getSuggestedFatalCode);
 
         private final int defaultCode;
@@ -2002,12 +2376,21 @@ public class ANSIBuilder {
             this.capabilityGetter = capabilityGetter;
         }
 
-        /** Returns the default ANSI color code for this semantic color. */
+        /**
+         * Returns the default ANSI color code for this semantic color.
+         *
+         * @return the default ANSI code
+         */
         public int defaultCode() {
             return defaultCode;
         }
 
-        /** Returns the suggested ANSI code from the given capability. */
+        /**
+         * Returns the suggested ANSI code from the given capability.
+         *
+         * @param cap the terminal color capability
+         * @return the suggested ANSI code
+         */
         public int getFromCapability(TerminalColorCapability cap) {
             return capabilityGetter.applyAsInt(cap);
         }

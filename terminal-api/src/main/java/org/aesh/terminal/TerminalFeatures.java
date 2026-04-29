@@ -71,6 +71,11 @@ public class TerminalFeatures {
 
     private final Connection connection;
 
+    /**
+     * Constructor.
+     *
+     * @param connection the connection
+     */
     public TerminalFeatures(Connection connection) {
         this.connection = connection;
     }

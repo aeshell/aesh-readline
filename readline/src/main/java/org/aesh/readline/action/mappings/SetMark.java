@@ -28,6 +28,10 @@ import org.aesh.readline.action.Action;
  */
 public class SetMark implements Action {
 
+    /** Constructor. */
+    public SetMark() {
+    }
+
     @Override
     public String name() {
         return "set-mark";

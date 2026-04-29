@@ -30,6 +30,10 @@ import org.aesh.terminal.utils.Parser;
  */
 public class TildeExpand implements Action {
 
+    /** Constructor. */
+    public TildeExpand() {
+    }
+
     @Override
     public String name() {
         return "tilde-expand";

@@ -30,6 +30,10 @@ import org.aesh.terminal.KeyAction;
  */
 public class CharacterSearchBackward implements ActionEvent {
 
+    /** Constructor. */
+    public CharacterSearchBackward() {
+    }
+
     private boolean waitingForInput = false;
     private int searchChar = -1;
 

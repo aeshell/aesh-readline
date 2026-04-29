@@ -37,12 +37,23 @@ import org.aesh.terminal.utils.TerminalTheme;
  */
 public abstract class AbstractConnection implements Connection {
 
+    /** Field. */
     protected EventDecoder eventDecoder;
+    /** Field. */
     protected Consumer<int[]> stdout;
+    /** Field. */
     protected Consumer<Size> sizeHandler;
+    /** Field. */
     protected Consumer<Void> closeHandler;
+    /** Field. */
     protected Attributes attributes;
+    /** Field. */
     protected volatile boolean reading;
+
+    /** Constructor. */
+    protected AbstractConnection() {
+    }
+
     private TerminalFeatures terminalFeatures;
 
     @Override

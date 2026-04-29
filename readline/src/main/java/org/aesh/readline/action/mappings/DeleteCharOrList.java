@@ -31,6 +31,10 @@ import org.aesh.readline.action.Action;
  */
 public class DeleteCharOrList implements Action {
 
+    /** Constructor. */
+    public DeleteCharOrList() {
+    }
+
     @Override
     public String name() {
         return "delete-char-or-list";

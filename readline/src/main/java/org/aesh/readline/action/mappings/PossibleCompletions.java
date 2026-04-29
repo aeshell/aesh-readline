@@ -27,6 +27,10 @@ import org.aesh.readline.action.Action;
  */
 public class PossibleCompletions implements Action {
 
+    /** Constructor. */
+    public PossibleCompletions() {
+    }
+
     @Override
     public String name() {
         return "possible-completions";

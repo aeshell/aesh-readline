@@ -29,6 +29,10 @@ import org.aesh.readline.undo.UndoAction;
  */
 public class RevertLine implements Action {
 
+    /** Constructor. */
+    public RevertLine() {
+    }
+
     @Override
     public String name() {
         return "revert-line";

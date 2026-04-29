@@ -59,6 +59,11 @@ public interface Device {
             this.code = code;
         }
 
+        /**
+         * Method.
+         *
+         * @return the value
+         */
         public int getCode() {
             return code;
         }
@@ -203,14 +208,30 @@ public interface Device {
             this.supportsSynchronizedOutput = supportsSynchronizedOutput;
         }
 
+        /**
+         * Method.
+         *
+         * @return the value
+         */
         public String getIdentifier() {
             return identifier;
         }
 
+        /**
+         * Method.
+         *
+         * @return the supported codes
+         */
         public Set<OscCode> getSupportedCodes() {
             return supportedCodes;
         }
 
+        /**
+         * Method.
+         *
+         * @param code the code to check
+         * @return the value
+         */
         public boolean supports(OscCode code) {
             return supportedCodes.contains(code);
         }

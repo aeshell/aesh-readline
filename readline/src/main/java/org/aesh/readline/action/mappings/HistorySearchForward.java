@@ -32,6 +32,10 @@ import org.aesh.terminal.utils.Parser;
  */
 public class HistorySearchForward implements Action {
 
+    /** Constructor. */
+    public HistorySearchForward() {
+    }
+
     private int searchIndex = -1;
 
     @Override

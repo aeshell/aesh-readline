@@ -27,6 +27,10 @@ package org.aesh.terminal.telnet;
  */
 public class TelnetHandler {
 
+    /** Constructor. */
+    public TelnetHandler() {
+    }
+
     /**
      * The telnet connection opened.
      *

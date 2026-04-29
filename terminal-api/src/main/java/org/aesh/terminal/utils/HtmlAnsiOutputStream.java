@@ -105,11 +105,17 @@ public class HtmlAnsiOutputStream extends OutputStream {
     private boolean inCsi;
     private boolean concealOn;
 
+    /**
+     * Constructor.
+     *
+     * @param out the output stream
+     */
     public HtmlAnsiOutputStream(OutputStream out) {
         this.out = out;
     }
 
     @Override
+    /** Method. */
     public void write(int data) throws IOException {
         if (inCsi) {
             escBuf.write(data);
@@ -137,6 +143,7 @@ public class HtmlAnsiOutputStream extends OutputStream {
     }
 
     @Override
+    /** Method. */
     public void write(byte[] b, int off, int len) throws IOException {
         for (int i = off; i < off + len; i++) {
             write(b[i] & 0xFF);
@@ -144,11 +151,13 @@ public class HtmlAnsiOutputStream extends OutputStream {
     }
 
     @Override
+    /** Method. */
     public void flush() throws IOException {
         out.flush();
     }
 
     @Override
+    /** Method. */
     public void close() throws IOException {
         closeAttributes();
         out.flush();

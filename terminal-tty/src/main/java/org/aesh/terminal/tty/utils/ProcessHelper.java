@@ -89,14 +89,29 @@ public final class ProcessHelper {
             this.output = output;
         }
 
+        /**
+         * Method.
+         *
+         * @return the result
+         */
         public int exitCode() {
             return exitCode;
         }
 
+        /**
+         * Method.
+         *
+         * @return the result
+         */
         public String output() {
             return output;
         }
 
+        /**
+         * Method.
+         *
+         * @return the result
+         */
         public boolean success() {
             return exitCode == 0;
         }

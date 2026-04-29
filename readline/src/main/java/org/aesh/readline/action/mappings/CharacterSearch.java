@@ -30,6 +30,10 @@ import org.aesh.terminal.KeyAction;
  */
 public class CharacterSearch implements ActionEvent {
 
+    /** Constructor. */
+    public CharacterSearch() {
+    }
+
     private boolean waitingForInput = false;
     private int searchChar = -1;
 

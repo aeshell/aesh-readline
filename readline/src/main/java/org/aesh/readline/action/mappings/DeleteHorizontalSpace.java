@@ -28,6 +28,10 @@ import org.aesh.readline.action.Action;
  */
 public class DeleteHorizontalSpace implements Action {
 
+    /** Constructor. */
+    public DeleteHorizontalSpace() {
+    }
+
     @Override
     public String name() {
         return "delete-horizontal-space";

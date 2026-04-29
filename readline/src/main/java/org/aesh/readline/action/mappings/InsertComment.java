@@ -29,6 +29,10 @@ import org.aesh.readline.action.Action;
  */
 public class InsertComment implements Action {
 
+    /** Constructor. */
+    public InsertComment() {
+    }
+
     @Override
     public String name() {
         return "insert-comment";

@@ -49,7 +49,9 @@ public class InputReader extends Reader {
 
     private static final int DEFAULT_CAPACITY = 4096;
 
+    /** Field. */
     public static final int EOF = -1;
+    /** Field. */
     public static final int TIMEOUT = -2;
 
     private final LinkedBlockingQueue<Character> queue;
@@ -200,6 +202,7 @@ public class InputReader extends Reader {
     }
 
     @Override
+    /** Method. */
     public boolean ready() throws IOException {
         ensureOpen();
         return !queue.isEmpty();
@@ -210,6 +213,7 @@ public class InputReader extends Reader {
      * char, then drains remaining available chars without blocking.
      */
     @Override
+    /** Method. */
     public int read(char[] cbuf, int off, int len) throws IOException {
         ensureOpen();
         if (len == 0) {
@@ -237,6 +241,7 @@ public class InputReader extends Reader {
     }
 
     @Override
+    /** Method. */
     public void close() {
         if (closed) {
             return;

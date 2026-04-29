@@ -5,8 +5,14 @@ package org.aesh.readline;
  */
 public class CompositeSuggestionProvider implements SuggestionProvider {
 
+    /** Field. */
     private final SuggestionProvider[] providers;
 
+    /**
+     * Constructor.
+     *
+     * @param providers the suggestion providers to chain
+     */
     public CompositeSuggestionProvider(SuggestionProvider... providers) {
         this.providers = providers;
     }

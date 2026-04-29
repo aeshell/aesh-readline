@@ -45,6 +45,11 @@ public abstract class AbstractExecPty implements Pty {
 
     private final String name;
 
+    /**
+     * Constructor.
+     *
+     * @param name the pty name
+     */
     protected AbstractExecPty(String name) {
         this.name = name;
     }
@@ -183,6 +188,13 @@ public abstract class AbstractExecPty implements Pty {
         throw new IOException("Unable to parse " + name);
     }
 
+    /**
+     * Execute a command.
+     *
+     * @param cmd the command to execute
+     * @return the command output
+     * @throws IOException if execution fails
+     */
     protected static String exec(final String... cmd) throws IOException {
         assert cmd != null && !cmd[0].isEmpty();
         try {

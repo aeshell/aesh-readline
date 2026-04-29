@@ -57,6 +57,11 @@ public class PasteManager {
         this.clipboardWriter = clipboardWriter;
     }
 
+    /**
+     * Add text to the paste stack.
+     *
+     * @param buffer the text to add
+     */
     public void addText(int[] buffer) {
         checkSize();
         pasteStack.add(buffer);

@@ -28,6 +28,10 @@ import org.aesh.readline.history.History;
  */
 public class BeginningOfHistory implements Action {
 
+    /** Constructor. */
+    public BeginningOfHistory() {
+    }
+
     @Override
     public String name() {
         return "beginning-of-history";

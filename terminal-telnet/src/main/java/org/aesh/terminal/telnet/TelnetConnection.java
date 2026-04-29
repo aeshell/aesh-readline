@@ -119,10 +119,27 @@ public abstract class TelnetConnection {
         }
     }
 
+    /**
+     * Execute a task.
+     *
+     * @param task the task to execute
+     */
     protected abstract void execute(Runnable task);
 
+    /**
+     * Schedule a task.
+     *
+     * @param task the task to schedule
+     * @param delay the delay
+     * @param unit the time unit
+     */
     protected abstract void schedule(Runnable task, long delay, TimeUnit unit);
 
+    /**
+     * Send data.
+     *
+     * @param data the data to send
+     */
     protected abstract void send(byte[] data);
 
     /**
@@ -162,6 +179,7 @@ public abstract class TelnetConnection {
         }
     }
 
+    /** Method. */
     protected void onClose() {
         handler.onClose();
     }
@@ -249,6 +267,7 @@ public abstract class TelnetConnection {
      * This method can be subclassed to handle an option.
      *
      * @param optionCode the option code
+     * @param parameters the option parameters
      */
     protected void onOptionParameters(byte optionCode, byte[] parameters) {
         for (Option option : Option.values()) {

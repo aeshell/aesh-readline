@@ -29,6 +29,10 @@ import org.aesh.readline.action.Action;
  */
 public class OverwriteMode implements Action {
 
+    /** Constructor. */
+    public OverwriteMode() {
+    }
+
     @Override
     public String name() {
         return "overwrite-mode";

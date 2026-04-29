@@ -31,6 +31,10 @@ import org.aesh.readline.action.Action;
  */
 public class KillRegion implements Action {
 
+    /** Constructor. */
+    public KillRegion() {
+    }
+
     @Override
     public String name() {
         return "kill-region";

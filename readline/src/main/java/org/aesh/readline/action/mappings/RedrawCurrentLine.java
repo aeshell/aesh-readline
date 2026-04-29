@@ -27,6 +27,10 @@ import org.aesh.readline.action.Action;
  */
 public class RedrawCurrentLine implements Action {
 
+    /** Constructor. */
+    public RedrawCurrentLine() {
+    }
+
     @Override
     public String name() {
         return "redraw-current-line";

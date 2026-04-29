@@ -31,6 +31,10 @@ import org.aesh.terminal.utils.Parser;
  */
 public class YankNthArg implements Action {
 
+    /** Constructor. */
+    public YankNthArg() {
+    }
+
     @Override
     public String name() {
         return "yank-nth-arg";

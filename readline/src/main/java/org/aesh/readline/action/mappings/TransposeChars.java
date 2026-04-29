@@ -30,6 +30,10 @@ import org.aesh.readline.action.Action;
  */
 public class TransposeChars implements Action {
 
+    /** Constructor. */
+    public TransposeChars() {
+    }
+
     @Override
     public String name() {
         return "transpose-chars";

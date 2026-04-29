@@ -31,6 +31,10 @@ import org.aesh.readline.action.Action;
  */
 public class UnixFilenameRubout implements Action {
 
+    /** Constructor. */
+    public UnixFilenameRubout() {
+    }
+
     @Override
     public String name() {
         return "unix-filename-rubout";

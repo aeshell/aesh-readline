@@ -28,6 +28,10 @@ import org.aesh.readline.action.Action;
  */
 public class YankPop implements Action {
 
+    /** Constructor. */
+    public YankPop() {
+    }
+
     private int killRingIndex = 0;
 
     @Override

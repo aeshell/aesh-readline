@@ -29,8 +29,10 @@ import org.aesh.terminal.utils.Parser;
  */
 public class NonIncrementalForwardSearchHistory extends NonIncrementalSearchHistory {
 
+    /** Search prompt. */
     private static final int[] PROMPT = Parser.toCodePoints("(forward-search): ");
 
+    /** Constructor. */
     public NonIncrementalForwardSearchHistory() {
         super(SearchDirection.FORWARD, PROMPT);
     }

@@ -30,6 +30,10 @@ import org.aesh.terminal.utils.Parser;
  */
 public class YankLastArg implements Action {
 
+    /** Constructor. */
+    public YankLastArg() {
+    }
+
     @Override
     public String name() {
         return "yank-last-arg";

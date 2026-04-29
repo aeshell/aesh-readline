@@ -33,6 +33,10 @@ import org.aesh.terminal.KeyAction;
  */
 public class KeyMappingTrie {
 
+    /** Constructor. */
+    public KeyMappingTrie() {
+    }
+
     private final TrieNode root = new TrieNode();
 
     // Pre-computed single-byte lookups for fast path

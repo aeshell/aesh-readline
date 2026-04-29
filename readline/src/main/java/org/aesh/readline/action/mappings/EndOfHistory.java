@@ -28,6 +28,10 @@ import org.aesh.readline.history.History;
  */
 public class EndOfHistory implements Action {
 
+    /** Constructor. */
+    public EndOfHistory() {
+    }
+
     @Override
     public String name() {
         return "end-of-history";

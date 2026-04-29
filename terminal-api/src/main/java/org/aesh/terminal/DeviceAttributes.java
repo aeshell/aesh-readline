@@ -84,6 +84,11 @@ public class DeviceAttributes {
             this.code = code;
         }
 
+        /**
+         * Method.
+         *
+         * @return the value
+         */
         public int getCode() {
             return code;
         }
@@ -108,18 +113,31 @@ public class DeviceAttributes {
      * Terminal type identifiers from DA2 response.
      */
     public enum TerminalType {
+        /** Vt100. */
         VT100(0, "VT100"),
+        /** Vt220. */
         VT220(1, "VT220"),
+        /** Vt240. */
         VT240(2, "VT240"),
+        /** Vt330. */
         VT330(18, "VT330"),
+        /** Vt340. */
         VT340(19, "VT340"),
+        /** Vt320. */
         VT320(24, "VT320"),
+        /** Vt382. */
         VT382(32, "VT382"),
+        /** Vt420. */
         VT420(41, "VT420"),
+        /** Vt510. */
         VT510(61, "VT510"),
+        /** Vt520. */
         VT520(64, "VT520"),
+        /** Vt525. */
         VT525(65, "VT525"),
+        /** Xterm. */
         XTERM(0, "xterm"), // xterm uses 0 but different version format
+        /** Unknown. */
         UNKNOWN(-1, "Unknown");
 
         private final int code;
@@ -130,10 +148,20 @@ public class DeviceAttributes {
             this.name = name;
         }
 
+        /**
+         * Method.
+         *
+         * @return the value
+         */
         public int getCode() {
             return code;
         }
 
+        /**
+         * Method.
+         *
+         * @return the value
+         */
         public String getName() {
             return name;
         }
@@ -554,6 +582,11 @@ public class DeviceAttributes {
     }
 
     @Override
+    /**
+     * Method.
+     *
+     * @return the value
+     */
     public String toString() {
         StringBuilder sb = new StringBuilder();
         sb.append("DeviceAttributes{");
