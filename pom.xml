@@ -61,7 +61,7 @@
 
     <properties>
       <netty.version>4.2.12.Final</netty.version>
-      <jackson.version>2.21.2</jackson.version>
+      <jackson.version>2.21.3</jackson.version>
       <junit.version>4.13.2</junit.version>
       <tyrus.version>2.2.2</tyrus.version>
 
