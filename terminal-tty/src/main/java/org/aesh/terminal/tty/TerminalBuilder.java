@@ -179,10 +179,23 @@ public final class TerminalBuilder {
                     type = System.getenv("TERM");
                 }
                 Pty pty = null;
+                // Try FFM-based Pty first (Java 22+, loaded via MRJAR)
                 try {
-                    pty = ExecPty.current();
-                } catch (IOException e) {
-                    LOGGER.log(Level.FINE, "Failed to get a local tty", e);
+                    Class<?> ffmPtyClass = Class.forName(
+                            "org.aesh.terminal.tty.impl.FfmPty");
+                    pty = (Pty) ffmPtyClass.getMethod("current").invoke(null);
+                    LOGGER.log(Level.FINE, "Using FFM-based PTY");
+                } catch (ClassNotFoundException | UnsupportedOperationException e) {
+                    LOGGER.log(Level.FINE, "FFM PTY not available, falling back to ExecPty", e);
+                } catch (Throwable e) {
+                    LOGGER.log(Level.WARNING, "FFM PTY initialization failed, falling back to ExecPty", e);
+                }
+                if (pty == null) {
+                    try {
+                        pty = ExecPty.current();
+                    } catch (IOException e) {
+                        LOGGER.log(Level.FINE, "Failed to get a local tty", e);
+                    }
                 }
                 if (pty != null) {
                     return new PosixSysTerminal(name, type, pty, nativeSignals);
