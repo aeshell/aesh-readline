@@ -46,6 +46,7 @@ public final class WinConsoleNative {
 
     /** Event type constants matching Windows INPUT_RECORD.EventType */
     public static final int KEY_EVENT = 1;
+    public static final int MOUSE_EVENT = 2;
     public static final int WINDOW_BUFFER_SIZE_EVENT = 4;
 
     /** Console mode flag: enable virtual terminal processing on output handle */
@@ -83,6 +84,15 @@ public final class WinConsoleNative {
     private static final long IR_CONTROL_KEY_STATE = 16;
     private static final long IR_WBSE_X = 4;
     private static final long IR_WBSE_Y = 6;
+    // MOUSE_EVENT_RECORD union (offset 4):
+    //   4: dwMousePosition.X (SHORT)  6: dwMousePosition.Y (SHORT)
+    //   8: dwButtonState (DWORD)     12: dwControlKeyState (DWORD)
+    //  16: dwEventFlags (DWORD)
+    private static final long IR_MOUSE_X = 4;
+    private static final long IR_MOUSE_Y = 6;
+    private static final long IR_MOUSE_BUTTON_STATE = 8;
+    private static final long IR_MOUSE_CONTROL_KEY_STATE = 12;
+    private static final long IR_MOUSE_EVENT_FLAGS = 16;
 
     private static final MethodHandle GET_STD_HANDLE;
     private static final MethodHandle GET_CONSOLE_MODE;
@@ -208,6 +218,16 @@ public final class WinConsoleNative {
                         record.get(ValueLayout.JAVA_SHORT, IR_VIRTUAL_KEY_CODE) & 0xFFFF,
                         record.get(ValueLayout.JAVA_SHORT, IR_UNICODE_CHAR) & 0xFFFF,
                         record.get(ValueLayout.JAVA_INT, IR_CONTROL_KEY_STATE)
+                };
+            }
+            if (eventType == MOUSE_EVENT) {
+                return new int[] {
+                        MOUSE_EVENT,
+                        record.get(ValueLayout.JAVA_SHORT, IR_MOUSE_X) & 0xFFFF,
+                        record.get(ValueLayout.JAVA_SHORT, IR_MOUSE_Y) & 0xFFFF,
+                        record.get(ValueLayout.JAVA_INT, IR_MOUSE_BUTTON_STATE),
+                        record.get(ValueLayout.JAVA_INT, IR_MOUSE_CONTROL_KEY_STATE),
+                        record.get(ValueLayout.JAVA_INT, IR_MOUSE_EVENT_FLAGS)
                 };
             }
             if (eventType == WINDOW_BUFFER_SIZE_EVENT) {

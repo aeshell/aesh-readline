@@ -85,6 +85,8 @@ public final class WinConsoleNative {
 
     /** Event type constants matching Windows INPUT_RECORD.EventType. */
     public static final int KEY_EVENT = 1;
+    /** Mouse event type. */
+    public static final int MOUSE_EVENT = 2;
     /** Window buffer size event type. */
     public static final int WINDOW_BUFFER_SIZE_EVENT = 4;
 
@@ -97,6 +99,7 @@ public final class WinConsoleNative {
      * Read a console input event (key or window resize).
      * Returns int[] where first element is the event type:
      * KEY_EVENT (1): {1, keyDown, repeatCount, vKeyCode, unicodeChar, controlKeyState}
+     * MOUSE_EVENT (2): {2, x, y, buttonState, controlKeyState, eventFlags}
      * WINDOW_BUFFER_SIZE_EVENT (4): {4, width, height}
      * Returns null for other event types or on error.
      *

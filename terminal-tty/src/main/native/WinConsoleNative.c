@@ -187,7 +187,22 @@ JNIEXPORT jintArray JNICALL Java_org_aesh_terminal_tty_impl_WinConsoleNative_rea
         return result;
     }
 
-    /* Other event types (mouse, menu, focus) - ignore */
+    if (record.EventType == MOUSE_EVENT) {
+        MOUSE_EVENT_RECORD *me = &record.Event.MouseEvent;
+        jint fields[6];
+        fields[0] = 2; /* MOUSE_EVENT */
+        fields[1] = (jint)me->dwMousePosition.X;
+        fields[2] = (jint)me->dwMousePosition.Y;
+        fields[3] = (jint)me->dwButtonState;
+        fields[4] = (jint)me->dwControlKeyState;
+        fields[5] = (jint)me->dwEventFlags;
+        jintArray result = (*env)->NewIntArray(env, 6);
+        if (result == NULL) return NULL;
+        (*env)->SetIntArrayRegion(env, result, 0, 6, fields);
+        return result;
+    }
+
+    /* Other event types (menu, focus) - ignore */
     return NULL;
 #else
     return NULL;

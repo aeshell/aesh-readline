@@ -20,9 +20,11 @@
 package org.aesh.terminal.tty.impl;
 
 import java.io.IOException;
+import java.util.function.Consumer;
 import java.util.logging.Level;
 
 import org.aesh.terminal.tty.Capability;
+import org.aesh.terminal.tty.MouseEvent;
 import org.aesh.terminal.tty.Signal;
 import org.aesh.terminal.tty.Size;
 
@@ -40,6 +42,20 @@ public class WinSysTerminal extends AbstractWindowsTerminal {
     private static final int RIGHT_CTRL_PRESSED = 0x0004;
     private static final int LEFT_CTRL_PRESSED = 0x0008;
     private static final int SHIFT_PRESSED = 0x0010;
+
+    // Windows mouse button state constants
+    private static final int FROM_LEFT_1ST_BUTTON_PRESSED = 0x0001;
+    private static final int RIGHTMOST_BUTTON_PRESSED = 0x0002;
+    private static final int FROM_LEFT_2ND_BUTTON_PRESSED = 0x0004;
+
+    // Windows mouse event flags
+    private static final int MOUSE_MOVED = 0x0001;
+    private static final int DOUBLE_CLICK = 0x0002;
+    private static final int MOUSE_WHEELED = 0x0004;
+    private static final int MOUSE_HWHEELED = 0x0008;
+
+    private Consumer<MouseEvent> mouseHandler;
+    private int lastButtonState;
 
     /**
      * Create a new Windows system terminal with the specified name.
@@ -113,6 +129,16 @@ public class WinSysTerminal extends AbstractWindowsTerminal {
             return new byte[0];
         }
 
+        if (event[0] == WinConsoleNative.MOUSE_EVENT) {
+            if (mouseHandler != null) {
+                MouseEvent mouseEvent = translateMouseEvent(event);
+                if (mouseEvent != null) {
+                    mouseHandler.accept(mouseEvent);
+                }
+            }
+            return new byte[0];
+        }
+
         if (event[0] != WinConsoleNative.KEY_EVENT) {
             return new byte[0];
         }
@@ -174,6 +200,36 @@ public class WinSysTerminal extends AbstractWindowsTerminal {
      * as VT escape sequences through KEY_EVENT records instead of as
      * virtual key codes or MOUSE_EVENT records.
      */
+    /**
+     * Set the mouse event handler. Enables/disables ENABLE_MOUSE_INPUT
+     * on the console input handle.
+     */
+    public void setMouseHandler(Consumer<MouseEvent> handler) {
+        this.mouseHandler = handler;
+        if (INPUT_HANDLE == WinConsoleNative.INVALID_HANDLE) {
+            return;
+        }
+        int mode = WinConsoleNative.getConsoleMode(INPUT_HANDLE);
+        if (mode == -1) {
+            return;
+        }
+        if (handler != null) {
+            mode |= ENABLE_MOUSE_INPUT;
+            // Disable quick edit mode — it conflicts with mouse tracking
+            mode &= ~ENABLE_QUICK_EDIT_MODE;
+        } else {
+            mode &= ~ENABLE_MOUSE_INPUT;
+        }
+        WinConsoleNative.setConsoleMode(INPUT_HANDLE, mode);
+    }
+
+    /**
+     * Get the current mouse handler.
+     */
+    public Consumer<MouseEvent> getMouseHandler() {
+        return mouseHandler;
+    }
+
     private void enableVTInput() {
         if (INPUT_HANDLE == WinConsoleNative.INVALID_HANDLE) {
             return;
@@ -207,5 +263,74 @@ public class WinSysTerminal extends AbstractWindowsTerminal {
      */
     public static boolean isVTSupported() {
         return setVTMode();
+    }
+
+    /**
+     * Translate a Windows MOUSE_EVENT_RECORD into a MouseEvent.
+     * Event format: {2, x, y, buttonState, controlKeyState, eventFlags}
+     */
+    private MouseEvent translateMouseEvent(int[] event) {
+        int x = event[1] + 1; // Windows is 0-based, MouseEvent is 1-based
+        int y = event[2] + 1;
+        int buttonState = event[3];
+        int controlKeyState = event[4];
+        int eventFlags = event[5];
+
+        boolean shift = (controlKeyState & SHIFT_PRESSED) != 0;
+        boolean alt = ((controlKeyState & LEFT_ALT_PRESSED) != 0)
+                || ((controlKeyState & RIGHT_ALT_PRESSED) != 0);
+        boolean ctrl = ((controlKeyState & LEFT_CTRL_PRESSED) != 0)
+                || ((controlKeyState & RIGHT_CTRL_PRESSED) != 0);
+
+        MouseEvent.Type type;
+        MouseEvent.Button button;
+
+        if ((eventFlags & MOUSE_WHEELED) != 0) {
+            type = MouseEvent.Type.SCROLL;
+            // High word of buttonState indicates direction
+            button = (buttonState >> 16) > 0
+                    ? MouseEvent.Button.SCROLL_DOWN
+                    : MouseEvent.Button.SCROLL_UP;
+        } else if ((eventFlags & MOUSE_MOVED) != 0) {
+            if (buttonState != 0) {
+                type = MouseEvent.Type.DRAG;
+                button = buttonFromState(buttonState);
+            } else {
+                type = MouseEvent.Type.MOVE;
+                button = MouseEvent.Button.NONE;
+            }
+        } else {
+            // Button press or release — compare with last state to determine
+            int pressed = buttonState & ~lastButtonState;
+            int released = lastButtonState & ~buttonState;
+
+            if (pressed != 0) {
+                type = MouseEvent.Type.PRESS;
+                button = buttonFromState(pressed);
+            } else if (released != 0) {
+                type = MouseEvent.Type.RELEASE;
+                button = buttonFromState(released);
+            } else {
+                // No change — likely a duplicate or focus event
+                lastButtonState = buttonState;
+                return null;
+            }
+        }
+
+        lastButtonState = buttonState;
+        return new MouseEvent(type, button, x, y, shift, alt, ctrl);
+    }
+
+    private static MouseEvent.Button buttonFromState(int state) {
+        if ((state & FROM_LEFT_1ST_BUTTON_PRESSED) != 0) {
+            return MouseEvent.Button.LEFT;
+        }
+        if ((state & RIGHTMOST_BUTTON_PRESSED) != 0) {
+            return MouseEvent.Button.RIGHT;
+        }
+        if ((state & FROM_LEFT_2ND_BUTTON_PRESSED) != 0) {
+            return MouseEvent.Button.MIDDLE;
+        }
+        return MouseEvent.Button.NONE;
     }
 }
