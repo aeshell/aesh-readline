@@ -70,6 +70,133 @@ public class InfoCmpTest {
     }
 
     @Test
+    public void testXterm256Color() {
+        Set<Capability> bools = new HashSet<>();
+        Map<Capability, Integer> ints = new HashMap<>();
+        Map<Capability, String> strings = new HashMap<>();
+
+        String infocmp = InfoCmp.getDefaultInfoCmp("xterm-256color");
+        assertNotNull("xterm-256color caps should not be null", infocmp);
+        InfoCmp.parseInfoCmp(infocmp, bools, ints, strings);
+
+        assertEquals(256, ints.get(Capability.max_colors).intValue());
+        assertTrue(bools.contains(Capability.auto_right_margin));
+        assertTrue(bools.contains(Capability.back_color_erase));
+        assertNotNull(strings.get(Capability.cursor_address));
+        assertNotNull(strings.get(Capability.enter_ca_mode)); // smcup
+        assertNotNull(strings.get(Capability.exit_ca_mode)); // rmcup
+        assertNotNull(strings.get(Capability.set_a_foreground)); // setaf
+        assertNotNull(strings.get(Capability.set_a_background)); // setab
+    }
+
+    @Test
+    public void testTmux256Color() {
+        Set<Capability> bools = new HashSet<>();
+        Map<Capability, Integer> ints = new HashMap<>();
+        Map<Capability, String> strings = new HashMap<>();
+
+        String infocmp = InfoCmp.getDefaultInfoCmp("tmux-256color");
+        assertNotNull("tmux-256color caps should not be null", infocmp);
+        InfoCmp.parseInfoCmp(infocmp, bools, ints, strings);
+
+        assertEquals(256, ints.get(Capability.max_colors).intValue());
+        assertTrue(bools.contains(Capability.auto_right_margin));
+        assertNotNull(strings.get(Capability.cursor_address));
+        assertNotNull(strings.get(Capability.enter_ca_mode));
+        assertNotNull(strings.get(Capability.exit_ca_mode));
+    }
+
+    @Test
+    public void testLinux() {
+        Set<Capability> bools = new HashSet<>();
+        Map<Capability, Integer> ints = new HashMap<>();
+        Map<Capability, String> strings = new HashMap<>();
+
+        String infocmp = InfoCmp.getDefaultInfoCmp("linux");
+        assertNotNull("linux caps should not be null", infocmp);
+        InfoCmp.parseInfoCmp(infocmp, bools, ints, strings);
+
+        assertEquals(8, ints.get(Capability.max_colors).intValue());
+        assertTrue(bools.contains(Capability.auto_right_margin));
+        assertNotNull(strings.get(Capability.cursor_address));
+        assertNotNull(strings.get(Capability.clear_screen));
+    }
+
+    @Test
+    public void testAlacritty() {
+        Set<Capability> bools = new HashSet<>();
+        Map<Capability, Integer> ints = new HashMap<>();
+        Map<Capability, String> strings = new HashMap<>();
+
+        String infocmp = InfoCmp.getDefaultInfoCmp("alacritty");
+        assertNotNull("alacritty caps should not be null", infocmp);
+        InfoCmp.parseInfoCmp(infocmp, bools, ints, strings);
+
+        assertEquals(256, ints.get(Capability.max_colors).intValue());
+        assertTrue(bools.contains(Capability.auto_right_margin));
+        assertTrue(bools.contains(Capability.back_color_erase));
+        assertNotNull(strings.get(Capability.cursor_address));
+        assertNotNull(strings.get(Capability.enter_ca_mode));
+        assertNotNull(strings.get(Capability.exit_ca_mode));
+    }
+
+    @Test
+    public void testXtermKitty() {
+        Set<Capability> bools = new HashSet<>();
+        Map<Capability, Integer> ints = new HashMap<>();
+        Map<Capability, String> strings = new HashMap<>();
+
+        String infocmp = InfoCmp.getDefaultInfoCmp("xterm-kitty");
+        assertNotNull("xterm-kitty caps should not be null", infocmp);
+        InfoCmp.parseInfoCmp(infocmp, bools, ints, strings);
+
+        assertEquals(256, ints.get(Capability.max_colors).intValue());
+        assertTrue(bools.contains(Capability.auto_right_margin));
+        assertNotNull(strings.get(Capability.cursor_address));
+        assertNotNull(strings.get(Capability.enter_ca_mode));
+        assertNotNull(strings.get(Capability.exit_ca_mode));
+    }
+
+    @Test
+    public void testScreenColor() {
+        Set<Capability> bools = new HashSet<>();
+        Map<Capability, Integer> ints = new HashMap<>();
+        Map<Capability, String> strings = new HashMap<>();
+
+        String infocmp = InfoCmp.getDefaultInfoCmp("screen-256color");
+        assertNotNull("screen-256color caps should not be null", infocmp);
+        InfoCmp.parseInfoCmp(infocmp, bools, ints, strings);
+
+        assertEquals(256, ints.get(Capability.max_colors).intValue());
+        assertNotNull(strings.get(Capability.cursor_address));
+        assertNotNull(strings.get(Capability.enter_ca_mode));
+    }
+
+    @Test
+    public void testFallbackToDefault() {
+        // Unknown terminal type should fall back to ansi
+        Set<Capability> bools = new HashSet<>();
+        Map<Capability, Integer> ints = new HashMap<>();
+        Map<Capability, String> strings = new HashMap<>();
+
+        String infocmp = InfoCmp.getDefaultInfoCmp("some-unknown-terminal");
+        assertNotNull("Unknown terminal should fall back to ansi", infocmp);
+        InfoCmp.parseInfoCmp(infocmp, bools, ints, strings);
+
+        // ansi should have basic capabilities
+        assertTrue(ints.containsKey(Capability.max_colors));
+        assertNotNull(strings.get(Capability.cursor_address));
+    }
+
+    @Test
+    public void testGetInfoCompFallsBackToDefault() throws IOException, InterruptedException {
+        // getInfoCmp should return bundled caps even without infocmp binary
+        String caps = InfoCmp.getInfoCmp("xterm-256color");
+        assertNotNull("getInfoCmp should return caps for xterm-256color", caps);
+        assertFalse("caps should not be empty", caps.isEmpty());
+    }
+
+    @Test
     public void testNative() throws IOException, InterruptedException {
         if (Config.isOSPOSIXCompatible()) {
             Set<Capability> bools = new HashSet<>();

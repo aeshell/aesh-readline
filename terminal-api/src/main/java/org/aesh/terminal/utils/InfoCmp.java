@@ -52,9 +52,20 @@ public final class InfoCmp {
     public static String getInfoCmp(String terminal) throws IOException, InterruptedException {
         String caps = CAPS.get(terminal);
         if (caps == null) {
-            Process p = new ProcessBuilder(OSUtils.INFOCMP_COMMAND, terminal).start();
-            caps = ExecHelper.waitAndCapture(p);
-            CAPS.put(terminal, caps);
+            // Try bundled .src files first — no subprocess, always available
+            caps = getDefaultInfoCmp(terminal);
+            // Fall back to spawning infocmp if no bundled match
+            if (caps == null || caps.isEmpty()) {
+                try {
+                    Process p = new ProcessBuilder(OSUtils.INFOCMP_COMMAND, terminal).start();
+                    caps = ExecHelper.waitAndCapture(p);
+                } catch (IOException e) {
+                    // infocmp not available either — caps stays null
+                }
+            }
+            if (caps != null) {
+                CAPS.put(terminal, caps);
+            }
         }
         return caps;
     }
@@ -67,15 +78,24 @@ public final class InfoCmp {
      * @return the default capabilities string, or null if not found
      */
     public static String getDefaultInfoCmp(String terminal) {
-        if (terminal.toLowerCase().contains("windows")) {
+        String lower = terminal.toLowerCase();
+        if (lower.contains("windows")) {
             return readDefaultInfoCmp("windows_caps.src");
-        } else if (terminal.toLowerCase().contains("screen-256color") || terminal.toLowerCase().contains("screen_256color")) {
+        } else if (lower.contains("tmux-256color") || lower.contains("tmux_256color")) {
+            return readDefaultInfoCmp("tmux-256color_caps.src");
+        } else if (lower.contains("screen-256color") || lower.contains("screen_256color")) {
             return readDefaultInfoCmp("screen-256color_caps.src");
-        } else if (terminal.toLowerCase().contains("xterm-256color") || terminal.toLowerCase().contains("xterm_256color")) {
+        } else if (lower.contains("xterm-256color") || lower.contains("xterm_256color")) {
             return readDefaultInfoCmp("xterm-256color_caps.src");
-        } else if (terminal.toLowerCase().contains("xterm")) {
+        } else if (lower.contains("xterm-kitty")) {
+            return readDefaultInfoCmp("xterm-kitty_caps.src");
+        } else if (lower.contains("alacritty")) {
+            return readDefaultInfoCmp("alacritty_caps.src");
+        } else if (lower.contains("xterm")) {
             return readDefaultInfoCmp("xterm_caps.src");
-        } else if (terminal.toLowerCase().contains("vt100")) {
+        } else if (lower.equals("linux")) {
+            return readDefaultInfoCmp("linux_caps.src");
+        } else if (lower.contains("vt100")) {
             return readDefaultInfoCmp("vt100_caps.src");
         } else {
             return readDefaultInfoCmp("ansi_caps.src");
