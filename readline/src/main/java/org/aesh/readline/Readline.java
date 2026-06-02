@@ -307,12 +307,19 @@ public class Readline {
             conn.setSizeHandler(prevSizeHandler);
             conn.setSignalHandler(prevSignalHandler);
             synchronized (Readline.this) {
-                if (graphemeClusterModeActive) {
-                    conn.terminal().disableGraphemeClusterMode();
+                // Guard against closed connection (e.g. EOF/Ctrl+D closes the
+                // connection before finish() is called)
+                try {
+                    if (graphemeClusterModeActive) {
+                        conn.terminal().disableGraphemeClusterMode();
+                        graphemeClusterModeActive = false;
+                    }
+                    //revert back to the old attributes
+                    conn.setAttributes(attributes);
+                } catch (Exception e) {
+                    // Connection may already be closed (EOF), ignore cleanup errors
                     graphemeClusterModeActive = false;
                 }
-                //revert back to the old attributes
-                conn.setAttributes(attributes);
                 inputProcessor = null;
             }
 

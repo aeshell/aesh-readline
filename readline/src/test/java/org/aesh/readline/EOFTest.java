@@ -7,6 +7,7 @@
 package org.aesh.readline;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 import java.util.EnumMap;
 
@@ -69,6 +70,83 @@ public class EOFTest {
         assertEquals(0, closeCalled[0]);
         term.read(Key.CTRL_D);
         assertEquals(1, closeCalled[0]);
+    }
+
+    /**
+     * Test that Ctrl+D on an empty buffer closes the connection cleanly.
+     */
+    @Test
+    public void testEOFOnEmptyBuffer() {
+        final int[] closeCalled = { 0 };
+
+        EnumMap<ReadlineFlag, Integer> flags = new EnumMap<>(ReadlineFlag.class);
+        TestReadlineConnection term = new TestReadlineConnection(flags);
+        term.setCloseHandler(v -> closeCalled[0]++);
+
+        // Empty buffer + Ctrl+D = EOF → close
+        term.read(Key.CTRL_D);
+        assertEquals(1, closeCalled[0]);
+    }
+
+    /**
+     * Test that Ctrl+D works cleanly after typing and deleting text
+     * (buffer becomes empty, then EOF triggers).
+     */
+    @Test
+    public void testEOFAfterClearingBuffer() {
+        final int[] closeCalled = { 0 };
+
+        EnumMap<ReadlineFlag, Integer> flags = new EnumMap<>(ReadlineFlag.class);
+        TestReadlineConnection term = new TestReadlineConnection(flags);
+        term.setCloseHandler(v -> closeCalled[0]++);
+
+        // Type "ab", then delete both chars, then Ctrl+D = EOF
+        term.read(Key.a);
+        term.read(Key.b);
+        term.read(Key.BACKSPACE);
+        term.read(Key.BACKSPACE);
+        term.assertBuffer("");
+
+        term.read(Key.CTRL_D);
+        assertEquals(1, closeCalled[0]);
+    }
+
+    /**
+     * Test that finish() handles exceptions from setAttributes() gracefully.
+     * <p>
+     * This simulates what happens when EndOfFile calls connection.close()
+     * before finish(): the connection's setAttributes() throws because
+     * the underlying pty is closed. The finish() method must catch this
+     * and not propagate the exception.
+     */
+    @Test
+    public void testFinishHandlesClosedConnection() {
+        final int[] closeCalled = { 0 };
+        final boolean[] throwOnSetAttributes = { false };
+
+        EnumMap<ReadlineFlag, Integer> flags = new EnumMap<>(ReadlineFlag.class);
+        TestReadlineConnection term = new TestReadlineConnection(flags) {
+            @Override
+            public void setAttributes(org.aesh.terminal.Attributes attr) {
+                if (throwOnSetAttributes[0]) {
+                    throw new RuntimeException("Connection closed");
+                }
+                super.setAttributes(attr);
+            }
+        };
+        term.setCloseHandler(v -> {
+            closeCalled[0]++;
+            // Simulate real close: make setAttributes throw after close
+            throwOnSetAttributes[0] = true;
+        });
+
+        try {
+            // Empty buffer + Ctrl+D = EOF → close (sets throwOnSetAttributes) → finish
+            term.read(Key.CTRL_D);
+            assertEquals("close handler should be called", 1, closeCalled[0]);
+        } catch (Exception e) {
+            fail("finish() should not propagate exceptions from closed connection: " + e);
+        }
     }
 
     @Test
