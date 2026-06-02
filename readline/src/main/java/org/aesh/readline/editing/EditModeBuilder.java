@@ -283,7 +283,7 @@ public class EditModeBuilder {
         emacs.addAction(Key.CTRL_W, "unix-word-rubout");
         emacs.addAction(Key.CTRL_X_CTRL_U, "undo");
         emacs.addAction(Key.UNIT_SEPARATOR, "undo");
-        emacs.addAction(Key.CTRL_R, "reverse-search-history");
+        emacs.addAction(Key.CTRL_R, "fuzzy-reverse-search-history");
         emacs.addAction(Key.CTRL_S, "forward-search-history");
         emacs.addAction(Key.CTRL_L, "clear-screen"); //ctrl-l
         emacs.addAction(Key.ESC, "no-action");
@@ -369,7 +369,7 @@ public class EditModeBuilder {
         vi.addAction(Key.CTRL_J, "accept-line");
 
         //search
-        vi.addAction(Key.CTRL_R, "reverse-search-history");
+        vi.addAction(Key.CTRL_R, "fuzzy-reverse-search-history");
         vi.addAction(Key.CTRL_S, "forward-search-history");
 
         //edit

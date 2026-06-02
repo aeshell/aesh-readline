@@ -235,7 +235,9 @@ public class ViModeTest {
 
     @Test
     public void testSearch() {
-        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI).build());
+        // Use explicit old-style reverse search binding for this test
+        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI)
+                .addAction(Key.CTRL_R.getKeyValues(), "reverse-search-history").build());
         term.read("asdf jkl\n");
         term.readline();
         term.read("footing\n");
@@ -249,7 +251,9 @@ public class ViModeTest {
 
     @Test
     public void testSearchWithArrownRight() {
-        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI).build());
+        // Use explicit old-style reverse search binding for this test
+        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI)
+                .addAction(Key.CTRL_R.getKeyValues(), "reverse-search-history").build());
         term.read("asdf jkl\n");
         term.readline();
         term.read("footing\n");
@@ -267,7 +271,9 @@ public class ViModeTest {
 
     @Test
     public void testSearchWithArrownLeft() {
-        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI).build());
+        // Use explicit old-style reverse search binding for this test
+        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI)
+                .addAction(Key.CTRL_R.getKeyValues(), "reverse-search-history").build());
         term.read("asdf jkl\n");
         term.readline();
         term.read("footing\n");
@@ -282,7 +288,9 @@ public class ViModeTest {
 
     @Test
     public void testSearchWithArrownUp() {
-        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI).build());
+        // Use explicit old-style reverse search binding for this test
+        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI)
+                .addAction(Key.CTRL_R.getKeyValues(), "reverse-search-history").build());
         term.read("footing\n");
         term.readline();
         term.read("asdf jkl\n");
@@ -297,7 +305,9 @@ public class ViModeTest {
 
     @Test
     public void testSearchWithArrownDown() {
-        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI).build());
+        // Use explicit old-style reverse search binding for this test
+        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.VI)
+                .addAction(Key.CTRL_R.getKeyValues(), "reverse-search-history").build());
         term.read("asdf jkl\n");
         term.readline();
         term.read("footing\n");

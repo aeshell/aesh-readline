@@ -67,7 +67,9 @@ public class HistoryTest {
         term.read(Key.ENTER);
         term.assertLine("");
 
-        term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).build());
+        // Use explicit old-style reverse search binding for this test
+        term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.EMACS)
+                .addAction(Key.CTRL_R.getKeyValues(), "reverse-search-history").build());
         term.read(Key.CTRL_R);
         term.assertBuffer("(reverse-i-search) `': ");
 
@@ -104,7 +106,9 @@ public class HistoryTest {
     @Test
     public void testReverseSearch() {
 
-        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).build());
+        // Use explicit old-style reverse search binding for this test
+        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.EMACS)
+                .addAction(Key.CTRL_R.getKeyValues(), "reverse-search-history").build());
         term.read("1234" + Config.getLineSeparator());
         term.readline();
         term.read("567" + Config.getLineSeparator());
@@ -146,7 +150,9 @@ public class HistoryTest {
     @Test
     public void testReverseSearchEscape() {
 
-        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.EMACS).build());
+        // Use explicit old-style reverse search binding for this test
+        TestReadlineConnection term = new TestReadlineConnection(EditModeBuilder.builder(EditMode.Mode.EMACS)
+                .addAction(Key.CTRL_R.getKeyValues(), "reverse-search-history").build());
         term.read("1234" + Config.getLineSeparator());
         term.readline();
         term.read("567" + Config.getLineSeparator());
