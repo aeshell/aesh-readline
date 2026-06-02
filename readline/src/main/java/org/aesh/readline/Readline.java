@@ -35,8 +35,10 @@ import org.aesh.readline.cursor.CursorListener;
 import org.aesh.readline.editing.EditMode;
 import org.aesh.readline.editing.EditModeBuilder;
 import org.aesh.readline.history.History;
+import org.aesh.readline.history.HistorySuggestionProvider;
 import org.aesh.readline.history.InMemoryHistory;
 import org.aesh.readline.prompt.Prompt;
+import org.aesh.readline.suggestion.CompositeSuggestionProvider;
 import org.aesh.readline.suggestion.SuggestionProvider;
 import org.aesh.terminal.Attributes;
 import org.aesh.terminal.Connection;
@@ -103,11 +105,32 @@ public class Readline {
 
     /**
      * Sets the suggestion provider for inline ghost text.
+     * <p>
+     * If history is available, a {@link HistorySuggestionProvider} is
+     * automatically prepended so history suggestions take priority.
      *
      * @param provider the suggestion provider
      */
     public void setSuggestionProvider(SuggestionProvider provider) {
-        this.suggestionProvider = provider;
+        if (history != null && provider != null) {
+            this.suggestionProvider = new CompositeSuggestionProvider(
+                    new HistorySuggestionProvider(history), provider);
+        } else if (history != null) {
+            this.suggestionProvider = new HistorySuggestionProvider(history);
+        } else {
+            this.suggestionProvider = provider;
+        }
+    }
+
+    /**
+     * Enables history-based ghost text suggestions without an additional provider.
+     * Call this after construction if you want history suggestions but no
+     * command-level suggestion provider.
+     */
+    public void enableHistorySuggestions() {
+        if (history != null) {
+            this.suggestionProvider = new HistorySuggestionProvider(history);
+        }
     }
 
     /**
