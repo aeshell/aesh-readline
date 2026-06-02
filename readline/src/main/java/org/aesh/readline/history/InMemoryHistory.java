@@ -35,6 +35,7 @@ import org.aesh.terminal.utils.Parser;
 public class InMemoryHistory extends History {
 
     private final List<int[]> historyList;
+    private final List<Long> timestampList;
     private int lastId = 0;
     private int[] current;
     private SearchDirection searchDirection = SearchDirection.REVERSE;
@@ -59,6 +60,7 @@ public class InMemoryHistory extends History {
         else
             this.maxSize = maxSize;
         historyList = new ArrayList<>();
+        timestampList = new ArrayList<>();
         current = new int[] {};
     }
 
@@ -75,9 +77,11 @@ public class InMemoryHistory extends History {
 
             if (historyList.size() >= maxSize) {
                 historyList.remove(0);
+                timestampList.remove(0);
             }
 
             historyList.add(entry);
+            timestampList.add(System.currentTimeMillis());
             lastId = size();
         }
     }
@@ -212,9 +216,15 @@ public class InMemoryHistory extends History {
     }
 
     @Override
+    public List<Long> getTimestamps() {
+        return timestampList;
+    }
+
+    @Override
     public void clear() {
         lastId = 0;
         historyList.clear();
+        timestampList.clear();
         current = new int[] {};
     }
 
