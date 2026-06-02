@@ -162,6 +162,8 @@ public class ActionMapper {
                 return new RedrawCurrentLine();
             case "reverse-search-history":
                 return new ReverseSearchHistory();
+            case "fuzzy-reverse-search-history":
+                return new FuzzySearchHistory();
             case "revert-line":
                 return new RevertLine();
             case "self-insert":
