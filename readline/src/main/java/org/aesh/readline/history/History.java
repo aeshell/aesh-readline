@@ -148,6 +148,18 @@ public abstract class History {
     public abstract List<int[]> getAll();
 
     /**
+     * Gets the timestamps (epoch millis) for all entries in the history.
+     * The returned list is parallel to {@link #getAll()} — same size and order.
+     * <p>
+     * The default implementation returns null, indicating timestamps are not available.
+     *
+     * @return a list of timestamps, or null if timestamps are not tracked
+     */
+    public List<Long> getTimestamps() {
+        return null;
+    }
+
+    /**
      * Clears all entries from the history.
      */
     public abstract void clear();

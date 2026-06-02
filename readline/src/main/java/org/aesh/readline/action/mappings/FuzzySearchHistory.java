@@ -19,7 +19,9 @@
  */
 package org.aesh.readline.action.mappings;
 
+import java.text.SimpleDateFormat;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 
 import org.aesh.readline.InputProcessor;
@@ -35,16 +37,17 @@ import org.aesh.terminal.utils.Parser;
 /**
  * Interactive fuzzy history search (fzf-style).
  * <p>
- * Renders a multi-line list of matching history entries below the prompt,
- * filtered and ranked as the user types. Supports:
- * <ul>
- * <li>Printable chars: update the fuzzy query, re-filter and re-rank results</li>
- * <li>Up/Down: navigate the result list</li>
- * <li>Enter: select the highlighted entry and insert it into the command line</li>
- * <li>Esc: cancel and return to the prompt</li>
- * <li>Backspace: delete last char from query</li>
- * <li>Ctrl+R: toggle sort between relevance and chronological</li>
- * </ul>
+ * Renders a multi-line list of matching history entries below the prompt
+ * in fzf's reverse layout (query at top, results growing downward):
+ *
+ * <pre>
+ *   prompt$ ___                          (original prompt, untouched)
+ *   > query_                      3/20   (query line + match count)
+ *   > git status                         (selected, highlighted)
+ *     git commit -m "initial commit"
+ *     mvn clean test
+ *     grep -rn "FuzzyMatch" src/
+ * </pre>
  *
  * @see <a href="https://github.com/junegunn/fzf">fzf</a>
  */
@@ -63,12 +66,13 @@ public class FuzzySearchHistory implements ActionEvent {
     private FuzzyScorer scorer;
     private List<FuzzyScorer.ScoredEntry> results = Collections.emptyList();
     private List<int[]> allEntries;
+    private List<Long> allTimestamps;
+    private int totalUniqueEntries;
     private int selectedIndex;
     private int scrollOffset;
     private int visibleLines;
-    private boolean relevanceSort = true; // true = by score, false = chronological
+    private boolean relevanceSort = true;
 
-    // What to do on next accept()
     private enum InputAction {
         INIT,
         QUERY_CHANGED,
@@ -82,9 +86,11 @@ public class FuzzySearchHistory implements ActionEvent {
 
     private InputAction nextAction = InputAction.INIT;
 
-    // Saved state for cleanup
-    private int renderedLines = 0; // how many lines we rendered below the prompt
-    private int[] savedBuffer; // original buffer content before search started
+    private int renderedLines = 0;
+    private int[] savedBuffer;
+
+    public FuzzySearchHistory() {
+    }
 
     @Override
     public String name() {
@@ -93,11 +99,18 @@ public class FuzzySearchHistory implements ActionEvent {
 
     @Override
     public void input(Action action, KeyAction key) {
+        // Reset for reuse: the action instance is cached by the edit mode,
+        // so after a previous DONE cycle, we need to allow re-activation.
         if (state == State.DONE) {
+            state = State.NOT_STARTED;
+            nextAction = InputAction.INIT;
+        }
+
+        // On first activation, don't process the triggering key — let INIT run
+        if (state == State.NOT_STARTED) {
             return;
         }
 
-        // Ctrl+R while active: toggle sort
         if (action instanceof ReverseSearchHistory || action instanceof FuzzySearchHistory) {
             nextAction = InputAction.TOGGLE_SORT;
             return;
@@ -133,24 +146,16 @@ public class FuzzySearchHistory implements ActionEvent {
             return;
         }
 
-        // Printable character: append to query
-        if (action == null && Key.isPrintable(key.buffer())) {
-            if (query == null) {
-                query = new IntArrayBuilder(1);
+        if (key.length() == 1) {
+            int codePoint = key.getCodePointAt(0);
+            if (codePoint > 31 && codePoint != 127) {
+                if (query == null) {
+                    query = new IntArrayBuilder(1);
+                }
+                query.append(codePoint);
+                nextAction = InputAction.QUERY_CHANGED;
+                return;
             }
-            query.append(key.buffer().array()[0]);
-            nextAction = InputAction.QUERY_CHANGED;
-            return;
-        }
-
-        // Also handle printable chars from unknown actions
-        if (Key.isPrintable(key.buffer())) {
-            if (query == null) {
-                query = new IntArrayBuilder(1);
-            }
-            query.append(key.buffer().array()[0]);
-            nextAction = InputAction.QUERY_CHANGED;
-            return;
         }
 
         nextAction = InputAction.NOOP;
@@ -206,23 +211,28 @@ public class FuzzySearchHistory implements ActionEvent {
     }
 
     private void initialize(InputProcessor inputProcessor) {
+        // Reset all state for reuse (the action instance is cached by the edit mode)
         state = State.ACTIVE;
+        nextAction = InputAction.INIT;
+        renderedLines = 0;
+        selectedIndex = 0;
+        scrollOffset = 0;
+        relevanceSort = true;
+        totalUniqueEntries = 0;
         scorer = new FuzzyScorer(FuzzyScheme.HISTORY);
         allEntries = inputProcessor.buffer().history().getAll();
+        allTimestamps = inputProcessor.buffer().history().getTimestamps();
 
-        // Save current buffer contents
         savedBuffer = inputProcessor.buffer().buffer().multiLine();
 
-        // Pre-populate query from current command line (matching fzf.fish behavior)
         if (savedBuffer != null && savedBuffer.length > 0) {
             query = new IntArrayBuilder(savedBuffer);
         } else {
             query = new IntArrayBuilder(1);
         }
 
-        // Calculate visible lines based on terminal height
         int termHeight = inputProcessor.buffer().size().getHeight();
-        visibleLines = Math.min(Math.max(termHeight - 3, 1), 15); // Leave room for prompt + query + status
+        visibleLines = Math.min(Math.max(termHeight - 3, 1), 15);
 
         selectedIndex = 0;
         scrollOffset = 0;
@@ -236,153 +246,165 @@ public class FuzzySearchHistory implements ActionEvent {
             return;
         }
         int[] pattern = query != null ? query.toArray() : new int[0];
-        results = scorer.scoreAll(allEntries, pattern, false);
+        results = scorer.scoreAll(allEntries, allTimestamps, pattern, false);
+        // Track total unique entries for the info line (only on first call)
+        if (totalUniqueEntries == 0 && !results.isEmpty()) {
+            // scoreAll with empty pattern returns all unique entries
+            totalUniqueEntries = scorer.scoreAll(allEntries, allTimestamps, new int[0], false).size();
+        } else if (totalUniqueEntries == 0) {
+            totalUniqueEntries = FuzzyScorer.deduplicate(allEntries).size();
+        }
 
         if (!relevanceSort && pattern.length > 0) {
-            // Chronological sort: by index (most recent first = lowest index)
             results.sort((a, b) -> Integer.compare(a.index, b.index));
         }
 
-        // Reset selection to top
         selectedIndex = 0;
         scrollOffset = 0;
     }
 
+    // Date formatter for timestamps (MM-dd HH:mm)
+    private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("MM-dd HH:mm");
+
+    /**
+     * Render the fuzzy search UI below the prompt.
+     * Layout matches fzf.fish's history search:
+     *
+     * <pre>
+     *   prompt$ ___
+     *   > query_
+     *     3/20
+     *   > 06-02 12:30 │ git status           (selected, highlighted)
+     *     06-02 12:28 │ git commit -m "fix"
+     *     06-02 12:25 │ mvn clean test
+     * </pre>
+     */
     private void render(InputProcessor inputProcessor) {
-        // First clear any previously rendered lines
-        clearRenderedArea(inputProcessor);
-
-        // Build the query line
-        String queryStr = query != null && query.size() > 0 ? Parser.fromCodePoints(query.toArray()) : "";
-        String sortIndicator = relevanceSort ? "" : " [chrono]";
-        String headerLine = "> " + queryStr;
-        String countLine = "  " + results.size() + "/" + allEntries.size() + sortIndicator;
-
-        // Move to the line below the prompt
-        inputProcessor.buffer().writeOut("\n");
-
-        // Write header (query input)
-        inputProcessor.buffer().writeOut("\033[2K"); // erase line
-        inputProcessor.buffer().writeOut(headerLine);
-        inputProcessor.buffer().writeOut("\n");
-
-        // Write count
-        inputProcessor.buffer().writeOut("\033[2K");
-        inputProcessor.buffer().writeOut(countLine);
-
-        int linesWritten = 2;
-
-        // Write visible results
-        int end = Math.min(scrollOffset + visibleLines, results.size());
-        int termWidth = inputProcessor.buffer().size().getWidth();
-
-        for (int i = scrollOffset; i < end; i++) {
-            inputProcessor.buffer().writeOut("\n");
-            inputProcessor.buffer().writeOut("\033[2K"); // erase line
-
-            String prefix;
-            if (i == selectedIndex) {
-                prefix = "\033[7m> "; // reverse video for selected
-            } else {
-                prefix = "  ";
-            }
-
-            String entryText = Parser.fromCodePoints(results.get(i).text);
-            // Truncate to terminal width (accounting for prefix)
-            int maxLen = termWidth - 3;
-            if (maxLen > 0 && entryText.length() > maxLen) {
-                entryText = entryText.substring(0, maxLen) + "~";
-            }
-
-            inputProcessor.buffer().writeOut(prefix + entryText);
-
-            if (i == selectedIndex) {
-                inputProcessor.buffer().writeOut("\033[27m"); // end reverse video
-            }
-            linesWritten++;
+        if (allEntries == null) {
+            return;
         }
 
-        renderedLines = linesWritten;
+        clearRenderedArea(inputProcessor);
 
-        // Move cursor back up to the query line, positioned after the query text
-        // We need to go up renderedLines lines to get back to the prompt line,
-        // then down 1 to the query line
-        inputProcessor.buffer().writeOut("\033[" + renderedLines + "A"); // up to prompt
-        inputProcessor.buffer().writeOut("\n"); // down to query line
-        inputProcessor.buffer().writeOut("\033[G"); // column 1
-        inputProcessor.buffer().writeOut("\033[" + (queryStr.length() + 3) + "C"); // position after "> query"
+        String queryStr = query != null && query.size() > 0 ? Parser.fromCodePoints(query.toArray()) : "";
+        String sortIndicator = relevanceSort ? "" : " [chrono]";
+        int termWidth = inputProcessor.buffer().size().getWidth();
+
+        int end = Math.min(scrollOffset + visibleLines, results.size());
+        int resultCount = end - scrollOffset;
+        int totalLines = 2 + resultCount; // query line + info line + result lines
+
+        // Line 1: Query input
+        out(inputProcessor, "\r\n\033[2K");
+        out(inputProcessor, "\033[36m> \033[0m" + queryStr);
+
+        // Line 2: Info line (match count / total)
+        out(inputProcessor, "\r\n\033[2K");
+        out(inputProcessor, "  \033[90m" + results.size() + "/" + totalUniqueEntries + sortIndicator + "\033[0m");
+
+        // Lines 3+: Results with timestamps
+        for (int i = scrollOffset; i < end; i++) {
+            out(inputProcessor, "\r\n\033[2K");
+
+            String entryText = Parser.fromCodePoints(results.get(i).text);
+
+            // Format timestamp if available
+            String timeStr = "";
+            if (results.get(i).timestamp > 0) {
+                timeStr = DATE_FORMAT.format(new Date(results.get(i).timestamp));
+            }
+
+            if (i == selectedIndex) {
+                out(inputProcessor, "\033[36m> \033[0m");
+                if (!timeStr.isEmpty()) {
+                    out(inputProcessor, "\033[7m" + timeStr + " \033[0m\033[90m\u2502\033[0m ");
+                }
+                int prefixLen = 2 + (timeStr.isEmpty() ? 0 : timeStr.length() + 3);
+                int maxLen = termWidth - prefixLen - 1;
+                if (maxLen > 0 && entryText.length() > maxLen) {
+                    entryText = entryText.substring(0, maxLen) + "~";
+                }
+                out(inputProcessor, "\033[7m" + entryText + "\033[0m");
+            } else {
+                out(inputProcessor, "  ");
+                if (!timeStr.isEmpty()) {
+                    out(inputProcessor, "\033[90m" + timeStr + " \u2502\033[0m ");
+                }
+                int prefixLen = 2 + (timeStr.isEmpty() ? 0 : timeStr.length() + 3);
+                int maxLen = termWidth - prefixLen - 1;
+                if (maxLen > 0 && entryText.length() > maxLen) {
+                    entryText = entryText.substring(0, maxLen) + "\033[90m~\033[0m";
+                }
+                out(inputProcessor, entryText);
+            }
+        }
+
+        renderedLines = totalLines;
+
+        // Move cursor back to the query line (first rendered line)
+        if (totalLines > 1) {
+            out(inputProcessor, "\033[" + (totalLines - 1) + "A");
+        }
+        // Position cursor on the query line after "> " + query text
+        out(inputProcessor, "\r");
+        int cursorCol = 2 + queryStr.length();
+        out(inputProcessor, "\033[" + (cursorCol + 1) + "G");
     }
 
     private void clearRenderedArea(InputProcessor inputProcessor) {
         if (renderedLines > 0) {
-            // We're on the query line (1 below prompt). Move to start and clear downward.
-            inputProcessor.buffer().writeOut("\033[G"); // column 1
-            for (int i = 0; i < renderedLines; i++) {
-                inputProcessor.buffer().writeOut("\033[2K"); // erase line
-                if (i < renderedLines - 1) {
-                    inputProcessor.buffer().writeOut("\n"); // move down
-                }
-            }
-            // Move back up
-            if (renderedLines > 1) {
-                inputProcessor.buffer().writeOut("\033[" + (renderedLines - 1) + "A");
-            }
+            // Cursor is on the query line (first rendered line, one below prompt).
+            // Use CSI J (erase from cursor to end of screen) — simpler and more
+            // robust than line-by-line clearing, especially with Unicode content
+            // that may have different display widths.
+            out(inputProcessor, "\r"); // column 1
+            out(inputProcessor, "\033[J"); // erase from cursor to end of screen
+            // Move up to the original prompt line
+            out(inputProcessor, "\033[A");
             renderedLines = 0;
         }
     }
 
     private void selectEntry(InputProcessor inputProcessor) {
-        // Clear the rendered search UI
+        int[] selected;
+        if (!results.isEmpty() && selectedIndex < results.size()) {
+            selected = results.get(selectedIndex).text;
+        } else {
+            selected = savedBuffer != null && savedBuffer.length > 0 ? savedBuffer : new int[0];
+        }
+
         cleanupAndRestore(inputProcessor);
 
-        if (!results.isEmpty() && selectedIndex < results.size()) {
-            int[] selected = results.get(selectedIndex).text;
-            inputProcessor.buffer().replace(selected);
-        } else {
-            // No selection — restore original buffer
-            inputProcessor.buffer().replace(savedBuffer != null ? savedBuffer : new int[0]);
-        }
+        // Insert the selected entry into the command line for editing
+        // (do NOT call setReturnValue — that would execute it immediately)
+        inputProcessor.buffer().replace(selected);
 
         state = State.DONE;
     }
 
     private void cancel(InputProcessor inputProcessor) {
-        // Clear the rendered search UI and restore original buffer
         cleanupAndRestore(inputProcessor);
         inputProcessor.buffer().replace(savedBuffer != null ? savedBuffer : new int[0]);
         state = State.DONE;
     }
 
     private void cleanupAndRestore(InputProcessor inputProcessor) {
-        // Clear all rendered lines below the prompt
-        if (renderedLines > 0) {
-            // Move to column 1 on current line (query line)
-            inputProcessor.buffer().writeOut("\033[G");
-            // Erase from cursor to end of screen
-            for (int i = 0; i < renderedLines; i++) {
-                inputProcessor.buffer().writeOut("\033[2K");
-                if (i < renderedLines - 1) {
-                    inputProcessor.buffer().writeOut("\n");
-                }
-            }
-            // Move back up to prompt
-            if (renderedLines > 1) {
-                inputProcessor.buffer().writeOut("\033[" + (renderedLines - 1) + "A");
-            }
-            // Move up one more to the original prompt line
-            inputProcessor.buffer().writeOut("\033[A");
-            inputProcessor.buffer().writeOut("\033[G");
-            renderedLines = 0;
-        }
+        clearRenderedArea(inputProcessor);
 
-        // Erase the prompt line and redraw
-        inputProcessor.buffer().writeOut("\033[2K");
-        inputProcessor.buffer().writeOut("\033[G");
+        out(inputProcessor, "\033[2K");
+        out(inputProcessor, "\r");
 
-        // Reset search state
         query = null;
         results = Collections.emptyList();
         allEntries = null;
+        allTimestamps = null;
+        totalUniqueEntries = 0;
         scorer = null;
     }
+
+    /** Write a string to the terminal output. */
+    private void out(InputProcessor inputProcessor, String s) {
+        inputProcessor.buffer().writeOut(s);
+    }
+
 }

@@ -89,6 +89,20 @@ public final class FuzzyScorer {
      * @return sorted list of scored entries (best match first)
      */
     public List<ScoredEntry> scoreAll(List<int[]> entries, int[] pattern, boolean withPos) {
+        return scoreAll(entries, null, pattern, withPos);
+    }
+
+    /**
+     * Filter and rank a list of entries against a pattern, with timestamps.
+     *
+     * @param entries the entries to search (most recent last, as from History.getAll())
+     * @param timestamps parallel list of timestamps (epoch millis), or null
+     * @param pattern the search pattern as code points
+     * @param withPos whether to compute match positions for each entry
+     * @return sorted list of scored entries (best match first)
+     */
+    public List<ScoredEntry> scoreAll(List<int[]> entries, List<Long> timestamps,
+            int[] pattern, boolean withPos) {
         if (entries == null || entries.isEmpty()) {
             return Collections.emptyList();
         }
@@ -97,8 +111,10 @@ public final class FuzzyScorer {
         int[] normalizedPattern = caseSensitive ? pattern : toLower(pattern);
 
         // Deduplicate: keep most recent occurrence of each unique entry
-        // Walk from most recent (end) to oldest (start)
-        List<int[]> deduped = deduplicate(entries);
+        // Also carry through timestamps
+        List<int[]> deduped = new ArrayList<>();
+        List<Long> dedupedTimestamps = new ArrayList<>();
+        deduplicateWithTimestamps(entries, timestamps, deduped, dedupedTimestamps);
 
         // Score each entry
         List<ScoredEntry> results = new ArrayList<>();
@@ -114,7 +130,8 @@ public final class FuzzyScorer {
             }
 
             if (result.isMatch() || normalizedPattern.length == 0) {
-                results.add(new ScoredEntry(i, text, result));
+                long ts = dedupedTimestamps.isEmpty() ? -1 : dedupedTimestamps.get(i);
+                results.add(new ScoredEntry(i, text, result, ts));
             }
         }
 
@@ -171,10 +188,7 @@ public final class FuzzyScorer {
      * Input order: oldest first (index 0) to most recent (last index).
      * Output order: most recent first (for display).
      */
-    static List<int[]> deduplicate(List<int[]> entries) {
-        // Use LinkedHashSet to maintain insertion order and deduplicate.
-        // We iterate from most recent to oldest so the first occurrence
-        // (in iteration order) is the most recent.
+    public static List<int[]> deduplicate(List<int[]> entries) {
         LinkedHashSet<String> seen = new LinkedHashSet<>();
         List<int[]> result = new ArrayList<>();
 
@@ -185,6 +199,24 @@ public final class FuzzyScorer {
             }
         }
         return result;
+    }
+
+    /**
+     * Deduplicate entries with timestamps, keeping most recent occurrence.
+     */
+    private static void deduplicateWithTimestamps(List<int[]> entries, List<Long> timestamps,
+            List<int[]> outEntries, List<Long> outTimestamps) {
+        LinkedHashSet<String> seen = new LinkedHashSet<>();
+
+        for (int i = entries.size() - 1; i >= 0; i--) {
+            String key = Parser.fromCodePoints(entries.get(i));
+            if (seen.add(key)) {
+                outEntries.add(entries.get(i));
+                if (timestamps != null && i < timestamps.size()) {
+                    outTimestamps.add(timestamps.get(i));
+                }
+            }
+        }
     }
 
     /**
@@ -208,11 +240,18 @@ public final class FuzzyScorer {
         public final int[] text;
         /** The fuzzy match result. */
         public final FuzzyResult match;
+        /** Timestamp (epoch millis) when the entry was added, or -1 if unknown. */
+        public final long timestamp;
 
         public ScoredEntry(int index, int[] text, FuzzyResult match) {
+            this(index, text, match, -1);
+        }
+
+        public ScoredEntry(int index, int[] text, FuzzyResult match, long timestamp) {
             this.index = index;
             this.text = text;
             this.match = match;
+            this.timestamp = timestamp;
         }
     }
 }
