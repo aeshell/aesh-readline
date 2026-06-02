@@ -110,9 +110,9 @@
 
     <distributionManagement>
         <repository>
-            <id>jboss-testing-repository</id>
-            <name>JBoss Testing Repository</name>
-            <url>https://repository.jboss.org/nexus/repository/testing/</url>
+            <id>jboss-releases-repository</id>
+            <name>JBoss Releases Repository</name>
+            <url>https://repository.jboss.org/nexus/repository/releases/</url>
         </repository>
         <snapshotRepository>
             <id>jboss-snapshots-repository</id>
