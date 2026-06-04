@@ -66,11 +66,21 @@ public class InMemoryHistory extends History {
 
     @Override
     public void push(int[] entry) {
+        pushWithTimestamp(entry, System.currentTimeMillis());
+    }
+
+    /**
+     * Push an entry with a specific timestamp.
+     * Used by FileHistory to restore timestamps from the history file.
+     *
+     * @param entry the history entry
+     * @param timestamp the timestamp in epoch milliseconds
+     */
+    protected void pushWithTimestamp(int[] entry, long timestamp) {
         if (isEnabled() && entry != null && !Parser.isTrimmedArrayEmpty(entry)) {
             // Don't add repeated lines to the history
             if (!historyList.isEmpty() &&
                     Arrays.equals(historyList.get(historyList.size() - 1), entry)) {
-                //historyList.get(historyList.size()-1).equals(entry.trim())) {
                 lastId = size();
                 return;
             }
@@ -81,7 +91,7 @@ public class InMemoryHistory extends History {
             }
 
             historyList.add(entry);
-            timestampList.add(System.currentTimeMillis());
+            timestampList.add(timestamp);
             lastId = size();
         }
     }

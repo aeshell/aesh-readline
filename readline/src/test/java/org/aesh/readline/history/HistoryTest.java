@@ -22,9 +22,11 @@ package org.aesh.readline.history;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
+import java.util.List;
 
 import org.aesh.readline.editing.EditMode;
 import org.aesh.readline.editing.EditModeBuilder;
@@ -253,6 +255,85 @@ public class HistoryTest {
         assertArrayEquals(Parser.toCodePoints("2"), history.previousFetch().orElse(null));
         assertArrayEquals(Parser.toCodePoints("1"), history.previousFetch().orElse(null));
         assertEquals(4, history.getAll().size());
+    }
+
+    @Test
+    public void testFileHistoryTimestamps() {
+        File historyFile = new File(System.getProperty("java.io.tmpdir"), "aesh-history-timestamps.test");
+        historyFile.deleteOnExit();
+
+        // Write history with timestamps
+        History history = new FileHistory(historyFile, 10, false);
+        history.push(Parser.toCodePoints("first command"));
+        // Small delay to ensure different timestamps
+        try {
+            Thread.sleep(10);
+        } catch (InterruptedException ignored) {
+        }
+        history.push(Parser.toCodePoints("second command"));
+        try {
+            Thread.sleep(10);
+        } catch (InterruptedException ignored) {
+        }
+        history.push(Parser.toCodePoints("third command"));
+
+        List<Long> timestamps = history.getTimestamps();
+        assertNotNull("Timestamps should not be null", timestamps);
+        assertEquals(3, timestamps.size());
+        // Timestamps should be in ascending order
+        assertTrue("Timestamps should be ascending",
+                timestamps.get(0) <= timestamps.get(1)
+                        && timestamps.get(1) <= timestamps.get(2));
+
+        long ts1 = timestamps.get(0);
+        long ts2 = timestamps.get(1);
+        long ts3 = timestamps.get(2);
+
+        // Save to file
+        history.stop();
+
+        // Reload from file — timestamps should be preserved
+        History reloaded = new FileHistory(historyFile, 10, false);
+        assertEquals(3, reloaded.size());
+        assertArrayEquals(Parser.toCodePoints("first command"), reloaded.get(0));
+        assertArrayEquals(Parser.toCodePoints("second command"), reloaded.get(1));
+        assertArrayEquals(Parser.toCodePoints("third command"), reloaded.get(2));
+
+        List<Long> reloadedTimestamps = reloaded.getTimestamps();
+        assertNotNull("Reloaded timestamps should not be null", reloadedTimestamps);
+        assertEquals(3, reloadedTimestamps.size());
+        assertEquals("First timestamp should be preserved", ts1, (long) reloadedTimestamps.get(0));
+        assertEquals("Second timestamp should be preserved", ts2, (long) reloadedTimestamps.get(1));
+        assertEquals("Third timestamp should be preserved", ts3, (long) reloadedTimestamps.get(2));
+    }
+
+    @Test
+    public void testFileHistoryLegacyFormat() {
+        // Test reading a legacy file (no timestamps)
+        File historyFile = new File(System.getProperty("java.io.tmpdir"), "aesh-history-legacy.test");
+        historyFile.deleteOnExit();
+
+        // Write a plain-text history file (legacy format)
+        try (java.io.FileWriter fw = new java.io.FileWriter(historyFile)) {
+            fw.write("legacy command one" + Config.getLineSeparator());
+            fw.write("legacy command two" + Config.getLineSeparator());
+        } catch (java.io.IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        History history = new FileHistory(historyFile, 10, false);
+        assertEquals(2, history.size());
+        assertArrayEquals(Parser.toCodePoints("legacy command one"), history.get(0));
+        assertArrayEquals(Parser.toCodePoints("legacy command two"), history.get(1));
+
+        // Timestamps should be the file modification time (fallback)
+        List<Long> timestamps = history.getTimestamps();
+        assertNotNull(timestamps);
+        assertEquals(2, timestamps.size());
+        // Both should be approximately the file's last modified time
+        long fileMod = historyFile.lastModified();
+        assertTrue("Legacy timestamp should be file modification time",
+                Math.abs(timestamps.get(0) - fileMod) < 1000);
     }
 
     @Test

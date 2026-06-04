@@ -25,6 +25,7 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -83,15 +84,40 @@ public class FileHistory extends InMemoryHistory {
         readFile();
     }
 
+    // Separator between timestamp and command in the history file.
+    // Using a character unlikely to appear at the start of a command.
+    private static final char TIMESTAMP_SEPARATOR = '\u0000';
+
     /**
-     * Read specified history file to history buffer
+     * Read specified history file to history buffer.
+     * <p>
+     * Supports two formats:
+     * <ul>
+     * <li>New format: {@code <epoch_millis>\0<command>} — timestamp preserved</li>
+     * <li>Legacy format: {@code <command>} — timestamp set to file modification time</li>
+     * </ul>
      */
     private void readFile() {
         if (historyFile.exists()) {
+            long fallbackTimestamp = historyFile.lastModified();
             try (BufferedReader reader = new BufferedReader(new FileReader(historyFile))) {
                 String line;
-                while ((line = reader.readLine()) != null)
-                    push(Parser.toCodePoints(line));
+                while ((line = reader.readLine()) != null) {
+                    int sepIdx = line.indexOf(TIMESTAMP_SEPARATOR);
+                    if (sepIdx > 0) {
+                        // New format: timestamp\0command
+                        try {
+                            long timestamp = Long.parseLong(line.substring(0, sepIdx));
+                            String command = line.substring(sepIdx + 1);
+                            pushWithTimestamp(Parser.toCodePoints(command), timestamp);
+                            continue;
+                        } catch (NumberFormatException e) {
+                            // Not a valid timestamp — treat as legacy format
+                        }
+                    }
+                    // Legacy format: plain command
+                    pushWithTimestamp(Parser.toCodePoints(line), fallbackTimestamp);
+                }
             } catch (FileNotFoundException ignored) {
                 //AESH-205
             } catch (IOException e) {
@@ -102,15 +128,24 @@ public class FileHistory extends InMemoryHistory {
     }
 
     /**
-     * Write the content of the history buffer to file
+     * Write the content of the history buffer to file.
+     * <p>
+     * Uses the new format: {@code <epoch_millis>\0<command>} per line.
+     * This preserves timestamps across sessions.
      *
      * @throws IOException io
      */
     private void writeFile() throws IOException {
         historyFile.delete();
+        List<Long> timestamps = getTimestamps();
         try (FileWriter fw = new FileWriter(historyFile)) {
-            for (int i = 0; i < size(); i++)
-                fw.write(Parser.fromCodePoints(get(i)) + (Config.getLineSeparator()));
+            for (int i = 0; i < size(); i++) {
+                long ts = (timestamps != null && i < timestamps.size()) ? timestamps.get(i) : System.currentTimeMillis();
+                fw.write(String.valueOf(ts));
+                fw.write(TIMESTAMP_SEPARATOR);
+                fw.write(Parser.fromCodePoints(get(i)));
+                fw.write(Config.getLineSeparator());
+            }
         }
         if (historyFilePermission != null) {
             historyFile.setReadable(false, false);
