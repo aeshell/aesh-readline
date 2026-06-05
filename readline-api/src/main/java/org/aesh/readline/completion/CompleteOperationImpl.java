@@ -71,11 +71,10 @@ public class CompleteOperationImpl implements CompleteOperation {
             trimmed = true;
             nonTrimmedBuffer = buffer;
             this.buffer = buffer.substring(0, cursor);
-        }
-        if (buffer != null && buffer.startsWith(" ")) {
+        } else if (buffer != null && buffer.startsWith(" ")) {
             trimmed = true;
-            this.buffer = Parser.trimInFront(buffer);
             nonTrimmedBuffer = buffer;
+            this.buffer = Parser.trimInFront(buffer);
             setCursor(cursor - getTrimmedSize());
         }
         //make sure we dont forget to set the buffer
@@ -98,6 +97,8 @@ public class CompleteOperationImpl implements CompleteOperation {
      * @return the difference in length between the non-trimmed and trimmed buffer
      */
     public int getTrimmedSize() {
+        if (nonTrimmedBuffer == null)
+            return 0;
         return nonTrimmedBuffer.length() - buffer.length();
     }
 
@@ -254,8 +255,7 @@ public class CompleteOperationImpl implements CompleteOperation {
             if (!ignoreOffset && offset < cursor) {
                 int pos = cursor - offset;
                 if (c.getCharacters().length() >= pos) {
-                    c.setCharacters(c.getCharacters().substring(pos));
-                    fixedCandidates.add(c);
+                    fixedCandidates.add(c.cloneRenderingAttributes(c.getCharacters().substring(pos)));
                 } else
                     fixedCandidates.add(new TerminalString("", true));
             } else {

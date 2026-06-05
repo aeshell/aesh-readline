@@ -169,7 +169,7 @@ public class TerminalFeatures {
         });
         connection.stdoutHandler().accept(ANSI.CURSOR_POSITION_QUERY);
         try {
-            latch.await();
+            latch.await(DEFAULT_QUERY_TIMEOUT_MS, TimeUnit.MILLISECONDS);
         } catch (InterruptedException e) {
             LOGGER.log(Level.WARNING, "getCursorPosition interrupted", e);
         }

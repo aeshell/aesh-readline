@@ -278,6 +278,11 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
     public void close() {
         closing = true;
         pump.interrupt();
+        // Close the slave input pipe so readers get EOF
+        try {
+            slaveInputPipe.close();
+        } catch (IOException ignored) {
+        }
         // Restore original console input mode before closing
         if (originalInputMode != -1) {
             setConsoleMode(originalInputMode);

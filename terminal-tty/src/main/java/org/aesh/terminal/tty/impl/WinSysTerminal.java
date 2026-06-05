@@ -54,7 +54,7 @@ public class WinSysTerminal extends AbstractWindowsTerminal {
     private static final int MOUSE_WHEELED = 0x0004;
     private static final int MOUSE_HWHEELED = 0x0008;
 
-    private Consumer<MouseEvent> mouseHandler;
+    private volatile Consumer<MouseEvent> mouseHandler;
     private int lastButtonState;
 
     /**
@@ -288,9 +288,11 @@ public class WinSysTerminal extends AbstractWindowsTerminal {
         if ((eventFlags & MOUSE_WHEELED) != 0) {
             type = MouseEvent.Type.SCROLL;
             // High word of buttonState indicates direction
+            // Win32 API: positive high word = scroll away from user (up),
+            // negative high word = scroll toward user (down)
             button = (buttonState >> 16) > 0
-                    ? MouseEvent.Button.SCROLL_DOWN
-                    : MouseEvent.Button.SCROLL_UP;
+                    ? MouseEvent.Button.SCROLL_UP
+                    : MouseEvent.Button.SCROLL_DOWN;
         } else if ((eventFlags & MOUSE_MOVED) != 0) {
             if (buttonState != 0) {
                 type = MouseEvent.Type.DRAG;
