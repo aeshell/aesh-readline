@@ -23,6 +23,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Console implementation with embedded line disciplined.
@@ -37,6 +39,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public class ExternalTerminal extends LineDisciplineTerminal {
 
+    private static final Logger LOGGER = Logger.getLogger(ExternalTerminal.class.getName());
     private final AtomicBoolean closed = new AtomicBoolean();
     private final Thread pumpThread;
 
@@ -99,7 +102,7 @@ public class ExternalTerminal extends LineDisciplineTerminal {
                 e.addSuppressed(t);
             }
             if (!closed.get()) {
-                e.printStackTrace();
+                LOGGER.log(Level.WARNING, "Error reading from external terminal", e);
             }
         }
     }

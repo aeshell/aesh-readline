@@ -78,7 +78,7 @@ public class FfmPty implements Pty {
     private volatile OutputStream slaveOutput;
 
     /** Whether this PTY has been closed. */
-    private volatile boolean closed;
+    private final java.util.concurrent.atomic.AtomicBoolean closed = new java.util.concurrent.atomic.AtomicBoolean(false);
 
     /**
      * Creates an FfmPty for the current terminal.
@@ -234,10 +234,9 @@ public class FfmPty implements Pty {
 
     @Override
     public void close() throws IOException {
-        if (closed) {
+        if (!closed.compareAndSet(false, true)) {
             return;
         }
-        closed = true;
 
         try {
             // Restore original terminal attributes
@@ -484,17 +483,17 @@ public class FfmPty implements Pty {
 
         @Override
         public int read() throws IOException {
-            if (closed) {
+            if (closed.get()) {
                 return -1;
             }
-            while (!closed) {
+            while (!closed.get()) {
                 // Reset revents
                 pollfd.set(ValueLayout.JAVA_SHORT, PosixConstants.POLLFD_REVENTS_OFFSET, (short) 0);
 
                 // Poll with 100ms timeout to remain responsive to close()
                 int result = LibC.poll(pollfd, 1, 100);
                 if (result < 0) {
-                    if (closed) {
+                    if (closed.get()) {
                         return -1;
                     }
                     // Likely EINTR — signal interrupted poll, retry
@@ -537,7 +536,7 @@ public class FfmPty implements Pty {
 
             // Try to read more if available (non-blocking)
             int count = 1;
-            while (count < len && !closed) {
+            while (count < len && !closed.get()) {
                 // Non-blocking poll
                 pollfd.set(ValueLayout.JAVA_SHORT, PosixConstants.POLLFD_REVENTS_OFFSET, (short) 0);
                 int result = LibC.poll(pollfd, 1, 0);
@@ -612,7 +611,7 @@ public class FfmPty implements Pty {
     // =========================================================================
 
     private void checkNotClosed() throws IOException {
-        if (closed) {
+        if (closed.get()) {
             throw new IOException("FfmPty is closed");
         }
     }

@@ -200,15 +200,9 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
 
     public Attributes getAttributes() {
         int mode = getConsoleMode();
-        if ((mode & ENABLE_ECHO_INPUT) != 0) {
-            attributes.setLocalFlag(Attributes.LocalFlag.ECHO, true);
-        }
-        if ((mode & ENABLE_LINE_INPUT) != 0) {
-            attributes.setLocalFlag(Attributes.LocalFlag.ICANON, true);
-        }
-        if ((mode & ENABLE_PROCESSED_INPUT) != 0) {
-            attributes.setLocalFlag(Attributes.LocalFlag.ISIG, true);
-        }
+        attributes.setLocalFlag(Attributes.LocalFlag.ECHO, (mode & ENABLE_ECHO_INPUT) != 0);
+        attributes.setLocalFlag(Attributes.LocalFlag.ICANON, (mode & ENABLE_LINE_INPUT) != 0);
+        attributes.setLocalFlag(Attributes.LocalFlag.ISIG, (mode & ENABLE_PROCESSED_INPUT) != 0);
         return new Attributes(attributes);
     }
 

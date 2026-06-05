@@ -25,6 +25,8 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.aesh.terminal.Attributes;
 import org.aesh.terminal.Terminal;
@@ -49,6 +51,8 @@ import org.aesh.terminal.tty.utils.LinePipedInputStream;
  * the input.
  */
 public class LineDisciplineTerminal extends AbstractTerminal {
+
+    private static final Logger LOGGER = Logger.getLogger(LineDisciplineTerminal.class.getName());
 
     private static final int PIPE_SIZE = 1024;
 
@@ -225,7 +229,7 @@ public class LineDisciplineTerminal extends AbstractTerminal {
         try {
             slaveInputPipe.close();
         } catch (IOException e) {
-            e.printStackTrace();
+            LOGGER.log(Level.WARNING, "Failed to close slave input pipe", e);
         }
     }
 

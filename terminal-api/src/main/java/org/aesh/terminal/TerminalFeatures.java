@@ -26,6 +26,8 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.aesh.terminal.detect.ImageProtocol;
 import org.aesh.terminal.detect.TerminalTheme;
@@ -56,6 +58,8 @@ import org.aesh.terminal.utils.TerminalColorCapability;
  * @see Connection#terminal()
  */
 public class TerminalFeatures {
+
+    private static final Logger LOGGER = Logger.getLogger(TerminalFeatures.class.getName());
 
     /**
      * Default timeout in milliseconds for terminal queries (OSC, DA1, DA2, etc.).
@@ -167,7 +171,7 @@ public class TerminalFeatures {
         try {
             latch.await();
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            LOGGER.log(Level.WARNING, "getCursorPosition interrupted", e);
         }
         return p[0];
     }

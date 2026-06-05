@@ -257,7 +257,13 @@ public class ANSI {
      * @return ansified string
      */
     public static int[] printAnsi(char... out) {
-        int[] ansi = new int[out.length + 2];
+        // Pre-calculate size accounting for tab expansion
+        int tabCount = 0;
+        for (char c : out) {
+            if (c == '\t')
+                tabCount++;
+        }
+        int[] ansi = new int[out.length + 2 + tabCount * (TAB - 1)];
         ansi[0] = 27;
         ansi[1] = '[';
         int counter = 0;
@@ -1291,9 +1297,9 @@ public class ANSI {
             throw new IllegalArgumentException("Index must be 0-255, got: " + index);
         }
 
-        // Standard colors 0-15 (approximate)
+        // Standard colors 0-15 (approximate) — return a copy to prevent mutation
         if (index < 16) {
-            return STANDARD_COLORS[index];
+            return Arrays.copyOf(STANDARD_COLORS[index], 3);
         }
 
         // Color cube 16-231

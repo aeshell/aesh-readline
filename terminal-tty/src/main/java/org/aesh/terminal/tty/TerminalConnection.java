@@ -368,25 +368,33 @@ public class TerminalConnection extends AbstractConnection {
 
     @Override
     public void close() {
+        reading = false;
         try {
-            reading = false;
             //call closeHandler before we close the terminal stream
             if (closeHandler() != null)
                 closeHandler().accept(null);
+        } catch (Exception e) {
+            LOGGER.log(Level.WARNING, "Close handler failed", e);
+        }
+        try {
             //reset signal/size handlers
             terminal.handle(Signal.INT, prevIntrHandler);
             terminal.handle(Signal.WINCH, prevWincHandler);
             terminal.handle(Signal.CONT, prevContHandler);
-
-            //reset attributes
+        } catch (Exception e) {
+            LOGGER.log(Level.WARNING, "Failed to reset signal handlers", e);
+        }
+        try {
+            //reset attributes and close terminal
             if (attributes != null && terminal != null) {
                 terminal.setAttributes(attributes);
                 terminal.close();
             }
+        } catch (Exception | java.io.IOError e) {
+            LOGGER.log(Level.WARNING, "Failed to close the terminal correctly", e);
+        } finally {
             if (latch != null)
                 latch.countDown();
-        } catch (IOException e) {
-            LOGGER.log(Level.WARNING, "Failed to close the terminal correctly", e);
         }
     }
 

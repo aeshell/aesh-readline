@@ -174,11 +174,13 @@ public class Decoder {
             if (result.isOverflow()) {
                 // We still have work to do
             } else if (result.isUnderflow()) {
-                //TODO: need to add logic here
+                // Underflow: the decoder needs more input bytes to produce
+                // a complete character. Any partial bytes remain in bBuf for
+                // the next write() call to continue decoding.
                 if (bBuf.hasRemaining()) {
-                    // We need more input
+                    // Partial multi-byte character — wait for more input
                 } else {
-                    // We are done
+                    // All input consumed
                 }
                 break;
             } else {

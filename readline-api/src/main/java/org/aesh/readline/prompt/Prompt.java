@@ -68,7 +68,7 @@ public class Prompt {
     public Prompt(Prompt prompt) {
         this.prompt = prompt.prompt.clone();
         this.mask = prompt.mask;
-        this.ansiString = prompt.ansiString.clone();
+        this.ansiString = prompt.ansiString != null ? prompt.ansiString.clone() : null;
     }
 
     /**
