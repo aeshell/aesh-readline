@@ -316,8 +316,10 @@ public class Readline {
                     }
                     //revert back to the old attributes
                     conn.setAttributes(attributes);
-                } catch (Exception e) {
-                    // Connection may already be closed (EOF), ignore cleanup errors
+                } catch (Exception | java.io.IOError e) {
+                    // Connection may already be closed (EOF), ignore cleanup errors.
+                    // AbstractPosixTerminal.setAttributes wraps IOException in IOError,
+                    // so we must catch IOError in addition to Exception.
                     graphemeClusterModeActive = false;
                 }
                 inputProcessor = null;

@@ -120,7 +120,7 @@ public class EOFTest {
      * and not propagate the exception.
      */
     @Test
-    public void testFinishHandlesClosedConnection() {
+    public void testFinishHandlesClosedConnectionException() {
         final int[] closeCalled = { 0 };
         final boolean[] throwOnSetAttributes = { false };
 
@@ -136,16 +136,49 @@ public class EOFTest {
         };
         term.setCloseHandler(v -> {
             closeCalled[0]++;
-            // Simulate real close: make setAttributes throw after close
             throwOnSetAttributes[0] = true;
         });
 
         try {
-            // Empty buffer + Ctrl+D = EOF → close (sets throwOnSetAttributes) → finish
             term.read(Key.CTRL_D);
             assertEquals("close handler should be called", 1, closeCalled[0]);
         } catch (Exception e) {
             fail("finish() should not propagate exceptions from closed connection: " + e);
+        }
+    }
+
+    /**
+     * Test that finish() handles IOError from setAttributes() gracefully.
+     * <p>
+     * AbstractPosixTerminal.setAttributes() wraps IOException in java.io.IOError
+     * (which is an Error, not an Exception). The finish() method must catch this too.
+     */
+    @Test
+    public void testFinishHandlesClosedConnectionIOError() {
+        final int[] closeCalled = { 0 };
+        final boolean[] throwOnSetAttributes = { false };
+
+        EnumMap<ReadlineFlag, Integer> flags = new EnumMap<>(ReadlineFlag.class);
+        TestReadlineConnection term = new TestReadlineConnection(flags) {
+            @Override
+            public void setAttributes(org.aesh.terminal.Attributes attr) {
+                if (throwOnSetAttributes[0]) {
+                    // Simulate what AbstractPosixTerminal does: wrap IOException in IOError
+                    throw new java.io.IOError(new java.io.IOException("FfmPty is closed"));
+                }
+                super.setAttributes(attr);
+            }
+        };
+        term.setCloseHandler(v -> {
+            closeCalled[0]++;
+            throwOnSetAttributes[0] = true;
+        });
+
+        try {
+            term.read(Key.CTRL_D);
+            assertEquals("close handler should be called", 1, closeCalled[0]);
+        } catch (Throwable e) {
+            fail("finish() should not propagate IOError from closed connection: " + e);
         }
     }
 
