@@ -54,7 +54,7 @@ public final class Parser {
     public static final char DOLLAR = '$';
     private static final Pattern spaceEscapedPattern = Pattern.compile("\\\\ ");
     private static final Pattern ansiPattern = Pattern
-            .compile("\\u001B(?:\\[[\\?]?[0-9;]*[a-zA-Z]?|\\][^\\u0007\\u001B]*(?:\\u0007|\\u001B\\\\))");
+            .compile("\\u001B(?:\\[[\\?]?[0-9;]*[a-zA-Z]?|\\][^\\u0007\\u001B]*(?:\\u0007|\\u001B\\\\)|[0-9=><A-Za-z])");
     // command text which starts with '#' is a comment
     private static final Pattern commentPattern = Pattern.compile("^(\\s*)(#)(.*)");
 

@@ -174,6 +174,40 @@ public class HyperlinkTest {
         assertEquals(text, stripped);
     }
 
+    // ==================== DEC single-char escape sequences ====================
+
+    @Test
+    public void testStripDecCursorSaveRestore() {
+        // ESC 7 = save cursor, ESC 8 = restore cursor (DEC style)
+        String text = "\u001B7hello\u001B8";
+        String stripped = Parser.stripAwayAnsiCodes(text);
+        assertEquals("hello", stripped);
+    }
+
+    @Test
+    public void testStripDecCursorSaveRestoreWithCsi() {
+        // Mix of DEC and CSI sequences
+        String text = "\u001B7\u001B[2mhello\u001B[22m\u001B8";
+        String stripped = Parser.stripAwayAnsiCodes(text);
+        assertEquals("hello", stripped);
+    }
+
+    @Test
+    public void testStripDecApplicationKeypad() {
+        // ESC = (application keypad), ESC > (normal keypad)
+        String text = "\u001B=hello\u001B>";
+        String stripped = Parser.stripAwayAnsiCodes(text);
+        assertEquals("hello", stripped);
+    }
+
+    @Test
+    public void testStripDecReverseIndex() {
+        // ESC M = reverse index
+        String text = "hello\u001BMworld";
+        String stripped = Parser.stripAwayAnsiCodes(text);
+        assertEquals("helloworld", stripped);
+    }
+
     @Test
     public void testStripOsc8WithBelTerminator() {
         // OSC 8 with BEL (\x07) terminator instead of ST
