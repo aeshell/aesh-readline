@@ -29,9 +29,20 @@ public class ShellExample implements Consumer<Connection> {
     private static final Logger LOGGER = LoggerUtil.getLogger(ShellExample.class.getName());
 
     private boolean stopped = false;
+    private final String promptText;
+
+    public ShellExample() {
+        this("");
+    }
+
+    public ShellExample(String promptText) {
+        this.promptText = promptText;
+    }
 
     @Override
     public void accept(Connection connection) {
+        Attributes savedAttr = connection.enterRawMode();
+
         connection.setSignalHandler(signal -> {
             connection.write("\nlets quit\n");
             connection.close();
@@ -39,6 +50,10 @@ public class ShellExample implements Consumer<Connection> {
 
         connection.setCloseHandler(close -> {
             stopped = true;
+            try {
+                connection.setAttributes(savedAttr);
+            } catch (Exception | java.io.IOError ignored) {
+            }
         });
 
         Readline readline = new Readline(EditModeBuilder.builder(EditMode.Mode.EMACS).build());
@@ -54,7 +69,7 @@ public class ShellExample implements Consumer<Connection> {
      */
     public void read(final Connection conn, final Readline readline) {
         // Just call readline and get a callback when line is openBlocking
-        Prompt prompt = new Prompt("");
+        Prompt prompt = new Prompt(promptText);
 
         //suspend reader asap since we're creating commands in a new thread
         //this is not needed when running single threaded, eg as examples.Example
