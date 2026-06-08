@@ -199,6 +199,28 @@ public interface Connection extends Appendable, AutoCloseable {
         return null;
     }
 
+    /**
+     * Set the handler for terminal focus events.
+     * <p>
+     * When set, the terminal will report focus gained ({@code true}) and
+     * focus lost ({@code false}) events. Focus tracking must be enabled
+     * by sending {@code ESC [ ? 1004 h} to the terminal.
+     *
+     * @param handler the focus handler, or null to disable
+     */
+    default void setFocusHandler(Consumer<Boolean> handler) {
+        // Default no-op; AbstractConnection delegates to EventDecoder
+    }
+
+    /**
+     * Get the current focus event handler.
+     *
+     * @return the focus handler, or null if not set
+     */
+    default Consumer<Boolean> focusHandler() {
+        return null;
+    }
+
     // ==================== Lifecycle ====================
 
     /**

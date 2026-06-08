@@ -850,4 +850,31 @@ public class TerminalFeatures {
             connection.write(ANSI.THEME_NOTIFY_DISABLE);
         }
     }
+
+    // ==================== Focus Tracking ====================
+
+    /**
+     * Enable focus tracking. The terminal will send {@code ESC [ I} when
+     * focused and {@code ESC [ O} when unfocused.
+     */
+    public void enableFocusTracking() {
+        connection.write(ANSI.FOCUS_TRACKING_ENABLE);
+    }
+
+    /**
+     * Enable focus tracking with a handler.
+     *
+     * @param handler receives {@code true} on focus gained, {@code false} on focus lost
+     */
+    public void enableFocusTracking(Consumer<Boolean> handler) {
+        connection.setFocusHandler(handler);
+        enableFocusTracking();
+    }
+
+    /**
+     * Disable focus tracking.
+     */
+    public void disableFocusTracking() {
+        connection.write(ANSI.FOCUS_TRACKING_DISABLE);
+    }
 }

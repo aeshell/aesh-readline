@@ -130,6 +130,16 @@ public abstract class AbstractConnection implements Connection {
     }
 
     @Override
+    public void setFocusHandler(java.util.function.Consumer<Boolean> handler) {
+        eventDecoder.setFocusHandler(handler);
+    }
+
+    @Override
+    public java.util.function.Consumer<Boolean> focusHandler() {
+        return eventDecoder.getFocusHandler();
+    }
+
+    @Override
     public boolean reading() {
         return reading;
     }

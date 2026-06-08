@@ -51,6 +51,7 @@ public class EventDecoder implements Consumer<int[]> {
     private Consumer<int[]> inputHandler;
     private Consumer<TerminalTheme> themeChangeHandler;
     private Consumer<MouseEvent> mouseHandler;
+    private Consumer<Boolean> focusHandler;
 
     private final Queue<int[]> inputQueue = new ArrayDeque<>(10);
 
@@ -218,6 +219,30 @@ public class EventDecoder implements Consumer<int[]> {
         }
     }
 
+    /**
+     * Get the current focus event handler.
+     *
+     * @return the focus handler, or null if not set
+     */
+    public Consumer<Boolean> getFocusHandler() {
+        return focusHandler;
+    }
+
+    /**
+     * Set the handler for terminal focus events.
+     * <p>
+     * When set, the decoder will intercept focus in ({@code ESC [ I}) and
+     * focus out ({@code ESC [ O}) sequences from the input stream and
+     * invoke this handler instead of passing them through as input.
+     * The handler receives {@code true} for focus gained and {@code false}
+     * for focus lost.
+     *
+     * @param focusHandler the handler, or null to disable interception
+     */
+    public void setFocusHandler(Consumer<Boolean> focusHandler) {
+        this.focusHandler = focusHandler;
+    }
+
     private void checkQueue() {
         while (inputHandler != null && !inputQueue.isEmpty())
             inputHandler.accept(inputQueue.poll());
@@ -278,6 +303,10 @@ public class EventDecoder implements Consumer<int[]> {
         // Filter mouse SGR sequences if a handler is registered
         if (input.length > 0 && mouseHandler != null) {
             input = filterMouseSgr(input);
+        }
+        // Filter focus events if a handler is registered
+        if (input.length > 0 && focusHandler != null) {
+            input = filterFocusEvents(input);
         }
         if (input.length > 0) {
             if (inputHandler != null)
@@ -564,5 +593,57 @@ public class EventDecoder implements Consumer<int[]> {
         mousePendingLen = 0;
         mouseState = MOUSE_IDLE;
         return outLen;
+    }
+
+    // =========================================================================
+    // Focus event filtering
+    // =========================================================================
+
+    /**
+     * Filter focus event sequences ({@code ESC [ I} and {@code ESC [ O}) from input.
+     * Focus in events dispatch {@code true} to the focus handler,
+     * focus out events dispatch {@code false}.
+     */
+    private int[] filterFocusEvents(int[] input) {
+        // Fast path: no ESC in input
+        boolean hasEsc = false;
+        for (int c : input) {
+            if (c == 27) {
+                hasEsc = true;
+                break;
+            }
+        }
+        if (!hasEsc) {
+            return input;
+        }
+
+        int[] output = new int[input.length];
+        int outLen = 0;
+
+        for (int i = 0; i < input.length; i++) {
+            if (input[i] == 27 && i + 2 < input.length && input[i + 1] == '[') {
+                if (input[i + 2] == 'I') {
+                    // Focus in: ESC [ I
+                    if (focusHandler != null) {
+                        focusHandler.accept(true);
+                    }
+                    i += 2; // skip the 3-byte sequence
+                    continue;
+                } else if (input[i + 2] == 'O') {
+                    // Focus out: ESC [ O
+                    if (focusHandler != null) {
+                        focusHandler.accept(false);
+                    }
+                    i += 2;
+                    continue;
+                }
+            }
+            output[outLen++] = input[i];
+        }
+
+        if (outLen == input.length) {
+            return input;
+        }
+        return Arrays.copyOf(output, outLen);
     }
 }

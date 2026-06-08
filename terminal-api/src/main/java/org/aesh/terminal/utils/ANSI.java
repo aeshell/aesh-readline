@@ -231,6 +231,12 @@ public class ANSI {
      */
     public static final String THEME_NOTIFY_DISABLE = "\u001B[?2031l";
 
+    /** Enable focus tracking ({@code CSI ? 1004 h}). */
+    public static final String FOCUS_TRACKING_ENABLE = "\u001B[?1004h";
+
+    /** Disable focus tracking ({@code CSI ? 1004 l}). */
+    public static final String FOCUS_TRACKING_DISABLE = "\u001B[?1004l";
+
     /** DSR response value indicating dark mode: {@code CSI ? 997 ; 1 n}. */
     public static final int THEME_DSR_DARK = 1;
 
