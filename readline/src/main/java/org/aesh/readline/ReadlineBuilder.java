@@ -43,6 +43,7 @@ public class ReadlineBuilder {
     private int historySize = 50;
     private String historyFile;
     private boolean enableHistory = true;
+    private java.util.List<String> historyIgnorePatterns;
 
     /**
      * Creates a new ReadlineBuilder instance.
@@ -101,6 +102,28 @@ public class ReadlineBuilder {
     }
 
     /**
+     * Adds a pattern for commands that should not be saved to history.
+     * <p>
+     * Patterns support simple wildcards:
+     * <ul>
+     * <li>{@code " *"} — commands starting with a space</li>
+     * <li>{@code "*password*"} — commands containing "password"</li>
+     * <li>{@code "exit"} — exact match</li>
+     * </ul>
+     *
+     * @param pattern the pattern to ignore
+     * @return this builder instance
+     */
+    public ReadlineBuilder historyIgnore(String pattern) {
+        return apply(c -> {
+            if (c.historyIgnorePatterns == null) {
+                c.historyIgnorePatterns = new java.util.ArrayList<>();
+            }
+            c.historyIgnorePatterns.add(pattern);
+        });
+    }
+
+    /**
      * Sets the maximum number of history entries to retain.
      *
      * @param historySize the maximum history size
@@ -148,6 +171,9 @@ public class ReadlineBuilder {
                 history = new InMemoryHistory(historySize);
             else
                 history = new FileHistory(new File(historyFile), historySize);
+        }
+        if (history != null && historyIgnorePatterns != null) {
+            history.setIgnorePatterns(historyIgnorePatterns);
         }
         if (completionHandler == null)
             completionHandler = new SimpleCompletionHandler();

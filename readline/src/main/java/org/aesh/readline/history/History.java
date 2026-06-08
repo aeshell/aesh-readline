@@ -36,6 +36,7 @@ public abstract class History {
     }
 
     private boolean enabled = true;
+    private List<String> ignorePatterns;
 
     /**
      * Checks if history is enabled.
@@ -58,6 +59,92 @@ public abstract class History {
      */
     public void disable() {
         this.enabled = false;
+    }
+
+    /**
+     * Sets patterns for commands that should not be saved to history.
+     * <p>
+     * Patterns support simple wildcards:
+     * <ul>
+     * <li>{@code " *"} — matches commands starting with a space (common shell convention for private commands)</li>
+     * <li>{@code "*password*"} — matches commands containing "password" anywhere</li>
+     * <li>{@code "exit"} — matches the exact command "exit"</li>
+     * </ul>
+     *
+     * @param patterns the list of patterns to ignore, or null to clear
+     */
+    public void setIgnorePatterns(List<String> patterns) {
+        this.ignorePatterns = patterns;
+    }
+
+    /**
+     * Returns the current ignore patterns.
+     *
+     * @return the ignore patterns, or null if none are set
+     */
+    public List<String> getIgnorePatterns() {
+        return ignorePatterns;
+    }
+
+    /**
+     * Checks if a command matches any of the ignore patterns.
+     *
+     * @param entry the command string to check
+     * @return true if the entry should be ignored (not saved to history)
+     */
+    protected boolean shouldIgnore(String entry) {
+        if (ignorePatterns == null || ignorePatterns.isEmpty() || entry == null) {
+            return false;
+        }
+        for (String pattern : ignorePatterns) {
+            if (matchesPattern(entry, pattern)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Simple wildcard matching: * matches any sequence of characters.
+     */
+    private static boolean matchesPattern(String text, String pattern) {
+        if (pattern == null || pattern.isEmpty()) {
+            return false;
+        }
+        // No wildcards — exact match
+        if (!pattern.contains("*")) {
+            return text.equals(pattern);
+        }
+        // Convert glob pattern to regex-safe check
+        // Split on *, each part must appear in order
+        String[] parts = pattern.split("\\*", -1);
+        int pos = 0;
+        for (int i = 0; i < parts.length; i++) {
+            String part = parts[i];
+            if (part.isEmpty()) {
+                continue;
+            }
+            if (i == 0) {
+                // First part must be at the start
+                if (!text.startsWith(part)) {
+                    return false;
+                }
+                pos = part.length();
+            } else if (i == parts.length - 1) {
+                // Last part must be at the end
+                if (!text.endsWith(part)) {
+                    return false;
+                }
+            } else {
+                // Middle parts must appear in order
+                int idx = text.indexOf(part, pos);
+                if (idx < 0) {
+                    return false;
+                }
+                pos = idx + part.length();
+            }
+        }
+        return true;
     }
 
     /**

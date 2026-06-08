@@ -78,6 +78,10 @@ public class InMemoryHistory extends History {
      */
     protected void pushWithTimestamp(int[] entry, long timestamp) {
         if (isEnabled() && entry != null && !Parser.isTrimmedArrayEmpty(entry)) {
+            // Check ignore patterns
+            if (shouldIgnore(Parser.fromCodePoints(entry))) {
+                return;
+            }
             // Don't add repeated lines to the history
             if (!historyList.isEmpty() &&
                     Arrays.equals(historyList.get(historyList.size() - 1), entry)) {
