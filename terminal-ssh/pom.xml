@@ -48,7 +48,7 @@
 
     <properties>
         <javaModuleName>org.aesh.terminal.ssh</javaModuleName>
-        <mina-core.version>2.2.7</mina-core.version>
+        <mina-core.version>2.2.8</mina-core.version>
         <sshd-core.version>2.18.0</sshd-core.version>
     </properties>
 
