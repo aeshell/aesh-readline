@@ -24,7 +24,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -233,21 +232,20 @@ public final class TerminalBuilder {
         }
     }
 
-    // Console.isTerminal() was introduced in Java 22
+    /**
+     * Check if the console is connected to a real terminal.
+     * Uses TtyDetect for native isatty() on Java 22+,
+     * falls back to Console.isTerminal() reflection or System.console() heuristic.
+     */
     private static boolean isTerminal(Console console) {
         if (console == null) {
             return false;
         }
-        try {
-            Method isTerminal = Console.class.getMethod("isTerminal");
-            try {
-                return (boolean) isTerminal.invoke(console);
-            } catch (Exception e) {
-                LOGGER.log(Level.SEVERE, "Failed to invoke System.console().isTerminal() via Reflection API", e);
-                return false;
-            }
-        } catch (NoSuchMethodException e) {
-            return true; // for Java <= 21
+        // Check for TERM=dumb
+        String term = System.getenv("TERM");
+        if ("dumb".equals(term)) {
+            return false;
         }
+        return TtyDetect.isStdinTty();
     }
 }
