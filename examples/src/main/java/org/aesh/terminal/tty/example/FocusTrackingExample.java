@@ -24,6 +24,7 @@ import java.io.IOException;
 import org.aesh.readline.Readline;
 import org.aesh.readline.ReadlineBuilder;
 import org.aesh.terminal.Attributes;
+import org.aesh.terminal.tty.Signal;
 import org.aesh.terminal.tty.TerminalConnection;
 
 /**
@@ -32,7 +33,7 @@ import org.aesh.terminal.tty.TerminalConnection;
  * Switch between terminal windows to see focus gained/lost events.
  * The prompt changes to indicate the current focus state.
  * <p>
- * Press Ctrl+C or type "exit" to quit.
+ * Press Ctrl+D or type "exit" to quit.
  * <p>
  * Note: if running inside tmux, focus events require
  * {@code set -g focus-events on} in tmux.conf.
@@ -41,14 +42,19 @@ public class FocusTrackingExample {
 
     private static boolean focused = true;
     private static volatile boolean stopped = false;
+    private static volatile boolean interrupted = false;
 
     public static void main(String[] args) throws IOException {
         TerminalConnection connection = new TerminalConnection();
         Attributes savedAttr = connection.enterRawMode();
 
-        // No initial signal handler that closes — let Readline handle Ctrl+C
-        // via its INT handler which calls finish(""), and the requestHandler
-        // handles empty string by redrawing the prompt.
+        // Signal handler sets a flag — Readline's INT handler calls this
+        // before finish(""), so the requestHandler can check the flag
+        connection.setSignalHandler(signal -> {
+            if (signal == Signal.INT) {
+                interrupted = true;
+            }
+        });
 
         connection.setCloseHandler(v -> {
             stopped = true;
@@ -71,7 +77,7 @@ public class FocusTrackingExample {
 
         connection.write("=== Focus Tracking Example ===\n");
         connection.write("Switch between terminal windows to see focus events.\n");
-        connection.write("Type 'exit' or press Ctrl+D/Ctrl+C to quit.\n\n");
+        connection.write("Type 'exit' or press Ctrl+D to quit.\n\n");
 
         Readline readline = ReadlineBuilder.builder().enableHistory(true).build();
         read(connection, readline);
@@ -84,16 +90,20 @@ public class FocusTrackingExample {
         }
         String prompt = focused ? "\033[32m>\033[0m " : "\033[31m>\033[0m ";
         readline.readline(connection, prompt, line -> {
+            // Ctrl+D (EOF) or "exit"
             if (line == null || "exit".equals(line)) {
                 connection.close();
                 return;
             }
-            // Empty string from Ctrl+C — just redraw prompt
-            if (line.isEmpty()) {
-                read(connection, readline);
+            // Ctrl+C sets interrupted flag, finish("") delivers empty string
+            if (interrupted) {
+                interrupted = false;
+                connection.close();
                 return;
             }
-            connection.write("  -> " + line + "\n");
+            if (!line.isEmpty()) {
+                connection.write("  -> " + line + "\n");
+            }
             read(connection, readline);
         });
     }

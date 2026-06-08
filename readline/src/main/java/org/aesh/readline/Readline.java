@@ -310,6 +310,11 @@ public class Readline {
                 // Guard against closed connection (e.g. EOF/Ctrl+D closes the
                 // connection before finish() is called)
                 try {
+                    // End synchronized output BEFORE closing the connection.
+                    // Leaving BSU active without ESU causes the terminal to
+                    // buffer all output indefinitely.
+                    if (synchronizedOutputSupported)
+                        conn.terminal().disableSynchronizedOutput();
                     if (graphemeClusterModeActive) {
                         conn.terminal().disableGraphemeClusterMode();
                         graphemeClusterModeActive = false;
@@ -343,9 +348,9 @@ public class Readline {
                 if (synchronizedOutputSupported)
                     conn.terminal().enableSynchronizedOutput();
                 action.accept(this);
-                // If the action called finish() (e.g. EndOfFile), inputProcessor
-                // is null and the connection may be closed. Skip all further writes.
                 if (inputProcessor == null) {
+                    // finish() was called (e.g. EndOfFile). Synchronized output
+                    // was already disabled inside finish(). Just return.
                     return;
                 }
                 if (synchronizedOutputSupported)

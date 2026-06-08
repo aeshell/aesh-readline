@@ -40,6 +40,7 @@ import org.aesh.terminal.io.Decoder;
 import org.aesh.terminal.io.Encoder;
 import org.aesh.terminal.tty.impl.ExternalTerminal;
 import org.aesh.terminal.tty.impl.WinSysTerminal;
+import org.aesh.terminal.utils.ANSI;
 import org.aesh.terminal.utils.LoggerUtil;
 
 /**
@@ -393,6 +394,23 @@ public class TerminalConnection extends AbstractConnection {
             terminal.handle(Signal.CONT, prevContHandler);
         } catch (Exception e) {
             LOGGER.log(Level.WARNING, "Failed to reset signal handlers", e);
+        }
+        // End synchronized output and focus tracking if active.
+        // Leaving BSU (Mode 2026) without ESU causes the terminal
+        // to buffer all output indefinitely.
+        try {
+            StringBuilder cleanup = new StringBuilder();
+            if (supportsAnsi()) {
+                cleanup.append(ANSI.MODE_2026_DISABLE);
+            }
+            if (focusHandler() != null) {
+                cleanup.append(ANSI.FOCUS_TRACKING_DISABLE);
+            }
+            if (cleanup.length() > 0) {
+                write(cleanup.toString().getBytes());
+            }
+        } catch (Exception e) {
+            LOGGER.log(Level.WARNING, "Failed to disable terminal modes during close", e);
         }
         try {
             //reset attributes and close terminal
