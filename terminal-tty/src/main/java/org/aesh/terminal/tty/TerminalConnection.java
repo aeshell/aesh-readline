@@ -59,6 +59,7 @@ public class TerminalConnection extends AbstractConnection {
     private Consumer<Connection> handler;
     private CountDownLatch latch;
     private volatile boolean waiting = false;
+    private volatile boolean closed = false;
     private Terminal.SignalHandler prevIntrHandler;
     private Terminal.SignalHandler prevWincHandler;
     private Terminal.SignalHandler prevContHandler;
@@ -368,6 +369,10 @@ public class TerminalConnection extends AbstractConnection {
 
     @Override
     public void close() {
+        if (closed) {
+            return;
+        }
+        closed = true;
         reading = false;
         try {
             //call closeHandler before we close the terminal stream

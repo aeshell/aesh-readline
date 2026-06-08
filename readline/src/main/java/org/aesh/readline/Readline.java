@@ -343,6 +343,11 @@ public class Readline {
                 if (synchronizedOutputSupported)
                     conn.terminal().enableSynchronizedOutput();
                 action.accept(this);
+                // If the action called finish() (e.g. EndOfFile), inputProcessor
+                // is null and the connection may be closed. Skip all further writes.
+                if (inputProcessor == null) {
+                    return;
+                }
                 if (synchronizedOutputSupported)
                     conn.terminal().disableSynchronizedOutput();
                 editMode.setPrevKey(event);

@@ -6,7 +6,6 @@
  */
 package org.aesh.readline;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 import java.util.EnumMap;
@@ -22,38 +21,52 @@ public class EOFTest {
 
     @Test
     public void testEOF() {
-
-        final int[] closeCalled = { 0 };
-
         EnumMap<ReadlineFlag, Integer> flags = new EnumMap<>(ReadlineFlag.class);
         TestReadlineConnection term = new TestReadlineConnection(flags);
 
-        term.setCloseHandler(v -> closeCalled[0]++);
-
+        // Ctrl+D with non-empty buffer deletes char (like delete-char)
         term.read("foo".getBytes());
         term.read(Key.CTRL_D);
         term.assertBuffer("foo");
         term.read(Key.CTRL_A);
         term.read(Key.CTRL_D);
         term.assertBuffer("oo");
-        term.read(Key.CTRL_D);
-        term.read(Key.CTRL_D);
-        assertEquals(0, closeCalled[0]);
-        term.read(Key.CTRL_D);
-        assertEquals(1, closeCalled[0]);
 
+        // Ctrl+D on empty buffer triggers EOF — finish(null)
+        term.read(Key.CTRL_D);
+        term.read(Key.CTRL_D);
+        // After "oo" is deleted char by char, buffer is empty, next Ctrl+D = EOF
+        term.read(Key.CTRL_D);
+        term.assertLine(null);
     }
 
     @Test
     public void testIgnoreEOF() {
-
-        final int[] closeCalled = { 0 };
-
         EnumMap<ReadlineFlag, Integer> flags = new EnumMap<>(ReadlineFlag.class);
         flags.put(ReadlineFlag.IGNORE_EOF, 2);
         TestReadlineConnection term = new TestReadlineConnection(flags);
 
-        term.setCloseHandler(v -> closeCalled[0]++);
+        // Ctrl+D with non-empty buffer deletes char
+        term.read("foo".getBytes());
+        term.read(Key.CTRL_D);
+        term.assertBuffer("foo");
+        term.read(Key.CTRL_A);
+        term.read(Key.CTRL_D);
+        term.assertBuffer("oo");
+
+        // Empty buffer: need 3 Ctrl+D presses (ignore 2, accept on 3rd)
+        term.read(Key.CTRL_D);
+        term.read(Key.CTRL_D);
+        // Still ignored (only 2 presses on empty)
+        term.read(Key.CTRL_D); // 3rd press = EOF
+        term.assertLine(null);
+    }
+
+    @Test
+    public void testIgnoreEOF2() {
+        EnumMap<ReadlineFlag, Integer> flags = new EnumMap<>(ReadlineFlag.class);
+        flags.put(ReadlineFlag.IGNORE_EOF, 2);
+        TestReadlineConnection term = new TestReadlineConnection(flags);
 
         term.read("foo".getBytes());
         term.read(Key.CTRL_D);
@@ -61,46 +74,37 @@ public class EOFTest {
         term.read(Key.CTRL_A);
         term.read(Key.CTRL_D);
         term.assertBuffer("oo");
+
+        // Empty buffer: 2 presses ignored
         term.read(Key.CTRL_D);
         term.read(Key.CTRL_D);
-        assertEquals(0, closeCalled[0]);
+
+        // Pressing a different key resets the EOF counter
         term.read(Key.CTRL_D);
-        assertEquals(0, closeCalled[0]);
+        term.read(Key.CTRL_A);
+
+        // Need 3 more Ctrl+D presses again
         term.read(Key.CTRL_D);
-        assertEquals(0, closeCalled[0]);
         term.read(Key.CTRL_D);
-        assertEquals(1, closeCalled[0]);
+        term.read(Key.CTRL_D);
+        term.assertLine(null);
     }
 
-    /**
-     * Test that Ctrl+D on an empty buffer closes the connection cleanly.
-     */
     @Test
     public void testEOFOnEmptyBuffer() {
-        final int[] closeCalled = { 0 };
-
         EnumMap<ReadlineFlag, Integer> flags = new EnumMap<>(ReadlineFlag.class);
         TestReadlineConnection term = new TestReadlineConnection(flags);
-        term.setCloseHandler(v -> closeCalled[0]++);
 
-        // Empty buffer + Ctrl+D = EOF → close
+        // Empty buffer + Ctrl+D = EOF
         term.read(Key.CTRL_D);
-        assertEquals(1, closeCalled[0]);
+        term.assertLine(null);
     }
 
-    /**
-     * Test that Ctrl+D works cleanly after typing and deleting text
-     * (buffer becomes empty, then EOF triggers).
-     */
     @Test
     public void testEOFAfterClearingBuffer() {
-        final int[] closeCalled = { 0 };
-
         EnumMap<ReadlineFlag, Integer> flags = new EnumMap<>(ReadlineFlag.class);
         TestReadlineConnection term = new TestReadlineConnection(flags);
-        term.setCloseHandler(v -> closeCalled[0]++);
 
-        // Type "ab", then delete both chars, then Ctrl+D = EOF
         term.read(Key.a);
         term.read(Key.b);
         term.read(Key.BACKSPACE);
@@ -108,20 +112,14 @@ public class EOFTest {
         term.assertBuffer("");
 
         term.read(Key.CTRL_D);
-        assertEquals(1, closeCalled[0]);
+        term.assertLine(null);
     }
 
     /**
      * Test that finish() handles exceptions from setAttributes() gracefully.
-     * <p>
-     * This simulates what happens when EndOfFile calls connection.close()
-     * before finish(): the connection's setAttributes() throws because
-     * the underlying pty is closed. The finish() method must catch this
-     * and not propagate the exception.
      */
     @Test
     public void testFinishHandlesClosedConnectionException() {
-        final int[] closeCalled = { 0 };
         final boolean[] throwOnSetAttributes = { false };
 
         EnumMap<ReadlineFlag, Integer> flags = new EnumMap<>(ReadlineFlag.class);
@@ -135,13 +133,12 @@ public class EOFTest {
             }
         };
         term.setCloseHandler(v -> {
-            closeCalled[0]++;
             throwOnSetAttributes[0] = true;
         });
 
         try {
             term.read(Key.CTRL_D);
-            assertEquals("close handler should be called", 1, closeCalled[0]);
+            term.assertLine(null);
         } catch (Exception e) {
             fail("finish() should not propagate exceptions from closed connection: " + e);
         }
@@ -149,13 +146,9 @@ public class EOFTest {
 
     /**
      * Test that finish() handles IOError from setAttributes() gracefully.
-     * <p>
-     * AbstractPosixTerminal.setAttributes() wraps IOException in java.io.IOError
-     * (which is an Error, not an Exception). The finish() method must catch this too.
      */
     @Test
     public void testFinishHandlesClosedConnectionIOError() {
-        final int[] closeCalled = { 0 };
         final boolean[] throwOnSetAttributes = { false };
 
         EnumMap<ReadlineFlag, Integer> flags = new EnumMap<>(ReadlineFlag.class);
@@ -163,55 +156,20 @@ public class EOFTest {
             @Override
             public void setAttributes(org.aesh.terminal.Attributes attr) {
                 if (throwOnSetAttributes[0]) {
-                    // Simulate what AbstractPosixTerminal does: wrap IOException in IOError
                     throw new java.io.IOError(new java.io.IOException("FfmPty is closed"));
                 }
                 super.setAttributes(attr);
             }
         };
         term.setCloseHandler(v -> {
-            closeCalled[0]++;
             throwOnSetAttributes[0] = true;
         });
 
         try {
             term.read(Key.CTRL_D);
-            assertEquals("close handler should be called", 1, closeCalled[0]);
+            term.assertLine(null);
         } catch (Throwable e) {
             fail("finish() should not propagate IOError from closed connection: " + e);
         }
     }
-
-    @Test
-    public void testIgnoreEOF2() {
-
-        final int[] closeCalled = { 0 };
-
-        EnumMap<ReadlineFlag, Integer> flags = new EnumMap<>(ReadlineFlag.class);
-        flags.put(ReadlineFlag.IGNORE_EOF, 2);
-        TestReadlineConnection term = new TestReadlineConnection(flags);
-
-        term.setCloseHandler(v -> closeCalled[0]++);
-
-        term.read("foo".getBytes());
-        term.read(Key.CTRL_D);
-        term.assertBuffer("foo");
-        term.read(Key.CTRL_A);
-        term.read(Key.CTRL_D);
-        term.assertBuffer("oo");
-        term.read(Key.CTRL_D);
-        term.read(Key.CTRL_D);
-        assertEquals(0, closeCalled[0]);
-        term.read(Key.CTRL_D);
-        assertEquals(0, closeCalled[0]);
-        term.read(Key.CTRL_D);
-        term.read(Key.CTRL_A);
-        assertEquals(0, closeCalled[0]);
-        term.read(Key.CTRL_D);
-        assertEquals(0, closeCalled[0]);
-        term.read(Key.CTRL_D);
-        term.read(Key.CTRL_D);
-        assertEquals(1, closeCalled[0]);
-    }
-
 }

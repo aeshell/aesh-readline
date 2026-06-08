@@ -51,9 +51,9 @@ public class EndOfFile implements Action {
             if (ignoreEOFSize > EOFCounter)
                 EOFCounter++;
             else {
-                //we got a eof, close the connection and call finish
+                //we got an eof, finish readline with null to signal EOF.
+                //the application's requestHandler should close the connection.
                 inputProcessor.connection().write(Config.getLineSeparator());
-                inputProcessor.connection().close();
                 inputProcessor.finish(null);
             }
         }
