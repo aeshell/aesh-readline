@@ -44,6 +44,7 @@ import org.aesh.terminal.utils.ANSI;
 public class EventDecoder implements Consumer<int[]> {
 
     private final int intr;
+    private final int quit;
     private final int susp;
     private final int eof;
 
@@ -92,6 +93,7 @@ public class EventDecoder implements Consumer<int[]> {
      */
     public EventDecoder() {
         intr = 3;
+        quit = 28;
         eof = 4;
         susp = 26;
     }
@@ -105,6 +107,7 @@ public class EventDecoder implements Consumer<int[]> {
      */
     public EventDecoder(int intr, int eof, int susp) {
         this.intr = intr;
+        this.quit = 28;
         this.eof = eof;
         this.susp = susp;
     }
@@ -119,6 +122,9 @@ public class EventDecoder implements Consumer<int[]> {
         this.intr = attributes.getControlChar(Attributes.ControlChar.VINTR) > 0
                 ? attributes.getControlChar(Attributes.ControlChar.VINTR)
                 : 3;
+        this.quit = attributes.getControlChar(Attributes.ControlChar.VQUIT) > 0
+                ? attributes.getControlChar(Attributes.ControlChar.VQUIT)
+                : 28;
         this.eof = attributes.getControlChar(Attributes.ControlChar.VEOF) > 0
                 ? attributes.getControlChar(Attributes.ControlChar.VEOF)
                 : 4;
@@ -269,6 +275,8 @@ public class EventDecoder implements Consumer<int[]> {
                 Signal event = null;
                 if (val == intr) {
                     event = Signal.INT;
+                } else if (val == quit) {
+                    event = Signal.QUIT;
                 } else if (val == susp) {
                     event = Signal.SUSP;
                 } else if (val == eof) {
