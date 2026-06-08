@@ -19,8 +19,6 @@
  */
 package org.aesh.readline.action.mappings;
 
-import java.util.Arrays;
-
 import org.aesh.readline.ConsoleBuffer;
 import org.aesh.readline.InputProcessor;
 import org.aesh.readline.action.Action;
@@ -53,7 +51,6 @@ public class DeleteChar implements Action {
         int lineSize = consoleBuffer.buffer().length();
         if (cursor < lineSize) {
             consoleBuffer.addActionToUndoStack();
-            consoleBuffer.pasteManager().addText(Arrays.copyOfRange(consoleBuffer.buffer().multiLine(), cursor, cursor + 1));
             consoleBuffer.delete(1);
         }
     }

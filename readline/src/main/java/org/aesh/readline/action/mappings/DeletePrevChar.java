@@ -19,8 +19,6 @@
  */
 package org.aesh.readline.action.mappings;
 
-import java.util.Arrays;
-
 import org.aesh.readline.ConsoleBuffer;
 import org.aesh.readline.InputProcessor;
 import org.aesh.readline.action.Action;
@@ -63,7 +61,6 @@ public class DeletePrevChar implements Action {
                 cursor = lineSize;
 
             consoleBuffer.addActionToUndoStack();
-            consoleBuffer.pasteManager().addText(Arrays.copyOfRange(consoleBuffer.buffer().multiLine(), cursor - 1, cursor));
             consoleBuffer.delete(-1);
         }
     }

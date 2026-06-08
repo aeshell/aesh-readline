@@ -35,7 +35,9 @@ public class RightPromptDemo {
             }
         });
 
-        Readline readline = ReadlineBuilder.builder().enableHistory(true).build();
+        Readline readline = ReadlineBuilder.builder()
+                .enableHistory(true)
+                .build();
         read(connection, readline);
         connection.openBlocking();
     }
