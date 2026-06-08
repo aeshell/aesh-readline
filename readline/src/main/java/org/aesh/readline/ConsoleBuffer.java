@@ -264,4 +264,17 @@ public interface ConsoleBuffer {
         return null;
     }
 
+    /**
+     * Render the right prompt at the right edge of the terminal.
+     * Only shown if the input is short enough to leave room.
+     */
+    default void renderRightPrompt() {
+    }
+
+    /**
+     * Clear the right prompt from the display.
+     */
+    default void clearRightPrompt() {
+    }
+
 }

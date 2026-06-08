@@ -17,6 +17,7 @@ import org.aesh.terminal.tty.Size;
 import org.aesh.terminal.utils.ANSI;
 import org.aesh.terminal.utils.Config;
 import org.aesh.terminal.utils.LoggerUtil;
+import org.aesh.terminal.utils.Parser;
 
 /**
  * Default implementation of the ConsoleBuffer interface for managing console input and output.
@@ -328,6 +329,48 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
     @Override
     public String ghostText() {
         return ghostText;
+    }
+
+    @Override
+    public void renderRightPrompt() {
+        String rightPrompt = buffer.prompt() != null ? buffer.prompt().getRightPrompt() : null;
+        if (rightPrompt == null || rightPrompt.isEmpty()) {
+            return;
+        }
+        int termWidth = size().getWidth();
+        int usedWidth = buffer.prompt().getLength() + buffer.length();
+        int rightLen = Parser.stripAwayAnsiCodes(rightPrompt).length();
+
+        // Only render when everything fits on one line
+        if (usedWidth + rightLen + 1 <= termWidth) {
+            connection.write(ANSI.CURSOR_SAVE);
+            int col = termWidth - rightLen + 1;
+            connection.write("\033[" + col + "G" + rightPrompt);
+            connection.write(ANSI.CURSOR_RESTORE);
+        } else if (usedWidth < termWidth) {
+            // Input grew past the right prompt — erase it
+            connection.write(ANSI.CURSOR_SAVE);
+            connection.stdoutHandler().accept(ANSI.ERASE_LINE_FROM_CURSOR);
+            connection.write(ANSI.CURSOR_RESTORE);
+        }
+        // If input wraps to multiple lines, don't touch anything
+    }
+
+    @Override
+    public void clearRightPrompt() {
+        String rightPrompt = buffer.prompt() != null ? buffer.prompt().getRightPrompt() : null;
+        if (rightPrompt == null || rightPrompt.isEmpty()) {
+            return;
+        }
+        connection.write(ANSI.CURSOR_SAVE);
+        int termWidth = size().getWidth();
+        int rightLen = Parser.stripAwayAnsiCodes(rightPrompt).length();
+        int col = termWidth - rightLen + 1;
+        if (col > 0) {
+            connection.write("\033[" + col + "G");
+            connection.stdoutHandler().accept(ANSI.ERASE_LINE_FROM_CURSOR);
+        }
+        connection.write(ANSI.CURSOR_RESTORE);
     }
 
     private boolean isViMode() {

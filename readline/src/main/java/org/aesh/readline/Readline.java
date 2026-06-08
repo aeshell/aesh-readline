@@ -364,6 +364,7 @@ public class Readline {
                     finish(this.returnValue());
                 } else {
                     showGhostTextIfApplicable();
+                    consoleBuffer.renderRightPrompt();
                     synchronized (Readline.this) {
                         paused = false;
                     }
@@ -375,6 +376,7 @@ public class Readline {
                 if (Key.isPrintable(event.buffer()) && notInCommandNode()) {
                     this.buffer().writeChar((char) event.buffer().array()[0]);
                     showGhostTextIfApplicable();
+                    consoleBuffer.renderRightPrompt();
                 }
             }
         }
@@ -484,6 +486,7 @@ public class Readline {
             if (synchronizedOutputSupported)
                 conn.terminal().enableSynchronizedOutput();
             consoleBuffer.drawLine();
+            consoleBuffer.renderRightPrompt();
             if (synchronizedOutputSupported)
                 conn.terminal().disableSynchronizedOutput();
             if (shellIntegrationEnabled)
@@ -508,6 +511,7 @@ public class Readline {
                 inputProcessor.consoleBuffer.replace(buffer);
             } else
                 inputProcessor.consoleBuffer.setSize(size);
+            inputProcessor.consoleBuffer.renderRightPrompt();
             if (synchronizedOutputSupported)
                 conn.terminal().disableSynchronizedOutput();
         }

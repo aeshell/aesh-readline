@@ -40,6 +40,7 @@ public class Prompt {
     private int[] prompt;
     private Character mask;
     private int[] ansiString;
+    private String rightPrompt;
 
     /**
      * Creates an empty prompt.
@@ -69,6 +70,7 @@ public class Prompt {
         this.prompt = prompt.prompt.clone();
         this.mask = prompt.mask;
         this.ansiString = prompt.ansiString != null ? prompt.ansiString.clone() : null;
+        this.rightPrompt = prompt.rightPrompt;
     }
 
     /**
@@ -242,6 +244,27 @@ public class Prompt {
     }
 
     /**
+     * Returns the right prompt string, or null if not set.
+     * The right prompt is displayed right-aligned on the prompt line.
+     *
+     * @return the right prompt string, or null
+     */
+    public String getRightPrompt() {
+        return rightPrompt;
+    }
+
+    /**
+     * Sets the right prompt string.
+     * The right prompt is displayed right-aligned on the prompt line
+     * and disappears when the input grows too long.
+     *
+     * @param rightPrompt the right prompt string, or null to disable
+     */
+    public void setRightPrompt(String rightPrompt) {
+        this.rightPrompt = rightPrompt;
+    }
+
+    /**
      * Creates a copy of this prompt.
      *
      * @return a new Prompt instance with the same values
@@ -311,6 +334,7 @@ public class Prompt {
         private String promptString;
         private String ansiString;
         private Character mask;
+        private String rightPrompt;
         private int[] promptCodePoints;
         private TerminalString terminalString;
         private List<TerminalCharacter> characters;
@@ -376,6 +400,17 @@ public class Prompt {
         }
 
         /**
+         * Sets the right prompt string, displayed right-aligned on the prompt line.
+         *
+         * @param rightPrompt the right prompt string
+         * @return this builder
+         */
+        public PromptBuilder rightPrompt(String rightPrompt) {
+            this.rightPrompt = rightPrompt;
+            return this;
+        }
+
+        /**
          * Sets the prompt from a list of individually formatted {@link TerminalCharacter}s.
          *
          * @param characters the list of terminal characters
@@ -395,29 +430,30 @@ public class Prompt {
          * @return a new Prompt instance
          */
         public Prompt build() {
+            Prompt result;
             if (characters != null) {
                 if (mask != null)
-                    return new Prompt(characters, mask);
-                return new Prompt(characters);
-            }
-            if (terminalString != null) {
-                return new Prompt(terminalString);
-            }
-            if (promptCodePoints != null) {
-                return new Prompt(promptCodePoints, mask);
-            }
-            if (ansiString != null) {
+                    result = new Prompt(characters, mask);
+                else
+                    result = new Prompt(characters);
+            } else if (terminalString != null) {
+                result = new Prompt(terminalString);
+            } else if (promptCodePoints != null) {
+                result = new Prompt(promptCodePoints, mask);
+            } else if (ansiString != null) {
                 if (mask != null)
-                    return new Prompt(promptString, ansiString, mask);
-                return new Prompt(promptString, ansiString);
+                    result = new Prompt(promptString, ansiString, mask);
+                else
+                    result = new Prompt(promptString, ansiString);
+            } else if (mask != null) {
+                result = new Prompt(promptString, mask);
+            } else if (promptString != null) {
+                result = new Prompt(promptString);
+            } else {
+                result = new Prompt();
             }
-            if (mask != null) {
-                return new Prompt(promptString, mask);
-            }
-            if (promptString != null) {
-                return new Prompt(promptString);
-            }
-            return new Prompt();
+            result.setRightPrompt(rightPrompt);
+            return result;
         }
     }
 }
