@@ -240,7 +240,8 @@ public class FfmPty implements Pty {
 
         try {
             // Restore original terminal attributes
-            int rc = LibC.tcsetattr(ttyFd, PosixConstants.TCSAFLUSH, savedTermios);
+            // Use TCSANOW for immediate restore on close (TCSAFLUSH can delay)
+            int rc = LibC.tcsetattr(ttyFd, PosixConstants.TCSANOW, savedTermios);
             if (rc != 0) {
                 LOGGER.log(Level.WARNING, "Failed to restore terminal attributes on close");
             }
