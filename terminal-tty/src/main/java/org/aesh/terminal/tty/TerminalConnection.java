@@ -231,6 +231,11 @@ public class TerminalConnection extends AbstractConnection {
     }
 
     @Override
+    public boolean isInteractive() {
+        return TtyDetect.isStdinTty();
+    }
+
+    @Override
     public void setMouseHandler(java.util.function.Consumer<MouseEvent> handler) {
         super.setMouseHandler(handler);
         // On Windows, enable/disable ENABLE_MOUSE_INPUT on the console

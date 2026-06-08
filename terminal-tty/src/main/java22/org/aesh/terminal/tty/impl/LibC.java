@@ -44,6 +44,7 @@ final class LibC {
     private static final Linker.Option ERRNO_STATE =
             Linker.Option.captureCallState("errno");
 
+    private static final MethodHandle ISATTY;
     private static final MethodHandle OPEN;
     private static final MethodHandle CLOSE;
     private static final MethodHandle READ;
@@ -53,6 +54,13 @@ final class LibC {
     private static final MethodHandle IOCTL;
 
     static {
+        // int isatty(int fd)
+        ISATTY = LINKER.downcallHandle(
+                STDLIB.find("isatty").orElseThrow(),
+                FunctionDescriptor.of(
+                        ValueLayout.JAVA_INT,       // return
+                        ValueLayout.JAVA_INT));     // fd
+
         // int open(const char *pathname, int flags)
         OPEN = LINKER.downcallHandle(
                 STDLIB.find("open").orElseThrow(),
@@ -123,6 +131,20 @@ final class LibC {
                         ValueLayout.ADDRESS),       // arg (struct winsize *)
                 ERRNO_STATE,
                 Linker.Option.firstVariadicArg(2));
+    }
+
+    /**
+     * Tests whether a file descriptor refers to a terminal.
+     *
+     * @param fd the file descriptor to check (0=stdin, 1=stdout, 2=stderr)
+     * @return true if the file descriptor is connected to a terminal
+     */
+    static boolean isatty(int fd) {
+        try {
+            return (int) ISATTY.invokeExact(fd) == 1;
+        } catch (Throwable t) {
+            return false;
+        }
     }
 
     /**

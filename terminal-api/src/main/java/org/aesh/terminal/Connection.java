@@ -287,6 +287,22 @@ public interface Connection extends Appendable, AutoCloseable {
     boolean supportsAnsi();
 
     /**
+     * Check if this connection is interactive (connected to a real terminal).
+     * <p>
+     * For local terminal connections, this checks if stdin is connected to a TTY
+     * (not piped or redirected). For SSH and HTTP connections, this always returns
+     * true since those are inherently interactive.
+     * <p>
+     * Use this to decide whether to enable interactive features like prompts,
+     * completion, colors, and history navigation.
+     *
+     * @return true if the connection is interactive, false if piped/redirected
+     */
+    default boolean isInteractive() {
+        return true;
+    }
+
+    /**
      * Get the input character encoding.
      *
      * @return the charset used for input encoding
