@@ -20,6 +20,7 @@
 package org.aesh.terminal;
 
 import java.io.Closeable;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.function.Consumer;
@@ -31,6 +32,11 @@ import org.aesh.terminal.tty.Size;
  * Terminal interface providing access to terminal functionality.
  */
 public interface Terminal extends Closeable {
+
+    /**
+     * Return value indicating a read operation timed out without data.
+     */
+    int READ_EXPIRED = -2;
 
     /**
      * Get the terminal name.
@@ -132,5 +138,82 @@ public interface Terminal extends Closeable {
      */
     default Consumer<int[]> getCodePointConsumer() {
         return null;
+    }
+
+    /**
+     * Whether this terminal supports non-blocking read operations with timeouts.
+     * <p>
+     * When this returns {@code true}, {@link #read(long)} and {@link #peek(long)}
+     * provide timeout-based reads using platform-native mechanisms (e.g., {@code poll()}
+     * on POSIX, {@code WaitForSingleObject} on Windows). When {@code false}, those
+     * methods fall back to blocking reads via {@link #input()}.
+     *
+     * @return true if non-blocking reads are supported
+     */
+    default boolean supportsNonBlockingRead() {
+        return false;
+    }
+
+    /**
+     * Reads a single byte from the terminal input with a timeout.
+     * <p>
+     * If data is available, returns the byte value (0-255). If the end of
+     * stream is reached, returns -1. If the timeout expires with no data
+     * available, returns {@link #READ_EXPIRED} (-2).
+     * <p>
+     * The default implementation delegates to {@link #input()}{@code .read()}
+     * (blocking, ignoring the timeout). Terminals that support non-blocking
+     * reads should override this to use platform-native polling.
+     *
+     * @param timeoutMs timeout in milliseconds; 0 means non-blocking (return
+     *        immediately), negative means block indefinitely
+     * @return the byte read (0-255), -1 for EOF, or {@link #READ_EXPIRED} for timeout
+     * @throws IOException if an I/O error occurs
+     */
+    default int read(long timeoutMs) throws IOException {
+        return input().read();
+    }
+
+    /**
+     * Peeks at the next byte from the terminal input without consuming it.
+     * <p>
+     * If data is available within the timeout, returns the byte value (0-255)
+     * but leaves it available for the next {@link #read(long)} call. If the
+     * end of stream is reached, returns -1. If the timeout expires with no
+     * data, returns {@link #READ_EXPIRED} (-2).
+     * <p>
+     * The default implementation returns {@link #READ_EXPIRED} (no peek
+     * support). Terminals that support non-blocking reads should override
+     * this to provide true peek functionality.
+     *
+     * @param timeoutMs timeout in milliseconds; 0 means non-blocking
+     * @return the byte peeked (0-255), -1 for EOF, or {@link #READ_EXPIRED} for timeout
+     * @throws IOException if an I/O error occurs
+     */
+    default int peek(long timeoutMs) throws IOException {
+        return READ_EXPIRED;
+    }
+
+    /**
+     * Reads multiple bytes from the terminal input into a buffer with a timeout.
+     * <p>
+     * Reads the first byte using the specified timeout, then reads additional
+     * bytes that are immediately available (non-blocking). Returns the total
+     * number of bytes read, -1 for EOF, or {@link #READ_EXPIRED} if the
+     * timeout expires with no data.
+     * <p>
+     * The default implementation delegates to {@link #input()}{@code .read(b, off, len)}
+     * (blocking). Terminals that support non-blocking reads should override
+     * this to use platform-native polling.
+     *
+     * @param b the buffer to read into
+     * @param off the offset in the buffer
+     * @param len the maximum number of bytes to read
+     * @param timeoutMs timeout in milliseconds for the first byte
+     * @return the number of bytes read, -1 for EOF, or {@link #READ_EXPIRED} for timeout
+     * @throws IOException if an I/O error occurs
+     */
+    default int read(byte[] b, int off, int len, long timeoutMs) throws IOException {
+        return input().read(b, off, len);
     }
 }

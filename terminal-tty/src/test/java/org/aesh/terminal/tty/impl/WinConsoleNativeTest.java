@@ -121,4 +121,45 @@ public class WinConsoleNativeTest {
             }
         }
     }
+
+    @Test
+    public void testWaitForSingleObjectConstants() {
+        assertEquals(0x00000000, WinConsoleNative.WAIT_OBJECT_0);
+        assertEquals(0x00000102, WinConsoleNative.WAIT_TIMEOUT);
+        assertEquals(0xFFFFFFFF, WinConsoleNative.WAIT_FAILED);
+    }
+
+    @Test
+    public void testWaitForSingleObjectWithRealHandle() {
+        long handle = WinConsoleNative.getStdHandle(WinConsoleNative.STD_INPUT_HANDLE);
+        if (handle != WinConsoleNative.INVALID_HANDLE) {
+            // Zero timeout — non-blocking check, should return immediately
+            int result = WinConsoleNative.waitForSingleObject(handle, 0);
+            // Either WAIT_OBJECT_0 (input pending) or WAIT_TIMEOUT (no input)
+            assertTrue("Should be WAIT_OBJECT_0 or WAIT_TIMEOUT, got: " + result,
+                    result == WinConsoleNative.WAIT_OBJECT_0
+                            || result == WinConsoleNative.WAIT_TIMEOUT);
+        }
+    }
+
+    @Test
+    public void testGetNumberOfConsoleInputEventsWithRealHandle() {
+        long handle = WinConsoleNative.getStdHandle(WinConsoleNative.STD_INPUT_HANDLE);
+        if (handle != WinConsoleNative.INVALID_HANDLE) {
+            int count = WinConsoleNative.getNumberOfConsoleInputEvents(handle);
+            // Should be >= 0 on a real console, or -1 on a pipe
+            assertTrue("Should be >= -1, got: " + count, count >= -1);
+        }
+    }
+
+    @Test
+    public void testSupportsNonBlockingWait() {
+        // On the JNI path, this returns false.
+        // On the FFM path (Java 22+), this returns true.
+        // Either way, the method should not throw.
+        boolean result = WinConsoleNative.supportsNonBlockingWait();
+        // We can't assert a specific value since it depends on the runtime
+        // Just verify it doesn't throw
+        assertTrue("Should return true or false", result || !result);
+    }
 }

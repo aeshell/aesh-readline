@@ -94,6 +94,13 @@ public final class WinConsoleNative {
     private static final long IR_MOUSE_CONTROL_KEY_STATE = 12;
     private static final long IR_MOUSE_EVENT_FLAGS = 16;
 
+    /** WaitForSingleObject return: the object was signaled. */
+    public static final int WAIT_OBJECT_0 = 0x00000000;
+    /** WaitForSingleObject return: the wait timed out. */
+    public static final int WAIT_TIMEOUT = 0x00000102;
+    /** WaitForSingleObject return: the function failed. */
+    public static final int WAIT_FAILED = 0xFFFFFFFF;
+
     private static final MethodHandle GET_STD_HANDLE;
     private static final MethodHandle GET_CONSOLE_MODE;
     private static final MethodHandle SET_CONSOLE_MODE;
@@ -101,6 +108,8 @@ public final class WinConsoleNative {
     private static final MethodHandle GET_CONSOLE_SCREEN_BUFFER_INFO;
     private static final MethodHandle READ_CONSOLE_INPUT_W;
     private static final MethodHandle WRITE_CONSOLE_W;
+    private static final MethodHandle WAIT_FOR_SINGLE_OBJECT;
+    private static final MethodHandle GET_NUMBER_OF_CONSOLE_INPUT_EVENTS;
 
     static {
         Linker linker = Linker.nativeLinker();
@@ -141,6 +150,16 @@ public final class WinConsoleNative {
                         ValueLayout.ADDRESS, ValueLayout.ADDRESS,
                         ValueLayout.JAVA_INT, ValueLayout.ADDRESS,
                         ValueLayout.ADDRESS));
+
+        WAIT_FOR_SINGLE_OBJECT = linker.downcallHandle(
+                kernel32.find("WaitForSingleObject").orElseThrow(),
+                FunctionDescriptor.of(ValueLayout.JAVA_INT,
+                        ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
+
+        GET_NUMBER_OF_CONSOLE_INPUT_EVENTS = linker.downcallHandle(
+                kernel32.find("GetNumberOfConsoleInputEvents").orElseThrow(),
+                FunctionDescriptor.of(ValueLayout.JAVA_INT,
+                        ValueLayout.ADDRESS, ValueLayout.ADDRESS));
     }
 
     public static long getStdHandle(int nStdHandle) {
@@ -255,6 +274,50 @@ public final class WinConsoleNative {
         } catch (Throwable t) {
             throw new RuntimeException("WriteConsoleW failed", t);
         }
+    }
+
+    /**
+     * Waits for the specified object to be signaled or the timeout to elapse.
+     *
+     * @param handle the object handle (e.g., console input handle)
+     * @param timeoutMs timeout in milliseconds; -1 (0xFFFFFFFF) for infinite
+     * @return {@link #WAIT_OBJECT_0} if signaled, {@link #WAIT_TIMEOUT} if timed out,
+     *         or {@link #WAIT_FAILED} on error
+     */
+    public static int waitForSingleObject(long handle, int timeoutMs) {
+        try {
+            return (int) WAIT_FOR_SINGLE_OBJECT.invokeExact(
+                    MemorySegment.ofAddress(handle), timeoutMs);
+        } catch (Throwable t) {
+            throw new RuntimeException("WaitForSingleObject failed", t);
+        }
+    }
+
+    /**
+     * Returns the number of unread console input events.
+     *
+     * @param handle the console input handle
+     * @return the number of pending events, or -1 on error
+     */
+    public static int getNumberOfConsoleInputEvents(long handle) {
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment numEvents = arena.allocate(ValueLayout.JAVA_INT);
+            int ok = (int) GET_NUMBER_OF_CONSOLE_INPUT_EVENTS.invokeExact(
+                    MemorySegment.ofAddress(handle), numEvents);
+            if (ok == 0) return -1;
+            return numEvents.get(ValueLayout.JAVA_INT, 0);
+        } catch (Throwable t) {
+            throw new RuntimeException("GetNumberOfConsoleInputEvents failed", t);
+        }
+    }
+
+    /**
+     * Whether this implementation supports non-blocking wait with timeout.
+     *
+     * @return true — FFM variant has WaitForSingleObject
+     */
+    public static boolean supportsNonBlockingWait() {
+        return true;
     }
 
     private WinConsoleNative() {

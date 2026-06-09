@@ -19,6 +19,7 @@
  */
 package org.aesh.terminal;
 
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.Writer;
 import java.nio.charset.Charset;
@@ -77,6 +78,41 @@ public interface Connection extends Appendable, AutoCloseable {
      * @param handler the handler to process input as code point arrays
      */
     void setStdinHandler(Consumer<int[]> handler);
+
+    /**
+     * Whether this connection supports non-blocking read operations with timeouts.
+     * <p>
+     * When this returns {@code true}, {@link #peek(long)} provides timeout-based
+     * peek using platform-native mechanisms. When {@code false}, peek is not
+     * available and callers should use the event-driven
+     * {@link #setStdinHandler(Consumer)} API instead.
+     *
+     * @return true if non-blocking reads are supported
+     */
+    default boolean supportsNonBlockingRead() {
+        return false;
+    }
+
+    /**
+     * Peeks at the next byte from the terminal input without consuming it.
+     * <p>
+     * Returns the byte value (0-255), -1 for EOF, or {@link Terminal#READ_EXPIRED}
+     * (-2) if the timeout expires. The byte remains available for subsequent
+     * reads. Only available when {@link #supportsNonBlockingRead()} returns
+     * {@code true}.
+     * <p>
+     * This is used by the ActionDecoder for escape sequence timeout
+     * disambiguation: after seeing ESC, peek with a short timeout to
+     * determine if more bytes are coming (escape sequence) or not (bare ESC).
+     *
+     * @param timeoutMs timeout in milliseconds; 0 for non-blocking
+     * @return the byte peeked (0-255), -1 for EOF, or -2 for timeout
+     * @throws IOException if an I/O error occurs
+     * @throws UnsupportedOperationException if non-blocking reads are not supported
+     */
+    default int peek(long timeoutMs) throws IOException {
+        throw new UnsupportedOperationException("Non-blocking peek not supported");
+    }
 
     // ==================== Output ====================
 

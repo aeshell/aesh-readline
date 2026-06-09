@@ -106,6 +106,8 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
     protected boolean vtInputEnabled;
     /** Original console input mode, saved for restoration on close. */
     protected int originalInputMode = -1;
+    /** Peeked byte for non-blocking peek support. READ_EXPIRED means no peeked byte. */
+    private int peekedByte = READ_EXPIRED;
 
     AbstractWindowsTerminal(boolean consumeCP, OutputStream output, String name, boolean nativeSignals,
             SignalHandler signalHandler) throws IOException {
@@ -275,6 +277,98 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
         throw new UnsupportedOperationException("Can not resize windows terminal");
     }
 
+    /**
+     * Whether this terminal advertises non-blocking read/peek to callers.
+     * <p>
+     * Returns false because Windows peek goes through a PipedInputStream
+     * which has pump thread latency — unreliable for timing-sensitive
+     * escape sequence disambiguation. The poll-based pump loop uses
+     * {@link #supportsNonBlockingWait()} directly via
+     * {@link WinConsoleNative#supportsNonBlockingWait()}.
+     */
+    @Override
+    public boolean supportsNonBlockingRead() {
+        return false;
+    }
+
+    /**
+     * Whether the pump can use WaitForSingleObject with timeout.
+     * This is separate from {@link #supportsNonBlockingRead()} which
+     * controls whether external callers (Readline) can use peek().
+     */
+    protected boolean supportsNonBlockingWait() {
+        return WinConsoleNative.supportsNonBlockingWait();
+    }
+
+    @Override
+    public int read(long timeoutMs) throws IOException {
+        // Return peeked byte if available
+        if (peekedByte != READ_EXPIRED) {
+            int b = peekedByte;
+            peekedByte = READ_EXPIRED;
+            return b;
+        }
+        if (input.available() > 0) {
+            return input.read();
+        }
+        if (timeoutMs == 0) {
+            return READ_EXPIRED;
+        }
+        // Poll the pipe with short waits
+        long deadline = timeoutMs > 0 ? System.currentTimeMillis() + timeoutMs : Long.MAX_VALUE;
+        while (!closing) {
+            try {
+                Thread.sleep(1);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return READ_EXPIRED;
+            }
+            if (input.available() > 0) {
+                return input.read();
+            }
+            if (timeoutMs > 0 && System.currentTimeMillis() >= deadline) {
+                return READ_EXPIRED;
+            }
+        }
+        return -1;
+    }
+
+    @Override
+    public int peek(long timeoutMs) throws IOException {
+        if (peekedByte != READ_EXPIRED) {
+            return peekedByte;
+        }
+        peekedByte = read(timeoutMs);
+        return peekedByte;
+    }
+
+    @Override
+    public int read(byte[] b, int off, int len, long timeoutMs) throws IOException {
+        if (b == null)
+            throw new NullPointerException();
+        if (off < 0 || len < 0 || len > b.length - off)
+            throw new IndexOutOfBoundsException();
+        if (len == 0)
+            return 0;
+
+        // First byte: use timeout
+        int first = read(timeoutMs);
+        if (first < 0)
+            return first; // EOF or READ_EXPIRED
+        b[off] = (byte) first;
+
+        // Remaining bytes: non-blocking
+        int count = 1;
+        while (count < len && input.available() > 0) {
+            int next = input.read();
+            if (next < 0)
+                break;
+            b[off + count] = (byte) next;
+            count++;
+        }
+        return count;
+    }
+
     public void close() {
         closing = true;
         pump.interrupt();
@@ -403,13 +497,22 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
         return null;
     }
 
+    /** Default poll timeout (ms) for the non-blocking pump loop. */
+    private static final int PUMP_TIMEOUT_MS = 100;
+
     /**
      * Pump thread that reads console input and processes it.
+     * <p>
+     * On Java 22+ (FFM), uses WaitForSingleObject with a timeout for clean
+     * shutdown without needing to close the console handle. On Java 8-21 (JNI),
+     * blocks on ReadConsoleInputW.
      */
     protected void pump() {
         try {
-            while (!closing) {
-                processInputByte(readConsoleInput());
+            if (WinConsoleNative.supportsNonBlockingWait()) {
+                pumpWithTimeout();
+            } else {
+                pumpBlocking();
             }
         } catch (IOException e) {
             if (!closing) {
@@ -418,7 +521,51 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
         }
     }
 
+    /**
+     * Non-blocking pump loop using WaitForSingleObject with timeout (Java 22+ FFM).
+     * <p>
+     * After the first event arrives, drains all pending events before flushing
+     * the pipe. This ensures multi-byte VT sequences (e.g., ESC [ I for focus
+     * events) arrive at EventDecoder as complete chunks rather than byte-by-byte.
+     */
+    private void pumpWithTimeout() throws IOException {
+        long inputHandle = WinConsoleNative.getStdHandle(WinConsoleNative.STD_INPUT_HANDLE);
+        while (!closing) {
+            int waitResult = WinConsoleNative.waitForSingleObject(inputHandle, PUMP_TIMEOUT_MS);
+            if (waitResult == WinConsoleNative.WAIT_TIMEOUT) {
+                // Timeout — loop back to check closing flag
+                continue;
+            }
+            if (waitResult == WinConsoleNative.WAIT_FAILED) {
+                break;
+            }
+            // WAIT_OBJECT_0: input available — read first event and drain remaining
+            processInputByteNoFlush(readConsoleInput());
+            // Drain all remaining pending events without waiting
+            int pending = WinConsoleNative.getNumberOfConsoleInputEvents(inputHandle);
+            while (pending > 0 && !closing) {
+                processInputByteNoFlush(readConsoleInput());
+                pending--;
+            }
+            slaveInputPipe.flush();
+        }
+    }
+
+    /**
+     * Blocking pump loop (Java 8-21 JNI path).
+     */
+    private void pumpBlocking() throws IOException {
+        while (!closing) {
+            processInputByte(readConsoleInput());
+        }
+    }
+
     private void processInputByte(byte[] buf) throws IOException {
+        processInputByteNoFlush(buf);
+        slaveInputPipe.flush();
+    }
+
+    private void processInputByteNoFlush(byte[] buf) throws IOException {
         for (byte b : buf) {
             if (attributes.getLocalFlag(Attributes.LocalFlag.ISIG)) {
                 if ((int) b == attributes.getControlChar(Attributes.ControlChar.VINTR)) {
@@ -442,6 +589,5 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
                 slaveInputPipe.write((int) b);
             }
         }
-        slaveInputPipe.flush();
     }
 }

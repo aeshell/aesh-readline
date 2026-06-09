@@ -118,6 +118,54 @@ public final class WinConsoleNative {
      */
     public static native boolean writeConsole(long handle, char[] buffer, int length);
 
+    /** WaitForSingleObject return: the object was signaled. */
+    public static final int WAIT_OBJECT_0 = 0x00000000;
+    /** WaitForSingleObject return: the wait timed out. */
+    public static final int WAIT_TIMEOUT = 0x00000102;
+    /** WaitForSingleObject return: the function failed. */
+    public static final int WAIT_FAILED = 0xFFFFFFFF;
+
+    /**
+     * Waits for the specified object to be signaled or the timeout to elapse.
+     * <p>
+     * JNI fallback: always returns {@link #WAIT_OBJECT_0} (no timeout support).
+     * The FFM multi-release variant calls the real kernel32 function.
+     *
+     * @param handle the object handle
+     * @param timeoutMs timeout in milliseconds
+     * @return {@link #WAIT_OBJECT_0}, {@link #WAIT_TIMEOUT}, or {@link #WAIT_FAILED}
+     */
+    public static int waitForSingleObject(long handle, int timeoutMs) {
+        // JNI path: no WaitForSingleObject binding, always report ready
+        return WAIT_OBJECT_0;
+    }
+
+    /**
+     * Returns the number of unread console input events.
+     * <p>
+     * JNI fallback: always returns {@code -1} (unsupported).
+     * The FFM multi-release variant calls the real kernel32 function.
+     *
+     * @param handle the console input handle
+     * @return the number of pending events, or -1 if unsupported
+     */
+    public static int getNumberOfConsoleInputEvents(long handle) {
+        // JNI path: not supported
+        return -1;
+    }
+
+    /**
+     * Whether this implementation supports non-blocking wait with timeout.
+     * <p>
+     * JNI fallback: returns {@code false}.
+     * The FFM multi-release variant returns {@code true}.
+     *
+     * @return true if WaitForSingleObject is available
+     */
+    public static boolean supportsNonBlockingWait() {
+        return false;
+    }
+
     static {
         loadLibrary();
     }

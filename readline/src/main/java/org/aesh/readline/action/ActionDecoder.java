@@ -19,15 +19,20 @@
  */
 package org.aesh.readline.action;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.Queue;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.aesh.readline.editing.EditMode;
 import org.aesh.terminal.Key;
 import org.aesh.terminal.KeyAction;
+import org.aesh.terminal.Terminal;
 import org.aesh.terminal.parser.VtHandler;
 import org.aesh.terminal.parser.VtParser;
+import org.aesh.terminal.utils.LoggerUtil;
 
 /**
  * Decodes input key sequences and maps them to corresponding actions.
@@ -40,7 +45,11 @@ import org.aesh.terminal.parser.VtParser;
  */
 public class ActionDecoder {
 
+    private static final Logger LOGGER = LoggerUtil.getLogger(ActionDecoder.class.getName());
     private static final int INITIAL_CAPACITY = 128;
+
+    /** Default timeout (ms) for escape sequence disambiguation. */
+    private static final long DEFAULT_ESCAPE_TIMEOUT = 50;
 
     private KeyAction[] mappings;
     private final KeyMappingTrie trie;
@@ -54,6 +63,33 @@ public class ActionDecoder {
     // Reusable VtParser for unknown sequence measurement
     private final VtParser vtParser;
     private final SequenceMeasurer sequenceMeasurer;
+
+    /**
+     * Optional function to peek at terminal input without consuming it.
+     * When set, enables escape sequence timeout disambiguation:
+     * if ESC arrives alone and peek() times out, it's treated as bare ESC.
+     * The function takes a timeout in milliseconds and returns the peeked
+     * byte (0-255), -1 for EOF, or -2 for timeout.
+     */
+    private InputPeeker inputPeeker;
+
+    /** The escape sequence disambiguation timeout in milliseconds. */
+    private long escapeTimeout = DEFAULT_ESCAPE_TIMEOUT;
+
+    /**
+     * Functional interface for peeking at terminal input without consuming it.
+     */
+    @FunctionalInterface
+    public interface InputPeeker {
+        /**
+         * Peek at the next byte without consuming it.
+         *
+         * @param timeoutMs timeout in milliseconds
+         * @return the byte peeked (0-255), -1 for EOF, or -2 for timeout
+         * @throws IOException if an I/O error occurs
+         */
+        int peek(long timeoutMs) throws IOException;
+    }
 
     /**
      * Creates a decoder with key mappings from the specified edit mode.
@@ -77,6 +113,28 @@ public class ActionDecoder {
         this.trie.build(this.mappings);
         this.sequenceMeasurer = new SequenceMeasurer();
         this.vtParser = new VtParser(this.sequenceMeasurer);
+    }
+
+    /**
+     * Sets the input peeker for escape sequence timeout disambiguation.
+     * <p>
+     * When set, the decoder will use {@code peek(escapeTimeout)} to check
+     * if more input is coming after an ambiguous prefix (e.g., bare ESC).
+     * If the peek times out, the prefix is treated as a complete action.
+     *
+     * @param peeker the input peeker, or null to disable timeout disambiguation
+     */
+    public void setInputPeeker(InputPeeker peeker) {
+        this.inputPeeker = peeker;
+    }
+
+    /**
+     * Sets the escape sequence disambiguation timeout.
+     *
+     * @param timeoutMs timeout in milliseconds (default: 50ms)
+     */
+    public void setEscapeTimeout(long timeoutMs) {
+        this.escapeTimeout = timeoutMs;
     }
 
     /**
@@ -163,12 +221,27 @@ public class ActionDecoder {
             int code = buffer[bufferOffset];
             KeyMappingTrie.MatchResult result = trie.matchSingleByte(code);
             if (result.action != null) {
+                if (result.hasPrefix && inputPeeker != null) {
+                    // Ambiguous: this byte is both a complete binding (e.g., ESC)
+                    // AND a prefix of longer sequences (e.g., ESC [ A for UP).
+                    // Use peek to check if more input is coming.
+                    try {
+                        int peeked = inputPeeker.peek(escapeTimeout);
+                        if (peeked != Terminal.READ_EXPIRED && peeked >= 0) {
+                            // More input is coming — wait for the longer sequence
+                            return null;
+                        }
+                        // Timeout or EOF — return the short binding
+                    } catch (IOException e) {
+                        LOGGER.log(Level.FINE, "peek() failed during escape disambiguation", e);
+                    }
+                }
                 return result.action;
             }
             if (!result.hasPrefix) {
                 return new DefaultKeyAction(code);
             }
-            // Has prefix — wait for more input
+            // Has prefix but no action — wait for more input
             return null;
         }
 

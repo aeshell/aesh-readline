@@ -80,6 +80,26 @@ public class PosixSysTerminal extends AbstractPosixTerminal {
     }
 
     @Override
+    public boolean supportsNonBlockingRead() {
+        return pty.supportsNonBlockingRead();
+    }
+
+    @Override
+    public int read(long timeoutMs) throws IOException {
+        return pty.read(timeoutMs);
+    }
+
+    @Override
+    public int peek(long timeoutMs) throws IOException {
+        return pty.peek(timeoutMs);
+    }
+
+    @Override
+    public int read(byte[] b, int off, int len, long timeoutMs) throws IOException {
+        return pty.read(b, off, len, timeoutMs);
+    }
+
+    @Override
     public void close() throws IOException {
         ShutdownHooks.remove(closer);
         for (Map.Entry<Signal, Object> entry : nativeHandlers.entrySet()) {

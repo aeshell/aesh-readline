@@ -24,6 +24,8 @@ import java.lang.reflect.Method;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.aesh.terminal.utils.OSUtils;
+
 /**
  * Utility for detecting whether file descriptors are connected to a terminal.
  * <p>
@@ -128,6 +130,10 @@ public final class TtyDetect {
      * Returns null if FFM is not available.
      */
     private static Boolean tryNativeIsatty(int fd) {
+        if (OSUtils.IS_WINDOWS) {
+            // LibC is POSIX-only — don't attempt to load it on Windows
+            return null;
+        }
         try {
             // Use reflection to call LibC.isatty() which is only available
             // in the java22 multi-release overlay
@@ -135,7 +141,7 @@ public final class TtyDetect {
             Method isatty = libC.getDeclaredMethod("isatty", int.class);
             isatty.setAccessible(true);
             return (Boolean) isatty.invoke(null, fd);
-        } catch (Exception e) {
+        } catch (Throwable e) {
             LOGGER.log(Level.FINE, "FFM isatty not available, using fallback", e);
             return null;
         }
