@@ -1,0 +1,4 @@
+org.aesh.terminal.tty.provider.FfmTerminalProvider
+org.aesh.terminal.tty.provider.WinSysTerminalProvider
+org.aesh.terminal.tty.provider.CygwinTerminalProvider
+org.aesh.terminal.tty.provider.ExecPtyTerminalProvider

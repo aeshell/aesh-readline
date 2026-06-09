@@ -19,23 +19,21 @@
  */
 package org.aesh.terminal.tty;
 
-import java.io.Console;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.ServiceLoader;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.aesh.terminal.Terminal;
-import org.aesh.terminal.tty.impl.CygwinPty;
-import org.aesh.terminal.tty.impl.ExecPty;
+import org.aesh.terminal.provider.TerminalProvider;
 import org.aesh.terminal.tty.impl.ExternalTerminal;
-import org.aesh.terminal.tty.impl.PosixSysTerminal;
-import org.aesh.terminal.tty.impl.Pty;
 import org.aesh.terminal.tty.impl.WinExternalTerminal;
-import org.aesh.terminal.tty.impl.WinSysTerminal;
 import org.aesh.terminal.utils.LoggerUtil;
 import org.aesh.terminal.utils.OSUtils;
 
@@ -144,6 +142,10 @@ public final class TerminalBuilder {
 
     /**
      * Builds and returns a Terminal instance with the configured settings.
+     * <p>
+     * For system terminals (stdin/stdout), discovers providers via
+     * {@link ServiceLoader} and tries them in priority order. Falls back
+     * to {@link ExternalTerminal} if no provider succeeds.
      *
      * @return a new Terminal instance
      * @throws IOException if an I/O error occurs while creating the terminal
@@ -153,99 +155,73 @@ public final class TerminalBuilder {
         if (name == null) {
             name = "Aesh console";
         }
-        if ((system != null && system)
-                || (system == null
-                        && (in == null || in == System.in)
-                        && (out == null || out == System.out))) {
-
-            // Cygwin support
-            if (OSUtils.IS_CYGWIN) {
-                String type = this.type;
-                if (type == null) {
-                    type = System.getenv("TERM");
-                }
-                try {
-                    Pty pty = CygwinPty.current();
-                    return new PosixSysTerminal(name, type, pty, nativeSignals);
-                } catch (IOException ioe) {
-                    //we might have a windows terminal created from cygwin..
-                    return createWindowsTerminal(name);
-                }
-            } else if (OSUtils.IS_WINDOWS) {
-                return createWindowsTerminal(name);
-            } else {
-                String type = this.type;
-                if (type == null) {
-                    type = System.getenv("TERM");
-                }
-                Pty pty = null;
-                // Try FFM-based Pty first (Java 22+, loaded via MRJAR)
-                try {
-                    Class<?> ffmPtyClass = Class.forName(
-                            "org.aesh.terminal.tty.impl.FfmPty");
-                    pty = (Pty) ffmPtyClass.getMethod("current").invoke(null);
-                    LOGGER.log(Level.FINE, "Using FFM-based PTY");
-                } catch (ClassNotFoundException e) {
-                    LOGGER.log(Level.FINE, "FFM PTY not available, falling back to ExecPty", e);
-                } catch (InvocationTargetException e) {
-                    // Unwrap to check if the actual cause is an expected "not supported" error
-                    Throwable cause = e.getCause();
-                    if (cause instanceof IOException || cause instanceof UnsupportedOperationException) {
-                        LOGGER.log(Level.FINE, "FFM PTY not available, falling back to ExecPty", cause);
-                    } else {
-                        LOGGER.log(Level.WARNING, "FFM PTY initialization failed, falling back to ExecPty", cause);
-                    }
-                } catch (Exception e) {
-                    LOGGER.log(Level.WARNING, "FFM PTY initialization failed, falling back to ExecPty", e);
-                }
-                if (pty == null) {
-                    try {
-                        pty = ExecPty.current();
-                    } catch (IOException e) {
-                        LOGGER.log(Level.FINE, "Failed to get a local tty", e);
-                    }
-                }
-                if (pty != null) {
-                    return new PosixSysTerminal(name, type, pty, nativeSignals);
-                } else {
-                    return new ExternalTerminal(name, type, (in == null) ? System.in : in, (out == null) ? System.out : out);
-                }
-            }
+        if (isSystemTerminal()) {
+            return buildSystemTerminal(name);
         } else {
-            return new ExternalTerminal(name, type, (in == null) ? System.in : in,
-                    (out == null) ? System.out : out);
-        }
-    }
-
-    private Terminal createWindowsTerminal(String name) throws IOException {
-        try {
-            Console console = System.console();
-            if (isTerminal(console)) // a native terminal, not redirects etc
-                return new WinSysTerminal(name, nativeSignals);
-            else {
-                return new WinExternalTerminal(name, type, (in == null) ? System.in : in,
-                        (out == null) ? System.out : out);
-            }
-        } catch (IOException e) {
-            return new WinExternalTerminal(name, type, (in == null) ? System.in : in,
-                    (out == null) ? System.out : out);
+            return buildExternalTerminal(name);
         }
     }
 
     /**
-     * Check if the console is connected to a real terminal.
-     * Uses TtyDetect for native isatty() on Java 22+,
-     * falls back to Console.isTerminal() reflection or System.console() heuristic.
+     * Whether we should try to create a system terminal (connected to
+     * the local console) vs an external terminal (explicit streams).
      */
-    private static boolean isTerminal(Console console) {
-        if (console == null) {
-            return false;
+    private boolean isSystemTerminal() {
+        return (system != null && system)
+                || (system == null
+                        && (in == null || in == System.in)
+                        && (out == null || out == System.out));
+    }
+
+    /**
+     * Builds a system terminal using the SPI provider discovery.
+     * Discovers all {@link TerminalProvider} implementations via ServiceLoader,
+     * filters by {@link TerminalProvider#isSupported()}, sorts by priority
+     * (highest first), and tries each until one succeeds.
+     */
+    private Terminal buildSystemTerminal(String name) throws IOException {
+        // Discover and sort providers
+        List<TerminalProvider> providers = new ArrayList<>();
+        for (TerminalProvider provider : ServiceLoader.load(TerminalProvider.class)) {
+            if (provider.isSupported()) {
+                providers.add(provider);
+                LOGGER.log(Level.FINE, "Found supported terminal provider: {0} (priority={1})",
+                        new Object[] { provider.name(), provider.priority() });
+            } else {
+                LOGGER.log(Level.FINE, "Terminal provider not supported: {0}", provider.name());
+            }
         }
-        // Check for TERM=dumb
-        String term = System.getenv("TERM");
-        if ("dumb".equals(term)) {
-            return false;
+        providers.sort(Comparator.comparingInt(TerminalProvider::priority).reversed());
+
+        // Try each provider in priority order
+        IOException lastException = null;
+        for (TerminalProvider provider : providers) {
+            try {
+                Terminal terminal = provider.createTerminal(name, type, nativeSignals);
+                LOGGER.log(Level.FINE, "Created terminal using provider: {0}", provider.name());
+                return terminal;
+            } catch (IOException e) {
+                LOGGER.log(Level.FINE, "Provider {0} failed: {1}",
+                        new Object[] { provider.name(), e.getMessage() });
+                lastException = e;
+            }
         }
-        return TtyDetect.isStdinTty();
+
+        // No SPI provider succeeded — fall back to external terminal
+        LOGGER.log(Level.FINE, "No terminal provider succeeded, falling back to external terminal");
+        return buildExternalTerminal(name);
+    }
+
+    /**
+     * Builds an external terminal with explicit input/output streams.
+     * Used when stdin/stdout are redirected or no system terminal is available.
+     */
+    private Terminal buildExternalTerminal(String name) throws IOException {
+        InputStream inputStream = (in == null) ? System.in : in;
+        OutputStream outputStream = (out == null) ? System.out : out;
+        if (OSUtils.IS_WINDOWS) {
+            return new WinExternalTerminal(name, type, inputStream, outputStream);
+        }
+        return new ExternalTerminal(name, type, inputStream, outputStream);
     }
 }
