@@ -56,4 +56,4 @@ api_jar="$(resolve_jar "${ROOT_DIR}/terminal-api/target/terminal-api-*.jar")"
 readline_jar="$(resolve_jar "${ROOT_DIR}/readline/target/readline-*.jar")"
 classpath="${CLASSES_DIR}:${tty_jar}:${api_jar}:${readline_jar}"
 
-java -cp "${classpath}" "${name_of_class}"
+java -cp "${classpath}" "${name_of_class}" "$@"

@@ -81,6 +81,6 @@ if not defined readline_jar (
 )
 
 set "classpath=%CLASSES_DIR%;!tty_jar!;!api_jar!;!readline_jar!"
-java -cp "%classpath%" "%name_of_class%"
+java -cp "%classpath%" "%name_of_class%" %*
 exit /b %ERRORLEVEL%
 

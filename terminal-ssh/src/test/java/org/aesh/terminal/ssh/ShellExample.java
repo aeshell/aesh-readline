@@ -138,8 +138,15 @@ public class ShellExample implements Consumer<Connection> {
 
         @Override
         public void run() {
-            // Subscribe to events, in particular Ctrl-C
+            // Subscribe to events, in particular Ctrl-C.
+            // We must also set a stdin handler to keep the reader thread active —
+            // without one, TerminalConnection.suspend() blocks the reader and
+            // signal bytes (Ctrl+C = byte 3) are never read from the terminal.
             conn.setSignalHandler(this);
+            conn.setStdinHandler(data -> {
+                // Discard input while command is running — signals are
+                // extracted by EventDecoder before reaching this handler.
+            });
             try {
                 command.execute(conn, args);
             } catch (InterruptedException | InterruptedIOException e) {
