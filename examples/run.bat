@@ -62,9 +62,17 @@ set "api_jar="
 for %%J in ("%ROOT_DIR%\terminal-api\target\terminal-api-*.jar") do (
   echo %%J | findstr /i /v "sources javadoc tests" >nul && set "api_jar=%%~fJ"
 )
+set "detect_jar="
+for %%J in ("%ROOT_DIR%\terminal-detect\target\terminal-detect-*.jar") do (
+  echo %%J | findstr /i /v "sources javadoc tests" >nul && set "detect_jar=%%~fJ"
+)
 set "readline_jar="
 for %%J in ("%ROOT_DIR%\readline\target\readline-*.jar") do (
   echo %%J | findstr /i /v "sources javadoc tests" >nul && set "readline_jar=%%~fJ"
+)
+set "readline_api_jar="
+for %%J in ("%ROOT_DIR%\readline-api\target\readline-api-*.jar") do (
+  echo %%J | findstr /i /v "sources javadoc tests" >nul && set "readline_api_jar=%%~fJ"
 )
 
 if not defined tty_jar (
@@ -75,12 +83,20 @@ if not defined api_jar (
   echo Missing terminal-api jar. Build first with: mvn package
   exit /b 1
 )
+if not defined detect_jar (
+  echo Missing terminal-detect jar. Build first with: mvn package
+  exit /b 1
+)
 if not defined readline_jar (
   echo Missing readline jar. Build first with: mvn package
   exit /b 1
 )
+if not defined readline_api_jar (
+  echo Missing readline-api jar. Build first with: mvn package
+  exit /b 1
+)
 
-set "classpath=%CLASSES_DIR%;!tty_jar!;!api_jar!;!readline_jar!"
+set "classpath=%CLASSES_DIR%;!tty_jar!;!api_jar!;!detect_jar!;!readline_jar!;!readline_api_jar!"
 java -cp "%classpath%" "%name_of_class%" %*
 exit /b %ERRORLEVEL%
 

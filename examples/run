@@ -53,7 +53,9 @@ resolve_jar() {
 
 tty_jar="$(resolve_jar "${ROOT_DIR}/terminal-tty/target/terminal-tty-*.jar")"
 api_jar="$(resolve_jar "${ROOT_DIR}/terminal-api/target/terminal-api-*.jar")"
+detect_jar="$(resolve_jar "${ROOT_DIR}/terminal-detect/target/terminal-detect-*.jar")"
 readline_jar="$(resolve_jar "${ROOT_DIR}/readline/target/readline-*.jar")"
-classpath="${CLASSES_DIR}:${tty_jar}:${api_jar}:${readline_jar}"
+readline_api_jar="$(resolve_jar "${ROOT_DIR}/readline-api/target/readline-api-*.jar")"
+classpath="${CLASSES_DIR}:${tty_jar}:${api_jar}:${detect_jar}:${readline_jar}:${readline_api_jar}"
 
 java -cp "${classpath}" "${name_of_class}" "$@"
