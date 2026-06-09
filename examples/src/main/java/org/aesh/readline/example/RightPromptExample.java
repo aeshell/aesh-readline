@@ -16,7 +16,7 @@ import org.aesh.terminal.tty.TerminalConnection;
  * Type commands and watch the right prompt disappear as input grows.
  * Type "exit" or press Ctrl+D to quit.
  */
-public class RightPromptDemo {
+public class RightPromptExample {
 
     private static volatile boolean stopped = false;
 

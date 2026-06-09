@@ -32,7 +32,7 @@ import org.aesh.terminal.tty.TerminalConnection;
  * <p>
  * Try pressing Ctrl+R for fuzzy history search after entering a few commands.
  */
-public class ShellExampleTty {
+public class ShellLocalExample {
 
     public static void main(String[] args) throws IOException {
         TerminalConnection connection = new TerminalConnection();

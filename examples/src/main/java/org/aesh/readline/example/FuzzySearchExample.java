@@ -13,7 +13,7 @@ import org.aesh.readline.Readline;
 import org.aesh.readline.ReadlineBuilder;
 import org.aesh.terminal.tty.TerminalConnection;
 
-public class FuzzySearchDemo {
+public class FuzzySearchExample {
 
     private static final String[] SEED_COMMANDS = {
             "ls -la",
