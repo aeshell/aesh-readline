@@ -306,6 +306,7 @@ public class Readline {
             conn.setStdinHandler(prevReadHandler);
             conn.setSizeHandler(prevSizeHandler);
             conn.setSignalHandler(prevSignalHandler);
+            decoder.setInputPeeker(null);
             synchronized (Readline.this) {
                 // Guard against closed connection (e.g. EOF/Ctrl+D closes the
                 // connection before finish() is called)
@@ -491,6 +492,16 @@ public class Readline {
                 conn.terminal().disableSynchronizedOutput();
             if (shellIntegrationEnabled)
                 conn.terminal().writePromptEnd();
+            // Enable escape timeout disambiguation if the connection supports
+            // non-blocking reads (Java 22+ with FFM). This allows the decoder
+            // to distinguish bare ESC from the start of an escape sequence by
+            // peeking at the input with a timeout.
+            if (conn.supportsNonBlockingRead()) {
+                decoder.setInputPeeker(conn::peek);
+            } else {
+                decoder.setInputPeeker(null);
+            }
+
             //last process input, the readInput() can read/finish in one go
             //since EventDecoder might have queued up data
             conn.setStdinHandler(data -> {

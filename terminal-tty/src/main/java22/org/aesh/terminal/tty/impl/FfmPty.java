@@ -80,6 +80,15 @@ public class FfmPty implements Pty {
     /** Whether this PTY has been closed. */
     private final java.util.concurrent.atomic.AtomicBoolean closed = new java.util.concurrent.atomic.AtomicBoolean(false);
 
+    /** Pre-allocated pollfd struct for non-blocking read/peek operations. */
+    private final MemorySegment nbPollfd;
+
+    /** Pre-allocated single-byte read buffer for non-blocking operations. */
+    private final MemorySegment nbReadBuf;
+
+    /** Peeked byte for non-blocking peek support. -2 means no peeked byte. */
+    private int peekedByte = -2;
+
     /**
      * Creates an FfmPty for the current terminal.
      *
@@ -120,6 +129,12 @@ public class FfmPty implements Pty {
                 }
                 throw new IOException("tcgetattr() failed on " + ttyName);
             }
+
+            // Allocate pollfd and read buffer for non-blocking operations
+            this.nbPollfd = arena.allocate(PosixConstants.POLLFD_SIZE, 4);
+            nbPollfd.set(ValueLayout.JAVA_INT, PosixConstants.POLLFD_FD_OFFSET, ttyFd);
+            nbPollfd.set(ValueLayout.JAVA_SHORT, PosixConstants.POLLFD_EVENTS_OFFSET, PosixConstants.POLLIN);
+            this.nbReadBuf = arena.allocate(1);
 
             LOGGER.log(Level.FINE, "FfmPty created for {0} (fd={1})", new Object[] { ttyName, ttyFd });
 
@@ -267,6 +282,110 @@ public class FfmPty implements Pty {
                 }
             }
         }
+    }
+
+    // =========================================================================
+    // Non-blocking read/peek operations
+    // =========================================================================
+
+    @Override
+    public boolean supportsNonBlockingRead() {
+        return true;
+    }
+
+    @Override
+    public int read(long timeoutMs) throws IOException {
+        checkNotClosed();
+
+        // Return peeked byte if available
+        if (peekedByte != -2) {
+            int b = peekedByte;
+            peekedByte = -2;
+            return b;
+        }
+
+        return pollAndRead(timeoutMs);
+    }
+
+    @Override
+    public int peek(long timeoutMs) throws IOException {
+        checkNotClosed();
+
+        if (peekedByte != -2) {
+            return peekedByte;
+        }
+
+        peekedByte = pollAndRead(timeoutMs);
+        return peekedByte;
+    }
+
+    @Override
+    public int read(byte[] b, int off, int len, long timeoutMs) throws IOException {
+        if (b == null) throw new NullPointerException();
+        if (off < 0 || len < 0 || len > b.length - off) throw new IndexOutOfBoundsException();
+        if (len == 0) return 0;
+        checkNotClosed();
+
+        // First byte: use timeout
+        int first = read(timeoutMs);
+        if (first < 0) return first; // EOF or READ_EXPIRED
+        b[off] = (byte) first;
+
+        // Remaining bytes: non-blocking (timeout=0)
+        int count = 1;
+        while (count < len && !closed.get()) {
+            int next = pollAndRead(0);
+            if (next < 0) break; // no more data immediately available
+            b[off + count] = (byte) next;
+            count++;
+        }
+        return count;
+    }
+
+    /**
+     * Performs a poll() + read() on the tty fd with the specified timeout.
+     *
+     * @param timeoutMs timeout in milliseconds; 0 for non-blocking, negative for infinite
+     * @return the byte read (0-255), -1 for EOF, or READ_EXPIRED (-2) for timeout
+     */
+    private int pollAndRead(long timeoutMs) throws IOException {
+        // Clamp timeout for poll(): negative -> -1 (infinite), otherwise use as-is
+        int pollTimeout = timeoutMs < 0 ? -1 : (int) Math.min(timeoutMs, Integer.MAX_VALUE);
+
+        // Reset revents
+        nbPollfd.set(ValueLayout.JAVA_SHORT, PosixConstants.POLLFD_REVENTS_OFFSET, (short) 0);
+
+        int result = LibC.poll(nbPollfd, 1, pollTimeout);
+
+        if (result < 0) {
+            // EINTR (signal interrupted poll) — treat as timeout
+            // The caller can retry if desired
+            if (closed.get()) return -1;
+            return -2;
+        }
+
+        if (result == 0) {
+            return -2; // Timeout
+        }
+
+        short revents = nbPollfd.get(ValueLayout.JAVA_SHORT, PosixConstants.POLLFD_REVENTS_OFFSET);
+        if ((revents & (PosixConstants.POLLHUP | PosixConstants.POLLERR)) != 0) {
+            return -1; // EOF or error
+        }
+
+        if ((revents & PosixConstants.POLLIN) != 0) {
+            long bytesRead = LibC.read(ttyFd, nbReadBuf, 1);
+            if (bytesRead <= 0) {
+                if (bytesRead < 0 && !closed.get()) {
+                    // Likely EINTR between poll and read — treat as timeout
+                    return -2;
+                }
+                return -1; // EOF
+            }
+            return Byte.toUnsignedInt(nbReadBuf.get(ValueLayout.JAVA_BYTE, 0));
+        }
+
+        return -2; // No data available
     }
 
     // =========================================================================

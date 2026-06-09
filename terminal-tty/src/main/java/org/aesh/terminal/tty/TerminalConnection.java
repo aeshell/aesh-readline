@@ -19,6 +19,8 @@
  */
 package org.aesh.terminal.tty;
 
+import static org.aesh.terminal.Terminal.READ_EXPIRED;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -253,12 +255,74 @@ public class TerminalConnection extends AbstractConnection {
         openBlocking(null);
     }
 
+    /** Default poll timeout (ms) for the non-blocking read loop. */
+    private static final int POLL_TIMEOUT_MS = 100;
+
     /**
      * Opens the Connection stream with an initial buffer. This method will block and wait for input.
      *
      * @param buffer initial data to process before reading from the terminal input
      */
     public void openBlocking(String buffer) {
+        if (terminal.supportsNonBlockingRead()) {
+            openBlockingWithPoll(buffer);
+        } else {
+            openBlockingLegacy(buffer);
+        }
+    }
+
+    /**
+     * Non-blocking read loop using poll() with timeout (Java 22+ with FFM).
+     * <p>
+     * Uses {@link Terminal#read(byte[], int, int, long)} with a poll timeout so the
+     * loop naturally yields control on each timeout, enabling clean shutdown without
+     * closing the file descriptor and supporting future features like printAbove().
+     */
+    private void openBlockingWithPoll(String buffer) {
+        try {
+            reading = true;
+            byte[] bBuf = new byte[1024];
+            if (buffer != null) {
+                decoder.write(buffer.getBytes(inputCharset));
+            }
+            while (reading) {
+                if (waiting) {
+                    // When suspended, poll with short timeout instead of latch.await().
+                    // This avoids blocking the thread while still being responsive.
+                    try {
+                        Thread.sleep(POLL_TIMEOUT_MS);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        close();
+                        break;
+                    }
+                    continue;
+                }
+
+                int read = terminal.read(bBuf, 0, bBuf.length, POLL_TIMEOUT_MS);
+                if (read == READ_EXPIRED) {
+                    // Timeout — loop back to check reading flag, handle timers, etc.
+                    continue;
+                } else if (read > 0) {
+                    decoder.write(bBuf, 0, read);
+                } else if (read < 0) {
+                    // EOF
+                    close();
+                }
+            }
+        } catch (IOException ioe) {
+            LOGGER.log(Level.WARNING, "Failed while reading, exiting", ioe);
+            close();
+        }
+    }
+
+    /**
+     * Legacy blocking read loop (Java 8-21, SSH/telnet, non-FFM terminals).
+     * <p>
+     * Uses {@link InputStream#read(byte[])} which blocks indefinitely. Suspend/awake
+     * uses a {@link CountDownLatch} to pause the reader thread.
+     */
+    private void openBlockingLegacy(String buffer) {
         try {
             reading = true;
             byte[] bBuf = new byte[1024];
@@ -371,6 +435,16 @@ public class TerminalConnection extends AbstractConnection {
             suspend();
         else
             awake();
+    }
+
+    @Override
+    public boolean supportsNonBlockingRead() {
+        return terminal.supportsNonBlockingRead();
+    }
+
+    @Override
+    public int peek(long timeoutMs) throws IOException {
+        return terminal.peek(timeoutMs);
     }
 
     @Override

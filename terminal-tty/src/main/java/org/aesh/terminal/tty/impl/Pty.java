@@ -25,6 +25,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 
 import org.aesh.terminal.Attributes;
+import org.aesh.terminal.Terminal;
 import org.aesh.terminal.tty.Size;
 
 /**
@@ -85,5 +86,61 @@ public interface Pty extends Closeable {
      * @throws IOException if an I/O error occurs
      */
     Size getSize() throws IOException;
+
+    /**
+     * Whether this PTY supports non-blocking read operations with timeouts.
+     *
+     * @return true if non-blocking reads are supported
+     */
+    default boolean supportsNonBlockingRead() {
+        return false;
+    }
+
+    /**
+     * Reads a single byte with a timeout.
+     * <p>
+     * Default implementation delegates to {@link #getSlaveInput()}{@code .read()},
+     * ignoring the timeout (blocking).
+     *
+     * @param timeoutMs timeout in milliseconds; 0 for non-blocking, negative for infinite
+     * @return the byte read (0-255), -1 for EOF, or {@link Terminal#READ_EXPIRED} for timeout
+     * @throws IOException if an I/O error occurs
+     */
+    default int read(long timeoutMs) throws IOException {
+        return getSlaveInput().read();
+    }
+
+    /**
+     * Peeks at the next byte without consuming it, with a timeout.
+     * <p>
+     * Default implementation returns {@link Terminal#READ_EXPIRED} (no peek support).
+     *
+     * @param timeoutMs timeout in milliseconds; 0 for non-blocking
+     * @return the byte peeked (0-255), -1 for EOF, or {@link Terminal#READ_EXPIRED} for timeout
+     * @throws IOException if an I/O error occurs
+     */
+    default int peek(long timeoutMs) throws IOException {
+        return Terminal.READ_EXPIRED;
+    }
+
+    /**
+     * Reads multiple bytes with a timeout for the first byte.
+     * <p>
+     * After the first byte arrives (or timeout), reads additional bytes that
+     * are immediately available without blocking.
+     * <p>
+     * Default implementation delegates to {@link #getSlaveInput()}{@code .read(b, off, len)},
+     * ignoring the timeout (blocking).
+     *
+     * @param b the buffer to read into
+     * @param off the offset in the buffer
+     * @param len the maximum number of bytes to read
+     * @param timeoutMs timeout in milliseconds for the first byte
+     * @return the number of bytes read, -1 for EOF, or {@link Terminal#READ_EXPIRED} for timeout
+     * @throws IOException if an I/O error occurs
+     */
+    default int read(byte[] b, int off, int len, long timeoutMs) throws IOException {
+        return getSlaveInput().read(b, off, len);
+    }
 
 }

@@ -54,6 +54,7 @@ import org.aesh.readline.action.mappings.Undo;
 import org.aesh.terminal.Device;
 import org.aesh.terminal.Key;
 import org.aesh.terminal.tty.DeviceBuilder;
+import org.aesh.terminal.utils.Config;
 
 /**
  * Builder for creating and configuring EditMode instances with key bindings and variables.
@@ -268,6 +269,13 @@ public class EditModeBuilder {
         emacs.addAction(Key.RIGHT, "forward-char");
         emacs.addAction(Key.RIGHT_2, "forward-char");
         emacs.addAction(Key.BACKSPACE, "backward-delete-char");
+        // Ctrl+H (8) is traditionally backspace — bind it on all platforms.
+        // On Windows with VT input, Backspace sends 127 (DEL) instead of 8 (BS),
+        // so bind both values to ensure Backspace works regardless of VT input mode.
+        emacs.addAction(Key.CTRL_H, "backward-delete-char");
+        if (!Config.isOSPOSIXCompatible()) {
+            emacs.addAction(new int[] { 127 }, "backward-delete-char");
+        }
         emacs.addAction(Key.DELETE, "delete-char");
         emacs.addAction(Key.CTRL_I, "complete");
         emacs.addAction(Key.CTRL_C, new Interrupt());
@@ -475,6 +483,11 @@ public class EditModeBuilder {
         vi.addAction(Key.u, new Undo(), EditMode.Status.COMMAND, EditMode.Status.COMMAND); //u
         //backspace
         vi.addAction(Key.BACKSPACE, "backward-delete-char", EditMode.Status.EDIT, EditMode.Status.EDIT);
+        vi.addAction(Key.CTRL_H, "backward-delete-char", EditMode.Status.EDIT, EditMode.Status.EDIT);
+        if (!Config.isOSPOSIXCompatible()) {
+            // Windows with VT input sends 127 (DEL) for Backspace
+            vi.addAction(new int[] { 127 }, "backward-delete-char");
+        }
         //movement
         if (Key.RIGHT.equalTo(Key.RIGHT_2.getKeyValues())) {
             vi.addActionGroup(Key.RIGHT, new Vi.ActionStatusGroup(new Vi.ActionStatus[] {
