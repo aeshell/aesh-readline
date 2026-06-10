@@ -103,7 +103,7 @@ Add the following to your `pom.xml`:
 <dependency>
     <groupId>org.aesh</groupId>
     <artifactId>readline</artifactId>
-    <version>3.12</version>
+    <version>3.14</version>
 </dependency>
 ```
 
@@ -113,7 +113,7 @@ This pulls in `terminal-api` and `readline-api` transitively. For local terminal
 <dependency>
     <groupId>org.aesh</groupId>
     <artifactId>terminal-tty</artifactId>
-    <version>3.12</version>
+    <version>3.14</version>
 </dependency>
 ```
 
