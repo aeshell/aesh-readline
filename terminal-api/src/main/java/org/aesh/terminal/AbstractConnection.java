@@ -19,11 +19,15 @@
  */
 package org.aesh.terminal;
 
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 
 import org.aesh.terminal.detect.TerminalTheme;
 import org.aesh.terminal.tty.Signal;
 import org.aesh.terminal.tty.Size;
+import org.aesh.terminal.tty.StatusLine;
 
 /**
  * Abstract base class for {@link Connection} implementations that use an
@@ -141,6 +145,93 @@ public abstract class AbstractConnection implements Connection {
 
     /** Handler for printAbove requests. */
     private volatile Consumer<String> printAboveHandler;
+
+    /** Registered status lines, sorted by priority. */
+    private final CopyOnWriteArrayList<StatusLineImpl> statusLines = new CopyOnWriteArrayList<>();
+
+    @Override
+    public StatusLine registerStatusLine(int priority) {
+        StatusLineImpl sl = new StatusLineImpl(priority, this);
+        statusLines.add(sl);
+        // Sort by priority (lowest first = top, highest last = bottom near prompt)
+        statusLines.sort((a, b) -> Integer.compare(a.priority, b.priority));
+        // Trigger a redraw if a printAbove handler is active
+        Consumer<String> handler = printAboveHandler;
+        if (handler != null) {
+            handler.accept("");
+        }
+        return sl;
+    }
+
+    /**
+     * Returns the current status line messages in display order
+     * (lowest priority first).
+     *
+     * @return unmodifiable list of active status line messages
+     */
+    public List<String> getStatusMessages() {
+        if (statusLines.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<String> messages = new java.util.ArrayList<>();
+        for (StatusLineImpl sl : statusLines) {
+            String msg = sl.message;
+            if (msg != null && !msg.isEmpty()) {
+                messages.add(msg);
+            }
+        }
+        return Collections.unmodifiableList(messages);
+    }
+
+    void removeStatusLine(StatusLineImpl sl) {
+        statusLines.remove(sl);
+        // Trigger a redraw
+        Consumer<String> handler = printAboveHandler;
+        if (handler != null) {
+            handler.accept("");
+        }
+    }
+
+    void statusLineUpdated() {
+        // Trigger a redraw when a status line message changes
+        Consumer<String> handler = printAboveHandler;
+        if (handler != null) {
+            handler.accept("");
+        }
+    }
+
+    private static class StatusLineImpl implements StatusLine {
+        final int priority;
+        volatile String message;
+        volatile boolean closed;
+        private final AbstractConnection connection;
+
+        StatusLineImpl(int priority, AbstractConnection connection) {
+            this.priority = priority;
+            this.connection = connection;
+        }
+
+        @Override
+        public void setMessage(String message) {
+            if (!closed) {
+                this.message = message;
+                connection.statusLineUpdated();
+            }
+        }
+
+        @Override
+        public String getMessage() {
+            return message;
+        }
+
+        @Override
+        public void close() {
+            if (!closed) {
+                closed = true;
+                connection.removeStatusLine(this);
+            }
+        }
+    }
 
     @Override
     public void setPrintAboveHandler(Consumer<String> handler) {

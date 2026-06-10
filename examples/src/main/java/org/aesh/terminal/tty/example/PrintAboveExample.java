@@ -58,13 +58,6 @@ public class PrintAboveExample {
         TerminalConnection connection = new TerminalConnection();
         connection.enterRawMode();
 
-        connection.setSignalHandler(signal -> {
-            if (signal == Signal.INT) {
-                running = false;
-                connection.close();
-            }
-        });
-
         connection.setCloseHandler(v -> running = false);
 
         // Background thread that prints notifications above the prompt

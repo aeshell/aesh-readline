@@ -303,6 +303,26 @@ public interface Connection extends Appendable, AutoCloseable {
         return null;
     }
 
+    // ==================== Status Lines ====================
+
+    /**
+     * Register a persistent status line displayed between scrolling output
+     * and the prompt.
+     * <p>
+     * Status lines are rendered in priority order: lowest priority at top,
+     * highest priority at bottom (closest to the prompt). They persist
+     * across {@link #printAbove(String)} calls and are redrawn automatically.
+     * <p>
+     * If multiple status lines share the same priority, they are ordered
+     * by registration time.
+     *
+     * @param priority the display priority (higher = closer to prompt)
+     * @return a new StatusLine that can be updated or closed
+     */
+    default org.aesh.terminal.tty.StatusLine registerStatusLine(int priority) {
+        throw new UnsupportedOperationException("Status lines not supported");
+    }
+
     // ==================== Lifecycle ====================
 
     /**
