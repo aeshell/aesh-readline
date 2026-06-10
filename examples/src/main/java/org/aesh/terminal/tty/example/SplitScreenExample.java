@@ -30,6 +30,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.aesh.readline.Readline;
 import org.aesh.readline.ReadlineBuilder;
 import org.aesh.terminal.tty.ScreenRegion;
+import org.aesh.terminal.tty.SplitScreen;
 import org.aesh.terminal.tty.TerminalConnection;
 
 /**
@@ -54,7 +55,8 @@ public class SplitScreenExample {
         connection.setCloseHandler(v -> running = false);
 
         // Split the screen: top 2/3 for logs, bottom 1/3 for readline
-        ScreenRegion logRegion = connection.splitScreen(0.67);
+        SplitScreen split = connection.splitScreen(0.67);
+        ScreenRegion logRegion = split.topRegion();
 
         // Background thread simulates log output
         AtomicInteger logCount = new AtomicInteger(0);

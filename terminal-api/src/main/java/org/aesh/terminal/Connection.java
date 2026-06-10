@@ -346,7 +346,7 @@ public interface Connection extends Appendable, AutoCloseable {
      *         than {@link org.aesh.terminal.tty.SplitScreen#MIN_REGION_HEIGHT}
      * @throws UnsupportedOperationException if split screen is not supported
      */
-    default org.aesh.terminal.tty.ScreenRegion splitScreen(double ratio) {
+    default org.aesh.terminal.tty.SplitScreen splitScreen(double ratio) {
         throw new UnsupportedOperationException("Split screen not supported");
     }
 

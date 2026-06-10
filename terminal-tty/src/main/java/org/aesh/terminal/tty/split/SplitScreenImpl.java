@@ -146,9 +146,12 @@ public class SplitScreenImpl implements SplitScreen {
         }
     }
 
+    /** Lock for synchronizing terminal writes between regions. */
+    private final Object renderLock = new Object();
+
     /**
      * Write text to the top region using cursor addressing.
-     * Called by ScreenRegionImpl.
+     * Called by ScreenRegionImpl. Thread-safe.
      */
     void writeToTopRegion(String text) {
         if (closed || suspended)
@@ -162,8 +165,11 @@ public class SplitScreenImpl implements SplitScreen {
             }
         }
 
-        // Redraw the top region
-        redrawTopRegion();
+        // Redraw the top region (synchronized to prevent interleaving
+        // with readline output in the bottom region)
+        synchronized (renderLock) {
+            redrawTopRegion();
+        }
     }
 
     private void redrawTopRegion() {
@@ -194,6 +200,8 @@ public class SplitScreenImpl implements SplitScreen {
 
     /**
      * Handle terminal resize.
+     * TODO: validate that the new terminal size can still fit both regions
+     * with MIN_REGION_HEIGHT. If too small, consider suspending the split.
      */
     public void handleResize(Size newSize) {
         if (closed || suspended)

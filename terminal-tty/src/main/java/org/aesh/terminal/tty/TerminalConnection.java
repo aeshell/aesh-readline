@@ -401,6 +401,22 @@ public class TerminalConnection extends AbstractConnection {
         awake();
     }
 
+    @Override
+    public org.aesh.terminal.Connection write(String s) {
+        // Fast path: no split screen — direct field check, no method dispatch
+        if (currentRegion != null) {
+            currentRegion.write(s);
+            return this;
+        }
+        java.util.function.Consumer<int[]> handler = stdoutHandler();
+        if (handler instanceof org.aesh.terminal.io.Encoder) {
+            ((org.aesh.terminal.io.Encoder) handler).accept(s);
+        } else {
+            handler.accept(org.aesh.terminal.utils.Parser.toCodePoints(s));
+        }
+        return this;
+    }
+
     private void write(byte[] data) {
         try {
             terminal.output().write(data);
@@ -458,7 +474,7 @@ public class TerminalConnection extends AbstractConnection {
     private volatile org.aesh.terminal.tty.ScreenRegion currentRegion;
 
     @Override
-    public org.aesh.terminal.tty.ScreenRegion splitScreen(double ratio) {
+    public org.aesh.terminal.tty.SplitScreen splitScreen(double ratio) {
         if (splitScreenImpl != null) {
             throw new IllegalStateException("Screen is already split");
         }
@@ -472,7 +488,7 @@ public class TerminalConnection extends AbstractConnection {
                             + (SplitScreen.MIN_REGION_HEIGHT * 2 + 1));
         }
         splitScreenImpl = new org.aesh.terminal.tty.split.SplitScreenImpl(this, ratio);
-        return splitScreenImpl.topRegion();
+        return splitScreenImpl;
     }
 
     @Override

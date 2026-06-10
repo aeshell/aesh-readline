@@ -40,6 +40,7 @@ import org.aesh.readline.history.InMemoryHistory;
 import org.aesh.readline.prompt.Prompt;
 import org.aesh.readline.suggestion.CompositeSuggestionProvider;
 import org.aesh.readline.suggestion.SuggestionProvider;
+import org.aesh.terminal.AbstractConnection;
 import org.aesh.terminal.Attributes;
 import org.aesh.terminal.Connection;
 import org.aesh.terminal.Key;
@@ -482,11 +483,22 @@ public class Readline {
                         codePoints -> conn.terminal().writeClipboard(new String(codePoints, 0, codePoints.length)));
             }
 
-            //last, display prompt
+            //last, display prompt (with status lines above if any)
             if (shellIntegrationEnabled)
                 conn.terminal().writePromptStart();
             if (synchronizedOutputSupported)
                 conn.terminal().enableSynchronizedOutput();
+            // Render status lines before the prompt
+            if (conn instanceof AbstractConnection) {
+                java.util.List<String> statusMessages = ((AbstractConnection) conn).getStatusMessages();
+                if (!statusMessages.isEmpty()) {
+                    StringBuilder statusSb = new StringBuilder();
+                    for (String msg : statusMessages) {
+                        statusSb.append(msg).append("\033[K\n");
+                    }
+                    conn.write(statusSb.toString());
+                }
+            }
             consoleBuffer.drawLine();
             consoleBuffer.renderRightPrompt();
             if (synchronizedOutputSupported)
@@ -522,46 +534,66 @@ public class Readline {
         }
 
         /**
-         * Print text above the prompt and redraw.
+         * Print text above the prompt and redraw status lines + prompt.
          * Must be called while holding the Readline.this lock.
+         *
+         * @param text the text to print above, or empty/null for status-only redraw
          */
         private void printAboveImpl(String text) {
-            if (text == null || text.isEmpty()) {
+            java.util.List<String> statusMessages = java.util.Collections.emptyList();
+            if (conn instanceof AbstractConnection) {
+                statusMessages = ((AbstractConnection) conn).getStatusMessages();
+            }
+            boolean hasText = text != null && !text.isEmpty();
+            boolean hasStatus = !statusMessages.isEmpty();
+
+            if (!hasText && !hasStatus) {
                 return;
             }
 
             int width = conn.size().getWidth();
             Buffer buf = consoleBuffer.buffer();
 
-            // Calculate how many terminal rows the prompt + buffer occupies
-            int totalChars = buf.prompt().getLength() + buf.length();
+            // Cursor position within the prompt+buffer area
             int cursorPos = buf.prompt().getLength() + buf.cursor();
             int cursorRow = cursorPos / width;
+
+            // Status line rows (accounting for line wrapping and ANSI codes)
+            int statusRows = 0;
+            for (String msg : statusMessages) {
+                int msgLen = Parser.stripAwayAnsiCodes(msg).length();
+                statusRows += Math.max(1, (msgLen + width - 1) / width);
+            }
 
             // Wrap in synchronized output to prevent flicker
             if (synchronizedOutputSupported)
                 conn.terminal().enableSynchronizedOutput();
 
-            // 1. Move cursor to the beginning of the prompt line
+            // 1. Move cursor to the top of the status+prompt area and erase
             StringBuilder sb = new StringBuilder();
-            // Move up from current cursor row to row 0
-            if (cursorRow > 0) {
-                sb.append("\033[").append(cursorRow).append('A');
+            int rowsUp = cursorRow + statusRows;
+            if (rowsUp > 0) {
+                sb.append("\033[").append(rowsUp).append('A');
             }
-            // Carriage return to column 0
             sb.append('\r');
-            // Erase from cursor to end of screen
             sb.append("\033[J");
 
-            // 2. Print the text
-            sb.append(text);
-            if (!text.endsWith("\n")) {
-                sb.append('\n');
+            // 2. Print the text (if any)
+            if (hasText) {
+                sb.append(text);
+                if (!text.endsWith("\n")) {
+                    sb.append('\n');
+                }
+            }
+
+            // 3. Print status lines
+            for (String msg : statusMessages) {
+                sb.append(msg).append("\033[K\n");
             }
 
             conn.write(sb.toString());
 
-            // 3. Redraw prompt + buffer
+            // 4. Redraw prompt + buffer
             consoleBuffer.clearGhostText();
             consoleBuffer.drawLineForceDisplay();
             consoleBuffer.renderRightPrompt();

@@ -314,11 +314,15 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
         if (timeoutMs == 0) {
             return READ_EXPIRED;
         }
-        // Poll the pipe with short waits
+        // Poll the pipe — use increasing sleep intervals to reduce CPU usage
         long deadline = timeoutMs > 0 ? System.currentTimeMillis() + timeoutMs : Long.MAX_VALUE;
+        int sleepMs = 1;
         while (!closing) {
             try {
-                Thread.sleep(1);
+                Thread.sleep(sleepMs);
+                // Back off to max 50ms for longer waits
+                if (sleepMs < 50)
+                    sleepMs = Math.min(sleepMs * 2, 50);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 return READ_EXPIRED;
