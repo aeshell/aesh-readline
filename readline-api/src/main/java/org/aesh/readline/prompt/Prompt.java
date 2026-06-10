@@ -52,13 +52,25 @@ public class Prompt {
     /**
      * Creates a prompt with the specified text.
      *
-     * @param prompt the prompt text, or null for an empty prompt
+     * @param prompt the prompt text, or null for an empty prompt.
+     *        If the string contains ANSI escape codes, the visible
+     *        length is calculated automatically (stripping ANSI codes)
+     *        and the full string is stored as the ANSI display string.
      */
     public Prompt(String prompt) {
-        if (prompt != null)
-            this.prompt = Parser.toCodePoints(prompt);
-        else
+        if (prompt != null) {
+            String stripped = Parser.stripAwayAnsiCodes(prompt);
+            if (stripped.length() != prompt.length()) {
+                // Contains ANSI codes — store stripped text for length,
+                // full string for display
+                this.prompt = Parser.toCodePoints(stripped);
+                this.ansiString = Parser.toCodePoints(prompt);
+            } else {
+                this.prompt = Parser.toCodePoints(prompt);
+            }
+        } else {
             this.prompt = new int[] {};
+        }
     }
 
     /**
