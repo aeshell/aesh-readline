@@ -95,6 +95,30 @@ Troubleshooting: if you still see a stack guard warning mentioning `aesh-console
 
 ## Getting Started
 
+### Maven Dependency
+
+Add the following to your `pom.xml`:
+
+```xml
+<dependency>
+    <groupId>org.aesh</groupId>
+    <artifactId>readline</artifactId>
+    <version>3.12</version>
+</dependency>
+```
+
+This pulls in `terminal-api` and `readline-api` transitively. For local terminal support, also add:
+
+```xml
+<dependency>
+    <groupId>org.aesh</groupId>
+    <artifactId>terminal-tty</artifactId>
+    <version>3.12</version>
+</dependency>
+```
+
+### Simple Example
+
 Here's a simple example to get you started:
 
 ```java
