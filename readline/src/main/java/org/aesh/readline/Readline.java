@@ -306,6 +306,7 @@ public class Readline {
             conn.setStdinHandler(prevReadHandler);
             conn.setSizeHandler(prevSizeHandler);
             conn.setSignalHandler(prevSignalHandler);
+            conn.setPrintAboveHandler(null);
             decoder.setInputPeeker(null);
             synchronized (Readline.this) {
                 // Guard against closed connection (e.g. EOF/Ctrl+D closes the
@@ -502,6 +503,14 @@ public class Readline {
                 decoder.setInputPeeker(null);
             }
 
+            // Enable printAbove — register handler that erases the prompt,
+            // prints the text, and redraws the prompt + buffer.
+            conn.setPrintAboveHandler(text -> {
+                synchronized (Readline.this) {
+                    printAboveImpl(text);
+                }
+            });
+
             //last process input, the readInput() can read/finish in one go
             //since EventDecoder might have queued up data
             conn.setStdinHandler(data -> {
@@ -510,6 +519,55 @@ public class Readline {
                 }
                 readInput();
             });
+        }
+
+        /**
+         * Print text above the prompt and redraw.
+         * Must be called while holding the Readline.this lock.
+         */
+        private void printAboveImpl(String text) {
+            if (text == null || text.isEmpty()) {
+                return;
+            }
+
+            int width = conn.size().getWidth();
+            Buffer buf = consoleBuffer.buffer();
+
+            // Calculate how many terminal rows the prompt + buffer occupies
+            int totalChars = buf.prompt().getLength() + buf.length();
+            int cursorPos = buf.prompt().getLength() + buf.cursor();
+            int cursorRow = cursorPos / width;
+
+            // Wrap in synchronized output to prevent flicker
+            if (synchronizedOutputSupported)
+                conn.terminal().enableSynchronizedOutput();
+
+            // 1. Move cursor to the beginning of the prompt line
+            StringBuilder sb = new StringBuilder();
+            // Move up from current cursor row to row 0
+            if (cursorRow > 0) {
+                sb.append("\033[").append(cursorRow).append('A');
+            }
+            // Carriage return to column 0
+            sb.append('\r');
+            // Erase from cursor to end of screen
+            sb.append("\033[J");
+
+            // 2. Print the text
+            sb.append(text);
+            if (!text.endsWith("\n")) {
+                sb.append('\n');
+            }
+
+            conn.write(sb.toString());
+
+            // 3. Redraw prompt + buffer
+            consoleBuffer.clearGhostText();
+            consoleBuffer.drawLineForceDisplay();
+            consoleBuffer.renderRightPrompt();
+
+            if (synchronizedOutputSupported)
+                conn.terminal().disableSynchronizedOutput();
         }
 
         private void resize(Size size) {

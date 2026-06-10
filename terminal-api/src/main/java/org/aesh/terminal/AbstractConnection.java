@@ -139,6 +139,19 @@ public abstract class AbstractConnection implements Connection {
         return eventDecoder.getFocusHandler();
     }
 
+    /** Handler for printAbove requests. */
+    private volatile Consumer<String> printAboveHandler;
+
+    @Override
+    public void setPrintAboveHandler(Consumer<String> handler) {
+        this.printAboveHandler = handler;
+    }
+
+    @Override
+    public Consumer<String> printAboveHandler() {
+        return printAboveHandler;
+    }
+
     @Override
     public boolean reading() {
         return reading;

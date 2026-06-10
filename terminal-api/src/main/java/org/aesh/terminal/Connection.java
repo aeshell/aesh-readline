@@ -257,6 +257,52 @@ public interface Connection extends Appendable, AutoCloseable {
         return null;
     }
 
+    // ==================== Print Above ====================
+
+    /**
+     * Print text above the current prompt without disrupting the user's input.
+     * <p>
+     * When a readline session is active, the prompt and buffer are erased,
+     * the text is printed, and the prompt and buffer are redrawn with the
+     * cursor restored to its original position. This is thread-safe and can
+     * be called from any thread.
+     * <p>
+     * When no readline session is active, the text is simply written to the
+     * terminal output followed by a newline.
+     *
+     * @param text the text to print above the prompt
+     */
+    default void printAbove(String text) {
+        Consumer<String> handler = printAboveHandler();
+        if (handler != null) {
+            handler.accept(text);
+        } else {
+            // No readline active — just write directly
+            write(text + "\n");
+        }
+    }
+
+    /**
+     * Set the handler for {@link #printAbove(String)} calls.
+     * <p>
+     * This is typically set by the readline implementation during an active
+     * readline session, and cleared when the session ends.
+     *
+     * @param handler the handler, or null to disable
+     */
+    default void setPrintAboveHandler(Consumer<String> handler) {
+        // Default no-op
+    }
+
+    /**
+     * Get the current printAbove handler.
+     *
+     * @return the handler, or null if not set
+     */
+    default Consumer<String> printAboveHandler() {
+        return null;
+    }
+
     // ==================== Lifecycle ====================
 
     /**
