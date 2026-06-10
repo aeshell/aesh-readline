@@ -425,6 +425,11 @@ public class TerminalConnection extends AbstractConnection {
 
     @Override
     public Size size() {
+        // When split screen is active, return the bottom region size
+        // so readline constrains itself to the bottom region bounds
+        if (splitScreenImpl != null && !splitScreenImpl.isSuspended()) {
+            return splitScreenImpl.bottomRegion().size();
+        }
         return terminal.getSize();
     }
 
@@ -447,6 +452,44 @@ public class TerminalConnection extends AbstractConnection {
         return terminal.peek(timeoutMs);
     }
 
+    // ==================== Split Screen ====================
+
+    private volatile org.aesh.terminal.tty.split.SplitScreenImpl splitScreenImpl;
+    private volatile org.aesh.terminal.tty.ScreenRegion currentRegion;
+
+    @Override
+    public org.aesh.terminal.tty.ScreenRegion splitScreen(double ratio) {
+        if (splitScreenImpl != null) {
+            throw new IllegalStateException("Screen is already split");
+        }
+        Size termSize = size();
+        int availableRows = termSize.getHeight() - 1; // 1 for separator
+        int topRows = (int) (availableRows * ratio);
+        int bottomRows = availableRows - topRows;
+        if (topRows < SplitScreen.MIN_REGION_HEIGHT || bottomRows < SplitScreen.MIN_REGION_HEIGHT) {
+            throw new IllegalArgumentException(
+                    "Terminal too small for split: " + termSize.getHeight() + " rows, need at least "
+                            + (SplitScreen.MIN_REGION_HEIGHT * 2 + 1));
+        }
+        splitScreenImpl = new org.aesh.terminal.tty.split.SplitScreenImpl(this, ratio);
+        return splitScreenImpl.topRegion();
+    }
+
+    @Override
+    public org.aesh.terminal.tty.SplitScreen splitScreen() {
+        return splitScreenImpl;
+    }
+
+    @Override
+    public void setCurrentRegion(org.aesh.terminal.tty.ScreenRegion region) {
+        this.currentRegion = region;
+    }
+
+    @Override
+    public org.aesh.terminal.tty.ScreenRegion currentRegion() {
+        return currentRegion;
+    }
+
     @Override
     public void close() {
         if (closed) {
@@ -454,6 +497,15 @@ public class TerminalConnection extends AbstractConnection {
         }
         closed = true;
         reading = false;
+        // Close split screen if active
+        if (splitScreenImpl != null) {
+            try {
+                splitScreenImpl.close();
+            } catch (Exception e) {
+                LOGGER.log(Level.FINE, "Failed to close split screen", e);
+            }
+            splitScreenImpl = null;
+        }
         try {
             //call closeHandler before we close the terminal stream
             if (closeHandler() != null)

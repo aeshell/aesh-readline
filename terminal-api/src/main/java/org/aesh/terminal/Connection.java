@@ -323,6 +323,64 @@ public interface Connection extends Appendable, AutoCloseable {
         throw new UnsupportedOperationException("Status lines not supported");
     }
 
+    // ==================== Split Screen ====================
+
+    /**
+     * Split the terminal screen into two independently scrolling regions.
+     * <p>
+     * The top region (created by the split) occupies the specified fraction
+     * of the screen. The bottom region (the original/main area) is where
+     * readline continues to operate.
+     * <p>
+     * The returned {@link org.aesh.terminal.tty.ScreenRegion} is the new top region. Write to it
+     * to display output (logs, monitoring data, etc.) that scrolls
+     * independently from the readline prompt.
+     * <p>
+     * <b>Experimental API</b> — this feature is under active development
+     * and the API may change.
+     *
+     * @param ratio fraction of the screen for the top region (0.0-1.0),
+     *        e.g. 0.67 for top 2/3
+     * @return the new top ScreenRegion
+     * @throws IllegalArgumentException if ratio results in regions smaller
+     *         than {@link org.aesh.terminal.tty.SplitScreen#MIN_REGION_HEIGHT}
+     * @throws UnsupportedOperationException if split screen is not supported
+     */
+    default org.aesh.terminal.tty.ScreenRegion splitScreen(double ratio) {
+        throw new UnsupportedOperationException("Split screen not supported");
+    }
+
+    /**
+     * Returns the current split screen manager, or null if not split.
+     *
+     * @return the SplitScreen, or null
+     */
+    default org.aesh.terminal.tty.SplitScreen splitScreen() {
+        return null;
+    }
+
+    /**
+     * Set the current/active screen region for output routing.
+     * <p>
+     * When set, {@link #write(String)} routes output to this region.
+     * When null or when no split is active, write goes to the terminal
+     * directly (default behavior).
+     *
+     * @param region the region to route output to, or null for default
+     */
+    default void setCurrentRegion(org.aesh.terminal.tty.ScreenRegion region) {
+        // Default no-op
+    }
+
+    /**
+     * Get the current/active screen region.
+     *
+     * @return the current region, or null if not split
+     */
+    default org.aesh.terminal.tty.ScreenRegion currentRegion() {
+        return null;
+    }
+
     // ==================== Lifecycle ====================
 
     /**
