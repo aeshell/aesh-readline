@@ -28,19 +28,29 @@ For examples, have a look here: [Aesh Examples](https://github.com/aeshell/aesh-
 ## Features
 
 ### Core Readline
-- Line editing
-- History (search, persistence)
+- Line editing with undo/redo
+- History (search, persistence, [fuzzy search](https://aeshell.github.io/docs/readline/fuzzy-history-search/) via Ctrl+R, [ignore patterns](https://aeshell.github.io/docs/readline/history/))
 - Completion
-- Masking
-- Undo and Redo
+- Masking (password input)
 - Paste buffer
 - Emacs and Vi editing mode
-- Supports POSIX OS's and Windows
-- Easy to configure (history file & buffer size, edit mode, streams, possible to override terminal implementations, etc)
-- Support standard out and standard error
-- Redirect
-- Alias
-- Pipeline
+- [Right prompt](https://aeshell.github.io/docs/readline/right-prompt/) (right-aligned, auto-hiding)
+- [Ghost text suggestions](https://aeshell.github.io/docs/readline/readline-api/) (inline history suggestions)
+- Supports POSIX and Windows
+- Easy to configure (history file & buffer size, edit mode, streams, etc)
+- Redirect, Alias, Pipeline
+
+### Async Output
+- **[Print Above](https://aeshell.github.io/docs/readline/print-above/)** - Print text above the prompt without disrupting input (thread-safe)
+- **[Status Lines](https://aeshell.github.io/docs/readline/status-lines/)** - Persistent status display between output and prompt
+- **[Split Screen](https://aeshell.github.io/docs/readline/split-screen/)** - Independent scrolling regions (experimental)
+
+### Terminal Features
+- **[Focus Tracking](https://aeshell.github.io/docs/readline/focus-tracking/)** - Detect terminal focus gained/lost
+- **[Mouse Tracking](https://aeshell.github.io/docs/readline/mouse-tracking/)** - Mouse events with SGR encoding
+- **[Synchronized Output](https://aeshell.github.io/docs/readline/synchronized-output/)** - Tear-free rendering (Mode 2026)
+- **[Non-blocking Input](https://aeshell.github.io/docs/readline/posix-native-access/)** - Poll-based read with escape timeout disambiguation (Java 22+)
+- **[Terminal Provider SPI](https://aeshell.github.io/docs/readline/terminal-provider/)** - Pluggable terminal implementations
 
 ### Terminal Colors and Styling
 - **Color Detection** - Automatically detect terminal theme (light/dark) and color depth
@@ -90,7 +100,7 @@ Here's a simple example to get you started:
 ```java
 import org.aesh.readline.Readline;
 import org.aesh.readline.ReadlineBuilder;
-import org.aesh.tty.terminal.TerminalConnection;
+import org.aesh.terminal.tty.TerminalConnection;
 
 import java.io.IOException;
 
