@@ -78,7 +78,9 @@ public class SplitScreenImpl implements SplitScreen {
     }
 
     private void calculateLayout() {
-        Size termSize = connection.size();
+        // Use getFullTerminalSize() to get the actual terminal size,
+        // not the region-constrained size from connection.size()
+        Size termSize = getFullTerminalSize();
         this.termWidth = termSize.getWidth();
         this.termHeight = termSize.getHeight();
 
@@ -209,15 +211,19 @@ public class SplitScreenImpl implements SplitScreen {
 
         calculateLayout();
 
-        StringBuilder sb = new StringBuilder();
-        sb.append("\033[r"); // reset scroll region first
-        sb.append("\033[2J"); // clear screen
-        appendSeparator(sb);
-        // Set scroll region to new bottom area
-        sb.append("\033[").append(bottomStartRow).append(";").append(termHeight).append("r");
-        connection.write(sb.toString());
+        synchronized (renderLock) {
+            StringBuilder sb = new StringBuilder();
+            sb.append("\033[r"); // reset scroll region first
+            sb.append("\033[2J"); // clear screen
+            appendSeparator(sb);
+            // Set scroll region to new bottom area
+            sb.append("\033[").append(bottomStartRow).append(";").append(termHeight).append("r");
+            // Position cursor in bottom region
+            sb.append("\033[").append(bottomStartRow).append(";1H");
+            connection.write(sb.toString());
 
-        redrawTopRegion();
+            redrawTopRegion();
+        }
 
         // Notify resize handlers
         if (topRegion.resizeHandler != null) {
@@ -299,6 +305,18 @@ public class SplitScreenImpl implements SplitScreen {
 
     Connection getConnection() {
         return connection;
+    }
+
+    /**
+     * Get the full terminal size (not constrained by split regions).
+     * When split is active, connection.size() returns the bottom region size.
+     * We need the actual terminal size for layout calculations.
+     */
+    private Size getFullTerminalSize() {
+        if (connection instanceof org.aesh.terminal.tty.TerminalConnection) {
+            return ((org.aesh.terminal.tty.TerminalConnection) connection).getTerminal().getSize();
+        }
+        return connection.size();
     }
 
     int getBottomStartRow() {

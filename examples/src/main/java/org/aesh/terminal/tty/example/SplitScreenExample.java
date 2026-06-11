@@ -27,8 +27,12 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.aesh.readline.Readline;
 import org.aesh.readline.ReadlineBuilder;
+import org.aesh.readline.completion.Completion;
 import org.aesh.terminal.tty.ScreenRegion;
 import org.aesh.terminal.tty.SplitScreen;
 import org.aesh.terminal.tty.TerminalConnection;
@@ -82,14 +86,27 @@ public class SplitScreenExample {
         }, 1, 1, TimeUnit.SECONDS);
 
         Readline readline = ReadlineBuilder.builder().enableHistory(true).build();
-        read(connection, readline, logRegion);
+        read(connection, readline, logRegion, getCompletions());
         connection.openBlocking();
 
         scheduler.shutdownNow();
     }
 
+    private static List<Completion> getCompletions() {
+        List<Completion> completions = new ArrayList<>();
+        completions.add(co -> {
+            String buf = co.getBuffer();
+            for (String cmd : new String[]{"log", "clear", "above", "exit", "help"}) {
+                if (cmd.startsWith(buf)) {
+                    co.addCompletionCandidate(cmd);
+                }
+            }
+        });
+        return completions;
+    }
+
     private static void read(TerminalConnection connection, Readline readline,
-            ScreenRegion logRegion) {
+            ScreenRegion logRegion, List<Completion> completions) {
         if (!running) return;
         readline.readline(connection, "$ ", line -> {
             if (line == null || "exit".equals(line)) {
@@ -101,11 +118,17 @@ public class SplitScreenExample {
                 logRegion.writeln("[USER] " + line.substring(4));
             } else if ("clear".equals(line)) {
                 logRegion.clear();
+            } else if (line.startsWith("above ")) {
+                // Test printAbove routing — should go to top region
+                connection.printAbove("[ABOVE] " + line.substring(6));
+            } else if ("help".equals(line)) {
+                logRegion.writeln("Commands: log <msg>, clear, above <msg>, exit, help");
+                logRegion.writeln("Try tab completion and Ctrl+R fuzzy search");
             } else if (!line.isEmpty()) {
                 logRegion.writeln("[CMD] Unknown: " + line);
             }
 
-            read(connection, readline, logRegion);
-        });
+            read(connection, readline, logRegion, completions);
+        }, completions);
     }
 }

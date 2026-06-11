@@ -171,6 +171,10 @@ public class TerminalConnection extends AbstractConnection {
         });
         //window resize signal
         prevWincHandler = this.terminal.handle(Signal.WINCH, s -> {
+            // Resize split screen first (recalculates layout, redraws separator)
+            if (splitScreenImpl != null && !splitScreenImpl.isClosed()) {
+                splitScreenImpl.handleResize(terminal.getSize());
+            }
             if (sizeHandler() != null) {
                 sizeHandler().accept(size());
             }
@@ -415,6 +419,24 @@ public class TerminalConnection extends AbstractConnection {
             handler.accept(org.aesh.terminal.utils.Parser.toCodePoints(s));
         }
         return this;
+    }
+
+    @Override
+    public void printAbove(String text) {
+        // When split screen is active, route to top region
+        if (splitScreenImpl != null && !splitScreenImpl.isClosed() && !splitScreenImpl.isSuspended()) {
+            if (text != null && !text.isEmpty()) {
+                splitScreenImpl.topRegion().writeln(text);
+            }
+            return;
+        }
+        // Default behavior: use printAbove handler or write directly
+        java.util.function.Consumer<String> handler = printAboveHandler();
+        if (handler != null) {
+            handler.accept(text);
+        } else {
+            write(text + "\n");
+        }
     }
 
     private void write(byte[] data) {
