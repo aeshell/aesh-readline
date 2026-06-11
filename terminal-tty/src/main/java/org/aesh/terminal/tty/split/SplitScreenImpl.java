@@ -21,6 +21,7 @@ package org.aesh.terminal.tty.split;
 
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.aesh.terminal.Connection;
@@ -50,7 +51,9 @@ public class SplitScreenImpl implements SplitScreen {
     private double ratio;
     private String separator = "─";
     private boolean suspended = false;
+    private boolean autoSuspended = false;
     private boolean closed = false;
+    private Thread shutdownHook;
 
     // Layout positions (1-based row numbers)
     private int topStartRow;
@@ -75,6 +78,17 @@ public class SplitScreenImpl implements SplitScreen {
 
         calculateLayout();
         initialRender();
+
+        // Shutdown hook to reset terminal state on abnormal exit
+        shutdownHook = new Thread(() -> {
+            if (!closed) {
+                try {
+                    connection.write("\033[r\033[2J\033[1;1H");
+                } catch (Exception ignored) {
+                }
+            }
+        }, "SplitScreen-shutdown");
+        Runtime.getRuntime().addShutdownHook(shutdownHook);
     }
 
     private void calculateLayout() {
@@ -202,11 +216,32 @@ public class SplitScreenImpl implements SplitScreen {
 
     /**
      * Handle terminal resize.
-     * TODO: validate that the new terminal size can still fit both regions
-     * with MIN_REGION_HEIGHT. If too small, consider suspending the split.
      */
     public void handleResize(Size newSize) {
-        if (closed || suspended)
+        if (closed)
+            return;
+
+        // Check if terminal is too small for split
+        int minRequired = MIN_REGION_HEIGHT * 2 + 1;
+        Size fullSize = getFullTerminalSize();
+        if (fullSize.getHeight() < minRequired) {
+            if (!suspended) {
+                LOGGER.log(Level.FINE, "Terminal too small for split ({0} rows, need {1}), auto-suspending",
+                        new Object[] { fullSize.getHeight(), minRequired });
+                autoSuspended = true;
+                suspend();
+            }
+            return;
+        }
+
+        // Terminal is large enough — auto-resume if previously auto-suspended
+        if (autoSuspended && suspended) {
+            autoSuspended = false;
+            suspended = false;
+            // Fall through to recalculate and redraw
+        }
+
+        if (suspended)
             return;
 
         calculateLayout();
@@ -294,10 +329,25 @@ public class SplitScreenImpl implements SplitScreen {
 
     @Override
     public void close() {
-        if (!closed) {
-            closed = true;
-            // Reset scroll region, clear screen
-            connection.write("\033[r\033[2J\033[1;1H");
+        synchronized (renderLock) {
+            if (!closed) {
+                closed = true;
+                // Reset scroll region, clear screen
+                try {
+                    connection.write("\033[r\033[2J\033[1;1H");
+                } catch (Exception e) {
+                    LOGGER.log(Level.FINE, "Failed to reset terminal on close", e);
+                }
+                // Remove shutdown hook (no longer needed)
+                if (shutdownHook != null) {
+                    try {
+                        Runtime.getRuntime().removeShutdownHook(shutdownHook);
+                    } catch (IllegalStateException ignored) {
+                        // JVM is already shutting down
+                    }
+                    shutdownHook = null;
+                }
+            }
         }
     }
 
