@@ -112,54 +112,68 @@ public final class WinConsoleNative {
     private static final MethodHandle GET_NUMBER_OF_CONSOLE_INPUT_EVENTS;
 
     static {
-        Linker linker = Linker.nativeLinker();
-        SymbolLookup kernel32 = SymbolLookup.libraryLookup("kernel32", Arena.global());
+        if (System.getProperty("os.name", "").toLowerCase().contains("win")) {
+            Linker linker = Linker.nativeLinker();
+            SymbolLookup kernel32 = SymbolLookup.libraryLookup("kernel32", Arena.global());
 
-        GET_STD_HANDLE = linker.downcallHandle(
-                kernel32.find("GetStdHandle").orElseThrow(),
-                FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
+            GET_STD_HANDLE = linker.downcallHandle(
+                    kernel32.find("GetStdHandle").orElseThrow(),
+                    FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
 
-        GET_CONSOLE_MODE = linker.downcallHandle(
-                kernel32.find("GetConsoleMode").orElseThrow(),
-                FunctionDescriptor.of(ValueLayout.JAVA_INT,
-                        ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+            GET_CONSOLE_MODE = linker.downcallHandle(
+                    kernel32.find("GetConsoleMode").orElseThrow(),
+                    FunctionDescriptor.of(ValueLayout.JAVA_INT,
+                            ValueLayout.ADDRESS, ValueLayout.ADDRESS));
 
-        SET_CONSOLE_MODE = linker.downcallHandle(
-                kernel32.find("SetConsoleMode").orElseThrow(),
-                FunctionDescriptor.of(ValueLayout.JAVA_INT,
-                        ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
+            SET_CONSOLE_MODE = linker.downcallHandle(
+                    kernel32.find("SetConsoleMode").orElseThrow(),
+                    FunctionDescriptor.of(ValueLayout.JAVA_INT,
+                            ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
 
-        GET_CONSOLE_OUTPUT_CP = linker.downcallHandle(
-                kernel32.find("GetConsoleOutputCP").orElseThrow(),
-                FunctionDescriptor.of(ValueLayout.JAVA_INT));
+            GET_CONSOLE_OUTPUT_CP = linker.downcallHandle(
+                    kernel32.find("GetConsoleOutputCP").orElseThrow(),
+                    FunctionDescriptor.of(ValueLayout.JAVA_INT));
 
-        GET_CONSOLE_SCREEN_BUFFER_INFO = linker.downcallHandle(
-                kernel32.find("GetConsoleScreenBufferInfo").orElseThrow(),
-                FunctionDescriptor.of(ValueLayout.JAVA_INT,
-                        ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+            GET_CONSOLE_SCREEN_BUFFER_INFO = linker.downcallHandle(
+                    kernel32.find("GetConsoleScreenBufferInfo").orElseThrow(),
+                    FunctionDescriptor.of(ValueLayout.JAVA_INT,
+                            ValueLayout.ADDRESS, ValueLayout.ADDRESS));
 
-        READ_CONSOLE_INPUT_W = linker.downcallHandle(
-                kernel32.find("ReadConsoleInputW").orElseThrow(),
-                FunctionDescriptor.of(ValueLayout.JAVA_INT,
-                        ValueLayout.ADDRESS, ValueLayout.ADDRESS,
-                        ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
+            READ_CONSOLE_INPUT_W = linker.downcallHandle(
+                    kernel32.find("ReadConsoleInputW").orElseThrow(),
+                    FunctionDescriptor.of(ValueLayout.JAVA_INT,
+                            ValueLayout.ADDRESS, ValueLayout.ADDRESS,
+                            ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
 
-        WRITE_CONSOLE_W = linker.downcallHandle(
-                kernel32.find("WriteConsoleW").orElseThrow(),
-                FunctionDescriptor.of(ValueLayout.JAVA_INT,
-                        ValueLayout.ADDRESS, ValueLayout.ADDRESS,
-                        ValueLayout.JAVA_INT, ValueLayout.ADDRESS,
-                        ValueLayout.ADDRESS));
+            WRITE_CONSOLE_W = linker.downcallHandle(
+                    kernel32.find("WriteConsoleW").orElseThrow(),
+                    FunctionDescriptor.of(ValueLayout.JAVA_INT,
+                            ValueLayout.ADDRESS, ValueLayout.ADDRESS,
+                            ValueLayout.JAVA_INT, ValueLayout.ADDRESS,
+                            ValueLayout.ADDRESS));
 
-        WAIT_FOR_SINGLE_OBJECT = linker.downcallHandle(
-                kernel32.find("WaitForSingleObject").orElseThrow(),
-                FunctionDescriptor.of(ValueLayout.JAVA_INT,
-                        ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
+            WAIT_FOR_SINGLE_OBJECT = linker.downcallHandle(
+                    kernel32.find("WaitForSingleObject").orElseThrow(),
+                    FunctionDescriptor.of(ValueLayout.JAVA_INT,
+                            ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
 
-        GET_NUMBER_OF_CONSOLE_INPUT_EVENTS = linker.downcallHandle(
-                kernel32.find("GetNumberOfConsoleInputEvents").orElseThrow(),
-                FunctionDescriptor.of(ValueLayout.JAVA_INT,
-                        ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+            GET_NUMBER_OF_CONSOLE_INPUT_EVENTS = linker.downcallHandle(
+                    kernel32.find("GetNumberOfConsoleInputEvents").orElseThrow(),
+                    FunctionDescriptor.of(ValueLayout.JAVA_INT,
+                            ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+        } else {
+            // Non-Windows: leave all handles null.
+            // These methods are never called on non-Windows platforms.
+            GET_STD_HANDLE = null;
+            GET_CONSOLE_MODE = null;
+            SET_CONSOLE_MODE = null;
+            GET_CONSOLE_OUTPUT_CP = null;
+            GET_CONSOLE_SCREEN_BUFFER_INFO = null;
+            READ_CONSOLE_INPUT_W = null;
+            WRITE_CONSOLE_W = null;
+            WAIT_FOR_SINGLE_OBJECT = null;
+            GET_NUMBER_OF_CONSOLE_INPUT_EVENTS = null;
+        }
     }
 
     public static long getStdHandle(int nStdHandle) {

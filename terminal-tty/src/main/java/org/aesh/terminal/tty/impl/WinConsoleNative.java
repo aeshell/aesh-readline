@@ -167,7 +167,9 @@ public final class WinConsoleNative {
     }
 
     static {
-        loadLibrary();
+        if (System.getProperty("os.name", "").toLowerCase().contains("win")) {
+            loadLibrary();
+        }
     }
 
     private static void loadLibrary() {

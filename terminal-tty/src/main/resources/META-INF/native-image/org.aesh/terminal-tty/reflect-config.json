@@ -1,6 +1,9 @@
 [
   {
     "name": "sun.misc.Signal",
+    "condition": {
+      "typeReachable": "org.aesh.terminal.tty.utils.Signals"
+    },
     "methods": [
       { "name": "<init>", "parameterTypes": ["java.lang.String"] },
       { "name": "handle", "parameterTypes": ["sun.misc.Signal", "sun.misc.SignalHandler"] }
@@ -8,6 +11,9 @@
   },
   {
     "name": "sun.misc.SignalHandler",
+    "condition": {
+      "typeReachable": "org.aesh.terminal.tty.utils.Signals"
+    },
     "fields": [
       { "name": "SIG_DFL" },
       { "name": "SIG_IGN" }
@@ -18,8 +24,29 @@
   },
   {
     "name": "java.io.Console",
+    "condition": {
+      "typeReachable": "org.aesh.terminal.tty.TtyDetect"
+    },
     "methods": [
       { "name": "isTerminal", "parameterTypes": [] }
+    ]
+  },
+  {
+    "name": "org.aesh.terminal.tty.impl.FfmPty",
+    "condition": {
+      "typeReachable": "org.aesh.terminal.tty.provider.FfmTerminalProvider"
+    },
+    "methods": [
+      { "name": "current", "parameterTypes": [] }
+    ]
+  },
+  {
+    "name": "org.aesh.terminal.tty.impl.LibC",
+    "condition": {
+      "typeReachable": "org.aesh.terminal.tty.TtyDetect"
+    },
+    "methods": [
+      { "name": "isatty", "parameterTypes": ["int"] }
     ]
   }
 ]
