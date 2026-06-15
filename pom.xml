@@ -43,6 +43,7 @@
     </scm>
 
     <modules>
+        <module>bom</module>
         <module>terminal-detect</module>
         <module>terminal-api</module>
         <module>readline-api</module>

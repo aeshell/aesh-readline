@@ -97,7 +97,38 @@ Troubleshooting: if you still see a stack guard warning mentioning `aesh-console
 
 ### Maven Dependency
 
-Add the following to your `pom.xml`:
+Use the BOM (Bill of Materials) to manage all module versions consistently:
+
+```xml
+<dependencyManagement>
+    <dependencies>
+        <dependency>
+            <groupId>org.aesh</groupId>
+            <artifactId>aesh-readline-bom</artifactId>
+            <version>3.14</version>
+            <type>pom</type>
+            <scope>import</scope>
+        </dependency>
+    </dependencies>
+</dependencyManagement>
+```
+
+Then add the modules you need without specifying versions:
+
+```xml
+<dependencies>
+    <dependency>
+        <groupId>org.aesh</groupId>
+        <artifactId>readline</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>org.aesh</groupId>
+        <artifactId>terminal-tty</artifactId>
+    </dependency>
+</dependencies>
+```
+
+Or without the BOM, add dependencies directly:
 
 ```xml
 <dependency>
@@ -105,17 +136,14 @@ Add the following to your `pom.xml`:
     <artifactId>readline</artifactId>
     <version>3.14</version>
 </dependency>
-```
-
-This pulls in `terminal-api` and `readline-api` transitively. For local terminal support, also add:
-
-```xml
 <dependency>
     <groupId>org.aesh</groupId>
     <artifactId>terminal-tty</artifactId>
     <version>3.14</version>
 </dependency>
 ```
+
+`readline` pulls in `terminal-api` and `readline-api` transitively. `terminal-tty` provides local terminal support.
 
 ### Simple Example
 
