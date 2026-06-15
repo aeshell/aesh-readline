@@ -21,6 +21,7 @@ package org.aesh.terminal.tty;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assume.assumeFalse;
 
 import org.junit.Test;
 
@@ -33,6 +34,10 @@ import org.junit.Test;
  * verified when running interactively.
  */
 public class TtyDetectTest {
+
+    private static boolean isNativeImage() {
+        return System.getProperty("org.graalvm.nativeimage.imagecode") != null;
+    }
 
     @Test
     public void testIsTtyDoesNotThrow() {
@@ -51,6 +56,7 @@ public class TtyDetectTest {
 
     @Test
     public void testInvalidFdReturnsFalse() {
+        assumeFalse("FFM isatty() behaves differently in native-image", isNativeImage());
         // Invalid file descriptor should return false, not throw
         assertFalse(TtyDetect.isTty(-1));
         assertFalse(TtyDetect.isTty(999));
@@ -58,6 +64,7 @@ public class TtyDetectTest {
 
     @Test
     public void testStdinNotTtyInSurefire() {
+        assumeFalse("Native test binary runs in terminal, not surefire", isNativeImage());
         // When running under Maven surefire (forked process),
         // stdin is piped, so it should not be a TTY
         if (System.getenv("MAVEN_CMD_LINE_ARGS") != null

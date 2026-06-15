@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assume.assumeFalse;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -19,11 +20,16 @@ import org.junit.Test;
  */
 public class TerminalProviderTest {
 
+    private static boolean isNativeImage() {
+        return System.getProperty("org.graalvm.nativeimage.imagecode") != null;
+    }
+
     /**
      * ServiceLoader should discover all 4 built-in providers.
      */
     @Test
     public void testServiceLoaderFindsProviders() {
+        assumeFalse("ServiceLoader discovery may differ in native-image", isNativeImage());
         List<TerminalProvider> providers = new ArrayList<>();
         for (TerminalProvider p : ServiceLoader.load(TerminalProvider.class)) {
             providers.add(p);
@@ -38,6 +44,7 @@ public class TerminalProviderTest {
      */
     @Test
     public void testProviderNames() {
+        assumeFalse("ServiceLoader discovery may differ in native-image", isNativeImage());
         for (TerminalProvider p : ServiceLoader.load(TerminalProvider.class)) {
             assertNotNull("Provider name should not be null", p.name());
             assertFalse("Provider name should not be empty", p.name().isEmpty());
@@ -49,6 +56,7 @@ public class TerminalProviderTest {
      */
     @Test
     public void testProviderPriorities() {
+        assumeFalse("ServiceLoader discovery may differ in native-image", isNativeImage());
         for (TerminalProvider p : ServiceLoader.load(TerminalProvider.class)) {
             assertTrue("Priority should be positive for " + p.name(),
                     p.priority() > 0);
@@ -61,6 +69,7 @@ public class TerminalProviderTest {
      */
     @Test
     public void testSupportedProvidersOnLinux() {
+        assumeFalse("ServiceLoader discovery may differ in native-image", isNativeImage());
         if (OSUtils.IS_WINDOWS || OSUtils.IS_CYGWIN) {
             return; // skip on Windows
         }
@@ -93,6 +102,7 @@ public class TerminalProviderTest {
      */
     @Test
     public void testPriorityOrdering() {
+        assumeFalse("ServiceLoader discovery may differ in native-image", isNativeImage());
         if (OSUtils.IS_WINDOWS) {
             return; // skip on Windows
         }
