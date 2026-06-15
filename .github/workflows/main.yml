@@ -33,7 +33,28 @@ jobs:
         distribution: 'graalvm'
         cache: maven
         native-image-job-reports: true
+    - name: Test terminal-api with GraalVM JDK
+      run: mvn clean test -pl terminal-api -am -Dformat.skip=true
     - name: Build and native test terminal-tty
+      run: mvn clean verify -pl terminal-tty -am -Dformat.skip=true
+
+  native-test-windows:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v6
+    - name: Set up GraalVM
+      uses: graalvm/setup-graalvm@v1
+      with:
+        java-version: '25'
+        distribution: 'graalvm'
+        cache: maven
+        native-image-job-reports: true
+    - name: Test terminal-api with GraalVM JDK
+      shell: bash
+      run: mvn clean test -pl terminal-api -am -Dformat.skip=true
+    - name: Build and native test terminal-tty
+      shell: bash
       run: mvn clean verify -pl terminal-tty -am -Dformat.skip=true
 
   windows-test:
