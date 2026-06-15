@@ -79,6 +79,15 @@ public class FfmPtyTest {
         }
     }
 
+    private static boolean hasExecPtyTty() {
+        try {
+            ExecPty.current().close();
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     private static Pty createFfmPty() throws Exception {
         Class<?> clazz = Class.forName("org.aesh.terminal.tty.impl.FfmPty");
         return (Pty) clazz.getMethod("current").invoke(null);
@@ -157,6 +166,7 @@ public class FfmPtyTest {
     @Test
     public void testAttributesMatchExecPty() throws Exception {
         assumeTrue("No TTY available", hasTty());
+        assumeTrue("ExecPty TTY not available", hasExecPtyTty());
         Pty ffmPty = null;
         Pty execPty = null;
         try {
@@ -222,6 +232,7 @@ public class FfmPtyTest {
     @Test
     public void testSizeMatchesExecPty() throws Exception {
         assumeTrue("No TTY available", hasTty());
+        assumeTrue("ExecPty TTY not available", hasExecPtyTty());
         Pty ffmPty = null;
         Pty execPty = null;
         try {
