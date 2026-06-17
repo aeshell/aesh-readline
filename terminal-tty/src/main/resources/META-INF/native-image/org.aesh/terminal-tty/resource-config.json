@@ -1,7 +1,8 @@
 {
   "resources": {
     "includes": [
-      { "pattern": "native/.*" }
+      { "pattern": "native/.*" },
+      { "pattern": "META-INF/services/.*" }
     ]
   }
 }

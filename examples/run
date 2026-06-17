@@ -58,4 +58,11 @@ readline_jar="$(resolve_jar "${ROOT_DIR}/readline/target/readline-*.jar")"
 readline_api_jar="$(resolve_jar "${ROOT_DIR}/readline-api/target/readline-api-*.jar")"
 classpath="${CLASSES_DIR}:${tty_jar}:${api_jar}:${detect_jar}:${readline_jar}:${readline_api_jar}"
 
-java -cp "${classpath}" "${name_of_class}" "$@"
+# Detect Java version — enable native access for Java 22+ (FFM API)
+java_version=$(java -version 2>&1 | head -1 | sed 's/.*"\([0-9]*\)\..*/\1/')
+native_access=""
+if [ "${java_version:-0}" -ge 22 ] 2>/dev/null; then
+  native_access="--enable-native-access=ALL-UNNAMED"
+fi
+
+java ${native_access} -cp "${classpath}" "${name_of_class}" "$@"

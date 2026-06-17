@@ -180,16 +180,28 @@ public final class TerminalBuilder {
      * (highest first), and tries each until one succeeds.
      */
     private Terminal buildSystemTerminal(String name) throws IOException {
-        // Discover and sort providers
+        // Discover and sort providers.
+        // Catch ServiceConfigurationError for providers that may not be available
+        // in the current environment (e.g., FFM provider excluded in GraalVM native-image).
         List<TerminalProvider> providers = new ArrayList<>();
-        for (TerminalProvider provider : ServiceLoader.load(TerminalProvider.class)) {
-            if (provider.isSupported()) {
-                providers.add(provider);
-                LOGGER.log(Level.FINE, "Found supported terminal provider: {0} (priority={1})",
-                        new Object[] { provider.name(), provider.priority() });
-            } else {
-                LOGGER.log(Level.FINE, "Terminal provider not supported: {0}", provider.name());
+        try {
+            java.util.Iterator<TerminalProvider> it = ServiceLoader.load(TerminalProvider.class).iterator();
+            while (it.hasNext()) {
+                try {
+                    TerminalProvider provider = it.next();
+                    if (provider.isSupported()) {
+                        providers.add(provider);
+                        LOGGER.log(Level.FINE, "Found supported terminal provider: {0} (priority={1})",
+                                new Object[] { provider.name(), provider.priority() });
+                    } else {
+                        LOGGER.log(Level.FINE, "Terminal provider not supported: {0}", provider.name());
+                    }
+                } catch (java.util.ServiceConfigurationError e) {
+                    LOGGER.log(Level.FINE, "Skipping unavailable terminal provider", e);
+                }
             }
+        } catch (java.util.ServiceConfigurationError e) {
+            LOGGER.log(Level.FINE, "Error discovering terminal providers", e);
         }
         providers.sort(Comparator.comparingInt(TerminalProvider::priority).reversed());
 

@@ -97,6 +97,17 @@ if not defined readline_api_jar (
 )
 
 set "classpath=%CLASSES_DIR%;!tty_jar!;!api_jar!;!detect_jar!;!readline_jar!;!readline_api_jar!"
-java -cp "%classpath%" "%name_of_class%" %*
+
+rem Detect Java version — enable native access for Java 22+ (FFM API)
+set "native_access="
+for /f "tokens=3 delims=. " %%v in ('java -version 2^>^&1 ^| findstr /i "version"') do (
+  set "ver=%%~v"
+)
+set "ver=%ver:"=%"
+for /f "tokens=1 delims=." %%v in ("%ver%") do (
+  if %%v GEQ 22 set "native_access=--enable-native-access=ALL-UNNAMED"
+)
+
+java %native_access% -cp "%classpath%" "%name_of_class%" %*
 exit /b %ERRORLEVEL%
 
