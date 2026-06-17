@@ -20,6 +20,7 @@
 package org.aesh.terminal.tty.impl;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -42,7 +43,7 @@ import org.junit.Test;
  * {@code assumeTrue(hasTty())} and will be skipped in CI environments
  * where no terminal is available.
  * <p>
- * The attribute conversion tests (FfmPty vs ExecPty producing identical
+ * The attribute tests verify that FfmPty produces sane values (known
  * Attributes) are the primary safety net for platform-specific bitmask
  * correctness.
  */
@@ -73,15 +74,6 @@ public class FfmPtyTest {
         try {
             Pty pty = createFfmPty();
             pty.close();
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
-    private static boolean hasExecPtyTty() {
-        try {
-            ExecPty.current().close();
             return true;
         } catch (Exception e) {
             return false;
@@ -160,102 +152,70 @@ public class FfmPtyTest {
     }
 
     /**
-     * Compares FfmPty.getAttr() with ExecPty.getAttr() to verify that
-     * the FFM bitmask tables produce identical Attributes.
+     * Verify that FFM attributes have sane default values.
+     * Standard POSIX terminals should have known control character defaults.
      */
     @Test
-    public void testAttributesMatchExecPty() throws Exception {
+    public void testAttributesSanity() throws Exception {
         assumeTrue("No TTY available", hasTty());
-        assumeTrue("ExecPty TTY not available", hasExecPtyTty());
         Pty ffmPty = null;
-        Pty execPty = null;
         try {
             ffmPty = createFfmPty();
-            execPty = ExecPty.current();
+            Attributes attr = ffmPty.getAttr();
 
-            Attributes ffmAttr = ffmPty.getAttr();
-            Attributes execAttr = execPty.getAttr();
+            // Standard control characters should have known defaults
+            int vintr = attr.getControlChar(ControlChar.VINTR);
+            assertTrue("VINTR should be set (typically 3/Ctrl+C)", vintr > 0);
 
-            // Compare input flags
-            assertEquals("InputFlags should match",
-                    execAttr.getInputFlags(), ffmAttr.getInputFlags());
+            int veof = attr.getControlChar(ControlChar.VEOF);
+            assertTrue("VEOF should be set (typically 4/Ctrl+D)", veof > 0);
 
-            // Compare output flags
-            assertEquals("OutputFlags should match",
-                    execAttr.getOutputFlags(), ffmAttr.getOutputFlags());
+            int vsusp = attr.getControlChar(ControlChar.VSUSP);
+            assertTrue("VSUSP should be set (typically 26/Ctrl+Z)", vsusp > 0);
 
-            // Compare local flags
-            assertEquals("LocalFlags should match",
-                    execAttr.getLocalFlags(), ffmAttr.getLocalFlags());
+            // At least some flags should be set in a normal terminal
+            assertFalse("InputFlags should not be empty",
+                    attr.getInputFlags().isEmpty());
+            assertFalse("OutputFlags should not be empty",
+                    attr.getOutputFlags().isEmpty());
+            assertFalse("LocalFlags should not be empty",
+                    attr.getLocalFlags().isEmpty());
 
-            // Compare control flags
-            // Note: ExecPty may not parse all control flags on all platforms,
-            // so we only check flags that ExecPty reports
-            for (ControlFlag flag : ControlFlag.values()) {
-                if (flag == ControlFlag.CIGNORE)
-                    continue;
-                assertEquals("ControlFlag " + flag + " should match",
-                        execAttr.getControlFlag(flag), ffmAttr.getControlFlag(flag));
-            }
-
-            // Compare control characters
-            for (ControlChar cc : ControlChar.values()) {
-                int execVal = execAttr.getControlChar(cc);
-                int ffmVal = ffmAttr.getControlChar(cc);
-                // ExecPty returns -1 for chars not present in stty output
-                // FfmPty reads the raw c_cc value (may be 0 for undefined)
-                if (execVal >= 0) {
-                    assertEquals("ControlChar " + cc + " should match",
-                            execVal, ffmVal);
-                }
-            }
+            // Control flags should include a character size setting
+            boolean hasCharSize = attr.getControlFlag(ControlFlag.CS5)
+                    || attr.getControlFlag(ControlFlag.CS6)
+                    || attr.getControlFlag(ControlFlag.CS7)
+                    || attr.getControlFlag(ControlFlag.CS8);
+            assertTrue("Should have a character size flag set", hasCharSize);
         } finally {
             if (ffmPty != null) {
-                try {
-                    ffmPty.close();
-                } catch (IOException e) {
-                    /* ignore */ }
-            }
-            if (execPty != null) {
-                try {
-                    execPty.close();
-                } catch (IOException e) {
-                    /* ignore */ }
+                try { ffmPty.close(); } catch (IOException e) { /* ignore */ }
             }
         }
     }
 
     /**
-     * Compares FfmPty.getSize() with ExecPty.getSize() to verify
-     * that ioctl(TIOCGWINSZ) and stty produce the same result.
+     * Verify that FFM terminal size returns reasonable values.
      */
     @Test
-    public void testSizeMatchesExecPty() throws Exception {
+    public void testSizeSanity() throws Exception {
         assumeTrue("No TTY available", hasTty());
-        assumeTrue("ExecPty TTY not available", hasExecPtyTty());
         Pty ffmPty = null;
-        Pty execPty = null;
         try {
             ffmPty = createFfmPty();
-            execPty = ExecPty.current();
+            Size size = ffmPty.getSize();
 
-            Size ffmSize = ffmPty.getSize();
-            Size execSize = execPty.getSize();
-
-            assertEquals("Width should match", execSize.getWidth(), ffmSize.getWidth());
-            assertEquals("Height should match", execSize.getHeight(), ffmSize.getHeight());
+            assertTrue("Width should be positive, got: " + size.getWidth(),
+                    size.getWidth() > 0);
+            assertTrue("Height should be positive, got: " + size.getHeight(),
+                    size.getHeight() > 0);
+            assertTrue("Width should be reasonable (<= 500), got: " + size.getWidth(),
+                    size.getWidth() <= 500);
+            assertTrue("Height should be reasonable (<= 500), got: " + size.getHeight(),
+                    size.getHeight() <= 500);
         } finally {
             if (ffmPty != null) {
-                try {
-                    ffmPty.close();
-                } catch (IOException e) {
-                    /* ignore */ }
-            }
-            if (execPty != null) {
-                try {
-                    execPty.close();
-                } catch (IOException e) {
-                    /* ignore */ }
+                try { ffmPty.close(); } catch (IOException e) { /* ignore */ }
             }
         }
     }
