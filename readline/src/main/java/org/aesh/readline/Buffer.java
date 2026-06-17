@@ -62,6 +62,8 @@ public final class Buffer {
     private boolean deletingBackward = true;
     private int mark = -1;
     private boolean overwriteMode = false;
+    /** Number of extra prompt lines above the input line (lineCount - 1). */
+    private int promptExtraLines = 0;
 
     private final CursorLocator locator;
 
@@ -73,10 +75,12 @@ public final class Buffer {
 
     Buffer(Prompt prompt) {
         line = new int[1024];
-        if (prompt != null)
+        if (prompt != null) {
             this.prompt = prompt;
-        else
+            this.promptExtraLines = prompt.lineCount() - 1;
+        } else {
             this.prompt = new Prompt("");
+        }
         locator = new CursorLocator(this);
     }
 
@@ -223,8 +227,9 @@ public final class Buffer {
 
     void setPrompt(Prompt prompt, Consumer<int[]> out, int width) {
         if (prompt != null) {
-            delta = prompt.getLength() - this.prompt.getLength();
+            delta = prompt.length() - this.prompt.length();
             this.prompt = prompt;
+            this.promptExtraLines = prompt.lineCount() - 1;
             print(out, width);
         }
     }
@@ -252,7 +257,36 @@ public final class Buffer {
     }
 
     private int promptLength() {
-        return disablePrompt ? 0 : prompt.getLength();
+        return disablePrompt ? 0 : prompt.length();
+    }
+
+    /**
+     * Returns the total number of display rows occupied by the prompt + buffer,
+     * including extra prompt lines for multi-line prompts.
+     *
+     * @param width the terminal width
+     * @return the total display rows
+     */
+    int totalDisplayRows(int width) {
+        if (width <= 0)
+            return 1 + promptExtraLines;
+        int totalChars = size + promptLength();
+        int inputRows = totalChars == 0 ? 1 : (totalChars + width - 1) / width;
+        return inputRows + promptExtraLines;
+    }
+
+    /**
+     * Returns the display row of the cursor, including extra prompt lines.
+     * Row 0 is the first prompt line.
+     *
+     * @param width the terminal width
+     * @return the cursor's display row
+     */
+    int cursorDisplayRow(int width) {
+        if (width <= 0)
+            return promptExtraLines;
+        int cursorChars = cursor + promptLength();
+        return (cursorChars / width) + promptExtraLines;
     }
 
     /**
@@ -825,17 +859,19 @@ public final class Buffer {
      */
     private void clearAllLinesAndReturnToFirstLine(IntArrayBuilder builder, int width,
             int oldCursor, int oldSize) {
-        if (oldSize >= width) {
-            int cursorRow = oldCursor / width;
-            int totalRows = oldSize / width;
+        // Account for extra prompt lines in multi-line prompts
+        int extraLines = promptExtraLines;
+
+        if (oldSize >= width || extraLines > 0) {
+            int cursorRow = oldCursor / width + extraLines;
+            int totalRows = oldSize / width + extraLines;
 
             if ((oldSize) % width == 0 && oldSize == oldCursor) {
-                cursorRow = (oldCursor - 1) / width;
+                cursorRow = (oldCursor - 1) / width + extraLines;
                 builder.append(ANSI.MOVE_LINE_UP);
             }
             //if total row > cursor row it means that the cursor is not at the last line of the row
             //then we need to move down number of rows first
-            //TODO: we can optimize here by going the number of rows down in one step
             if (totalRows > cursorRow && delta < 0) {
                 for (int i = 0; i < (totalRows - cursorRow); i++) {
                     builder.append(ANSI.MOVE_LINE_DOWN);

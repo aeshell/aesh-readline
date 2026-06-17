@@ -554,9 +554,8 @@ public class Readline {
             int width = conn.size().getWidth();
             Buffer buf = consoleBuffer.buffer();
 
-            // Cursor position within the prompt+buffer area
-            int cursorPos = buf.prompt().getLength() + buf.cursor();
-            int cursorRow = cursorPos / width;
+            // Cursor display row (includes extra prompt lines for multi-line prompts)
+            int cursorRow = buf.cursorDisplayRow(width);
 
             // Status line rows (accounting for line wrapping and ANSI codes)
             int statusRows = 0;

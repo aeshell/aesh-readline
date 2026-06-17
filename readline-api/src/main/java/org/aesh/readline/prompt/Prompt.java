@@ -37,10 +37,11 @@ import org.aesh.terminal.utils.Parser;
  */
 public class Prompt {
 
-    private int[] prompt;
+    private int[] prompt; // visible text of the LAST line (for length/cursor math)
     private Character mask;
-    private int[] ansiString;
+    private int[] ansiString; // full ANSI rendering of ALL lines (for display)
     private String rightPrompt;
+    private int lineCount = 1; // number of prompt lines
 
     /**
      * Creates an empty prompt.
@@ -59,14 +60,27 @@ public class Prompt {
      */
     public Prompt(String prompt) {
         if (prompt != null) {
-            String stripped = Parser.stripAwayAnsiCodes(prompt);
-            if (stripped.length() != prompt.length()) {
-                // Contains ANSI codes — store stripped text for length,
-                // full string for display
-                this.prompt = Parser.toCodePoints(stripped);
+            if (prompt.contains("\n")) {
+                // Multi-line prompt: split into lines
+                // The last line is the input line (used for length/cursor math)
+                // The full string is stored as ANSI for display
+                String[] lines = prompt.split("\n", -1);
+                this.lineCount = lines.length;
+                String lastLine = lines[lines.length - 1];
+                String strippedLast = Parser.stripAwayAnsiCodes(lastLine);
+                this.prompt = Parser.toCodePoints(strippedLast);
+                // Always store full string as ansiString for multi-line
                 this.ansiString = Parser.toCodePoints(prompt);
             } else {
-                this.prompt = Parser.toCodePoints(prompt);
+                String stripped = Parser.stripAwayAnsiCodes(prompt);
+                if (stripped.length() != prompt.length()) {
+                    // Contains ANSI codes — store stripped text for length,
+                    // full string for display
+                    this.prompt = Parser.toCodePoints(stripped);
+                    this.ansiString = Parser.toCodePoints(prompt);
+                } else {
+                    this.prompt = Parser.toCodePoints(prompt);
+                }
             }
         } else {
             this.prompt = new int[] {};
@@ -83,6 +97,7 @@ public class Prompt {
         this.mask = prompt.mask;
         this.ansiString = prompt.ansiString != null ? prompt.ansiString.clone() : null;
         this.rightPrompt = prompt.rightPrompt;
+        this.lineCount = prompt.lineCount;
     }
 
     /**
@@ -227,12 +242,36 @@ public class Prompt {
     }
 
     /**
-     * Returns the length of the prompt in characters.
+     * Returns the visible length of the prompt's input line (last line).
+     * For multi-line prompts, this is the length of the last line only,
+     * which is what matters for cursor positioning.
      *
-     * @return the prompt length
+     * @return the input line length
      */
-    public int getLength() {
+    public int length() {
         return prompt.length;
+    }
+
+    /**
+     * Returns the visible length of the prompt's input line.
+     *
+     * @return the input line length
+     * @deprecated Use {@link #length()} instead
+     */
+    @Deprecated
+    public int getLength() {
+        return length();
+    }
+
+    /**
+     * Returns the number of lines in the prompt.
+     * Single-line prompts return 1. Multi-line prompts return the
+     * number of lines (including the input line).
+     *
+     * @return the number of prompt lines
+     */
+    public int lineCount() {
+        return lineCount;
     }
 
     /**
@@ -350,8 +389,36 @@ public class Prompt {
         private int[] promptCodePoints;
         private TerminalString terminalString;
         private List<TerminalCharacter> characters;
+        private java.util.List<String> lines;
 
         private PromptBuilder() {
+        }
+
+        /**
+         * Adds a line to a multi-line prompt.
+         * <p>
+         * Lines are displayed in order, with the last line being the input line
+         * where the cursor appears. Each line can contain ANSI escape codes
+         * which are auto-detected for length calculation.
+         * <p>
+         * Example:
+         *
+         * <pre>{@code
+         * Prompt.builder()
+         *         .line("myapp on main via ☕ v21")
+         *         .line("❯ ")
+         *         .build();
+         * }</pre>
+         *
+         * @param line the line text
+         * @return this builder
+         */
+        public PromptBuilder line(String line) {
+            if (lines == null) {
+                lines = new java.util.ArrayList<>();
+            }
+            lines.add(line);
+            return this;
         }
 
         /**
@@ -443,7 +510,18 @@ public class Prompt {
          */
         public Prompt build() {
             Prompt result;
-            if (characters != null) {
+            if (lines != null && !lines.isEmpty()) {
+                // Multi-line prompt from line() calls
+                StringBuilder sb = new StringBuilder();
+                for (int i = 0; i < lines.size(); i++) {
+                    if (i > 0)
+                        sb.append('\n');
+                    sb.append(lines.get(i));
+                }
+                result = new Prompt(sb.toString());
+                if (mask != null)
+                    result.mask = mask;
+            } else if (characters != null) {
                 if (mask != null)
                     result = new Prompt(characters, mask);
                 else
