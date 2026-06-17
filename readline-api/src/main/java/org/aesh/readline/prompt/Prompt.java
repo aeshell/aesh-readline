@@ -19,6 +19,7 @@
  */
 package org.aesh.readline.prompt;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -389,7 +390,7 @@ public class Prompt {
         private int[] promptCodePoints;
         private TerminalString terminalString;
         private List<TerminalCharacter> characters;
-        private java.util.List<String> lines;
+        private List<String> lines;
 
         private PromptBuilder() {
         }
@@ -415,7 +416,7 @@ public class Prompt {
          */
         public PromptBuilder line(String line) {
             if (lines == null) {
-                lines = new java.util.ArrayList<>();
+                lines = new ArrayList<>();
             }
             lines.add(line);
             return this;

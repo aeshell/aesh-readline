@@ -25,6 +25,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 import org.aesh.readline.completion.Completion;
 import org.aesh.readline.cursor.CursorListener;
@@ -53,7 +54,7 @@ public class ReadlineRequest {
 
     private final Connection connection;
     private final Prompt prompt;
-    private final java.util.function.Supplier<Prompt> promptSupplier;
+    private final Supplier<Prompt> promptSupplier;
     private final Consumer<String> requestHandler;
     private final List<Completion> completions;
     private final List<Function<String, Optional<String>>> preProcessors;
@@ -169,7 +170,7 @@ public class ReadlineRequest {
     public static class Builder {
         private Connection connection;
         private Prompt prompt;
-        private java.util.function.Supplier<Prompt> promptSupplier;
+        private Supplier<Prompt> promptSupplier;
         private Consumer<String> requestHandler;
         private List<Completion> completions;
         private List<Function<String, Optional<String>>> preProcessors;
@@ -239,7 +240,7 @@ public class ReadlineRequest {
          * @param promptSupplier the prompt supplier
          * @return this builder
          */
-        public Builder promptSupplier(java.util.function.Supplier<Prompt> promptSupplier) {
+        public Builder promptSupplier(Supplier<Prompt> promptSupplier) {
             this.promptSupplier = promptSupplier;
             return this;
         }
@@ -318,7 +319,9 @@ public class ReadlineRequest {
          */
         public ReadlineRequest build() {
             Objects.requireNonNull(connection, "connection must not be null");
-            Objects.requireNonNull(prompt, "prompt must not be null");
+            if (prompt == null && promptSupplier == null) {
+                throw new NullPointerException("prompt or promptSupplier must be set");
+            }
             Objects.requireNonNull(requestHandler, "requestHandler must not be null");
             return new ReadlineRequest(this);
         }
