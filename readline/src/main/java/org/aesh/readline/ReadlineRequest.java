@@ -53,6 +53,7 @@ public class ReadlineRequest {
 
     private final Connection connection;
     private final Prompt prompt;
+    private final java.util.function.Supplier<Prompt> promptSupplier;
     private final Consumer<String> requestHandler;
     private final List<Completion> completions;
     private final List<Function<String, Optional<String>>> preProcessors;
@@ -63,6 +64,7 @@ public class ReadlineRequest {
     private ReadlineRequest(Builder builder) {
         this.connection = builder.connection;
         this.prompt = builder.prompt;
+        this.promptSupplier = builder.promptSupplier;
         this.requestHandler = builder.requestHandler;
         this.completions = builder.completions;
         this.preProcessors = builder.preProcessors;
@@ -91,10 +93,17 @@ public class ReadlineRequest {
 
     /**
      * Returns the prompt to display.
+     * <p>
+     * If a {@link #promptSupplier} is set, it is called to get the prompt.
+     * Otherwise, the static prompt is returned.
      *
      * @return the prompt, never null
      */
     public Prompt prompt() {
+        if (promptSupplier != null) {
+            Prompt supplied = promptSupplier.get();
+            return supplied != null ? supplied : (prompt != null ? prompt : new Prompt());
+        }
         return prompt;
     }
 
@@ -160,6 +169,7 @@ public class ReadlineRequest {
     public static class Builder {
         private Connection connection;
         private Prompt prompt;
+        private java.util.function.Supplier<Prompt> promptSupplier;
         private Consumer<String> requestHandler;
         private List<Completion> completions;
         private List<Function<String, Optional<String>>> preProcessors;
@@ -200,6 +210,37 @@ public class ReadlineRequest {
          */
         public Builder prompt(String prompt) {
             this.prompt = new Prompt(prompt);
+            return this;
+        }
+
+        /**
+         * Sets a supplier that provides the prompt dynamically.
+         * <p>
+         * The supplier is called once at the start of each {@code readline()}
+         * cycle, allowing the prompt to change between invocations. This is
+         * useful for displaying dynamic information like command execution
+         * time, git branch, or environment status.
+         * <p>
+         * If both {@code prompt} and {@code promptSupplier} are set, the
+         * supplier takes precedence.
+         * <p>
+         * Example:
+         *
+         * <pre>{@code
+         * ReadlineRequest.builder()
+         *     .promptSupplier(() -> Prompt.builder()
+         *         .line("myapp on " + gitBranch())
+         *         .line("❯ ")
+         *         .build())
+         *     .requestHandler(line -> { ... })
+         *     .build();
+         * }</pre>
+         *
+         * @param promptSupplier the prompt supplier
+         * @return this builder
+         */
+        public Builder promptSupplier(java.util.function.Supplier<Prompt> promptSupplier) {
+            this.promptSupplier = promptSupplier;
             return this;
         }
 
