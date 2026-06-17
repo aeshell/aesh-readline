@@ -277,8 +277,25 @@ public class FfmPty implements Pty {
                         LibC.close(ttyFd);
                     }
                 } finally {
-                    // Free all native memory
-                    arena.close();
+                    // Free all native memory.
+                    // The poll-based read loop may still have an active poll() call
+                    // using nbPollfd/nbReadBuf from this arena. Wait briefly for it
+                    // to notice the closed flag and return.
+                    for (int i = 0; i < 5; i++) {
+                        try {
+                            arena.close();
+                            break;
+                        } catch (IllegalStateException e) {
+                            if (i < 4) {
+                                try { Thread.sleep(50); } catch (InterruptedException ie) {
+                                    Thread.currentThread().interrupt();
+                                    break;
+                                }
+                            } else {
+                                LOGGER.log(Level.FINE, "Arena still in use after retries, ignoring", e);
+                            }
+                        }
+                    }
                 }
             }
         }
