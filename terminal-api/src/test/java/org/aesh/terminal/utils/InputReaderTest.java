@@ -117,14 +117,27 @@ public class InputReaderTest {
         InputReader reader = new InputReader();
         char[] buf = new char[16];
 
-        // Start a thread that will push data after a short delay
+        // Pre-load the queue so read() returns immediately with all data.
+        // This tests the drain behavior of read(char[], off, len):
+        // take() returns first char, poll() drains the rest.
+        reader.push('X');
+        reader.push('Y');
+
+        int count = reader.read(buf, 0, buf.length);
+
+        assertEquals(2, count);
+        assertEquals('X', buf[0]);
+        assertEquals('Y', buf[1]);
+
+        // Now test blocking: read on empty queue should block until data arrives
         CountDownLatch started = new CountDownLatch(1);
         AtomicInteger readCount = new AtomicInteger(-1);
+        char[] buf2 = new char[16];
 
         Thread readThread = new Thread(() -> {
             started.countDown();
             try {
-                readCount.set(reader.read(buf, 0, buf.length));
+                readCount.set(reader.read(buf2, 0, buf2.length));
             } catch (IOException e) {
                 // test will fail via readCount check
             }
@@ -132,17 +145,18 @@ public class InputReaderTest {
         readThread.start();
         started.await(1, TimeUnit.SECONDS);
 
-        // Give the read thread time to block
+        // Give the read thread time to block on take()
         Thread.sleep(50);
 
-        // Push data — this should unblock the read
-        reader.push('X');
-        reader.push('Y');
+        // Verify thread is still alive (blocked on take)
+        assertTrue("Read thread should still be blocked", readThread.isAlive());
+
+        // Push a single char to unblock
+        reader.push('Z');
         readThread.join(2000);
 
-        assertEquals(2, readCount.get());
-        assertEquals('X', buf[0]);
-        assertEquals('Y', buf[1]);
+        assertEquals(1, readCount.get());
+        assertEquals('Z', buf2[0]);
         reader.close();
     }
 
