@@ -39,6 +39,12 @@ import org.junit.Assert;
 import org.junit.Test;
 
 /**
+ * Tests for synchronous and asynchronous SSH password authentication.
+ * <p>
+ * Each test takes ~2s due to SSHD's built-in auth failure delay — this is
+ * intentional SSH protocol behavior to prevent brute-force attacks and cannot
+ * be reduced without patching the SSHD server internals.
+ *
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
  */
 public class AsyncAuthTest extends TestBase {
@@ -98,7 +104,7 @@ public class AsyncAuthTest extends TestBase {
             AsyncAuthException auth = new AsyncAuthException();
             new Thread(() -> {
                 try {
-                    Thread.sleep(200);
+                    Thread.sleep(100);
                 } catch (InterruptedException ignore) {
                 } finally {
                     auth.setAuthed(false);
@@ -116,7 +122,7 @@ public class AsyncAuthTest extends TestBase {
             AsyncAuthException auth = new AsyncAuthException();
             new Thread(() -> {
                 try {
-                    Thread.sleep(200);
+                    Thread.sleep(100);
                 } catch (InterruptedException ignore) {
                 } finally {
                     auth.setAuthed(true);
@@ -143,6 +149,7 @@ public class AsyncAuthTest extends TestBase {
             AsyncAuthException auth = new AsyncAuthException();
             new Thread(() -> {
                 try {
+                    // Sleep past the 500ms server auth timeout
                     Thread.sleep(1000);
                 } catch (InterruptedException ignore) {
                 } finally {
@@ -154,6 +161,52 @@ public class AsyncAuthTest extends TestBase {
         Assert.assertFalse(authenticate());
     }
 
+    @Test
+    public void testHostKeyPersistence() throws Exception {
+        File keyFile = new File("hostkey-test.ser");
+        keyFile.deleteOnExit();
+        try {
+            // First server start generates the host key
+            Assert.assertFalse("Key file should not exist yet", keyFile.exists());
+            port = findAvailablePort();
+            server = SshServer.setUpDefaultServer();
+            server.setPort(port);
+            server.setKeyPairProvider(new SimpleGeneratorHostKeyProvider(keyFile.toPath()));
+            authenticator = (username, password, sess) -> true;
+            server.setPasswordAuthenticator((username, password, sess) -> authenticator.authenticate(username, password, sess));
+            server.setShellFactory(new EchoShellFactory());
+            server.setServiceFactories(
+                    Arrays.asList(ServerConnectionServiceFactory.INSTANCE, ServerUserAuthServiceFactory.INSTANCE));
+            server.start();
+
+            // Connect and verify the key file was created
+            Assert.assertTrue("Should authenticate successfully", authenticate());
+            server.stop();
+            server = null;
+
+            Assert.assertTrue("Host key file should exist after first server start", keyFile.exists());
+            Assert.assertTrue("Host key file should not be empty", keyFile.length() > 0);
+
+            // Second server start should reuse the existing key
+            long keySize = keyFile.length();
+            port = findAvailablePort();
+            server = SshServer.setUpDefaultServer();
+            server.setPort(port);
+            server.setKeyPairProvider(new SimpleGeneratorHostKeyProvider(keyFile.toPath()));
+            server.setPasswordAuthenticator((username, password, sess) -> true);
+            server.setShellFactory(new EchoShellFactory());
+            server.setServiceFactories(
+                    Arrays.asList(ServerConnectionServiceFactory.INSTANCE, ServerUserAuthServiceFactory.INSTANCE));
+            server.start();
+
+            Assert.assertTrue("Should authenticate with reused key", authenticate());
+            Assert.assertEquals("Host key file size should be unchanged (reused, not regenerated)",
+                    keySize, keyFile.length());
+        } finally {
+            keyFile.delete();
+        }
+    }
+
     protected boolean authenticate() {
         try (SshClient client = SshClient.setUpDefaultClient()) {
             client.start();
@@ -161,7 +214,9 @@ public class AsyncAuthTest extends TestBase {
                     .connect("whatever", "localhost", port)
                     .verify(TimeUnit.SECONDS.toMillis(5))
                     .getSession();
-            // Only use password authentication, don't try to load SSH keys
+            // Disable key identity so the client uses password auth,
+            // but still negotiates all default auth methods (publickey,
+            // keyboard-interactive, password) to exercise the full path.
             sess.setKeyIdentityProvider(null);
             sess.addPasswordIdentity("whocares");
             sess.auth().verify(TimeUnit.SECONDS.toMillis(5));
