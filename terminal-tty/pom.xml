@@ -335,7 +335,10 @@
             </dependencies>
             <build>
                 <plugins>
-                    <!-- Copy MRJAR Java 22+ classes to the regular output so native-image can find them -->
+                    <!-- Copy MRJAR Java 22+ classes to the regular output so native-image can find them.
+                         Exclude WinConsoleNative: its FFM downcall descriptors cannot be registered
+                         in GraalVM native-image yet, so we keep the JNI base version which works
+                         via jni-config.json and the bundled aesh-console.dll. -->
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-antrun-plugin</artifactId>
@@ -349,7 +352,9 @@
                                         <copy todir="${project.build.outputDirectory}" overwrite="false"
                                               failonerror="false">
                                             <fileset dir="${project.build.outputDirectory}/META-INF/versions/22"
-                                                     erroronmissingdir="false"/>
+                                                     erroronmissingdir="false">
+                                                <exclude name="**/WinConsoleNative.class"/>
+                                            </fileset>
                                         </copy>
                                     </target>
                                 </configuration>

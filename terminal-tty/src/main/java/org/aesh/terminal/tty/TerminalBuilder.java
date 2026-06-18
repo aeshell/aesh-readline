@@ -216,6 +216,11 @@ public final class TerminalBuilder {
                 LOGGER.log(Level.FINE, "Provider {0} failed: {1}",
                         new Object[] { provider.name(), e.getMessage() });
                 lastException = e;
+            } catch (Throwable e) {
+                // Safety net for non-IOException failures such as GraalVM native-image
+                // MissingForeignRegistrationError when FFM downcalls are not registered.
+                LOGGER.log(Level.FINE, "Provider {0} failed with {1}: {2}",
+                        new Object[] { provider.name(), e.getClass().getSimpleName(), e.getMessage() });
             }
         }
 
