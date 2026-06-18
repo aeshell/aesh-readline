@@ -39,14 +39,23 @@ public class WinConsoleNativeTest {
     public void windowsOnly() {
         Assume.assumeTrue("Windows only", System.getProperty("os.name", "").toLowerCase().contains("win"));
         try {
-            // Force class loading which triggers native library load
+            // Force class loading which triggers native library load (JNI)
+            // or FFM downcall handle creation (Java 22+).
             Class.forName("org.aesh.terminal.tty.impl.WinConsoleNative");
+            // Verify a basic call works — in GraalVM native-image, FFM downcall
+            // descriptors may not be registered, throwing MissingForeignRegistrationError
+            // at invocation time rather than at class load time.
+            WinConsoleNative.getConsoleOutputCP();
         } catch (UnsatisfiedLinkError | ExceptionInInitializerError | NoClassDefFoundError e) {
             // Class.forName wraps static-init failures in ExceptionInInitializerError;
             // subsequent attempts throw NoClassDefFoundError
             Assume.assumeNoException("Native library not available", e);
         } catch (ClassNotFoundException e) {
             Assume.assumeNoException("WinConsoleNative class not found", e);
+        } catch (Throwable e) {
+            // GraalVM native-image throws MissingForeignRegistrationError (an Error)
+            // when FFM downcall descriptors are not registered
+            Assume.assumeNoException("WinConsoleNative not usable: " + e.getClass().getSimpleName(), new RuntimeException(e));
         }
     }
 
