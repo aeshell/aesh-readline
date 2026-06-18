@@ -34,6 +34,14 @@ public final class FuzzyResult {
      */
     public final int[] positions;
 
+    /**
+     * Create a new fuzzy match result.
+     *
+     * @param start start index of the matched region (inclusive), or -1 if no match
+     * @param end end index of the matched region (exclusive), or -1 if no match
+     * @param score the match score (higher is better)
+     * @param positions positions of each matched character, or null if not requested
+     */
     public FuzzyResult(int start, int end, int score, int[] positions) {
         this.start = start;
         this.end = end;
@@ -43,6 +51,8 @@ public final class FuzzyResult {
 
     /**
      * Returns true if this result represents a match.
+     *
+     * @return {@code true} if the start index is non-negative, indicating a match was found
      */
     public boolean isMatch() {
         return start >= 0;

@@ -34,6 +34,12 @@ import org.aesh.terminal.utils.OSUtils;
  */
 public class CygwinTerminalProvider implements TerminalProvider {
 
+    /**
+     * Creates a new {@code CygwinTerminalProvider}.
+     */
+    public CygwinTerminalProvider() {
+    }
+
     @Override
     public String name() {
         return "cygwin";

@@ -295,6 +295,8 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
      * Whether the pump can use WaitForSingleObject with timeout.
      * This is separate from {@link #supportsNonBlockingRead()} which
      * controls whether external callers (Readline) can use peek().
+     *
+     * @return {@code true} if the pump can use non-blocking wait
      */
     protected boolean supportsNonBlockingWait() {
         return WinConsoleNative.supportsNonBlockingWait();

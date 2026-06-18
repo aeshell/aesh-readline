@@ -203,6 +203,8 @@ public class WinSysTerminal extends AbstractWindowsTerminal {
     /**
      * Set the mouse event handler. Enables/disables ENABLE_MOUSE_INPUT
      * on the console input handle.
+     *
+     * @param handler the mouse event handler, or {@code null} to disable mouse input
      */
     public void setMouseHandler(Consumer<MouseEvent> handler) {
         this.mouseHandler = handler;
@@ -225,6 +227,8 @@ public class WinSysTerminal extends AbstractWindowsTerminal {
 
     /**
      * Get the current mouse handler.
+     *
+     * @return the current mouse event handler, or {@code null} if none is set
      */
     public Consumer<MouseEvent> getMouseHandler() {
         return mouseHandler;

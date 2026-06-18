@@ -187,6 +187,9 @@ public final class FuzzyScorer {
      * Deduplicate entries, keeping only the most recent occurrence.
      * Input order: oldest first (index 0) to most recent (last index).
      * Output order: most recent first (for display).
+     *
+     * @param entries the entries to deduplicate (oldest first)
+     * @return deduplicated list with most recent entries first
      */
     public static List<int[]> deduplicate(List<int[]> entries) {
         LinkedHashSet<String> seen = new LinkedHashSet<>();
@@ -243,10 +246,25 @@ public final class FuzzyScorer {
         /** Timestamp (epoch millis) when the entry was added, or -1 if unknown. */
         public final long timestamp;
 
+        /**
+         * Create a scored entry with no timestamp.
+         *
+         * @param index index in the deduplicated list (0 = most recent)
+         * @param text the entry text as code points
+         * @param match the fuzzy match result
+         */
         public ScoredEntry(int index, int[] text, FuzzyResult match) {
             this(index, text, match, -1);
         }
 
+        /**
+         * Create a scored entry with a timestamp.
+         *
+         * @param index index in the deduplicated list (0 = most recent)
+         * @param text the entry text as code points
+         * @param match the fuzzy match result
+         * @param timestamp epoch millis when the entry was added, or -1 if unknown
+         */
         public ScoredEntry(int index, int[] text, FuzzyResult match, long timestamp) {
             this.index = index;
             this.text = text;

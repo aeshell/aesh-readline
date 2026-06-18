@@ -24,13 +24,19 @@ package org.aesh.readline.fuzzy;
  */
 public final class CharClass {
 
-    // Character class constants (ordinals match fzf's charClass iota)
+    /** Whitespace character class (spaces, tabs, newlines). */
     public static final int WHITE = 0;
+    /** Non-word character class (punctuation and symbols not in other classes). */
     public static final int NON_WORD = 1;
+    /** Delimiter character class ({@code /,:;|}). */
     public static final int DELIMITER = 2;
+    /** Lowercase letter character class. */
     public static final int LOWER = 3;
+    /** Uppercase letter character class. */
     public static final int UPPER = 4;
+    /** Letter character class (non-cased letters, e.g. CJK ideographs). */
     public static final int LETTER = 5;
+    /** Numeric digit character class. */
     public static final int NUMBER = 6;
 
     static final int CLASS_COUNT = 7;

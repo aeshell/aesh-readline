@@ -299,68 +299,100 @@ public final class TerminalCapabilities {
 
     // ANSI standard color accessors (indices 0-7)
 
+    /** Returns the RGB color for ANSI black (index 0).
+     * @return RGB array for ANSI black (index 0), or null if not queried. */
     public int[] black() {
         return paletteColor(0);
     }
 
+    /** Returns the RGB color for ANSI red (index 1).
+     * @return RGB array for ANSI red (index 1), or null if not queried. */
     public int[] red() {
         return paletteColor(1);
     }
 
+    /** Returns the RGB color for ANSI green (index 2).
+     * @return RGB array for ANSI green (index 2), or null if not queried. */
     public int[] green() {
         return paletteColor(2);
     }
 
+    /** Returns the RGB color for ANSI yellow (index 3).
+     * @return RGB array for ANSI yellow (index 3), or null if not queried. */
     public int[] yellow() {
         return paletteColor(3);
     }
 
+    /** Returns the RGB color for ANSI blue (index 4).
+     * @return RGB array for ANSI blue (index 4), or null if not queried. */
     public int[] blue() {
         return paletteColor(4);
     }
 
+    /** Returns the RGB color for ANSI magenta (index 5).
+     * @return RGB array for ANSI magenta (index 5), or null if not queried. */
     public int[] magenta() {
         return paletteColor(5);
     }
 
+    /** Returns the RGB color for ANSI cyan (index 6).
+     * @return RGB array for ANSI cyan (index 6), or null if not queried. */
     public int[] cyan() {
         return paletteColor(6);
     }
 
+    /** Returns the RGB color for ANSI white (index 7).
+     * @return RGB array for ANSI white (index 7), or null if not queried. */
     public int[] white() {
         return paletteColor(7);
     }
 
     // Bright color accessors (indices 8-15)
 
+    /** Returns the RGB color for bright black (index 8).
+     * @return RGB array for bright black (index 8), or null if not queried. */
     public int[] brightBlack() {
         return paletteColor(8);
     }
 
+    /** Returns the RGB color for bright red (index 9).
+     * @return RGB array for bright red (index 9), or null if not queried. */
     public int[] brightRed() {
         return paletteColor(9);
     }
 
+    /** Returns the RGB color for bright green (index 10).
+     * @return RGB array for bright green (index 10), or null if not queried. */
     public int[] brightGreen() {
         return paletteColor(10);
     }
 
+    /** Returns the RGB color for bright yellow (index 11).
+     * @return RGB array for bright yellow (index 11), or null if not queried. */
     public int[] brightYellow() {
         return paletteColor(11);
     }
 
+    /** Returns the RGB color for bright blue (index 12).
+     * @return RGB array for bright blue (index 12), or null if not queried. */
     public int[] brightBlue() {
         return paletteColor(12);
     }
 
+    /** Returns the RGB color for bright magenta (index 13).
+     * @return RGB array for bright magenta (index 13), or null if not queried. */
     public int[] brightMagenta() {
         return paletteColor(13);
     }
 
+    /** Returns the RGB color for bright cyan (index 14).
+     * @return RGB array for bright cyan (index 14), or null if not queried. */
     public int[] brightCyan() {
         return paletteColor(14);
     }
 
+    /** Returns the RGB color for bright white (index 15).
+     * @return RGB array for bright white (index 15), or null if not queried. */
     public int[] brightWhite() {
         return paletteColor(15);
     }

@@ -39,6 +39,12 @@ import org.aesh.terminal.utils.OSUtils;
  */
 public class FfmTerminalProvider implements TerminalProvider {
 
+    /**
+     * Creates a new {@code FfmTerminalProvider}.
+     */
+    public FfmTerminalProvider() {
+    }
+
     private static final Logger LOGGER = LoggerUtil.getLogger(FfmTerminalProvider.class.getName());
 
     @Override

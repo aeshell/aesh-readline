@@ -95,37 +95,65 @@ public final class MouseEvent {
         this.ctrl = ctrl;
     }
 
-    /** Returns the event type. */
+    /**
+     * Returns the event type.
+     *
+     * @return the event type
+     */
     public Type type() {
         return type;
     }
 
-    /** Returns the button. */
+    /**
+     * Returns the button.
+     *
+     * @return the button
+     */
     public Button button() {
         return button;
     }
 
-    /** Returns the column (1-based). */
+    /**
+     * Returns the column (1-based).
+     *
+     * @return the column position
+     */
     public int x() {
         return x;
     }
 
-    /** Returns the row (1-based). */
+    /**
+     * Returns the row (1-based).
+     *
+     * @return the row position
+     */
     public int y() {
         return y;
     }
 
-    /** Returns true if shift was held. */
+    /**
+     * Returns true if shift was held.
+     *
+     * @return true if shift was held
+     */
     public boolean shift() {
         return shift;
     }
 
-    /** Returns true if alt/meta was held. */
+    /**
+     * Returns true if alt/meta was held.
+     *
+     * @return true if alt/meta was held
+     */
     public boolean alt() {
         return alt;
     }
 
-    /** Returns true if ctrl was held. */
+    /**
+     * Returns true if ctrl was held.
+     *
+     * @return true if ctrl was held
+     */
     public boolean ctrl() {
         return ctrl;
     }

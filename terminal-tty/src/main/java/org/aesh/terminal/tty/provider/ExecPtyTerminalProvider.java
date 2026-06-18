@@ -35,6 +35,12 @@ import org.aesh.terminal.utils.OSUtils;
  */
 public class ExecPtyTerminalProvider implements TerminalProvider {
 
+    /**
+     * Creates a new {@code ExecPtyTerminalProvider}.
+     */
+    public ExecPtyTerminalProvider() {
+    }
+
     @Override
     public String name() {
         return "exec";

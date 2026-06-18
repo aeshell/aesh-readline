@@ -23,8 +23,12 @@ package org.aesh.terminal.detect;
  * Terminal image display protocols.
  */
 public enum ImageProtocol {
+    /** No image protocol support detected. */
     NONE,
+    /** Kitty graphics protocol (escape-code based, progressive). */
     KITTY,
+    /** iTerm2 inline image protocol (base64-encoded, proprietary). */
     ITERM2,
+    /** Sixel graphics protocol (DEC standard, raster-based). */
     SIXEL
 }

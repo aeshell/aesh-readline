@@ -35,6 +35,11 @@ public class HistorySuggestionProvider implements SuggestionProvider {
 
     private final History history;
 
+    /**
+     * Create a new suggestion provider backed by the given history.
+     *
+     * @param history the history to search for suggestions
+     */
     public HistorySuggestionProvider(History history) {
         this.history = history;
     }

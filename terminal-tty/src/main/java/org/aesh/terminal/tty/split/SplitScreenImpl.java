@@ -216,6 +216,8 @@ public class SplitScreenImpl implements SplitScreen {
 
     /**
      * Handle terminal resize.
+     *
+     * @param newSize the new terminal size
      */
     public void handleResize(Size newSize) {
         if (closed)
@@ -377,10 +379,20 @@ public class SplitScreenImpl implements SplitScreen {
         return termWidth;
     }
 
+    /**
+     * Check whether this split screen has been closed.
+     *
+     * @return {@code true} if closed
+     */
     public boolean isClosed() {
         return closed;
     }
 
+    /**
+     * Check whether this split screen is currently suspended.
+     *
+     * @return {@code true} if suspended
+     */
     public boolean isSuspended() {
         return suspended;
     }

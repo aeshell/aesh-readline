@@ -939,6 +939,10 @@ public class ANSI {
     /**
      * Convenience overload for {@link #parseOscColorResponse16(int[], int, int)}
      * without a parameter index.
+     *
+     * @param input the raw terminal response as an int array
+     * @param oscCode the OSC code to match (e.g. 10 for foreground, 11 for background)
+     * @return a 3-element array of 16-bit RGB values, or {@code null} if parsing fails
      */
     public static int[] parseOscColorResponse16(int[] input, int oscCode) {
         return parseOscColorResponse16(input, oscCode, -1);

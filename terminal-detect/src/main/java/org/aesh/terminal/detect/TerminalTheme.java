@@ -23,14 +23,27 @@ package org.aesh.terminal.detect;
  * Terminal background theme: dark, light, or unknown.
  */
 public enum TerminalTheme {
+    /** Dark background theme. */
     DARK,
+    /** Light background theme. */
     LIGHT,
+    /** Theme could not be determined. Treated as dark for safety. */
     UNKNOWN;
 
+    /**
+     * Returns true if this theme is dark or unknown.
+     *
+     * @return true for DARK or UNKNOWN
+     */
     public boolean isDark() {
         return this == DARK || this == UNKNOWN;
     }
 
+    /**
+     * Returns true if this theme is light.
+     *
+     * @return true for LIGHT only
+     */
     public boolean isLight() {
         return this == LIGHT;
     }

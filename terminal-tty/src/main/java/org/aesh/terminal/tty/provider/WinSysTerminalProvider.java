@@ -37,6 +37,12 @@ import org.aesh.terminal.utils.OSUtils;
  */
 public class WinSysTerminalProvider implements TerminalProvider {
 
+    /**
+     * Creates a new {@code WinSysTerminalProvider}.
+     */
+    public WinSysTerminalProvider() {
+    }
+
     @Override
     public String name() {
         return "windows";

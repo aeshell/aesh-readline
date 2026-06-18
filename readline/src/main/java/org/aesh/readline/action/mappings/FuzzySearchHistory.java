@@ -89,6 +89,9 @@ public class FuzzySearchHistory implements ActionEvent {
     private int renderedLines = 0;
     private int[] savedBuffer;
 
+    /**
+     * Create a new fuzzy history search action.
+     */
     public FuzzySearchHistory() {
     }
 
