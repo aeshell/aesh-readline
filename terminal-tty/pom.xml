@@ -335,10 +335,12 @@
             </dependencies>
             <build>
                 <plugins>
-                    <!-- Copy MRJAR Java 22+ classes to the regular output so native-image can find them.
-                         Exclude WinConsoleNative: its FFM downcall descriptors cannot be registered
-                         in GraalVM native-image yet, so we keep the JNI base version which works
-                         via jni-config.json and the bundled aesh-console.dll. -->
+                    <!-- Copy MRJAR Java 22+ classes to the regular output so native-image
+                         can find them. Exclude all FFM classes — GraalVM does not yet
+                         support registering FFM downcall descriptors in reachability
+                         metadata (#206). Without the FFM classes, FfmTerminalProvider
+                         fails with ClassNotFoundException and falls through to
+                         ExecPtyTerminalProvider (POSIX) or JNI WinConsoleNative (Windows). -->
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-antrun-plugin</artifactId>
@@ -349,13 +351,18 @@
                                 <goals><goal>run</goal></goals>
                                 <configuration>
                                     <target>
-                                        <copy todir="${project.build.outputDirectory}" overwrite="false"
-                                              failonerror="false">
-                                            <fileset dir="${project.build.outputDirectory}/META-INF/versions/22"
+                                        <!-- Delete any FFM classes that the java22-ffm test profile
+                                             may have copied earlier in this build phase -->
+                                        <delete failonerror="false">
+                                            <fileset dir="${project.build.outputDirectory}/org/aesh/terminal/tty/impl"
                                                      erroronmissingdir="false">
-                                                <exclude name="**/WinConsoleNative.class"/>
+                                                <include name="FfmPty.class"/>
+                                                <include name="FfmPty$*.class"/>
+                                                <include name="LibC.class"/>
+                                                <include name="PosixConstants.class"/>
+                                                <include name="WinConsoleNative.class"/>
                                             </fileset>
-                                        </copy>
+                                        </delete>
                                     </target>
                                 </configuration>
                             </execution>
@@ -377,9 +384,6 @@
                         </executions>
                         <configuration>
                             <quickBuild>true</quickBuild>
-                            <buildArgs>
-                                <arg>--enable-native-access=ALL-UNNAMED</arg>
-                            </buildArgs>
                         </configuration>
                     </plugin>
                 </plugins>
