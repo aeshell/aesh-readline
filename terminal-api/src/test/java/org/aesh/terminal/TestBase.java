@@ -98,7 +98,7 @@ public class TestBase {
         boolean ok;
         try {
             awaitCalled = true;
-            ok = latch.await(2, TimeUnit.MINUTES);
+            ok = latch.await(30, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
             throw failure("Test thread was interrupted", e);
         }

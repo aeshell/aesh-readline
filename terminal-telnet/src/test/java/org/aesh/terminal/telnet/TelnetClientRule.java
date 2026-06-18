@@ -147,6 +147,8 @@ public class TelnetClientRule extends ExternalResource {
                 setKeepAlive(false);
             }
         };
+        client.setConnectTimeout(10_000);
+        client.setDefaultTimeout(10_000);
     }
 
     @Override

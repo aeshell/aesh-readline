@@ -49,6 +49,7 @@ public class NettySshTtyBootstrap {
     private String host;
     private int port;
     private Charset charset;
+    private final EventLoopGroup parentGroup;
     private final EventLoopGroup childGroup;
     private SshServer server;
     private KeyPairProvider keyPairProvider;
@@ -63,7 +64,7 @@ public class NettySshTtyBootstrap {
         this.host = "localhost";
         this.port = 5000;
         this.charset = StandardCharsets.UTF_8;
-        EventLoopGroup parentGroup = new NioEventLoopGroup(1);
+        this.parentGroup = new NioEventLoopGroup(1);
         this.childGroup = new NioEventLoopGroup();
         this.keyPairProvider = new SimpleGeneratorHostKeyProvider(new File("hostkey.ser").toPath());
         this.passwordAuthenticator = (username, password, session) -> true;
@@ -265,6 +266,9 @@ public class NettySshTtyBootstrap {
             } catch (IOException e) {
                 doneHandler.accept(e);
                 return;
+            } finally {
+                childGroup.shutdownGracefully(0, 5, java.util.concurrent.TimeUnit.SECONDS);
+                parentGroup.shutdownGracefully(0, 5, java.util.concurrent.TimeUnit.SECONDS);
             }
             doneHandler.accept(null);
         } else {

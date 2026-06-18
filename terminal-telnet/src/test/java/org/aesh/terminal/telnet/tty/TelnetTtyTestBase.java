@@ -19,14 +19,10 @@
  */
 package org.aesh.terminal.telnet.tty;
 
-import java.io.Closeable;
 import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Supplier;
 
 import org.aesh.terminal.Connection;
 import org.aesh.terminal.telnet.TelnetClientRule;
-import org.aesh.terminal.telnet.TelnetHandler;
 import org.aesh.terminal.telnet.TelnetServerRule;
 import org.aesh.terminal.telnet.TelnetTtyConnection;
 import org.aesh.terminal.tty.TtyTestBase;
@@ -44,12 +40,10 @@ public abstract class TelnetTtyTestBase extends TtyTestBase {
     protected boolean binary;
 
     @Rule
-    public final TelnetServerRule server = new TelnetServerRule(serverFactory());
+    public final TelnetServerRule server = new TelnetServerRule();
 
     @Rule
     public final TelnetClientRule client = new TelnetClientRule();
-
-    protected abstract Function<Supplier<TelnetHandler>, Closeable> serverFactory();
 
     @Override
     public boolean checkDisconnected() {
@@ -73,7 +67,7 @@ public abstract class TelnetTtyTestBase extends TtyTestBase {
         if (term != null) {
             client.setOptionHandler(new TerminalTypeOptionHandler(term, false, false, true, false));
         }
-        client.connect("localhost", 4000);
+        client.connect("localhost", server.getPort());
     }
 
     @Override

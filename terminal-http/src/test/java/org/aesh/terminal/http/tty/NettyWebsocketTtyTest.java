@@ -19,6 +19,7 @@
  */
 package org.aesh.terminal.http.tty;
 
+import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
@@ -38,12 +39,19 @@ public class NettyWebsocketTtyTest extends WebsocketTtyTestBase {
         if (bootstrap != null) {
             throw failure("Server already started");
         }
-        bootstrap = new NettyWebsocketTtyBootstrap().setHost("localhost").setPort(8080);
+        int port;
+        try {
+            port = findAvailablePort();
+        } catch (IOException e) {
+            throw failure(e);
+        }
+        bootstrap = new NettyWebsocketTtyBootstrap().setHost("localhost").setPort(port);
         try {
             bootstrap.start(onConnect).get(10, TimeUnit.SECONDS);
         } catch (Exception e) {
             throw failure(e);
         }
+        setPort(port);
     }
 
     @After

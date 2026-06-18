@@ -20,10 +20,6 @@
 
 package org.aesh.terminal.telnet;
 
-import java.io.Closeable;
-import java.util.function.Function;
-import java.util.function.Supplier;
-
 import org.aesh.terminal.TestBase;
 import org.junit.Rule;
 
@@ -33,11 +29,9 @@ import org.junit.Rule;
 public abstract class TelnetTestBase extends TestBase {
 
     @Rule
-    public final TelnetServerRule server = new TelnetServerRule(serverFactory());
+    public final TelnetServerRule server = new TelnetServerRule();
 
     @Rule
     public final TelnetClientRule client = new TelnetClientRule();
-
-    protected abstract Function<Supplier<TelnetHandler>, Closeable> serverFactory();
 
 }

@@ -20,19 +20,10 @@
 
 package org.aesh.terminal.telnet;
 
-import java.io.Closeable;
-import java.util.function.Function;
-import java.util.function.Supplier;
-
 /**
  * See <a href="http://commons.apache.org/proper/commons-net/examples/telnet/TelnetClientExample.java>for more possibilities</a>
  *
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
  */
 public class NettyTelnetHandlerTest extends TelnetHandlerTest {
-
-    @Override
-    protected Function<Supplier<TelnetHandler>, Closeable> serverFactory() {
-        return TelnetServerRule.NETTY_SERVER;
-    }
 }

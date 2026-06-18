@@ -20,13 +20,6 @@
 
 package org.aesh.terminal.telnet.tty;
 
-import java.io.Closeable;
-import java.util.function.Function;
-import java.util.function.Supplier;
-
-import org.aesh.terminal.telnet.TelnetHandler;
-import org.aesh.terminal.telnet.TelnetServerRule;
-
 /**
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
  */
@@ -34,11 +27,6 @@ public class NettyAsciiTelnetTtyTest extends TelnetTtyTestBase {
 
     public NettyAsciiTelnetTtyTest() {
         binary = false;
-    }
-
-    @Override
-    protected Function<Supplier<TelnetHandler>, Closeable> serverFactory() {
-        return TelnetServerRule.NETTY_SERVER;
     }
 
     @Override

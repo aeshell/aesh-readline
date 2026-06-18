@@ -50,6 +50,11 @@ public abstract class WebsocketTtyTestBase extends TtyTestBase {
     private Endpoint endpoint;
     private Session session;
     private PipedReader in;
+    private int port = 8080;
+
+    protected void setPort(int port) {
+        this.port = port;
+    }
 
     @After
     public void afterWebsocket() throws Exception {
@@ -106,8 +111,11 @@ public abstract class WebsocketTtyTestBase extends TtyTestBase {
         };
         ClientEndpointConfig clientEndpointConfig = ClientEndpointConfig.Builder.create().build();
         WebSocketContainer webSocketContainer = ContainerProvider.getWebSocketContainer();
-        session = webSocketContainer.connectToServer(endpoint, clientEndpointConfig, new URI("ws://localhost:8080/ws"));
-        latch.await();
+        session = webSocketContainer.connectToServer(endpoint, clientEndpointConfig,
+                new URI("ws://localhost:" + port + "/ws"));
+        if (!latch.await(10, java.util.concurrent.TimeUnit.SECONDS)) {
+            throw failure("WebSocket handshake timed out");
+        }
     }
 
     @Override
@@ -123,7 +131,17 @@ public abstract class WebsocketTtyTestBase extends TtyTestBase {
     @Override
     protected String assertReadString(int len) throws Exception {
         char[] buf = new char[len];
+        long deadline = System.currentTimeMillis() + 10_000;
         while (len > 0) {
+            // Poll with timeout to avoid blocking forever
+            long remaining = deadline - System.currentTimeMillis();
+            if (remaining <= 0) {
+                throw failure("Timed out reading " + len + " more chars");
+            }
+            if (!in.ready()) {
+                Thread.sleep(Math.min(10, remaining));
+                continue;
+            }
             int count = in.read(buf, buf.length - len, len);
             if (count == -1) {
                 throw failure("Could not read enough");

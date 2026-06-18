@@ -62,7 +62,7 @@ public abstract class TelnetTermTest extends TelnetTestBase {
         });
         WindowSizeOptionHandler optionHandler = new WindowSizeOptionHandler(20, 10, false, false, true, false);
         client.setOptionHandler(optionHandler);
-        client.connect("localhost", 4000);
+        client.connect("localhost", server.getPort());
         latch1.await(30, TimeUnit.SECONDS);
         client.writeDirectAndFlush(new byte[] { TelnetConnection.BYTE_IAC, TelnetConnection.BYTE_SB, 31, 0, 80, 0, 24,
                 TelnetConnection.BYTE_IAC, TelnetConnection.BYTE_SE });

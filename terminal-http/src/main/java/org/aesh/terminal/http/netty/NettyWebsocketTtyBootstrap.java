@@ -20,7 +20,6 @@
 package org.aesh.terminal.http.netty;
 
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CountDownLatch;
 import java.util.function.Consumer;
 
 import org.aesh.terminal.Connection;
@@ -35,7 +34,6 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
-import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.ImmediateEventExecutor;
 
 /**
@@ -53,6 +51,7 @@ public class NettyWebsocketTtyBootstrap {
     private String resourcePath;
     private boolean serveStaticFiles;
     private Channel channel;
+    private EventLoopGroup group;
 
     /**
      * Creates a new bootstrap with default host (localhost) and port (8080).
@@ -155,7 +154,7 @@ public class NettyWebsocketTtyBootstrap {
      * @param doneHandler the callback invoked when startup completes (with null on success, or the error)
      */
     public void start(Consumer<Connection> handler, Consumer<Throwable> doneHandler) {
-        EventLoopGroup group = new NioEventLoopGroup();
+        group = new NioEventLoopGroup();
 
         ServerBootstrap b = new ServerBootstrap();
         b.group(group)
@@ -187,29 +186,28 @@ public class NettyWebsocketTtyBootstrap {
     }
 
     /**
-     * Stops the server asynchronously with callback-based completion notification.
-     *
-     * @param doneHandler the callback invoked when shutdown completes
-     */
-    public void stop(Consumer<Throwable> doneHandler) {
-        CountDownLatch latch = new CountDownLatch(1);
-        if (channel != null) {
-            channel.close().addListener((Future<Void> f) -> latch.countDown());
-        }
-        channelGroup.close().addListener((Future<Void> f) -> {
-            latch.await();
-            doneHandler.accept(f.cause());
-        });
-    }
-
-    /**
-     * Stops the server asynchronously and returns a CompletableFuture.
+     * Stops the server, closing all channels and shutting down the event loop group.
      *
      * @return a CompletableFuture that completes when the server has stopped
      */
     public CompletableFuture<Void> stop() {
         CompletableFuture<Void> fut = new CompletableFuture<>();
-        stop(stoppedHandler(fut));
+        try {
+            if (channel != null) {
+                channel.close().syncUninterruptibly();
+                channel = null;
+            }
+            channelGroup.close().syncUninterruptibly();
+        } catch (Exception e) {
+            // best effort
+        } finally {
+            if (group != null) {
+                group.shutdownGracefully(0, 5, java.util.concurrent.TimeUnit.SECONDS)
+                        .addListener(f -> fut.complete(null));
+            } else {
+                fut.complete(null);
+            }
+        }
         return fut;
     }
 
@@ -221,9 +219,5 @@ public class NettyWebsocketTtyBootstrap {
                 fut.completeExceptionally(err);
             }
         };
-    }
-
-    private Consumer<Throwable> stoppedHandler(CompletableFuture<?> fut) {
-        return err -> fut.complete(null);
     }
 }

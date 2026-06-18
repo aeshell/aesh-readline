@@ -44,7 +44,7 @@ public abstract class TelnetHandlerTest extends TelnetTestBase {
     private void testOptionValue(Supplier<TelnetHandler> factory, TelnetOptionHandler optionHandler) throws Exception {
         server.start(factory);
         client.setOptionHandler(optionHandler);
-        client.connect("localhost", 4000);
+        client.connect("localhost", server.getPort());
         await();
     }
 
@@ -195,7 +195,7 @@ public abstract class TelnetHandlerTest extends TelnetTestBase {
                 testComplete();
             }
         });
-        client.connect("localhost", 4000);
+        client.connect("localhost", server.getPort());
         await();
     }
 
@@ -208,7 +208,7 @@ public abstract class TelnetHandlerTest extends TelnetTestBase {
             }
         });
         try {
-            client.connect("localhost", 4000);
+            client.connect("localhost", server.getPort());
         } finally {
             client.disconnect();
         }
@@ -228,7 +228,7 @@ public abstract class TelnetHandlerTest extends TelnetTestBase {
                 testComplete();
             }
         });
-        client.connect("localhost", 4000);
+        client.connect("localhost", server.getPort());
         await();
     }
 
@@ -240,7 +240,7 @@ public abstract class TelnetHandlerTest extends TelnetTestBase {
                 conn.write(new byte[] { 0, 1, 2, 3, 127, (byte) 0x80, (byte) 0x81, -1 });
             }
         });
-        client.connect("localhost", 4000);
+        client.connect("localhost", server.getPort());
         byte[] data = client.assertReadBytes(8);
         assertEquals((byte) 0, data[0]);
         assertEquals((byte) 1, data[1]);
@@ -268,7 +268,7 @@ public abstract class TelnetHandlerTest extends TelnetTestBase {
                 testComplete();
             }
         });
-        client.connect("localhost", 4000).write(new byte[] { 0, 1, 2, 3, 127, (byte) 0x80, (byte) 0x81 }).flush();
+        client.connect("localhost", server.getPort()).write(new byte[] { 0, 1, 2, 3, 127, (byte) 0x80, (byte) 0x81 }).flush();
         await();
     }
 
@@ -282,7 +282,7 @@ public abstract class TelnetHandlerTest extends TelnetTestBase {
             }
         });
         client.setOptionHandler(new SimpleOptionHandler(47, true, false, false, false));
-        client.connect("localhost", 4000);
+        client.connect("localhost", server.getPort());
         await();
     }
 
@@ -296,7 +296,7 @@ public abstract class TelnetHandlerTest extends TelnetTestBase {
             }
         });
         client.setOptionHandler(new SimpleOptionHandler(47, false, true, false, false));
-        client.connect("localhost", 4000);
+        client.connect("localhost", server.getPort());
         await();
     }
 
@@ -333,8 +333,8 @@ public abstract class TelnetHandlerTest extends TelnetTestBase {
             }
         });
         client.setOptionHandler(new SimpleOptionHandler(0, false, false, true, false));
-        client.connect("localhost", 4000);
-        latch.await();
+        client.connect("localhost", server.getPort());
+        assertTrue("Timed out waiting for latch", latch.await(10, java.util.concurrent.TimeUnit.SECONDS));
         client.writeDirectAndFlush((byte) -1, (byte) -1);
         await();
     }
@@ -376,8 +376,8 @@ public abstract class TelnetHandlerTest extends TelnetTestBase {
         client.setOptionHandler(new SimpleOptionHandler(0, false, false, false, true));
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         client.client.registerSpyStream(baos);
-        client.connect("localhost", 4000);
-        latch.await();
+        client.connect("localhost", server.getPort());
+        assertTrue("Timed out waiting for latch", latch.await(10, java.util.concurrent.TimeUnit.SECONDS));
         Reader reader = new InputStreamReader(client.client.getInputStream());
         char[] hello = new char[5];
         int num = reader.read(hello);

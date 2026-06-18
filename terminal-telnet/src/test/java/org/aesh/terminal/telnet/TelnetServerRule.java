@@ -23,7 +23,6 @@ package org.aesh.terminal.telnet;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
 import java.util.function.Supplier;
 
 import org.aesh.terminal.TestBase;
@@ -40,51 +39,33 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
-import io.netty.util.concurrent.Future;
 
 /**
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
  */
 public class TelnetServerRule extends ExternalResource {
 
-    public static final Function<Supplier<TelnetHandler>, Closeable> NETTY_SERVER = handlerFactory -> {
-        EventLoopGroup bossGroup = new NioEventLoopGroup(1);
-        EventLoopGroup workerGroup = new NioEventLoopGroup();
-        ServerBootstrap b = new ServerBootstrap();
-        b.group(bossGroup, workerGroup)
-                .channel(NioServerSocketChannel.class)
-                .option(ChannelOption.SO_BACKLOG, 100)
-                .handler(new LoggingHandler(LogLevel.INFO))
-                .childHandler(new ChannelInitializer<SocketChannel>() {
-                    @Override
-                    public void initChannel(SocketChannel ch) {
-                        ChannelPipeline p = ch.pipeline();
-                        TelnetChannelHandler handler = new TelnetChannelHandler(handlerFactory);
-                        p.addLast(handler);
-                    }
-                });
-        try {
-            b.bind("localhost", 4000).sync();
-            return () -> {
-                Future<?> future = bossGroup.shutdownGracefully();
-                try {
-                    if (!future.await(30, TimeUnit.SECONDS)) {
-                        throw TestBase.failure("bossGroup not finished in timeout");
-                    }
-                } catch (InterruptedException e) {
-                    throw TestBase.failure(e);
-                }
-            };
-        } catch (InterruptedException e) {
-            throw TestBase.failure(e);
-        }
-    };
-
-    private final Function<Supplier<TelnetHandler>, Closeable> serverFactory;
     protected Closeable server;
+    private int port;
 
-    public TelnetServerRule(Function<Supplier<TelnetHandler>, Closeable> serverFactory) {
-        this.serverFactory = serverFactory;
+    /**
+     * Creates a TelnetServerRule that allocates a dynamic port.
+     */
+    public TelnetServerRule() {
+        try {
+            this.port = TestBase.findAvailablePort();
+        } catch (IOException e) {
+            throw new RuntimeException("Cannot find available port", e);
+        }
+    }
+
+    /**
+     * Returns the port the server binds to.
+     *
+     * @return the port number
+     */
+    public int getPort() {
+        return port;
     }
 
     @Override
@@ -98,10 +79,49 @@ public class TelnetServerRule extends ExternalResource {
         }
     }
 
+    /**
+     * Starts a Netty-based telnet server with the given handler factory.
+     *
+     * @param telnetFactory supplier for creating TelnetHandler instances
+     */
     public final void start(Supplier<TelnetHandler> telnetFactory) {
         if (server != null) {
             throw TestBase.failure("Already a server");
         }
-        server = serverFactory.apply(telnetFactory);
+        EventLoopGroup bossGroup = new NioEventLoopGroup(1);
+        EventLoopGroup workerGroup = new NioEventLoopGroup();
+        ServerBootstrap b = new ServerBootstrap();
+        b.group(bossGroup, workerGroup)
+                .channel(NioServerSocketChannel.class)
+                .option(ChannelOption.SO_BACKLOG, 100)
+                .handler(new LoggingHandler(LogLevel.INFO))
+                .childHandler(new ChannelInitializer<SocketChannel>() {
+                    @Override
+                    public void initChannel(SocketChannel ch) {
+                        ChannelPipeline p = ch.pipeline();
+                        TelnetChannelHandler handler = new TelnetChannelHandler(telnetFactory);
+                        p.addLast(handler);
+                    }
+                });
+        try {
+            b.bind("localhost", port).sync();
+        } catch (InterruptedException e) {
+            bossGroup.shutdownGracefully(0, 1, TimeUnit.SECONDS);
+            workerGroup.shutdownGracefully(0, 1, TimeUnit.SECONDS);
+            throw TestBase.failure(e);
+        }
+        server = () -> {
+            try {
+                bossGroup.shutdownGracefully(0, 5, TimeUnit.SECONDS).await(5, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            } finally {
+                try {
+                    workerGroup.shutdownGracefully(0, 5, TimeUnit.SECONDS).await(5, TimeUnit.SECONDS);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        };
     }
 }
