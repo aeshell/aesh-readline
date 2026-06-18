@@ -10,11 +10,11 @@ import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.aesh.readline.prompt.Prompt;
 import org.aesh.readline.Readline;
 import org.aesh.readline.completion.Completion;
 import org.aesh.readline.editing.EditMode;
 import org.aesh.readline.editing.EditModeBuilder;
+import org.aesh.readline.prompt.Prompt;
 import org.aesh.terminal.Attributes;
 import org.aesh.terminal.Connection;
 import org.aesh.terminal.tty.Point;
@@ -41,20 +41,12 @@ public class ShellExample implements Consumer<Connection> {
 
     @Override
     public void accept(Connection connection) {
-        Attributes savedAttr = connection.enterRawMode();
-
         connection.setSignalHandler(signal -> {
             connection.write("\nlets quit\n");
             connection.close();
         });
 
-        connection.setCloseHandler(close -> {
-            stopped = true;
-            try {
-                connection.setAttributes(savedAttr);
-            } catch (Exception | java.io.IOError ignored) {
-            }
-        });
+        connection.setCloseHandler(close -> stopped = true);
 
         Readline readline = new Readline(EditModeBuilder.builder(EditMode.Mode.EMACS).build());
         read(connection, readline);
@@ -198,21 +190,21 @@ public class ShellExample implements Consumer<Connection> {
                 }
                 if (time > 0) {
                     // Sleep until timeout or Ctrl-C interrupted
-                    Thread.sleep(time * 1000);
+                    Thread.sleep(time * 1000L);
                 }
             }
         },
 
         exit() {
             @Override
-            public void execute(Connection conn, List<String> args) throws Exception {
+            public void execute(Connection conn, List<String> args) {
                 conn.close();
             }
         },
 
         echo() {
             @Override
-            public void execute(Connection conn, List<String> args) throws Exception {
+            public void execute(Connection conn, List<String> args) {
                 for (int i = 0; i < args.size(); i++) {
                     if (i > 0) {
                         conn.write(" ");
@@ -229,9 +221,7 @@ public class ShellExample implements Consumer<Connection> {
                 conn.write("Current window size " + conn.size() + ", try resize it\n");
 
                 // Refresh the screen with the new size
-                conn.setSizeHandler(size -> {
-                    conn.write("Window resized " + size + "\n");
-                });
+                conn.setSizeHandler(size -> conn.write("Window resized " + size + "\n"));
 
                 try {
                     // Wait until interrupted
@@ -244,7 +234,7 @@ public class ShellExample implements Consumer<Connection> {
 
         help() {
             @Override
-            public void execute(Connection conn, List<String> args) throws Exception {
+            public void execute(Connection conn, List<String> args) {
                 StringBuilder msg = new StringBuilder("Demo term, try commands: ");
                 Command[] commands = Command.values();
                 for (int i = 0; i < commands.length; i++) {
@@ -352,7 +342,7 @@ public class ShellExample implements Consumer<Connection> {
 
         cursor() {
             @Override
-            public void execute(Connection conn, List<String> args) throws Exception {
+            public void execute(Connection conn, List<String> args) {
                 conn.write("cursor position is: ");
                 Point p = conn.terminal().getCursorPosition();
                 conn.write(p.toString() + Config.getLineSeparator());

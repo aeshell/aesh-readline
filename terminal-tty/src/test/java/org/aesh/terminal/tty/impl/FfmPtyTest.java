@@ -189,7 +189,10 @@ public class FfmPtyTest {
             assertTrue("Should have a character size flag set", hasCharSize);
         } finally {
             if (ffmPty != null) {
-                try { ffmPty.close(); } catch (IOException e) { /* ignore */ }
+                try {
+                    ffmPty.close();
+                } catch (IOException e) {
+                    /* ignore */ }
             }
         }
     }
@@ -215,7 +218,10 @@ public class FfmPtyTest {
                     size.getHeight() <= 500);
         } finally {
             if (ffmPty != null) {
-                try { ffmPty.close(); } catch (IOException e) { /* ignore */ }
+                try {
+                    ffmPty.close();
+                } catch (IOException e) {
+                    /* ignore */ }
             }
         }
     }
