@@ -285,9 +285,10 @@
                             <argLine>--enable-native-access=ALL-UNNAMED</argLine>
                         </configuration>
                     </plugin>
-                    <!-- Copy MRJAR Java 22+ classes to the regular output directory
-                         so surefire can find them (MRJAR only works with JAR files,
-                         not exploded target/classes directories) -->
+                    <!-- Copy MRJAR Java 22+ classes to test-classes so surefire can
+                         find them. MUST NOT copy to target/classes — that would put
+                         Java 22 bytecode in the base path of the released JAR,
+                         breaking JDK 17 users (#211). -->
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-antrun-plugin</artifactId>
@@ -298,7 +299,7 @@
                                 <goals><goal>run</goal></goals>
                                 <configuration>
                                     <target>
-                                        <copy todir="${project.build.outputDirectory}" overwrite="false"
+                                        <copy todir="${project.build.testOutputDirectory}" overwrite="true"
                                               failonerror="false">
                                             <fileset dir="${project.build.outputDirectory}/META-INF/versions/22"
                                                      erroronmissingdir="false"/>
@@ -335,10 +336,9 @@
             </dependencies>
             <build>
                 <plugins>
-                    <!-- Copy MRJAR Java 22+ classes to the regular output so native-image
-                         can find them. Exclude all FFM classes — GraalVM does not yet
-                         support registering FFM downcall descriptors in reachability
-                         metadata (#206). Without the FFM classes, FfmTerminalProvider
+                    <!-- Delete FFM classes from test-classes so native-image does not
+                         include them. GraalVM does not yet support FFM downcall
+                         registration (#206). Without these classes, FfmTerminalProvider
                          fails with ClassNotFoundException and falls through to
                          ExecPtyTerminalProvider (POSIX) or JNI WinConsoleNative (Windows). -->
                     <plugin>
@@ -346,15 +346,13 @@
                         <artifactId>maven-antrun-plugin</artifactId>
                         <executions>
                             <execution>
-                                <id>copy-mrjar-for-native</id>
+                                <id>delete-ffm-for-native</id>
                                 <phase>process-test-classes</phase>
                                 <goals><goal>run</goal></goals>
                                 <configuration>
                                     <target>
-                                        <!-- Delete any FFM classes that the java22-ffm test profile
-                                             may have copied earlier in this build phase -->
                                         <delete failonerror="false">
-                                            <fileset dir="${project.build.outputDirectory}/org/aesh/terminal/tty/impl"
+                                            <fileset dir="${project.build.testOutputDirectory}/org/aesh/terminal/tty/impl"
                                                      erroronmissingdir="false">
                                                 <include name="FfmPty.class"/>
                                                 <include name="FfmPty$*.class"/>
