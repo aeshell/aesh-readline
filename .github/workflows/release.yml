@@ -76,7 +76,7 @@ jobs:
           git commit -am "Release ${{ steps.versions.outputs.release_version }}"
 
       - name: Build and deploy
-        run: mvn clean deploy -Prelease -DskipTests
+        run: mvn clean deploy -Prelease -DskipTests -Dcheckstyle.skip=true
         env:
           NEXUS_USER: ${{ secrets.NEXUS_USER }}
           NEXUS_TOKEN: ${{ secrets.NEXUS_TOKEN }}
