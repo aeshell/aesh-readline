@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.aesh</groupId>
         <artifactId>readline-all</artifactId>
-        <version>2.6</version>
+        <version>2.6.1</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
@@ -67,7 +67,7 @@
 
     <dependencies>
         <dependency>
-            <groupId>org.fusesource.jansi</groupId>
+            <groupId>org.jline</groupId>
             <artifactId>jansi</artifactId>
             <version>${jansi.version}</version>
         </dependency>
@@ -137,7 +137,7 @@
                   <configuration>
                     <artifactSet>
                       <excludes>
-                        <exclude>org.fusesource.jansi:jansi</exclude>
+                        <exclude>org.jline:jansi</exclude>
                         <exclude>junit:junit</exclude>
                         <!--
                         <exclude>org.apache.maven:lib:tests</exclude>

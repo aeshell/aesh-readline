@@ -46,11 +46,10 @@ import org.aesh.terminal.io.Encoder;
 import org.aesh.readline.util.LoggerUtil;
 import org.aesh.terminal.tty.Signal;
 import org.aesh.terminal.tty.Size;
-import static org.fusesource.jansi.internal.Kernel32.GetStdHandle;
-import static org.fusesource.jansi.internal.Kernel32.STD_OUTPUT_HANDLE;
-import static org.fusesource.jansi.internal.Kernel32.WriteConsoleW;
-
-import org.fusesource.jansi.WindowsSupport;
+import org.jline.nativ.Kernel32;
+import static org.jline.nativ.Kernel32.GetStdHandle;
+import static org.jline.nativ.Kernel32.STD_OUTPUT_HANDLE;
+import static org.jline.nativ.Kernel32.WriteConsoleW;
 
 abstract class AbstractWindowsTerminal extends AbstractTerminal {
 
@@ -65,7 +64,7 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
             CharBuffer buffer = Encoder.toCharBuffer(input);
             char[] chars = buffer.array();
             if (WriteConsoleW(console, chars, chars.length, writtenChars, 0) == 0) {
-                LOGGER.log(Level.WARNING, "Failed to write out.", WindowsSupport.getLastErrorMessage());
+                LOGGER.log(Level.WARNING, "Failed to write out.", Kernel32.getLastErrorMessage());
             }
         }
 
