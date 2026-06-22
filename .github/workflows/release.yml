@@ -3,6 +3,9 @@ name: Release
 on:
   workflow_dispatch:
     inputs:
+      branch:
+        description: 'Branch to release from (default: triggering branch)'
+        required: false
       release_version:
         description: 'Release version (e.g. 3.6). If unspecified, derived from POM version by removing -dev suffix.'
         required: false
@@ -20,6 +23,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          ref: ${{ github.event.inputs.branch || github.ref }}
 
       - name: Set up JDK 25
         uses: actions/setup-java@v5
