@@ -82,29 +82,45 @@ public class ArtifactVerificationTest {
     }
 
     // ========== Guard #218: native-image.properties exists and is correct ==========
+    // Note: GraalVM native-image consumes native-image.properties at build time
+    // and does NOT embed it as a classpath resource in the native binary.
+    // We read from target/classes on disk instead of getResourceAsStream().
 
-    @Test
-    public void testNativeImagePropertiesExists() {
-        InputStream is = getClass().getClassLoader().getResourceAsStream(NATIVE_IMAGE_PROPS);
-        assertNotNull("native-image.properties must be present at " + NATIVE_IMAGE_PROPS
-                + " — without it, GraalVM native-image may fail to initialize "
-                + "Windows terminal classes on Linux (#218)", is);
-    }
-
-    @Test
-    public void testNativeImagePropertiesContainsInitAtRunTime() throws Exception {
-        InputStream is = getClass().getClassLoader().getResourceAsStream(NATIVE_IMAGE_PROPS);
-        if (is == null) {
-            return; // testNativeImagePropertiesExists will catch this
+    private String readNativeImageProperties() {
+        File propsFile = new File("target/classes/" + NATIVE_IMAGE_PROPS);
+        if (!propsFile.isFile()) {
+            return null;
         }
-        String content;
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(java.nio.file.Files.newInputStream(propsFile.toPath()),
+                        StandardCharsets.UTF_8))) {
             StringBuilder sb = new StringBuilder();
             String line;
             while ((line = reader.readLine()) != null) {
                 sb.append(line.trim());
             }
-            content = sb.toString();
+            return sb.toString();
+        } catch (IOException e) {
+            return null;
+        }
+    }
+
+    @Test
+    public void testNativeImagePropertiesExists() {
+        File propsFile = new File("target/classes/" + NATIVE_IMAGE_PROPS);
+        if (!new File("target/classes").isDirectory()) {
+            return; // Skip if not built yet
+        }
+        assertTrue("native-image.properties must be present at " + NATIVE_IMAGE_PROPS
+                + " — without it, GraalVM native-image may fail to initialize "
+                + "Windows terminal classes on Linux (#218)", propsFile.isFile());
+    }
+
+    @Test
+    public void testNativeImagePropertiesContainsInitAtRunTime() throws Exception {
+        String content = readNativeImageProperties();
+        if (content == null) {
+            return; // testNativeImagePropertiesExists will catch this
         }
 
         assertTrue("native-image.properties must contain --initialize-at-run-time for WinSysTerminal (#218)",
@@ -115,18 +131,9 @@ public class ArtifactVerificationTest {
 
     @Test
     public void testNativeImagePropertiesDoesNotBreakServiceLoader() throws Exception {
-        InputStream is = getClass().getClassLoader().getResourceAsStream(NATIVE_IMAGE_PROPS);
-        if (is == null) {
+        String content = readNativeImageProperties();
+        if (content == null) {
             return;
-        }
-        String content;
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
-            StringBuilder sb = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                sb.append(line.trim());
-            }
-            content = sb.toString();
         }
 
         assertFalse("native-image.properties MUST NOT contain ServiceLoaderFeatureExcludeServiceProviders "
