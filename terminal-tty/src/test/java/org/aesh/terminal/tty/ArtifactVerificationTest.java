@@ -35,7 +35,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Properties;
 import java.util.Set;
 
 import org.junit.Test;
@@ -46,9 +45,9 @@ import org.junit.Test;
  * These tests guard against regressions that only manifest in the released
  * JAR, not during development builds:
  * <ul>
- *   <li>#211 — Java 22 bytecode in base path breaks JDK 8-17 users</li>
- *   <li>#218 — Missing native-image.properties causes class init failure</li>
- *   <li>#209 — Broken native-image.properties disables all ServiceLoader providers</li>
+ * <li>#211 — Java 22 bytecode in base path breaks JDK 8-17 users</li>
+ * <li>#218 — Missing native-image.properties causes class init failure</li>
+ * <li>#209 — Broken native-image.properties disables all ServiceLoader providers</li>
  * </ul>
  */
 public class ArtifactVerificationTest {
@@ -56,10 +55,8 @@ public class ArtifactVerificationTest {
     /** Java 8 = major version 52. The project targets Java 8 (maven.compiler.release=8). */
     private static final int MAX_BASE_MAJOR_VERSION = 52;
 
-    private static final String NATIVE_IMAGE_PROPS =
-            "META-INF/native-image/org.aesh/terminal-tty/native-image.properties";
-    private static final String SERVICES_FILE =
-            "META-INF/services/org.aesh.terminal.provider.TerminalProvider";
+    private static final String NATIVE_IMAGE_PROPS = "META-INF/native-image/org.aesh/terminal-tty/native-image.properties";
+    private static final String SERVICES_FILE = "META-INF/services/org.aesh.terminal.provider.TerminalProvider";
 
     // ========== Guard #211: No high bytecode in base path ==========
 

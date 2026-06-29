@@ -32,9 +32,9 @@ import org.aesh.terminal.provider.TerminalProvider;
  * <p>
  * Run as a native-image built from the released JAR to verify:
  * <ul>
- *   <li>ServiceLoader discovers terminal providers</li>
- *   <li>No class initialization errors (WinSysTerminal on Linux, #218)</li>
- *   <li>native-image.properties is correctly applied</li>
+ * <li>ServiceLoader discovers terminal providers</li>
+ * <li>No class initialization errors (WinSysTerminal on Linux, #218)</li>
+ * <li>native-image.properties is correctly applied</li>
  * </ul>
  */
 public class NativeImageVerify {
