@@ -103,6 +103,7 @@
                         <manifestEntries>
                             <Automatic-Module-Name>${javaModuleName}</Automatic-Module-Name>
                             <Multi-Release>true</Multi-Release>
+                            <Enable-Native-Access>ALL-UNNAMED</Enable-Native-Access>
                         </manifestEntries>
                         <index>true</index>
                     </archive>
@@ -324,7 +325,7 @@
                 <dependency>
                     <groupId>org.junit.vintage</groupId>
                     <artifactId>junit-vintage-engine</artifactId>
-                    <version>6.1.1</version>
+                    <version>5.12.2</version>
                     <scope>test</scope>
                 </dependency>
                 <dependency>
