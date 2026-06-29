@@ -33,8 +33,12 @@ import org.aesh.terminal.tty.Size;
  */
 public class WinSysTerminal extends AbstractWindowsTerminal {
 
-    private static final long INPUT_HANDLE = WinConsoleNative.getStdHandle(WinConsoleNative.STD_INPUT_HANDLE);
-    private static final long OUTPUT_HANDLE = WinConsoleNative.getStdHandle(WinConsoleNative.STD_OUTPUT_HANDLE);
+    // Lazy holder — avoids calling WinConsoleNative in static init,
+    // which would fail on non-Windows or in GraalVM native-image at build time (#218).
+    private static final class Handles {
+        static final long INPUT = WinConsoleNative.getStdHandle(WinConsoleNative.STD_INPUT_HANDLE);
+        static final long OUTPUT = WinConsoleNative.getStdHandle(WinConsoleNative.STD_OUTPUT_HANDLE);
+    }
 
     // Windows key modifier constants
     private static final int RIGHT_ALT_PRESSED = 0x0001;
@@ -87,21 +91,21 @@ public class WinSysTerminal extends AbstractWindowsTerminal {
 
     @Override
     protected int getConsoleMode() {
-        if (INPUT_HANDLE == WinConsoleNative.INVALID_HANDLE) {
+        if (Handles.INPUT == WinConsoleNative.INVALID_HANDLE) {
             return -1;
         }
-        return WinConsoleNative.getConsoleMode(INPUT_HANDLE);
+        return WinConsoleNative.getConsoleMode(Handles.INPUT);
     }
 
     @Override
     protected void setConsoleMode(int mode) {
-        if (INPUT_HANDLE != WinConsoleNative.INVALID_HANDLE) {
-            WinConsoleNative.setConsoleMode(INPUT_HANDLE, mode);
+        if (Handles.INPUT != WinConsoleNative.INVALID_HANDLE) {
+            WinConsoleNative.setConsoleMode(Handles.INPUT, mode);
         }
     }
 
     public Size getSize() {
-        int[] size = WinConsoleNative.getConsoleSize(OUTPUT_HANDLE);
+        int[] size = WinConsoleNative.getConsoleSize(Handles.OUTPUT);
         if (size == null) {
             return new Size(80, 24);
         }
@@ -109,12 +113,12 @@ public class WinSysTerminal extends AbstractWindowsTerminal {
     }
 
     protected byte[] readConsoleInput() {
-        if (INPUT_HANDLE == WinConsoleNative.INVALID_HANDLE) {
+        if (Handles.INPUT == WinConsoleNative.INVALID_HANDLE) {
             return new byte[0];
         }
         int[] event;
         try {
-            event = WinConsoleNative.readConsoleInputEvent(INPUT_HANDLE);
+            event = WinConsoleNative.readConsoleInputEvent(Handles.INPUT);
         } catch (Exception e) {
             LOGGER.log(Level.INFO, "read Windows terminal input error: ", e);
             return new byte[0];
@@ -208,10 +212,10 @@ public class WinSysTerminal extends AbstractWindowsTerminal {
      */
     public void setMouseHandler(Consumer<MouseEvent> handler) {
         this.mouseHandler = handler;
-        if (INPUT_HANDLE == WinConsoleNative.INVALID_HANDLE) {
+        if (Handles.INPUT == WinConsoleNative.INVALID_HANDLE) {
             return;
         }
-        int mode = WinConsoleNative.getConsoleMode(INPUT_HANDLE);
+        int mode = WinConsoleNative.getConsoleMode(Handles.INPUT);
         if (mode == -1) {
             return;
         }
@@ -222,7 +226,7 @@ public class WinSysTerminal extends AbstractWindowsTerminal {
         } else {
             mode &= ~ENABLE_MOUSE_INPUT;
         }
-        WinConsoleNative.setConsoleMode(INPUT_HANDLE, mode);
+        WinConsoleNative.setConsoleMode(Handles.INPUT, mode);
     }
 
     /**
@@ -235,28 +239,28 @@ public class WinSysTerminal extends AbstractWindowsTerminal {
     }
 
     private void enableVTInput() {
-        if (INPUT_HANDLE == WinConsoleNative.INVALID_HANDLE) {
+        if (Handles.INPUT == WinConsoleNative.INVALID_HANDLE) {
             return;
         }
-        int mode = WinConsoleNative.getConsoleMode(INPUT_HANDLE);
+        int mode = WinConsoleNative.getConsoleMode(Handles.INPUT);
         if (mode == -1) {
             return;
         }
         originalInputMode = mode;
-        if (WinConsoleNative.setConsoleMode(INPUT_HANDLE, mode | ENABLE_VIRTUAL_TERMINAL_INPUT)) {
+        if (WinConsoleNative.setConsoleMode(Handles.INPUT, mode | ENABLE_VIRTUAL_TERMINAL_INPUT)) {
             vtInputEnabled = true;
         }
     }
 
     private static boolean setVTMode() {
-        if (OUTPUT_HANDLE == WinConsoleNative.INVALID_HANDLE) {
+        if (Handles.OUTPUT == WinConsoleNative.INVALID_HANDLE) {
             return false;
         }
-        int mode = WinConsoleNative.getConsoleMode(OUTPUT_HANDLE);
+        int mode = WinConsoleNative.getConsoleMode(Handles.OUTPUT);
         if (mode == -1) {
             return false;
         }
-        return WinConsoleNative.setConsoleMode(OUTPUT_HANDLE,
+        return WinConsoleNative.setConsoleMode(Handles.OUTPUT,
                 mode | WinConsoleNative.ENABLE_VIRTUAL_TERMINAL_PROCESSING);
     }
 
