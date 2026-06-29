@@ -324,7 +324,7 @@
                 <dependency>
                     <groupId>org.junit.vintage</groupId>
                     <artifactId>junit-vintage-engine</artifactId>
-                    <version>5.12.2</version>
+                    <version>6.1.1</version>
                     <scope>test</scope>
                 </dependency>
                 <dependency>
