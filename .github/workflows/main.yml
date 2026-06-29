@@ -56,13 +56,13 @@ jobs:
       shell: bash
       run: mvn clean verify -pl terminal-tty -am -Dformat.skip=true
 
-  # Guard against MRJAR bytecode contamination (#211):
-  # Build and test with JDK 25 (activates java22-ffm profile, produces MRJAR).
-  # MrjarBytecodeVersionTest scans target/classes and fails if any base-path
-  # class has bytecode version > 52 (Java 8), which is the project target.
-  mrjar-verify:
+  # Guard against artifact regressions (#209, #211, #218):
+  # Build with JDK 25 (activates java22-ffm profile, produces MRJAR).
+  # ArtifactVerificationTest checks: bytecode versions, native-image.properties,
+  # ServiceLoader file, cross-platform class loading safety.
+  artifact-verify:
     runs-on: ubuntu-latest
-    name: mrjar-verify (build JDK 25, verify target=8)
+    name: artifact-verify (build JDK 25, verify artifact)
 
     steps:
     - uses: actions/checkout@v7
@@ -72,8 +72,44 @@ jobs:
         java-version: '25'
         distribution: 'temurin'
         cache: maven
-    - name: Build and verify bytecode versions
+    - name: Build and verify artifact
       run: script -qefc 'mvn clean verify -pl terminal-tty -am -Dformat.skip=true' /dev/null
+
+  # Guard against native-image regressions (#209, #218):
+  # Build the released JAR with JDK 25, then build a native-image from it
+  # using a named-package main class (not default package — #209 was
+  # package-dependent). Verifies ServiceLoader, class init, and provider
+  # discovery work correctly in the native binary.
+  native-jar-verify:
+    runs-on: ubuntu-latest
+    name: native-jar-verify (native-image from JAR)
+
+    steps:
+    - uses: actions/checkout@v7
+    - name: Set up GraalVM
+      uses: graalvm/setup-graalvm@v1
+      with:
+        java-version: '25'
+        distribution: 'graalvm'
+        cache: maven
+    - name: Build JARs
+      run: mvn clean install -DskipTests -Dformat.skip=true
+    - name: Build native-image from released JARs
+      run: |
+        # Compile the verify app against the released JARs
+        CP=$(find . -path '*/target/*.jar' -not -name '*-sources*' -not -name '*-javadoc*' -not -name '*-tests*' \
+             -not -path '*/benchmark/*' -not -path '*/examples/*' -not -path '*/bom/*' \
+             | tr '\n' ':')
+        mkdir -p /tmp/verify-classes
+        javac -cp "$CP" -d /tmp/verify-classes \
+          terminal-tty/src/test/java/org/aesh/terminal/tty/nativeimage/NativeImageVerify.java
+        # Build native-image using the packaged JARs (not target/classes)
+        # This tests what external consumers like Quarkus actually see
+        native-image --no-fallback -cp "/tmp/verify-classes:$CP" \
+          org.aesh.terminal.tty.nativeimage.NativeImageVerify \
+          /tmp/native-verify
+    - name: Run native verification
+      run: /tmp/native-verify
 
   windows-test:
     runs-on: windows-latest
