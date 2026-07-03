@@ -4,6 +4,14 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    ignore:
+      # JUnit 6.x is incompatible with native-maven-plugin 1.1.2
+      # which bundles junit-platform-native built against JUnit 5.x.
+      # Keep these on 5.x until native-maven-plugin supports JUnit 6.
+      - dependency-name: "org.junit.vintage:junit-vintage-engine"
+        versions: ["[6.0.0,)"]
+      - dependency-name: "org.junit.platform:junit-platform-launcher"
+        versions: ["[6.0.0,)"]
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:

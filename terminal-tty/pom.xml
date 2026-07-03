@@ -323,12 +323,14 @@
             </activation>
             <dependencies>
                 <dependency>
+                    <!-- JUnit 5.x ONLY — 6.x is incompatible with native-maven-plugin 1.1.2 -->
                     <groupId>org.junit.vintage</groupId>
                     <artifactId>junit-vintage-engine</artifactId>
                     <version>6.1.1</version>
                     <scope>test</scope>
                 </dependency>
                 <dependency>
+                    <!-- JUnit 5.x ONLY — 6.x is incompatible with native-maven-plugin 1.1.2 -->
                     <groupId>org.junit.platform</groupId>
                     <artifactId>junit-platform-launcher</artifactId>
                     <version>1.12.2</version>
