@@ -87,15 +87,22 @@ public final class OSUtils {
                 }
             }
         } else {
-            tty = "tty";
-            stty = "stty";
             infocmp = "infocmp";
             if (IS_OSX) {
+                // Hardcode BSD paths on macOS to avoid conflict with GNU
+                // coreutils stty from Homebrew/Nix which fails on macOS
+                // terminal subsystem (#224).
+                tty = "/usr/bin/tty";
+                stty = "/bin/stty";
                 sttyfopt = "-f";
-            } else if (IS_HPUX || IS_SUNOS) {
-                sttyfopt = "";
             } else {
-                sttyfopt = "-F";
+                tty = "tty";
+                stty = "stty";
+                if (IS_HPUX || IS_SUNOS) {
+                    sttyfopt = "";
+                } else {
+                    sttyfopt = "-F";
+                }
             }
         }
         TTY_COMMAND = tty;
