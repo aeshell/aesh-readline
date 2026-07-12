@@ -32,7 +32,7 @@
     <groupId>org.aesh</groupId>
     <artifactId>readline-all</artifactId>
     <packaging>pom</packaging>
-    <version>3.16.3</version>
+    <version>3.17-dev</version>
     <name>Æsh Readline and terminal</name>
     <description>Æsh (Another Extendable SHell) Readline and Terminal API</description>
     <url>https://aeshell.github.io</url>
