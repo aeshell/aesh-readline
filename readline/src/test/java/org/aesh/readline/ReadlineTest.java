@@ -357,4 +357,41 @@ public class ReadlineTest {
         term.assertLine("# this is not a comment");
     }
 
+    /**
+     * Verify that input sent between readline cycles (in the requestHandler
+     * callback) is not lost. Regression test for #233.
+     */
+    @Test
+    public void testInputBetweenReadlineCycles() {
+        TestReadline readline = new TestReadline();
+        TestReadlineConnection conn = new TestReadlineConnection(readline,
+                EditModeBuilder.builder().build(),
+                null, null, null, null,
+                new EnumMap<>(ReadlineFlag.class));
+
+        List<String> results = new ArrayList<>();
+
+        // First readline cycle
+        readline.readline(conn, new Prompt(": "), line -> {
+            results.add(line);
+            // Start second readline cycle from inside the requestHandler.
+            // This runs after finish() restores the handler.
+            readline.readline(conn, new Prompt(": "), line2 -> {
+                results.add(line2);
+            });
+            // Send input for the second cycle — arrives after finish()
+            // set the buffering handler, before start() sets the new one.
+            conn.read("second");
+            conn.read(Key.ENTER);
+        });
+
+        // Send input for the first cycle
+        conn.read("first");
+        conn.read(Key.ENTER);
+
+        assertEquals(2, results.size());
+        assertEquals("first", results.get(0));
+        assertEquals("second", results.get(1));
+    }
+
 }

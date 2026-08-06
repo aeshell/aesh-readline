@@ -266,7 +266,7 @@ public class Readline {
      */
     private class AeshInputProcessor implements InputProcessor {
         private final Connection conn;
-        private Consumer<int[]> prevReadHandler;
+        
         private Consumer<Size> prevSizeHandler;
         private Consumer<Signal> prevSignalHandler;
         private final Consumer<String> requestHandler;
@@ -304,7 +304,15 @@ public class Readline {
 
         @Override
         public void finish(String s) {
-            conn.setStdinHandler(prevReadHandler);
+            // Always buffer input between readline cycles in the decoder.
+            // Never restore prevReadHandler — it may be null on the first
+            // cycle, causing input to be silently dropped by Connection
+            // implementations that lack an input queue (#233).
+            conn.setStdinHandler(data -> {
+                synchronized (Readline.this) {
+                    decoder.add(data);
+                }
+            });
             conn.setSizeHandler(prevSizeHandler);
             conn.setSignalHandler(prevSignalHandler);
             conn.setPrintAboveHandler(null);
@@ -403,7 +411,6 @@ public class Readline {
          * Make a copy of Connection's current handlers and then use our own.
          */
         private void start() {
-            prevReadHandler = conn.stdinHandler();
             prevSizeHandler = conn.sizeHandler();
             prevSignalHandler = conn.signalHandler();
 
