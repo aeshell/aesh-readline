@@ -12,6 +12,11 @@ updates:
         versions: ["[6.0.0,)"]
       - dependency-name: "org.junit.platform:junit-platform-launcher"
         versions: ["[6.0.0,)"]
+      # native-maven-plugin 1.1.6 fails with missing
+      # org.apache.maven.shared.utils.logging.MessageUtils.
+      # Keep on 1.1.5 until a fixed version is released.
+      - dependency-name: "org.graalvm.buildtools:native-maven-plugin"
+        versions: ["1.1.6"]
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
