@@ -266,7 +266,7 @@ public class Readline {
      */
     private class AeshInputProcessor implements InputProcessor {
         private final Connection conn;
-        
+
         private Consumer<Size> prevSizeHandler;
         private Consumer<Signal> prevSignalHandler;
         private final Consumer<String> requestHandler;
