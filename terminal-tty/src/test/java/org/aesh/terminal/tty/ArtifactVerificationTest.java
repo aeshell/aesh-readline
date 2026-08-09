@@ -122,6 +122,11 @@ public class ArtifactVerificationTest {
 
         assertTrue("native-image.properties must contain --initialize-at-run-time for WinSysTerminal (#218)",
                 content.contains("WinSysTerminal"));
+        assertTrue("native-image.properties must contain --initialize-at-run-time for WinSysTerminal$Handles",
+                content.contains("WinSysTerminal$Handles"));
+        assertTrue("native-image.properties must contain --initialize-at-run-time for "
+                + "AbstractWindowsTerminal$ConsoleOutput$OutputHandle",
+                content.contains("AbstractWindowsTerminal$ConsoleOutput$OutputHandle"));
         assertTrue("native-image.properties must contain --initialize-at-run-time for WinConsoleNative (#218)",
                 content.contains("WinConsoleNative"));
     }

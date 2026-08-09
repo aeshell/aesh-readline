@@ -51,13 +51,18 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
     private static class ConsoleOutput implements Consumer<int[]> {
 
         private static final Logger LOGGER = LoggerUtil.getLogger(AbstractWindowsTerminal.class.getName());
-        private static final long console = WinConsoleNative.getStdHandle(WinConsoleNative.STD_OUTPUT_HANDLE);
+
+        // Lazy holder — avoids calling WinConsoleNative in static init,
+        // which would fail in GraalVM native-image at build time.
+        private static final class OutputHandle {
+            static final long CONSOLE = WinConsoleNative.getStdHandle(WinConsoleNative.STD_OUTPUT_HANDLE);
+        }
 
         @Override
         public void accept(int[] input) {
             CharBuffer buffer = Encoder.toCharBuffer(input);
             char[] chars = buffer.array();
-            if (!WinConsoleNative.writeConsole(console, chars, chars.length)) {
+            if (!WinConsoleNative.writeConsole(OutputHandle.CONSOLE, chars, chars.length)) {
                 LOGGER.log(Level.WARNING, "Failed to write out.");
             }
         }
