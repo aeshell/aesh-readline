@@ -76,13 +76,17 @@ public class TtyWebSocketFrameHandler extends SimpleChannelInboundHandler<TextWe
 
                 @Override
                 protected void pauseReads() {
-                    context.channel().config().setAutoRead(false);
+                    if (context.channel().isActive()) {
+                        context.channel().config().setAutoRead(false);
+                    }
                 }
 
                 @Override
                 protected void resumeReads() {
-                    context.channel().config().setAutoRead(true);
-                    context.channel().read();
+                    if (context.channel().isActive()) {
+                        context.channel().config().setAutoRead(true);
+                        context.channel().read();
+                    }
                 }
 
                 @Override

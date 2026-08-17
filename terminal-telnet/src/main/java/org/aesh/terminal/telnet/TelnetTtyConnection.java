@@ -120,30 +120,40 @@ public final class TelnetTtyConnection extends TelnetHandler implements Connecti
 
     /**
      * Executes a task on the per-connection readline executor.
-     * Falls back to the Netty event loop if the executor is not yet initialized.
+     * Falls back to the Netty event loop if the executor is not yet initialized
+     * or has been shut down.
      *
      * @param task the task to execute
      */
     public void execute(Runnable task) {
-        if (readlineExecutor != null) {
-            readlineExecutor.execute(task);
-        } else {
+        if (readlineExecutor != null && !readlineExecutor.isShutdown()) {
+            try {
+                readlineExecutor.execute(task);
+            } catch (java.util.concurrent.RejectedExecutionException e) {
+                // Executor shut down between the isShutdown() check and execute() — ignore
+            }
+        } else if (conn != null) {
             conn.execute(task);
         }
     }
 
     /**
      * Schedules a task for delayed execution on the per-connection readline executor.
-     * Falls back to the Netty event loop if the executor is not yet initialized.
+     * Falls back to the Netty event loop if the executor is not yet initialized
+     * or has been shut down.
      *
      * @param task the task to execute
      * @param delay the delay before execution
      * @param unit the time unit of the delay
      */
     public void schedule(Runnable task, long delay, TimeUnit unit) {
-        if (readlineExecutor != null) {
-            readlineExecutor.schedule(task, delay, unit);
-        } else {
+        if (readlineExecutor != null && !readlineExecutor.isShutdown()) {
+            try {
+                readlineExecutor.schedule(task, delay, unit);
+            } catch (java.util.concurrent.RejectedExecutionException e) {
+                // Executor shut down between the isShutdown() check and schedule() — ignore
+            }
+        } else if (conn != null) {
             conn.schedule(task, delay, unit);
         }
     }
