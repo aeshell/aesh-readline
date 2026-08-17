@@ -28,6 +28,8 @@ import static org.junit.Assert.assertTrue;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.aesh.terminal.tty.Size;
@@ -101,13 +103,20 @@ public class HttpTtyConnectionTest {
     }
 
     @Test
-    public void testResizeAction() {
+    public void testResizeAction() throws Exception {
         HttpTtyConnection conn = createConnection();
         AtomicReference<Size> resizedSize = new AtomicReference<>();
-        conn.setSizeHandler(resizedSize::set);
+        CountDownLatch latch = new CountDownLatch(1);
+        conn.setSizeHandler(s -> {
+            resizedSize.set(s);
+            latch.countDown();
+        });
 
         conn.writeToDecoder("{\"action\":\"resize\",\"cols\":132,\"rows\":50}");
 
+        // Size handler is dispatched to the readline executor asynchronously
+        assertTrue("Size handler should fire within 5 seconds",
+                latch.await(5, TimeUnit.SECONDS));
         assertNotNull(resizedSize.get());
         assertEquals(132, resizedSize.get().getWidth());
         assertEquals(50, resizedSize.get().getHeight());

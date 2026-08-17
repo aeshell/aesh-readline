@@ -19,7 +19,6 @@
  */
 package org.aesh.terminal.http.netty;
 
-import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 import org.aesh.terminal.Connection;
@@ -75,16 +74,9 @@ public class TtyWebSocketFrameHandler extends SimpleChannelInboundHandler<TextWe
                     context.writeAndFlush(new TextWebSocketFrame(byteBuf));
                 }
 
-                public void schedule(Runnable task, long delay, TimeUnit unit) {
-                    context.executor().schedule(task, delay, unit);
-                }
-
-                public void execute(Runnable task) {
-                    context.executor().execute(task);
-                }
-
                 @Override
                 public void close() {
+                    super.close();
                     context.close();
                 }
             };
@@ -100,10 +92,7 @@ public class TtyWebSocketFrameHandler extends SimpleChannelInboundHandler<TextWe
         context = null;
         conn = null;
         if (tmp != null) {
-            Consumer<Void> closeHandler = tmp.closeHandler();
-            if (closeHandler != null) {
-                closeHandler.accept(null);
-            }
+            tmp.close();
         }
     }
 

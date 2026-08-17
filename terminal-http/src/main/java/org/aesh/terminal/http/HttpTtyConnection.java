@@ -24,6 +24,8 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -107,6 +109,13 @@ public abstract class HttpTtyConnection extends AbstractConnection {
     private boolean initialized = false;
 
     /**
+     * Per-connection executor for readline processing.
+     * All input decoding, event processing, action handling, and output generation
+     * runs on this single-thread executor, keeping the Netty IO thread free.
+     */
+    private final ScheduledExecutorService readlineExecutor;
+
+    /**
      * Creates a new HTTP TTY connection with default charset (UTF-8) and size (80x24).
      */
     public HttpTtyConnection() {
@@ -128,6 +137,11 @@ public abstract class HttpTtyConnection extends AbstractConnection {
 
         this.device = new HttpDevice();
         this.attributes = new Attributes();
+        this.readlineExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread t = new Thread(r, "aesh-http-readline");
+            t.setDaemon(true);
+            return t;
+        });
     }
 
     /**
@@ -210,7 +224,10 @@ public abstract class HttpTtyConnection extends AbstractConnection {
                 case "read":
                     lastAccessedTime = System.currentTimeMillis();
                     String data = (String) obj.get("data");
-                    decoder.write(data.getBytes()); //write back echo
+                    if (data != null) {
+                        byte[] bytes = data.getBytes();
+                        readlineExecutor.execute(() -> decoder.write(bytes));
+                    }
                     break;
                 case "resize":
                     handleResize(obj);
@@ -278,7 +295,9 @@ public abstract class HttpTtyConnection extends AbstractConnection {
                 if (!newSize.equals(size())) {
                     size = newSize;
                     if (sizeHandler != null) {
-                        sizeHandler.accept(size);
+                        // Dispatch to readline executor to avoid racing with input processing
+                        Size s = newSize;
+                        readlineExecutor.execute(() -> sizeHandler.accept(s));
                     }
                 }
             }
@@ -319,6 +338,7 @@ public abstract class HttpTtyConnection extends AbstractConnection {
     @Override
     public void close() {
         reading = false;
+        readlineExecutor.shutdownNow();
         if (closeHandler != null) {
             closeHandler.accept(null);
         }
