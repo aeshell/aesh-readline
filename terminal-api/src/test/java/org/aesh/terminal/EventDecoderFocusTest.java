@@ -96,12 +96,33 @@ public class EventDecoderFocusTest {
     }
 
     @Test
-    public void testIncompleteSequencePassesThrough() {
+    public void testIncompleteSequenceHeldAsPending() {
         decoder.setFocusHandler(focusEvents::add);
-        // Just ESC [ without the final char
+        // Just ESC [ without the final char — held as pending for next call
         decoder.accept(new int[] { 27, '[' });
         assertEquals(0, focusEvents.size());
+        // Pending bytes are not yet flushed (waiting for the final byte)
+        // Complete the sequence with the next call
+        decoder.accept(new int[] { 'I' });
+        assertEquals(1, focusEvents.size());
+        assertEquals(true, focusEvents.get(0));
+    }
+
+    @Test
+    public void testIncompleteSequenceFlushedOnMismatch() {
+        decoder.setFocusHandler(focusEvents::add);
+        // ESC [ then a non-focus byte — pending should be flushed as input
+        decoder.accept(new int[] { 27, '[' });
+        assertEquals(0, focusEvents.size());
+        decoder.accept(new int[] { 'A' });
+        assertEquals(0, focusEvents.size());
+        // ESC [ A should pass through as input
         assertEquals(1, receivedInput.size());
+        int[] input = receivedInput.get(0);
+        assertEquals(3, input.length);
+        assertEquals(27, input[0]);
+        assertEquals('[', input[1]);
+        assertEquals('A', input[2]);
     }
 
     @Test
@@ -114,6 +135,44 @@ public class EventDecoderFocusTest {
         assertEquals(false, focusEvents.get(1));
         assertEquals(true, focusEvents.get(2));
         assertEquals(0, receivedInput.size());
+    }
+
+    @Test
+    public void testCrossChunkFocusIn() {
+        decoder.setFocusHandler(focusEvents::add);
+        // Split ESC [ I across three accept() calls
+        decoder.accept(new int[] { 27 });
+        assertEquals(0, focusEvents.size());
+        decoder.accept(new int[] { '[' });
+        assertEquals(0, focusEvents.size());
+        decoder.accept(new int[] { 'I' });
+        assertEquals(1, focusEvents.size());
+        assertEquals(true, focusEvents.get(0));
+    }
+
+    @Test
+    public void testCrossChunkFocusOut() {
+        decoder.setFocusHandler(focusEvents::add);
+        // Split ESC [ O across two accept() calls
+        decoder.accept(new int[] { 27, '[' });
+        assertEquals(0, focusEvents.size());
+        decoder.accept(new int[] { 'O' });
+        assertEquals(1, focusEvents.size());
+        assertEquals(false, focusEvents.get(0));
+    }
+
+    @Test
+    public void testCrossChunkWithTrailingInput() {
+        decoder.setFocusHandler(focusEvents::add);
+        // ESC in first chunk, [ I plus regular input in second chunk
+        decoder.accept(new int[] { 'x', 27 });
+        assertEquals(0, focusEvents.size());
+        assertEquals(1, receivedInput.size()); // 'x' passed through
+        decoder.accept(new int[] { '[', 'I', 'y' });
+        assertEquals(1, focusEvents.size());
+        assertEquals(true, focusEvents.get(0));
+        assertEquals(2, receivedInput.size()); // 'y' passed through
+        assertEquals('y', receivedInput.get(1)[0]);
     }
 
     @Test

@@ -607,51 +607,105 @@ public class EventDecoder implements Consumer<int[]> {
     // Focus event filtering
     // =========================================================================
 
+    // Focus event format: ESC [ I (focus in), ESC [ O (focus out)
+    private static final int FOCUS_IDLE = 0;
+    private static final int FOCUS_AFTER_ESC = 1; // seen ESC
+    private static final int FOCUS_AFTER_CSI = 2; // seen ESC [
+
+    private int focusState = FOCUS_IDLE;
+    private int[] focusPending = new int[3];
+    private int focusPendingLen = 0;
+
     /**
      * Filter focus event sequences ({@code ESC [ I} and {@code ESC [ O}) from input.
      * Focus in events dispatch {@code true} to the focus handler,
      * focus out events dispatch {@code false}.
+     * <p>
+     * Uses a persistent state machine to handle sequences split across
+     * multiple {@code accept()} calls.
      */
     private int[] filterFocusEvents(int[] input) {
-        // Fast path: no ESC in input
-        boolean hasEsc = false;
-        for (int c : input) {
-            if (c == 27) {
-                hasEsc = true;
-                break;
+        // Fast path: if not mid-sequence and no ESC in input, pass through
+        if (focusState == FOCUS_IDLE) {
+            boolean hasEsc = false;
+            for (int c : input) {
+                if (c == 27) {
+                    hasEsc = true;
+                    break;
+                }
+            }
+            if (!hasEsc) {
+                return input;
             }
         }
-        if (!hasEsc) {
-            return input;
-        }
 
-        int[] output = new int[input.length];
+        int[] output = new int[input.length + focusPendingLen];
         int outLen = 0;
 
         for (int i = 0; i < input.length; i++) {
-            if (input[i] == 27 && i + 2 < input.length && input[i + 1] == '[') {
-                if (input[i + 2] == 'I') {
-                    // Focus in: ESC [ I
-                    if (focusHandler != null) {
-                        focusHandler.accept(true);
+            int cp = input[i];
+            switch (focusState) {
+                case FOCUS_IDLE:
+                    if (cp == 27) {
+                        focusState = FOCUS_AFTER_ESC;
+                        focusPending[0] = cp;
+                        focusPendingLen = 1;
+                    } else {
+                        output[outLen++] = cp;
                     }
-                    i += 2; // skip the 3-byte sequence
-                    continue;
-                } else if (input[i + 2] == 'O') {
-                    // Focus out: ESC [ O
-                    if (focusHandler != null) {
-                        focusHandler.accept(false);
+                    break;
+
+                case FOCUS_AFTER_ESC:
+                    if (cp == '[') {
+                        focusState = FOCUS_AFTER_CSI;
+                        focusPending[1] = cp;
+                        focusPendingLen = 2;
+                    } else {
+                        // Not a CSI — flush pending ESC and re-process current byte
+                        outLen = flushFocusPending(output, outLen);
+                        i--; // re-process cp from IDLE state
                     }
-                    i += 2;
-                    continue;
-                }
+                    break;
+
+                case FOCUS_AFTER_CSI:
+                    if (cp == 'I') {
+                        // Focus in: ESC [ I
+                        if (focusHandler != null) {
+                            focusHandler.accept(true);
+                        }
+                        focusPendingLen = 0;
+                        focusState = FOCUS_IDLE;
+                    } else if (cp == 'O') {
+                        // Focus out: ESC [ O
+                        if (focusHandler != null) {
+                            focusHandler.accept(false);
+                        }
+                        focusPendingLen = 0;
+                        focusState = FOCUS_IDLE;
+                    } else {
+                        // Not a focus sequence — flush pending and re-process
+                        outLen = flushFocusPending(output, outLen);
+                        i--; // re-process cp from IDLE state
+                    }
+                    break;
             }
-            output[outLen++] = input[i];
         }
 
-        if (outLen == input.length) {
-            return input;
+        // If we're mid-sequence at end of input, keep pending for next call
+        if (focusState == FOCUS_IDLE && outLen == input.length && focusPendingLen == 0) {
+            return input; // nothing filtered, return original (zero allocation)
+        }
+        if (outLen == 0 && focusPendingLen > 0) {
+            return new int[0]; // all consumed by pending state
         }
         return Arrays.copyOf(output, outLen);
+    }
+
+    private int flushFocusPending(int[] output, int outLen) {
+        System.arraycopy(focusPending, 0, output, outLen, focusPendingLen);
+        outLen += focusPendingLen;
+        focusPendingLen = 0;
+        focusState = FOCUS_IDLE;
+        return outLen;
     }
 }
