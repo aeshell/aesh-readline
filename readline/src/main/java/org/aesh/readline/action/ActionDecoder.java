@@ -20,8 +20,8 @@
 package org.aesh.readline.action;
 
 import java.io.IOException;
+import java.util.ArrayDeque;
 import java.util.Arrays;
-import java.util.LinkedList;
 import java.util.Queue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -53,7 +53,7 @@ public class ActionDecoder {
 
     private KeyAction[] mappings;
     private final KeyMappingTrie trie;
-    private final Queue<KeyAction> actions = new LinkedList<>();
+    private final Queue<KeyAction> actions = new ArrayDeque<>(4);
 
     // Pre-allocated buffer with offset tracking — avoids copy on every consume
     private int[] buffer = new int[INITIAL_CAPACITY];
