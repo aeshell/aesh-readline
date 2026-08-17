@@ -125,6 +125,13 @@ public class TtyConnectionBenchmark {
     @Setup(Level.Trial)
     public void setupTrial() {
         outputBuffer = new StringBuilder();
+
+        // Construct EventDecoder and Encoder once — reuse across invocations.
+        // This measures per-call cost, not construction cost.
+        eventDecoder = new EventDecoder();
+        eventDecoder.setInputHandler(input -> receivedInput = input);
+
+        encoder = new Encoder(StandardCharsets.UTF_8, data -> outputBuffer.append(new String(data, StandardCharsets.UTF_8)));
     }
 
     @Setup(Level.Invocation)
@@ -132,11 +139,9 @@ public class TtyConnectionBenchmark {
         outputBuffer.setLength(0);
         receivedInput = null;
 
-        eventDecoder = new EventDecoder();
-        eventDecoder.setInputHandler(input -> receivedInput = input);
-
+        // Decoder must be recreated per invocation because it carries ByteBuffer state
+        // from the previous decode. EventDecoder and Encoder are reused.
         decoder = new Decoder(512, StandardCharsets.UTF_8, eventDecoder);
-        encoder = new Encoder(StandardCharsets.UTF_8, data -> outputBuffer.append(new String(data, StandardCharsets.UTF_8)));
     }
 
     // ========== Decoder Benchmarks ==========
@@ -218,34 +223,32 @@ public class TtyConnectionBenchmark {
     }
 
     // ========== Event Decoder Benchmarks ==========
+    // These use the shared eventDecoder instance created in setupTrial().
+    // This measures per-accept() cost, not EventDecoder construction cost.
 
     @Benchmark
     public void eventDecoderSingleKey(Blackhole bh) {
-        EventDecoder ed = new EventDecoder();
-        ed.setInputHandler(input -> bh.consume(input));
-        ed.accept(new int[] { 'a' });
+        eventDecoder.accept(new int[] { 'a' });
+        bh.consume(receivedInput);
     }
 
     @Benchmark
     public void eventDecoderControlKey(Blackhole bh) {
-        EventDecoder ed = new EventDecoder();
-        ed.setInputHandler(input -> bh.consume(input));
-        ed.accept(Key.CTRL_C.getKeyValues());
+        eventDecoder.accept(Key.CTRL_C.getKeyValues());
+        bh.consume(receivedInput);
     }
 
     @Benchmark
     public void eventDecoderArrowKey(Blackhole bh) {
-        EventDecoder ed = new EventDecoder();
-        ed.setInputHandler(input -> bh.consume(input));
-        ed.accept(Key.UP.getKeyValues());
+        eventDecoder.accept(Key.UP.getKeyValues());
+        bh.consume(receivedInput);
     }
 
     @Benchmark
     public void eventDecoderWithSignalHandler(Blackhole bh) {
-        EventDecoder ed = new EventDecoder();
-        ed.setInputHandler(input -> bh.consume(input));
-        ed.setSignalHandler(signal -> bh.consume(signal));
-        ed.accept(Key.CTRL_C.getKeyValues());
+        eventDecoder.setSignalHandler(signal -> bh.consume(signal));
+        eventDecoder.accept(Key.CTRL_C.getKeyValues());
+        eventDecoder.setSignalHandler(null);
     }
 
     // ========== ANSI Processing Benchmarks ==========
@@ -434,9 +437,8 @@ public class TtyConnectionBenchmark {
     @BenchmarkMode(Mode.Throughput)
     @OutputTimeUnit(TimeUnit.MILLISECONDS)
     public void eventProcessingThroughput(Blackhole bh) {
-        EventDecoder ed = new EventDecoder();
-        ed.setInputHandler(input -> bh.consume(input));
-        ed.accept(Key.a.getKeyValues());
+        eventDecoder.accept(Key.a.getKeyValues());
+        bh.consume(receivedInput);
     }
 
     @Benchmark
@@ -458,62 +460,58 @@ public class TtyConnectionBenchmark {
     @Benchmark
     public void simulatedTypingSession(Blackhole bh) {
         // Simulate a realistic typing session with mixed input
-        EventDecoder ed = new EventDecoder();
-        final int[] lastInput = new int[1];
-        ed.setInputHandler(input -> lastInput[0] = input.length);
+        // using the shared eventDecoder instance
 
         // Type "hello"
         for (char c : "hello".toCharArray()) {
-            ed.accept(new int[] { c });
+            eventDecoder.accept(new int[] { c });
         }
 
         // Arrow keys
-        ed.accept(Key.LEFT.getKeyValues());
-        ed.accept(Key.LEFT.getKeyValues());
+        eventDecoder.accept(Key.LEFT.getKeyValues());
+        eventDecoder.accept(Key.LEFT.getKeyValues());
 
         // Backspace
-        ed.accept(Key.BACKSPACE.getKeyValues());
+        eventDecoder.accept(Key.BACKSPACE.getKeyValues());
 
         // More typing
         for (char c : " world".toCharArray()) {
-            ed.accept(new int[] { c });
+            eventDecoder.accept(new int[] { c });
         }
 
         // Enter
-        ed.accept(Key.ENTER.getKeyValues());
+        eventDecoder.accept(Key.ENTER.getKeyValues());
 
-        bh.consume(lastInput[0]);
+        bh.consume(receivedInput);
     }
 
     @Benchmark
     public void simulatedCommandLine(Blackhole bh) {
         // Simulate command line with history navigation
-        EventDecoder ed = new EventDecoder();
-        final int[] inputCount = {0};
-        ed.setInputHandler(input -> inputCount[0]++);
+        // using the shared eventDecoder instance
 
         // Type command
         for (char c : "ls -la".toCharArray()) {
-            ed.accept(new int[] { c });
+            eventDecoder.accept(new int[] { c });
         }
 
         // Navigate history
-        ed.accept(Key.UP.getKeyValues());
-        ed.accept(Key.UP.getKeyValues());
-        ed.accept(Key.DOWN.getKeyValues());
+        eventDecoder.accept(Key.UP.getKeyValues());
+        eventDecoder.accept(Key.UP.getKeyValues());
+        eventDecoder.accept(Key.DOWN.getKeyValues());
 
         // Control sequences
-        ed.accept(Key.CTRL_A.getKeyValues());  // Beginning of line
-        ed.accept(Key.CTRL_E.getKeyValues());  // End of line
-        ed.accept(Key.CTRL_K.getKeyValues());  // Kill to end
+        eventDecoder.accept(Key.CTRL_A.getKeyValues());  // Beginning of line
+        eventDecoder.accept(Key.CTRL_E.getKeyValues());  // End of line
+        eventDecoder.accept(Key.CTRL_K.getKeyValues());  // Kill to end
 
         // Tab completion trigger
-        ed.accept(Key.CTRL_I.getKeyValues());
+        eventDecoder.accept(Key.CTRL_I.getKeyValues());
 
         // Enter
-        ed.accept(Key.ENTER.getKeyValues());
+        eventDecoder.accept(Key.ENTER.getKeyValues());
 
-        bh.consume(inputCount[0]);
+        bh.consume(receivedInput);
     }
 
     // ========== Connection.write() Overhead Comparison ==========

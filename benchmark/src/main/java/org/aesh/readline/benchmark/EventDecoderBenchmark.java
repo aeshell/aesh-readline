@@ -73,18 +73,13 @@ public class EventDecoderBenchmark {
 
     private EventDecoder decoder;
     private EventDecoder decoderWithDsr;
-    private int inputCount;
-    private int signalCount;
+    private volatile int inputCount;
+    private volatile int signalCount;
 
     @Setup(Level.Trial)
     public void setup() {
-    }
-
-    @Setup(Level.Invocation)
-    public void resetDecoder() {
-        inputCount = 0;
-        signalCount = 0;
-
+        // Construct decoders once — reuse across all invocations.
+        // This measures per-accept() cost, not construction cost.
         decoder = new EventDecoder();
         decoder.setSignalHandler(s -> signalCount++);
         decoder.setInputHandler(input -> inputCount++);
@@ -93,6 +88,12 @@ public class EventDecoderBenchmark {
         decoderWithDsr.setSignalHandler(s -> signalCount++);
         decoderWithDsr.setInputHandler(input -> inputCount++);
         decoderWithDsr.setThemeChangeHandler(theme -> {});
+    }
+
+    @Setup(Level.Invocation)
+    public void resetCounters() {
+        inputCount = 0;
+        signalCount = 0;
     }
 
     // ========== No signals (fast path) ==========
