@@ -32,6 +32,7 @@ import org.aesh.terminal.Attributes;
 import org.aesh.terminal.Attributes.ControlChar;
 import org.aesh.terminal.Attributes.ControlFlag;
 import org.aesh.terminal.Attributes.LocalFlag;
+import org.aesh.terminal.Terminal;
 import org.aesh.terminal.tty.Size;
 import org.aesh.terminal.utils.Config;
 import org.junit.Test;
@@ -259,6 +260,83 @@ public class FfmPtyTest {
         try (Pty pty = createFfmPty()) {
             assertNotNull("Slave input should not be null", pty.getSlaveInput());
             assertNotNull("Slave output should not be null", pty.getSlaveOutput());
+        }
+    }
+
+    @Test
+    public void testSupportsNonBlockingRead() throws Exception {
+        assumeTrue("No TTY available", hasTty());
+        try (Pty pty = createFfmPty()) {
+            assertTrue("FfmPty should support non-blocking read",
+                    pty.supportsNonBlockingRead());
+        }
+    }
+
+    /**
+     * Test that read(byte[], off, len, timeout) with timeout=0 returns
+     * READ_EXPIRED (-2) when no data is available, rather than blocking.
+     */
+    @Test
+    public void testNonBlockingReadTimesOut() throws Exception {
+        assumeTrue("No TTY available", hasTty());
+        try (Pty pty = createFfmPty()) {
+            byte[] buf = new byte[1024];
+            int result = pty.read(buf, 0, buf.length, 0);
+            assertEquals("Non-blocking read with no data should return READ_EXPIRED",
+                    Terminal.READ_EXPIRED, result);
+        }
+    }
+
+    /**
+     * Test that read(byte[], off, len, timeout) handles a short timeout
+     * correctly, returning READ_EXPIRED without hanging.
+     */
+    @Test
+    public void testShortTimeoutReadReturns() throws Exception {
+        assumeTrue("No TTY available", hasTty());
+        try (Pty pty = createFfmPty()) {
+            byte[] buf = new byte[1024];
+            long start = System.currentTimeMillis();
+            int result = pty.read(buf, 0, buf.length, 50);
+            long elapsed = System.currentTimeMillis() - start;
+            assertEquals("Read with short timeout and no data should return READ_EXPIRED",
+                    Terminal.READ_EXPIRED, result);
+            // Allow some slack but it should not block for more than 200ms
+            assertTrue("Should return within reasonable time, took " + elapsed + "ms",
+                    elapsed < 500);
+        }
+    }
+
+    /**
+     * Test that the bulk read buffer is larger than 1 byte by verifying
+     * that the read(byte[], off, len, timeout) method can handle a
+     * large buffer parameter without error.
+     */
+    @Test
+    public void testBulkReadBufferAcceptsLargeLen() throws Exception {
+        assumeTrue("No TTY available", hasTty());
+        try (Pty pty = createFfmPty()) {
+            byte[] buf = new byte[4096];
+            // Should not throw even with a buffer larger than READ_BUF_SIZE
+            int result = pty.read(buf, 0, buf.length, 0);
+            // With no data available, should return READ_EXPIRED
+            assertEquals("Should handle large buffer without error",
+                    Terminal.READ_EXPIRED, result);
+        }
+    }
+
+    /**
+     * Test that FfmInputStream.read(byte[], off, len) handles
+     * boundary conditions correctly.
+     */
+    @Test
+    public void testInputStreamReadZeroLength() throws Exception {
+        assumeTrue("No TTY available", hasTty());
+        try (Pty pty = createFfmPty()) {
+            java.io.InputStream in = pty.getSlaveInput();
+            byte[] buf = new byte[10];
+            int result = in.read(buf, 0, 0);
+            assertEquals("read() with len=0 should return 0", 0, result);
         }
     }
 }

@@ -83,7 +83,15 @@ public class FfmPty implements Pty {
     /** Pre-allocated pollfd struct for non-blocking read/peek operations. */
     private final MemorySegment nbPollfd;
 
-    /** Pre-allocated single-byte read buffer for non-blocking operations. */
+    /**
+     * Size of native read buffers. Matches the typical max bytes returned by
+     * a single read() on a PTY master (1 KiB on macOS, up to 4 KiB on Linux).
+     * Using a larger buffer lets us read all available bytes in one syscall
+     * instead of looping with 1-byte reads.
+     */
+    private static final int READ_BUF_SIZE = 1024;
+
+    /** Pre-allocated read buffer for non-blocking operations. */
     private final MemorySegment nbReadBuf;
 
     /** Peeked byte for non-blocking peek support. -2 means no peeked byte. */
@@ -134,7 +142,7 @@ public class FfmPty implements Pty {
             this.nbPollfd = arena.allocate(PosixConstants.POLLFD_SIZE, 4);
             nbPollfd.set(ValueLayout.JAVA_INT, PosixConstants.POLLFD_FD_OFFSET, ttyFd);
             nbPollfd.set(ValueLayout.JAVA_SHORT, PosixConstants.POLLFD_EVENTS_OFFSET, PosixConstants.POLLIN);
-            this.nbReadBuf = arena.allocate(1);
+            this.nbReadBuf = arena.allocate(READ_BUF_SIZE);
 
             LOGGER.log(Level.FINE, "FfmPty created for {0} (fd={1})", new Object[] { ttyName, ttyFd });
 
@@ -343,20 +351,72 @@ public class FfmPty implements Pty {
         if (len == 0) return 0;
         checkNotClosed();
 
-        // First byte: use timeout
-        int first = read(timeoutMs);
-        if (first < 0) return first; // EOF or READ_EXPIRED
-        b[off] = (byte) first;
-
-        // Remaining bytes: non-blocking (timeout=0)
-        int count = 1;
-        while (count < len && !closed.get()) {
-            int next = pollAndRead(0);
-            if (next < 0) break; // no more data immediately available
-            b[off + count] = (byte) next;
-            count++;
+        // Return peeked byte first if available
+        if (peekedByte != -2) {
+            int pb = peekedByte;
+            peekedByte = -2;
+            b[off] = (byte) pb;
+            if (len == 1) return 1;
+            // Try to read more non-blocking
+            int more = bulkPollAndRead(nbPollfd, nbReadBuf, b, off + 1, len - 1, 0);
+            return more > 0 ? 1 + more : 1;
         }
-        return count;
+
+        return bulkPollAndRead(nbPollfd, nbReadBuf, b, off, len, timeoutMs);
+    }
+
+    /**
+     * Reads up to {@code len} bytes from the tty fd into {@code b[off..off+len)}.
+     * Blocks on {@code poll()} with the given timeout waiting for data, then reads
+     * as many bytes as the kernel provides in a single {@code read()} syscall.
+     *
+     * @param pollfdSeg  the pre-allocated pollfd struct to use
+     * @param readBufSeg the pre-allocated native read buffer (at least READ_BUF_SIZE bytes)
+     * @param b          the destination Java byte array
+     * @param off        the offset in {@code b} to start writing
+     * @param len        the maximum number of bytes to read
+     * @param timeoutMs  timeout in milliseconds; 0 for non-blocking, negative for infinite
+     * @return number of bytes read, -1 for EOF, or READ_EXPIRED (-2) for timeout
+     */
+    private int bulkPollAndRead(MemorySegment pollfdSeg, MemorySegment readBufSeg,
+                                byte[] b, int off, int len, long timeoutMs) throws IOException {
+        int pollTimeout = timeoutMs < 0 ? -1 : (int) Math.min(timeoutMs, Integer.MAX_VALUE);
+
+        // Reset revents
+        pollfdSeg.set(ValueLayout.JAVA_SHORT, PosixConstants.POLLFD_REVENTS_OFFSET, (short) 0);
+
+        int result = LibC.poll(pollfdSeg, 1, pollTimeout);
+
+        if (result < 0) {
+            if (closed.get()) return -1;
+            return -2; // EINTR — treat as timeout
+        }
+        if (result == 0) {
+            return -2; // Timeout
+        }
+
+        short revents = pollfdSeg.get(ValueLayout.JAVA_SHORT, PosixConstants.POLLFD_REVENTS_OFFSET);
+        if ((revents & (PosixConstants.POLLHUP | PosixConstants.POLLERR)) != 0) {
+            return -1; // EOF or error
+        }
+
+        if ((revents & PosixConstants.POLLIN) != 0) {
+            // Read as many bytes as the kernel provides in one syscall
+            int toRead = Math.min(len, READ_BUF_SIZE);
+            long bytesRead = LibC.read(ttyFd, readBufSeg, toRead);
+            if (bytesRead <= 0) {
+                if (bytesRead < 0 && !closed.get()) {
+                    return -2; // EINTR between poll and read
+                }
+                return -1; // EOF
+            }
+            // Copy from native buffer to Java byte[]
+            MemorySegment.copy(readBufSeg, ValueLayout.JAVA_BYTE, 0,
+                    b, off, (int) bytesRead);
+            return (int) bytesRead;
+        }
+
+        return -2; // No data available
     }
 
     /**
@@ -612,7 +672,7 @@ public class FfmPty implements Pty {
         FfmInputStream() {
             this.streamArena = Arena.ofShared();
             this.pollfd = streamArena.allocate(PosixConstants.POLLFD_SIZE, 4);
-            this.readBuf = streamArena.allocate(1);
+            this.readBuf = streamArena.allocate(READ_BUF_SIZE);
             // Pre-populate pollfd with fd and events
             pollfd.set(ValueLayout.JAVA_INT, PosixConstants.POLLFD_FD_OFFSET, ttyFd);
             pollfd.set(ValueLayout.JAVA_SHORT, PosixConstants.POLLFD_EVENTS_OFFSET, PosixConstants.POLLIN);
@@ -666,28 +726,16 @@ public class FfmPty implements Pty {
             if (off < 0 || len < 0 || len > b.length - off) throw new IndexOutOfBoundsException();
             if (len == 0) return 0;
 
-            // Read first byte (blocking)
-            int first = read();
-            if (first < 0) return -1;
-            b[off] = (byte) first;
-
-            // Try to read more if available (non-blocking)
-            int count = 1;
-            while (count < len && !closed.get()) {
-                // Non-blocking poll
-                pollfd.set(ValueLayout.JAVA_SHORT, PosixConstants.POLLFD_REVENTS_OFFSET, (short) 0);
-                int result = LibC.poll(pollfd, 1, 0);
-                if (result <= 0) break;
-
-                short revents = pollfd.get(ValueLayout.JAVA_SHORT, PosixConstants.POLLFD_REVENTS_OFFSET);
-                if ((revents & PosixConstants.POLLIN) == 0) break;
-
-                long bytesRead = LibC.read(ttyFd, readBuf, 1);
-                if (bytesRead <= 0) break;
-                b[off + count] = readBuf.get(ValueLayout.JAVA_BYTE, 0);
-                count++;
+            // Block until data is available, then read in bulk.
+            // Uses -1 timeout (infinite) to match InputStream.read() contract
+            // which blocks until data is available, EOF, or exception.
+            int result = bulkPollAndRead(pollfd, readBuf, b, off, len, -1);
+            // bulkPollAndRead returns -2 for EINTR/timeout; for InputStream
+            // we should retry on EINTR rather than returning -1
+            while (result == -2 && !closed.get()) {
+                result = bulkPollAndRead(pollfd, readBuf, b, off, len, 100);
             }
-            return count;
+            return result == -2 ? -1 : result;
         }
 
         @Override
