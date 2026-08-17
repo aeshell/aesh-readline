@@ -351,35 +351,49 @@ public class EventDecoder implements Consumer<int[]> {
         }
         filterOutputLen = 0;
 
-        // Feed each code point through VtParser
-        boolean wasGround = filterParser.isGroundState();
-        for (int i = 0; i < input.length; i++) {
-            int cp = input[i];
-            boolean isGround = filterParser.isGroundState();
-
-            // Track sequence bytes: when transitioning from GROUND to non-GROUND,
-            // start recording raw bytes. When in a sequence, keep recording.
-            if (isGround && !wasGround) {
-                // Just returned to GROUND without a dispatch callback firing.
-                // This shouldn't normally happen (dispatch fires before returning
-                // to GROUND), but guard against it.
+        // Hybrid loop: bulk-copy text runs in GROUND state (fast, no per-byte
+        // VtParser overhead), only feed ESC sequences through VtParser.
+        int i = 0;
+        while (i < input.length) {
+            if (filterParser.isGroundState()) {
+                // In GROUND state — scan ahead for ESC to find text run length
+                int textStart = i;
+                while (i < input.length && input[i] != 27) {
+                    i++;
+                }
+                // Bulk-copy text run [textStart, i) directly to output
+                int textLen = i - textStart;
+                if (textLen > 0) {
+                    ensureFilterOutputCapacity(filterOutputLen + textLen);
+                    System.arraycopy(input, textStart, filterOutput, filterOutputLen, textLen);
+                    filterOutputLen += textLen;
+                }
+                // If we hit ESC or end of input, continue (ESC will be fed through VtParser below)
                 sequenceBytesLen = 0;
+            } else {
+                // Mid-sequence from a previous chunk — feed through VtParser
+                appendSequenceByte(input[i]);
+                filterParser.advance(input[i]);
+                i++;
+                // If parser returned to GROUND, the dispatch callback already handled it
+                continue;
             }
 
-            if (isGround) {
+            // If we stopped at ESC, feed the escape sequence through VtParser
+            if (i < input.length && input[i] == 27) {
                 sequenceBytesLen = 0;
+                // Feed bytes through VtParser until we return to GROUND or exhaust input
+                while (i < input.length) {
+                    appendSequenceByte(input[i]);
+                    filterParser.advance(input[i]);
+                    i++;
+                    if (filterParser.isGroundState()) {
+                        // Sequence complete — dispatch callback already fired
+                        sequenceBytesLen = 0;
+                        break;
+                    }
+                }
             }
-
-            // Record this byte in the sequence buffer before advancing
-            if (!isGround || cp == 27) {
-                appendSequenceByte(cp);
-            }
-
-            filterParser.advance(cp);
-            wasGround = filterParser.isGroundState();
-
-            // If we started in GROUND and stayed in GROUND (printable/execute),
-            // the handler already wrote to filterOutput via print()/execute()
         }
 
         // If nothing was filtered and no pending sequence, return original
@@ -390,6 +404,12 @@ public class EventDecoder implements Consumer<int[]> {
             return new int[0];
         }
         return Arrays.copyOf(filterOutput, filterOutputLen);
+    }
+
+    private void ensureFilterOutputCapacity(int needed) {
+        if (filterOutput.length < needed) {
+            filterOutput = Arrays.copyOf(filterOutput, Math.max(needed, filterOutput.length * 2));
+        }
     }
 
     private void appendSequenceByte(int cp) {
@@ -404,10 +424,7 @@ public class EventDecoder implements Consumer<int[]> {
      */
     private void flushSequenceBytes() {
         if (sequenceBytesLen > 0) {
-            int needed = filterOutputLen + sequenceBytesLen;
-            if (filterOutput.length < needed) {
-                filterOutput = Arrays.copyOf(filterOutput, needed);
-            }
+            ensureFilterOutputCapacity(filterOutputLen + sequenceBytesLen);
             System.arraycopy(sequenceBytes, 0, filterOutput, filterOutputLen, sequenceBytesLen);
             filterOutputLen += sequenceBytesLen;
             sequenceBytesLen = 0;
@@ -423,20 +440,19 @@ public class EventDecoder implements Consumer<int[]> {
 
         @Override
         public void print(int codePoint) {
-            // Printable character in GROUND state — direct to output
-            if (filterOutputLen >= filterOutput.length) {
-                filterOutput = Arrays.copyOf(filterOutput, filterOutput.length * 2);
-            }
+            // Only reached for code points > 255 (Unicode) in GROUND state.
+            // ASCII printable bytes are bulk-copied in the hybrid loop and
+            // never reach VtParser when in GROUND state.
+            ensureFilterOutputCapacity(filterOutputLen + 1);
             filterOutput[filterOutputLen++] = codePoint;
         }
 
         @Override
         public void execute(int controlChar) {
-            // C0 control in GROUND state — direct to output
-            // (Signals are already extracted in the pre-pass)
-            if (filterOutputLen >= filterOutput.length) {
-                filterOutput = Arrays.copyOf(filterOutput, filterOutput.length * 2);
-            }
+            // C0 control — either in GROUND state or mid-CSI (VT spec allows
+            // C0 controls within CSI sequences without aborting them).
+            // Signals are already extracted in the pre-pass.
+            ensureFilterOutputCapacity(filterOutputLen + 1);
             filterOutput[filterOutputLen++] = controlChar;
         }
 
