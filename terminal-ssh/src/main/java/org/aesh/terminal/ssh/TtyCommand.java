@@ -119,9 +119,27 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
             // Dispatch to the readline executor to keep the Netty IO thread free.
             byte[] copy = new byte[len];
             System.arraycopy(buf, start, copy, 0, len);
-            readlineExecutor.execute(() -> decoder.write(copy, 0, copy.length));
+            final int consumed = len;
+            readlineExecutor.execute(() -> {
+                try {
+                    decoder.write(copy, 0, copy.length);
+                } finally {
+                    // Release the SSH channel window AFTER processing, not before.
+                    // This provides backpressure: the client cannot send faster than
+                    // we can process, because the window is only refilled once the
+                    // readline executor finishes handling each chunk.
+                    try {
+                        channel.getLocalWindow().release(consumed);
+                    } catch (Exception e) {
+                        // Channel may already be closed — safe to ignore
+                        LOGGER.log(Level.FINE, "Failed to release SSH window", e);
+                    }
+                }
+            });
         }
-        return len;
+        // Return 0 = "data queued but not consumed yet". SSHD will not refill
+        // the channel window until we call channel.getLocalWindow().release().
+        return 0;
     }
 
     @Override
