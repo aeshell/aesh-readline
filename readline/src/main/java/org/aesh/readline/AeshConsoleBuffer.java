@@ -261,9 +261,9 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
     public void clearGhostText() {
         if (ghostText != null) {
             // Save cursor, erase from cursor to end of screen (handles wrapped text), restore cursor
-            connection.write(ANSI.CURSOR_SAVE);
-            connection.stdoutHandler().accept(ANSI.ERASE_SCREEN_FROM_CURSOR);
-            connection.write(ANSI.CURSOR_RESTORE);
+            connection.write(ANSI.CURSOR_SAVE
+                    + ANSI.ERASE_SCREEN_FROM_CURSOR_STRING
+                    + ANSI.CURSOR_RESTORE);
             ghostText = null;
         }
     }
@@ -273,13 +273,13 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
         if (suggestion == null || suggestion.isEmpty())
             return;
         clearGhostText();
-        // Save cursor, write dim text, erase rest of line, restore cursor
-        connection.write(ANSI.CURSOR_SAVE);
-        connection.stdoutHandler().accept(ANSI.DIM);
-        connection.write(suggestion);
-        connection.stdoutHandler().accept(ANSI.DIM_OFF);
-        connection.stdoutHandler().accept(ANSI.ERASE_LINE_FROM_CURSOR);
-        connection.write(ANSI.CURSOR_RESTORE);
+        // Save cursor, write dim text, erase rest of line, restore cursor — single write
+        connection.write(ANSI.CURSOR_SAVE
+                + ANSI.DIM_STRING
+                + suggestion
+                + ANSI.DIM_OFF_STRING
+                + ANSI.ERASE_LINE_FROM_CURSOR_STRING
+                + ANSI.CURSOR_RESTORE);
         ghostText = suggestion;
     }
 
@@ -289,9 +289,9 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
             String text = ghostText;
             ghostText = null;
             // Erase the ghost text display first (screen-level to handle wrapping), then insert into buffer
-            connection.write(ANSI.CURSOR_SAVE);
-            connection.stdoutHandler().accept(ANSI.ERASE_SCREEN_FROM_CURSOR);
-            connection.write(ANSI.CURSOR_RESTORE);
+            connection.write(ANSI.CURSOR_SAVE
+                    + ANSI.ERASE_SCREEN_FROM_CURSOR_STRING
+                    + ANSI.CURSOR_RESTORE);
             writeString(text);
         }
     }
@@ -312,9 +312,9 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
             String remaining = ghostText.substring(i);
 
             // Erase the ghost text display first (screen-level to handle wrapping)
-            connection.write(ANSI.CURSOR_SAVE);
-            connection.stdoutHandler().accept(ANSI.ERASE_SCREEN_FROM_CURSOR);
-            connection.write(ANSI.CURSOR_RESTORE);
+            connection.write(ANSI.CURSOR_SAVE
+                    + ANSI.ERASE_SCREEN_FROM_CURSOR_STRING
+                    + ANSI.CURSOR_RESTORE);
 
             ghostText = null;
             writeString(accepted);
@@ -343,15 +343,15 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
 
         // Only render when everything fits on one line
         if (usedWidth + rightLen + 1 <= termWidth) {
-            connection.write(ANSI.CURSOR_SAVE);
             int col = termWidth - rightLen + 1;
-            connection.write("\033[" + col + "G" + rightPrompt);
-            connection.write(ANSI.CURSOR_RESTORE);
+            connection.write(ANSI.CURSOR_SAVE
+                    + "\033[" + col + "G" + rightPrompt
+                    + ANSI.CURSOR_RESTORE);
         } else if (usedWidth < termWidth) {
             // Input grew past the right prompt — erase it
-            connection.write(ANSI.CURSOR_SAVE);
-            connection.stdoutHandler().accept(ANSI.ERASE_LINE_FROM_CURSOR);
-            connection.write(ANSI.CURSOR_RESTORE);
+            connection.write(ANSI.CURSOR_SAVE
+                    + ANSI.ERASE_LINE_FROM_CURSOR_STRING
+                    + ANSI.CURSOR_RESTORE);
         }
         // If input wraps to multiple lines, don't touch anything
     }
@@ -362,15 +362,17 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
         if (rightPrompt == null || rightPrompt.isEmpty()) {
             return;
         }
-        connection.write(ANSI.CURSOR_SAVE);
         int termWidth = size().getWidth();
         int rightLen = Parser.stripAwayAnsiCodes(rightPrompt).length();
         int col = termWidth - rightLen + 1;
         if (col > 0) {
-            connection.write("\033[" + col + "G");
-            connection.stdoutHandler().accept(ANSI.ERASE_LINE_FROM_CURSOR);
+            connection.write(ANSI.CURSOR_SAVE
+                    + "\033[" + col + "G"
+                    + ANSI.ERASE_LINE_FROM_CURSOR_STRING
+                    + ANSI.CURSOR_RESTORE);
+        } else {
+            // col <= 0: nothing to clear, but still save/restore for consistency
         }
-        connection.write(ANSI.CURSOR_RESTORE);
     }
 
     private boolean isViMode() {

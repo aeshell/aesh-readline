@@ -118,8 +118,12 @@ public class ANSI {
     public static final String CURSOR_SHOW = "\u001B[?25h";
     /** ANSI escape sequence to erase from cursor to end of line. */
     public static final int[] ERASE_LINE_FROM_CURSOR = new int[] { 27, '[', 'K' };
+    /** ANSI escape code to erase from cursor to end of line (String form for batched writes). */
+    public static final String ERASE_LINE_FROM_CURSOR_STRING = "\u001B[K";
     /** ANSI escape sequence to erase from cursor to end of screen. */
     public static final int[] ERASE_SCREEN_FROM_CURSOR = new int[] { 27, '[', 'J' };
+    /** ANSI escape code to erase from cursor to end of screen (String form for batched writes). */
+    public static final String ERASE_SCREEN_FROM_CURSOR_STRING = "\u001B[J";
     /** ANSI escape sequence to move cursor up one line. */
     public static final int[] MOVE_LINE_UP = new int[] { 27, '[', '1', 'A' };
     /** ANSI escape sequence to move cursor down one line. */
@@ -127,8 +131,12 @@ public class ANSI {
 
     /** ANSI escape sequence for dim/faint text (SGR 2). */
     public static final int[] DIM = new int[] { 27, '[', '2', 'm' };
+    /** ANSI escape code for dim/faint text (String form for batched writes). */
+    public static final String DIM_STRING = "\u001B[2m";
     /** ANSI escape sequence to turn off dim/faint text (SGR 22 — normal intensity). */
     public static final int[] DIM_OFF = new int[] { 27, '[', '2', '2', 'm' };
+    /** ANSI escape code to turn off dim/faint text (String form for batched writes). */
+    public static final String DIM_OFF_STRING = "\u001B[22m";
 
     /** ANSI escape code to enable light (reverse video) background mode. */
     public static final String LIGHT_BG = "\u001B[?5h";
