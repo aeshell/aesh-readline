@@ -20,15 +20,18 @@
 
 package org.aesh.terminal.ssh;
 
-import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.Charset;
 import java.util.EnumSet;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -41,10 +44,10 @@ import org.aesh.terminal.io.Encoder;
 import org.aesh.terminal.tty.Capability;
 import org.aesh.terminal.tty.Size;
 import org.aesh.terminal.tty.TtyOutputMode;
+import org.aesh.terminal.utils.LoggerUtil;
 import org.apache.sshd.common.io.IoInputStream;
 import org.apache.sshd.common.io.IoOutputStream;
 import org.apache.sshd.common.io.IoWriteFuture;
-import org.apache.sshd.common.io.WritePendingException;
 import org.apache.sshd.common.util.buffer.ByteArrayBuffer;
 import org.apache.sshd.server.Environment;
 import org.apache.sshd.server.ExitCallback;
@@ -60,6 +63,7 @@ import org.apache.sshd.server.command.AsyncCommand;
  */
 public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSessionAware {
 
+    private static final Logger LOGGER = LoggerUtil.getLogger(TtyCommand.class.getName());
     private static final Pattern LC_PATTERN = Pattern.compile("(?:\\p{Alpha}{2}_\\p{Alpha}{2}\\.)?([^@]+)(?:@.+)?");
 
     private final Consumer<Connection> handler;
@@ -76,7 +80,15 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
     private IoOutputStream ioOut;
     private long lastAccessedTime = System.currentTimeMillis();
     private Device device;
-    private IoWriteFuture writeFuture;
+
+    /**
+     * Async write queue for serializing SSH channel writes.
+     * SSHD throws WritePendingException if writeBuffer() is called while a
+     * previous write is still in flight, so we queue writes and drain them
+     * one at a time using IoWriteFuture listeners.
+     */
+    private final Queue<byte[]> writeQueue = new ConcurrentLinkedQueue<>();
+    private final AtomicBoolean writing = new AtomicBoolean(false);
 
     /**
      * Creates a new TtyCommand with the specified charset and connection handler.
@@ -125,20 +137,48 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
     public void setIoOutputStream(IoOutputStream out) {
         this.ioOut = out;
         this.out = bytes -> {
-            ByteArrayBuffer byteArrayBuffer = new ByteArrayBuffer(bytes);
-            // the loop is only needed if we catch a WritePendingException, to retry the write and clear the buffer
-            while (byteArrayBuffer.available() > 0) {
-                try {
-                    IoWriteFuture ioWriteFuture = out.writeBuffer(byteArrayBuffer);
-                    // await the write so that we do not lose bytes
-                    ioWriteFuture.verify(1, TimeUnit.SECONDS);
-                } catch (WritePendingException | EOFException ignored) {
-                    // WritePendingException is only cought if the verify() method timeouts
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            }
+            writeQueue.add(bytes);
+            drainWriteQueue();
         };
+    }
+
+    /**
+     * Drains the write queue one entry at a time. Only one write is in-flight
+     * at any time to avoid SSHD's WritePendingException. When a write completes,
+     * the IoWriteFuture listener triggers the next drain.
+     */
+    private void drainWriteQueue() {
+        if (!writing.compareAndSet(false, true)) {
+            return; // another drain in progress — it will pick up our queued data
+        }
+        writeNextFromQueue();
+    }
+
+    private void writeNextFromQueue() {
+        byte[] bytes = writeQueue.poll();
+        if (bytes == null) {
+            writing.set(false);
+            // Re-check after releasing — another thread may have queued between poll and set
+            if (!writeQueue.isEmpty() && writing.compareAndSet(false, true)) {
+                writeNextFromQueue();
+            }
+            return;
+        }
+        try {
+            IoWriteFuture future = ioOut.writeBuffer(new ByteArrayBuffer(bytes));
+            future.addListener(f -> {
+                Throwable ex = f.getException();
+                if (ex != null) {
+                    LOGGER.log(Level.WARNING, "SSH write failed", ex);
+                }
+                // Continue draining regardless of success/failure
+                writeNextFromQueue();
+            });
+        } catch (IOException e) {
+            LOGGER.log(Level.WARNING, "SSH write error", e);
+            // Continue draining to avoid stuck queue
+            writeNextFromQueue();
+        }
     }
 
     @Override
