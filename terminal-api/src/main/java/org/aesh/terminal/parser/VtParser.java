@@ -148,6 +148,17 @@ public final class VtParser {
     }
 
     /**
+     * Returns true if the parser is in the GROUND state (no partial sequence
+     * is being accumulated). Used by callers to implement fast-path skipping
+     * when no escape sequences are in progress.
+     *
+     * @return true if in GROUND state
+     */
+    public boolean isGroundState() {
+        return state == GROUND;
+    }
+
+    /**
      * Advances the parser with a block of input bytes.
      *
      * @param data the input bytes

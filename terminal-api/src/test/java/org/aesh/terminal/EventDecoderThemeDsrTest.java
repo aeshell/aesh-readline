@@ -210,12 +210,13 @@ public class EventDecoderThemeDsrTest {
 
     @Test
     public void testPartialPrefixMismatch() {
-        // ESC [ ? 9 9 8 (wrong — 997 expected, got 998)
-        decoder.accept(new int[] { 27, 91, 63, 57, 57, 56 });
+        // ESC [ ? 998 n — completes as CSI ?998n, which is NOT a DSR (params[0]=998 not 997)
+        // VtParser treats this as a valid CSI sequence; it passes through as input
+        decoder.accept(new int[] { 27, 91, 63, 57, 57, 56, 110 });
 
         assertEquals(0, receivedThemes.size());
-        assertInputEquals("Mismatched prefix should flush through",
-                new int[] { 27, 91, 63, 57, 57, 56 });
+        assertInputEquals("Non-DSR CSI should pass through",
+                new int[] { 27, 91, 63, 57, 57, 56, 110 });
     }
 
     @Test
@@ -231,28 +232,30 @@ public class EventDecoderThemeDsrTest {
 
     @Test
     public void testDsrPrefixThenNWithoutDigits() {
-        // ESC [ ? 9 9 7 ; n (no parameter digits)
+        // ESC [ ? 997 ; n — VtParser parses as CSI ?997;-1n (empty second param = -1)
+        // isDsrThemeResponse matches (finalChar='n', params[0]=997, intermediates=['?'])
+        // but the param value -1 doesn't match DARK or LIGHT, so no theme dispatched.
+        // The sequence is consumed (filtered out) since it matches the DSR pattern.
         int[] input = { 27, 91, 63, 57, 57, 55, 59, 110 };
         decoder.accept(input);
 
         assertEquals(0, receivedThemes.size());
-        assertInputEquals("DSR with no param should flush through",
-                new int[] { 27, 91, 63, 57, 57, 55, 59, 110 });
+        assertNoInput("DSR with no param value is consumed by the filter");
     }
 
     @Test
     public void testSplitPrefixMismatch() {
         // First chunk: ESC [ ?
         decoder.accept(new int[] { 27, 91, 63 });
-        assertNoInput("Partial prefix should be buffered");
+        assertNoInput("Partial CSI should be buffered by VtParser");
 
-        // Second chunk: starts with something wrong
-        decoder.accept(new int[] { 48 }); // '0' instead of '9'
+        // Second chunk: '0' then 'x' (final byte) — completes as CSI ?0x
+        // This is NOT a DSR (params[0]=0 not 997), so it passes through
+        decoder.accept(new int[] { 48, 120 }); // '0' 'x'
 
         assertEquals(0, receivedThemes.size());
-        // ESC [ ? should be flushed, then '0' processed normally
-        assertInputEquals("Mismatched partial prefix should flush",
-                new int[] { 27, 91, 63, 48 });
+        assertInputEquals("Non-DSR CSI should pass through",
+                new int[] { 27, 91, 63, 48, 120 });
     }
 
     // ==================== No handler — passthrough ====================

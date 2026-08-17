@@ -25,6 +25,8 @@ import java.util.Queue;
 import java.util.function.Consumer;
 
 import org.aesh.terminal.detect.TerminalTheme;
+import org.aesh.terminal.parser.VtHandler;
+import org.aesh.terminal.parser.VtParser;
 import org.aesh.terminal.tty.MouseEvent;
 import org.aesh.terminal.tty.Signal;
 import org.aesh.terminal.utils.ANSI;
@@ -56,36 +58,25 @@ public class EventDecoder implements Consumer<int[]> {
 
     private final Queue<int[]> inputQueue = new ArrayDeque<>(10);
 
-    // ---- Mouse SGR sequence detection ----
-    // SGR mouse format: ESC [ < Pb ; Px ; Py M/m
-    // We detect this as: ESC(27) [(91) <(60) digits ;(59) digits ;(59) digits M(77)/m(109)
-    private static final int MOUSE_IDLE = 0;
-    private static final int MOUSE_AFTER_ESC = 1; // seen ESC
-    private static final int MOUSE_AFTER_CSI = 2; // seen ESC [
-    private static final int MOUSE_AFTER_LT = 3; // seen ESC [ <
-    private static final int MOUSE_PARAM1 = 4; // collecting Pb digits
-    private static final int MOUSE_PARAM2 = 5; // collecting Px digits
-    private static final int MOUSE_PARAM3 = 6; // collecting Py digits
+    // ---- VtParser-based sequence filtering ----
+    // A single VtParser instance replaces the three hand-rolled state machines
+    // (DSR theme, mouse SGR, focus events). The parser classifies sequences
+    // via table-driven state transitions, and the FilterHandler dispatches
+    // recognized sequences to the appropriate handler.
+    private final FilterHandler filterHandler = new FilterHandler();
+    private final VtParser filterParser = new VtParser(filterHandler);
 
-    private int mouseState = MOUSE_IDLE;
-    private int mouseParam1, mouseParam2, mouseParam3;
-    private int[] mousePending = new int[16];
-    private int mousePendingLen;
+    /** Pre-allocated output buffer for filtered input. Reused across calls. */
+    private int[] filterOutput = new int[256];
+    private int filterOutputLen;
 
-    // ---- Theme DSR state machine ----
-    // The prefix we're matching: ESC [ ? 9 9 7 ;
-    private static final int[] DSR_PREFIX = { 27, 91, 63, 57, 57, 55, 59 };
-
-    // State machine states
-    private static final int DSR_IDLE = 0;
-    // States 1..7 = matching positions 0..6 of DSR_PREFIX
-    private static final int DSR_COLLECTING_PARAM = 8; // collecting digit(s) after the semicolon
-
-    private int dsrState = DSR_IDLE;
-    private int dsrParamValue = 0;
-    // Buffer for code points consumed by the state machine (may need to be flushed on mismatch)
-    private int[] dsrPending = new int[16];
-    private int dsrPendingLen = 0;
+    /**
+     * Tracks raw sequence bytes as they enter VtParser. When a non-filtered
+     * sequence completes (e.g., arrow key ESC [ A), these bytes are re-emitted
+     * to the output buffer.
+     */
+    private int[] sequenceBytes = new int[32];
+    private int sequenceBytesLen;
 
     /**
      * Create a new EventDecoder with default control character values.
@@ -200,10 +191,6 @@ public class EventDecoder implements Consumer<int[]> {
      */
     public void setMouseHandler(Consumer<MouseEvent> mouseHandler) {
         this.mouseHandler = mouseHandler;
-        if (mouseHandler == null) {
-            mouseState = MOUSE_IDLE;
-            mousePendingLen = 0;
-        }
     }
 
     /**
@@ -217,12 +204,6 @@ public class EventDecoder implements Consumer<int[]> {
      */
     public void setThemeChangeHandler(Consumer<TerminalTheme> themeChangeHandler) {
         this.themeChangeHandler = themeChangeHandler;
-        if (themeChangeHandler == null) {
-            // Reset state machine when handler is removed
-            dsrState = DSR_IDLE;
-            dsrPendingLen = 0;
-            dsrParamValue = 0;
-        }
     }
 
     /**
@@ -304,17 +285,9 @@ public class EventDecoder implements Consumer<int[]> {
                 input = remainder;
             }
         }
-        // Filter theme DSR sequences if a handler is registered
-        if (input.length > 0 && themeChangeHandler != null) {
-            input = filterThemeDsr(input);
-        }
-        // Filter mouse SGR sequences if a handler is registered
-        if (input.length > 0 && mouseHandler != null) {
-            input = filterMouseSgr(input);
-        }
-        // Filter focus events if a handler is registered
-        if (input.length > 0 && focusHandler != null) {
-            input = filterFocusEvents(input);
+        // Filter sequences (DSR theme, mouse SGR, focus) using VtParser
+        if (input.length > 0) {
+            input = filterSequences(input);
         }
         if (input.length > 0) {
             if (inputHandler != null)
@@ -324,21 +297,40 @@ public class EventDecoder implements Consumer<int[]> {
         }
     }
 
+    // =========================================================================
+    // VtParser-based sequence filtering
+    // =========================================================================
+
     /**
-     * Filter theme DSR sequences ({@code CSI ? 997 ; Ps n}) from the input.
+     * Checks if any sequence filtering is active (at least one handler is set).
+     */
+    private boolean hasAnyFilter() {
+        return themeChangeHandler != null || mouseHandler != null || focusHandler != null;
+    }
+
+    /**
+     * Filter terminal sequences (DSR theme, mouse SGR, focus) from input
+     * using a single VtParser pass.
      * <p>
-     * Uses a state machine to recognize the sequence, handling both complete
-     * sequences within a single chunk and sequences split across multiple chunks.
-     * Recognized sequences are dispatched to the {@link #themeChangeHandler}.
-     * Non-matching bytes are passed through unchanged.
+     * Fast path: if the parser is in GROUND state (no partial sequence from a
+     * previous chunk) and no filter handlers are set, or no ESC byte is present,
+     * the input is returned unchanged with zero allocation.
+     * <p>
+     * When ESC is present or the parser has pending state, each code point is fed
+     * through VtParser. The {@link FilterHandler} classifies dispatched sequences
+     * and either consumes them (DSR, mouse, focus) or re-emits them to the output.
      *
      * @param input the input code points to filter
-     * @return the filtered input with DSR sequences removed
+     * @return the filtered input with recognized sequences removed
      */
-    private int[] filterThemeDsr(int[] input) {
-        // Fast path: if not mid-sequence and input contains no ESC, pass through unchanged.
-        // This avoids allocation for the vast majority of input (normal keystrokes).
-        if (dsrState == DSR_IDLE) {
+    private int[] filterSequences(int[] input) {
+        // Fast path: no filter handlers set → pass through
+        if (!hasAnyFilter()) {
+            return input;
+        }
+
+        // Fast path: parser in GROUND state and no ESC in input → pass through
+        if (filterParser.isGroundState()) {
             boolean hasEsc = false;
             for (int c : input) {
                 if (c == 27) {
@@ -351,361 +343,229 @@ public class EventDecoder implements Consumer<int[]> {
             }
         }
 
-        // Output buffer for non-DSR code points
-        int[] output = new int[input.length + dsrPendingLen];
-        int outLen = 0;
+        // Ensure output buffer is large enough
+        // Worst case: input passes through entirely + pending sequence bytes
+        int maxOutput = input.length + sequenceBytesLen;
+        if (filterOutput.length < maxOutput) {
+            filterOutput = new int[maxOutput];
+        }
+        filterOutputLen = 0;
 
+        // Feed each code point through VtParser
+        boolean wasGround = filterParser.isGroundState();
         for (int i = 0; i < input.length; i++) {
             int cp = input[i];
+            boolean isGround = filterParser.isGroundState();
 
-            if (dsrState == DSR_IDLE) {
-                // Looking for ESC to start a potential DSR sequence
-                if (cp == DSR_PREFIX[0]) { // ESC
-                    dsrState = 1;
-                    dsrPendingLen = 0;
-                    dsrParamValue = 0;
-                    appendDsrPending(cp);
-                } else {
-                    output[outLen++] = cp;
-                }
-            } else if (dsrState >= 1 && dsrState < DSR_PREFIX.length) {
-                // Matching the fixed prefix: ESC [ ? 9 9 7 ;
-                if (cp == DSR_PREFIX[dsrState]) {
-                    dsrState++;
-                    appendDsrPending(cp);
-                    // If we've matched the entire prefix, move to parameter collection
-                    if (dsrState == DSR_PREFIX.length) {
-                        dsrState = DSR_COLLECTING_PARAM;
-                    }
-                } else {
-                    // Mismatch — flush buffered prefix as normal input
-                    outLen = flushDsrPending(output, outLen);
-                    // Re-process the current code point from IDLE state
-                    i--;
-                }
-            } else if (dsrState == DSR_COLLECTING_PARAM) {
-                if (cp >= '0' && cp <= '9') {
-                    // Accumulate digit
-                    dsrParamValue = dsrParamValue * 10 + (cp - '0');
-                    appendDsrPending(cp);
-                } else if (cp == 'n' && dsrPendingLen > DSR_PREFIX.length) {
-                    // Terminating 'n' with at least one digit collected — complete DSR
-                    TerminalTheme theme = null;
-                    if (dsrParamValue == ANSI.THEME_DSR_DARK) {
-                        theme = TerminalTheme.DARK;
-                    } else if (dsrParamValue == ANSI.THEME_DSR_LIGHT) {
-                        theme = TerminalTheme.LIGHT;
-                    }
-                    // Reset state machine
-                    dsrState = DSR_IDLE;
-                    dsrPendingLen = 0;
-                    dsrParamValue = 0;
-                    // Dispatch to handler (even for unknown mode values, we consume the sequence)
-                    if (theme != null && themeChangeHandler != null) {
-                        themeChangeHandler.accept(theme);
-                    }
-                } else {
-                    // Unexpected character — flush prefix + collected digits + this char
-                    appendDsrPending(cp);
-                    outLen = flushDsrPending(output, outLen);
-                }
+            // Track sequence bytes: when transitioning from GROUND to non-GROUND,
+            // start recording raw bytes. When in a sequence, keep recording.
+            if (isGround && !wasGround) {
+                // Just returned to GROUND without a dispatch callback firing.
+                // This shouldn't normally happen (dispatch fires before returning
+                // to GROUND), but guard against it.
+                sequenceBytesLen = 0;
             }
+
+            if (isGround) {
+                sequenceBytesLen = 0;
+            }
+
+            // Record this byte in the sequence buffer before advancing
+            if (!isGround || cp == 27) {
+                appendSequenceByte(cp);
+            }
+
+            filterParser.advance(cp);
+            wasGround = filterParser.isGroundState();
+
+            // If we started in GROUND and stayed in GROUND (printable/execute),
+            // the handler already wrote to filterOutput via print()/execute()
         }
 
-        // If we're mid-sequence at the end of the chunk, the pending buffer
-        // stays for the next accept() call. Don't flush it — the sequence
-        // may continue in the next chunk.
-
-        if (outLen == 0) {
-            return new int[0];
-        }
-        // If nothing was filtered out and no pending bytes, return original array
-        if (outLen == input.length && dsrPendingLen == 0) {
+        // If nothing was filtered and no pending sequence, return original
+        if (filterOutputLen == input.length && filterParser.isGroundState()) {
             return input;
         }
-        return Arrays.copyOf(output, outLen);
-    }
-
-    /**
-     * Append a code point to the DSR pending buffer, growing it if needed.
-     */
-    private void appendDsrPending(int cp) {
-        if (dsrPendingLen >= dsrPending.length) {
-            dsrPending = Arrays.copyOf(dsrPending, dsrPending.length * 2);
-        }
-        dsrPending[dsrPendingLen++] = cp;
-    }
-
-    /**
-     * Flush the DSR pending buffer into the output array and reset state.
-     * <p>
-     * The output array is guaranteed to have enough room because it was
-     * allocated as {@code input.length + dsrPendingLen}.
-     *
-     * @param output the output array to write to
-     * @param outLen the current write position in output
-     * @return the updated write position
-     */
-    private int flushDsrPending(int[] output, int outLen) {
-        System.arraycopy(dsrPending, 0, output, outLen, dsrPendingLen);
-        outLen += dsrPendingLen;
-        dsrPendingLen = 0;
-        dsrState = DSR_IDLE;
-        dsrParamValue = 0;
-        return outLen;
-    }
-
-    // =========================================================================
-    // Mouse SGR sequence filtering
-    // =========================================================================
-
-    /**
-     * Filter SGR mouse sequences ({@code ESC [ < Pb ; Px ; Py M/m}) from input.
-     * Recognized sequences are parsed into {@link MouseEvent} and dispatched
-     * to the mouse handler. Non-matching bytes are passed through unchanged.
-     */
-    private int[] filterMouseSgr(int[] input) {
-        // Fast path: if not mid-sequence and no ESC in input, pass through
-        if (mouseState == MOUSE_IDLE) {
-            boolean hasEsc = false;
-            for (int c : input) {
-                if (c == 27) {
-                    hasEsc = true;
-                    break;
-                }
-            }
-            if (!hasEsc)
-                return input;
-        }
-
-        int[] output = new int[input.length + mousePendingLen];
-        int outLen = 0;
-
-        for (int i = 0; i < input.length; i++) {
-            int cp = input[i];
-
-            switch (mouseState) {
-                case MOUSE_IDLE:
-                    if (cp == 27) {
-                        mouseState = MOUSE_AFTER_ESC;
-                        mousePendingLen = 0;
-                        appendMousePending(cp);
-                    } else {
-                        output[outLen++] = cp;
-                    }
-                    break;
-
-                case MOUSE_AFTER_ESC:
-                    if (cp == 91) { // [
-                        mouseState = MOUSE_AFTER_CSI;
-                        appendMousePending(cp);
-                    } else {
-                        // Not CSI — flush pending and re-process
-                        outLen = flushMousePending(output, outLen);
-                        i--;
-                    }
-                    break;
-
-                case MOUSE_AFTER_CSI:
-                    if (cp == 60) { // <
-                        mouseState = MOUSE_AFTER_LT;
-                        mouseParam1 = 0;
-                        mouseParam2 = 0;
-                        mouseParam3 = 0;
-                        appendMousePending(cp);
-                    } else {
-                        // Not < — not a mouse sequence, flush and re-process
-                        outLen = flushMousePending(output, outLen);
-                        i--;
-                    }
-                    break;
-
-                case MOUSE_AFTER_LT:
-                    // Expect first digit of Pb
-                    if (cp >= '0' && cp <= '9') {
-                        mouseState = MOUSE_PARAM1;
-                        mouseParam1 = cp - '0';
-                        appendMousePending(cp);
-                    } else {
-                        outLen = flushMousePending(output, outLen);
-                        i--;
-                    }
-                    break;
-
-                case MOUSE_PARAM1:
-                    if (cp >= '0' && cp <= '9') {
-                        mouseParam1 = mouseParam1 * 10 + (cp - '0');
-                        appendMousePending(cp);
-                    } else if (cp == ';') {
-                        mouseState = MOUSE_PARAM2;
-                        appendMousePending(cp);
-                    } else {
-                        outLen = flushMousePending(output, outLen);
-                        i--;
-                    }
-                    break;
-
-                case MOUSE_PARAM2:
-                    if (cp >= '0' && cp <= '9') {
-                        mouseParam2 = mouseParam2 * 10 + (cp - '0');
-                        appendMousePending(cp);
-                    } else if (cp == ';') {
-                        mouseState = MOUSE_PARAM3;
-                        appendMousePending(cp);
-                    } else {
-                        outLen = flushMousePending(output, outLen);
-                        i--;
-                    }
-                    break;
-
-                case MOUSE_PARAM3:
-                    if (cp >= '0' && cp <= '9') {
-                        mouseParam3 = mouseParam3 * 10 + (cp - '0');
-                        appendMousePending(cp);
-                    } else if (cp == 'M' || cp == 'm') {
-                        // Complete mouse sequence!
-                        MouseEvent event = MouseEvent.parseSgr(cp,
-                                new int[] { mouseParam1, mouseParam2, mouseParam3 }, 3);
-                        mouseState = MOUSE_IDLE;
-                        mousePendingLen = 0;
-                        if (event != null && mouseHandler != null) {
-                            mouseHandler.accept(event);
-                        }
-                    } else {
-                        outLen = flushMousePending(output, outLen);
-                        i--;
-                    }
-                    break;
-            }
-        }
-
-        if (outLen == 0 && mouseState == MOUSE_IDLE) {
+        if (filterOutputLen == 0) {
             return new int[0];
         }
-        if (outLen == input.length && mousePendingLen == 0) {
-            return input;
+        return Arrays.copyOf(filterOutput, filterOutputLen);
+    }
+
+    private void appendSequenceByte(int cp) {
+        if (sequenceBytesLen >= sequenceBytes.length) {
+            sequenceBytes = Arrays.copyOf(sequenceBytes, sequenceBytes.length * 2);
         }
-        return Arrays.copyOf(output, outLen);
+        sequenceBytes[sequenceBytesLen++] = cp;
     }
-
-    private void appendMousePending(int cp) {
-        if (mousePendingLen >= mousePending.length) {
-            mousePending = Arrays.copyOf(mousePending, mousePending.length * 2);
-        }
-        mousePending[mousePendingLen++] = cp;
-    }
-
-    private int flushMousePending(int[] output, int outLen) {
-        System.arraycopy(mousePending, 0, output, outLen, mousePendingLen);
-        outLen += mousePendingLen;
-        mousePendingLen = 0;
-        mouseState = MOUSE_IDLE;
-        return outLen;
-    }
-
-    // =========================================================================
-    // Focus event filtering
-    // =========================================================================
-
-    // Focus event format: ESC [ I (focus in), ESC [ O (focus out)
-    private static final int FOCUS_IDLE = 0;
-    private static final int FOCUS_AFTER_ESC = 1; // seen ESC
-    private static final int FOCUS_AFTER_CSI = 2; // seen ESC [
-
-    private int focusState = FOCUS_IDLE;
-    private int[] focusPending = new int[3];
-    private int focusPendingLen = 0;
 
     /**
-     * Filter focus event sequences ({@code ESC [ I} and {@code ESC [ O}) from input.
-     * Focus in events dispatch {@code true} to the focus handler,
-     * focus out events dispatch {@code false}.
-     * <p>
-     * Uses a persistent state machine to handle sequences split across
-     * multiple {@code accept()} calls.
+     * Flush accumulated sequence bytes to the output buffer (for non-filtered sequences).
      */
-    private int[] filterFocusEvents(int[] input) {
-        // Fast path: if not mid-sequence and no ESC in input, pass through
-        if (focusState == FOCUS_IDLE) {
-            boolean hasEsc = false;
-            for (int c : input) {
-                if (c == 27) {
-                    hasEsc = true;
-                    break;
-                }
+    private void flushSequenceBytes() {
+        if (sequenceBytesLen > 0) {
+            int needed = filterOutputLen + sequenceBytesLen;
+            if (filterOutput.length < needed) {
+                filterOutput = Arrays.copyOf(filterOutput, needed);
             }
-            if (!hasEsc) {
-                return input;
-            }
+            System.arraycopy(sequenceBytes, 0, filterOutput, filterOutputLen, sequenceBytesLen);
+            filterOutputLen += sequenceBytesLen;
+            sequenceBytesLen = 0;
         }
-
-        int[] output = new int[input.length + focusPendingLen];
-        int outLen = 0;
-
-        for (int i = 0; i < input.length; i++) {
-            int cp = input[i];
-            switch (focusState) {
-                case FOCUS_IDLE:
-                    if (cp == 27) {
-                        focusState = FOCUS_AFTER_ESC;
-                        focusPending[0] = cp;
-                        focusPendingLen = 1;
-                    } else {
-                        output[outLen++] = cp;
-                    }
-                    break;
-
-                case FOCUS_AFTER_ESC:
-                    if (cp == '[') {
-                        focusState = FOCUS_AFTER_CSI;
-                        focusPending[1] = cp;
-                        focusPendingLen = 2;
-                    } else {
-                        // Not a CSI — flush pending ESC and re-process current byte
-                        outLen = flushFocusPending(output, outLen);
-                        i--; // re-process cp from IDLE state
-                    }
-                    break;
-
-                case FOCUS_AFTER_CSI:
-                    if (cp == 'I') {
-                        // Focus in: ESC [ I
-                        if (focusHandler != null) {
-                            focusHandler.accept(true);
-                        }
-                        focusPendingLen = 0;
-                        focusState = FOCUS_IDLE;
-                    } else if (cp == 'O') {
-                        // Focus out: ESC [ O
-                        if (focusHandler != null) {
-                            focusHandler.accept(false);
-                        }
-                        focusPendingLen = 0;
-                        focusState = FOCUS_IDLE;
-                    } else {
-                        // Not a focus sequence — flush pending and re-process
-                        outLen = flushFocusPending(output, outLen);
-                        i--; // re-process cp from IDLE state
-                    }
-                    break;
-            }
-        }
-
-        // If we're mid-sequence at end of input, keep pending for next call
-        if (focusState == FOCUS_IDLE && outLen == input.length && focusPendingLen == 0) {
-            return input; // nothing filtered, return original (zero allocation)
-        }
-        if (outLen == 0 && focusPendingLen > 0) {
-            return new int[0]; // all consumed by pending state
-        }
-        return Arrays.copyOf(output, outLen);
     }
 
-    private int flushFocusPending(int[] output, int outLen) {
-        System.arraycopy(focusPending, 0, output, outLen, focusPendingLen);
-        outLen += focusPendingLen;
-        focusPendingLen = 0;
-        focusState = FOCUS_IDLE;
-        return outLen;
+    /**
+     * VtHandler implementation that classifies parsed sequences and either
+     * consumes them (DSR theme, mouse SGR, focus) or re-emits them to the
+     * output buffer.
+     */
+    private class FilterHandler implements VtHandler {
+
+        @Override
+        public void print(int codePoint) {
+            // Printable character in GROUND state — direct to output
+            if (filterOutputLen >= filterOutput.length) {
+                filterOutput = Arrays.copyOf(filterOutput, filterOutput.length * 2);
+            }
+            filterOutput[filterOutputLen++] = codePoint;
+        }
+
+        @Override
+        public void execute(int controlChar) {
+            // C0 control in GROUND state — direct to output
+            // (Signals are already extracted in the pre-pass)
+            if (filterOutputLen >= filterOutput.length) {
+                filterOutput = Arrays.copyOf(filterOutput, filterOutput.length * 2);
+            }
+            filterOutput[filterOutputLen++] = controlChar;
+        }
+
+        @Override
+        public void csiDispatch(int finalChar, int[] params, int paramCount,
+                int[] intermediates, int intermediateCount, boolean hasSubParams) {
+            // Classify the CSI sequence
+            if (isDsrThemeResponse(finalChar, params, paramCount,
+                    intermediates, intermediateCount)) {
+                handleDsrTheme(params, paramCount);
+            } else if (isMouseSgrEvent(finalChar, intermediates, intermediateCount)) {
+                handleMouseSgr(finalChar, params, paramCount);
+            } else if (isFocusEvent(finalChar, params, paramCount,
+                    intermediates, intermediateCount)) {
+                handleFocus(finalChar);
+            } else {
+                // Not a filtered sequence — re-emit the raw sequence bytes
+                flushSequenceBytes();
+            }
+            sequenceBytesLen = 0;
+        }
+
+        @Override
+        public void escDispatch(int finalChar, int[] intermediates,
+                int intermediateCount) {
+            // Unfiltered ESC sequence — re-emit
+            flushSequenceBytes();
+            sequenceBytesLen = 0;
+        }
+
+        @Override
+        public void oscEnd(String data) {
+            // Unfiltered OSC — re-emit
+            flushSequenceBytes();
+            sequenceBytesLen = 0;
+        }
+
+        @Override
+        public void hook(int finalChar, int[] params, int paramCount,
+                int[] intermediates, int intermediateCount) {
+            // DCS start — re-emit
+            flushSequenceBytes();
+            sequenceBytesLen = 0;
+        }
+
+        @Override
+        public void put(int b) {
+            // DCS data — re-emit
+            if (filterOutputLen >= filterOutput.length) {
+                filterOutput = Arrays.copyOf(filterOutput, filterOutput.length * 2);
+            }
+            filterOutput[filterOutputLen++] = b;
+        }
+
+        @Override
+        public void unhook() {
+            // DCS end — nothing to flush (sequence bytes already flushed at hook)
+        }
+    }
+
+    // =========================================================================
+    // Sequence classification and dispatch
+    // =========================================================================
+
+    /**
+     * Checks if a CSI sequence is a theme DSR response: {@code CSI ? 997 ; Ps n}
+     * <p>
+     * In VtParser terms: finalChar='n', intermediates=['?'], params=[997, Ps]
+     */
+    private static boolean isDsrThemeResponse(int finalChar, int[] params, int paramCount,
+            int[] intermediates, int intermediateCount) {
+        return finalChar == 'n'
+                && intermediateCount == 1 && intermediates[0] == '?'
+                && paramCount == 2 && params[0] == 997;
+    }
+
+    /**
+     * Checks if a CSI sequence is a mouse SGR event: {@code CSI < Pb ; Px ; Py M/m}
+     * <p>
+     * In VtParser terms: finalChar='M'|'m', intermediates=['<']
+     */
+    private static boolean isMouseSgrEvent(int finalChar,
+            int[] intermediates, int intermediateCount) {
+        return (finalChar == 'M' || finalChar == 'm')
+                && intermediateCount == 1 && intermediates[0] == '<';
+    }
+
+    /**
+     * Checks if a CSI sequence is a focus event: {@code CSI I} or {@code CSI O}
+     * <p>
+     * In VtParser terms: finalChar='I'|'O', no intermediates, no real params
+     * (VtParser produces paramCount=1 with params[0]=-1 for empty CSI)
+     */
+    private static boolean isFocusEvent(int finalChar, int[] params, int paramCount,
+            int[] intermediates, int intermediateCount) {
+        return (finalChar == 'I' || finalChar == 'O')
+                && intermediateCount == 0
+                && paramCount <= 1
+                && (paramCount == 0 || params[0] == -1);
+    }
+
+    private void handleDsrTheme(int[] params, int paramCount) {
+        if (paramCount >= 2 && themeChangeHandler != null) {
+            int value = params[1];
+            TerminalTheme theme = null;
+            if (value == ANSI.THEME_DSR_DARK) {
+                theme = TerminalTheme.DARK;
+            } else if (value == ANSI.THEME_DSR_LIGHT) {
+                theme = TerminalTheme.LIGHT;
+            }
+            if (theme != null) {
+                themeChangeHandler.accept(theme);
+            }
+        }
+    }
+
+    private void handleMouseSgr(int finalChar, int[] params, int paramCount) {
+        if (paramCount >= 3 && mouseHandler != null) {
+            MouseEvent event = MouseEvent.parseSgr(finalChar,
+                    new int[] { params[0], params[1], params[2] }, 3);
+            if (event != null) {
+                mouseHandler.accept(event);
+            }
+        }
+    }
+
+    private void handleFocus(int finalChar) {
+        if (focusHandler != null) {
+            focusHandler.accept(finalChar == 'I');
+        }
     }
 }
