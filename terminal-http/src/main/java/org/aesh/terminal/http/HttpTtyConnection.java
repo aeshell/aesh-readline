@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -116,6 +117,15 @@ public abstract class HttpTtyConnection extends AbstractConnection {
     private final ScheduledExecutorService readlineExecutor;
 
     /**
+     * Backpressure: number of tasks pending in the readline executor.
+     * When this exceeds HIGH_WATER_MARK, reading from the transport is paused.
+     * When it drops to LOW_WATER_MARK, reading resumes.
+     */
+    private final AtomicInteger pendingTasks = new AtomicInteger(0);
+    private static final int HIGH_WATER_MARK = 64;
+    private static final int LOW_WATER_MARK = 16;
+
+    /**
      * Creates a new HTTP TTY connection with default charset (UTF-8) and size (80x24).
      */
     public HttpTtyConnection() {
@@ -194,6 +204,23 @@ public abstract class HttpTtyConnection extends AbstractConnection {
     protected abstract void write(byte[] buffer);
 
     /**
+     * Pauses reading from the underlying transport. Used for backpressure
+     * when the processing queue is full.
+     * <p>
+     * Default implementation is a no-op. Subclasses with transport-level
+     * read control should override this.
+     */
+    protected void pauseReads() {
+    }
+
+    /**
+     * Resumes reading from the underlying transport after a previous
+     * {@link #pauseReads()} call.
+     */
+    protected void resumeReads() {
+    }
+
+    /**
      * Processes an incoming JSON message from the client and writes it to the decoder.
      * <p>
      * Handles the following actions:
@@ -226,7 +253,20 @@ public abstract class HttpTtyConnection extends AbstractConnection {
                     String data = (String) obj.get("data");
                     if (data != null) {
                         byte[] bytes = data.getBytes();
-                        readlineExecutor.execute(() -> decoder.write(bytes));
+                        int pending = pendingTasks.incrementAndGet();
+                        if (pending > HIGH_WATER_MARK) {
+                            pauseReads();
+                        }
+                        readlineExecutor.execute(() -> {
+                            try {
+                                decoder.write(bytes);
+                            } finally {
+                                int remaining = pendingTasks.decrementAndGet();
+                                if (remaining <= LOW_WATER_MARK) {
+                                    resumeReads();
+                                }
+                            }
+                        });
                     }
                     break;
                 case "resize":
