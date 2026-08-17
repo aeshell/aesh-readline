@@ -119,41 +119,32 @@ public final class TelnetTtyConnection extends TelnetHandler implements Connecti
     }
 
     /**
-     * Executes a task on the per-connection readline executor.
-     * Falls back to the Netty event loop if the executor is not yet initialized
-     * or has been shut down.
+     * Executes a task on the per-connection readline executor if the connection
+     * is accepted, otherwise falls back to the Netty event loop.
+     * <p>
+     * Before acceptance, tasks (like ReadBuffer.drainQueue) must run on the
+     * Netty event loop to stay synchronized with option negotiation. After
+     * acceptance, tasks are offloaded to the readline executor.
      *
      * @param task the task to execute
      */
     public void execute(Runnable task) {
-        if (readlineExecutor != null && !readlineExecutor.isShutdown()) {
-            try {
-                readlineExecutor.execute(task);
-            } catch (java.util.concurrent.RejectedExecutionException e) {
-                // Executor shut down between the isShutdown() check and execute() — ignore
-            }
-        } else if (conn != null) {
+        if (conn != null) {
             conn.execute(task);
         }
     }
 
     /**
      * Schedules a task for delayed execution on the per-connection readline executor.
-     * Falls back to the Netty event loop if the executor is not yet initialized
-     * or has been shut down.
+     * Falls back to the Netty event loop if the executor is not yet initialized,
+     * the connection is not yet accepted, or the executor has been shut down.
      *
      * @param task the task to execute
      * @param delay the delay before execution
      * @param unit the time unit of the delay
      */
     public void schedule(Runnable task, long delay, TimeUnit unit) {
-        if (readlineExecutor != null && !readlineExecutor.isShutdown()) {
-            try {
-                readlineExecutor.schedule(task, delay, unit);
-            } catch (java.util.concurrent.RejectedExecutionException e) {
-                // Executor shut down between the isShutdown() check and schedule() — ignore
-            }
-        } else if (conn != null) {
+        if (conn != null) {
             conn.schedule(task, delay, unit);
         }
     }
@@ -194,7 +185,8 @@ public final class TelnetTtyConnection extends TelnetHandler implements Connecti
     @Override
     protected void onData(byte[] data) {
         lastAccessedTime = System.currentTimeMillis();
-        if (readlineExecutor != null) {
+        if (accepted && readlineExecutor != null && !readlineExecutor.isShutdown()) {
+            // Connection accepted — dispatch to readline executor
             byte[] copy = data.clone();
             int pending = pendingTasks.incrementAndGet();
             if (pending > HIGH_WATER_MARK) {
@@ -211,7 +203,11 @@ public final class TelnetTtyConnection extends TelnetHandler implements Connecti
                 }
             });
         } else {
-            // Before connection is accepted, process inline (telnet negotiation)
+            // Before acceptance or executor not ready — process inline on IO
+            // thread. This is needed during telnet option negotiation (binary
+            // mode) where data may arrive before checkAccept() fires. The
+            // ReadBuffer queues this data and drains it when the readHandler
+            // is set in checkAccept().
             decoder.write(data);
         }
     }
