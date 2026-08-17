@@ -127,6 +127,23 @@ public abstract class TelnetConnection {
     protected abstract void execute(Runnable task);
 
     /**
+     * Pauses reading from the underlying transport. Used for backpressure
+     * when the processing queue is full.
+     * <p>
+     * Default implementation is a no-op. Subclasses with transport-level
+     * read control should override this.
+     */
+    protected void pauseReads() {
+    }
+
+    /**
+     * Resumes reading from the underlying transport after a previous
+     * {@link #pauseReads()} call.
+     */
+    protected void resumeReads() {
+    }
+
+    /**
      * Schedule a task.
      *
      * @param task the task to schedule

@@ -25,6 +25,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 import org.aesh.terminal.Attributes;
@@ -74,6 +75,15 @@ public final class TelnetTtyConnection extends TelnetHandler implements Connecti
      * runs on this single-thread executor, keeping the Netty IO thread free.
      */
     private ScheduledExecutorService readlineExecutor;
+
+    /**
+     * Backpressure: number of tasks pending in the readline executor.
+     * When this exceeds HIGH_WATER_MARK, reading from the transport is paused.
+     * When it drops to LOW_WATER_MARK, reading resumes.
+     */
+    private final AtomicInteger pendingTasks = new AtomicInteger(0);
+    private static final int HIGH_WATER_MARK = 64;
+    private static final int LOW_WATER_MARK = 16;
 
     /**
      * Creates a new TelnetTtyConnection.
@@ -176,7 +186,20 @@ public final class TelnetTtyConnection extends TelnetHandler implements Connecti
         lastAccessedTime = System.currentTimeMillis();
         if (readlineExecutor != null) {
             byte[] copy = data.clone();
-            readlineExecutor.execute(() -> decoder.write(copy));
+            int pending = pendingTasks.incrementAndGet();
+            if (pending > HIGH_WATER_MARK) {
+                conn.pauseReads();
+            }
+            readlineExecutor.execute(() -> {
+                try {
+                    decoder.write(copy);
+                } finally {
+                    int remaining = pendingTasks.decrementAndGet();
+                    if (remaining <= LOW_WATER_MARK) {
+                        conn.resumeReads();
+                    }
+                }
+            });
         } else {
             // Before connection is accepted, process inline (telnet negotiation)
             decoder.write(data);
