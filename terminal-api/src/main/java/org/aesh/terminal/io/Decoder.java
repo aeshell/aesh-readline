@@ -21,7 +21,6 @@ package org.aesh.terminal.io;
 
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
-import java.nio.IntBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CoderResult;
@@ -49,6 +48,9 @@ public class Decoder {
     private ByteBuffer bBuf;
     private final CharBuffer cBuf;
     private Consumer<int[]> onChar;
+
+    /** Reusable code-point buffer. Grows when needed, never shrinks. */
+    private int[] cpBuf = new int[128];
 
     private int[] leftOverCodePoints;
 
@@ -132,7 +134,13 @@ public class Decoder {
 
         // Drain the byte buffer
         while (true) {
-            IntBuffer iBuf = IntBuffer.allocate(bBuf.remaining());
+            // Ensure cpBuf can hold at most bBuf.remaining() code points
+            int maxCodePoints = bBuf.remaining();
+            if (cpBuf.length < maxCodePoints) {
+                cpBuf = new int[maxCodePoints];
+            }
+            int cpLen = 0;
+
             CoderResult result = decoder.decode(bBuf, cBuf, false);
             cBuf.flip();
             while (cBuf.hasRemaining()) {
@@ -144,7 +152,7 @@ public class Decoder {
                             if (Character.isLowSurrogate(low)) {
                                 int codePoint = Character.toCodePoint(c, low);
                                 if (Character.isValidCodePoint(codePoint)) {
-                                    iBuf.put(codePoint);
+                                    cpBuf[cpLen++] = codePoint;
                                 } else {
                                     throw new UnsupportedOperationException("Handle me gracefully");
                                 }
@@ -158,17 +166,15 @@ public class Decoder {
                         throw new UnsupportedOperationException("Handle me gracefully");
                     }
                 } else {
-                    iBuf.put((int) c);
+                    cpBuf[cpLen++] = (int) c;
                 }
             }
-            iBuf.flip();
-            int[] codePoints = new int[iBuf.limit()];
-            iBuf.get(codePoints);
+            int[] codePoints = Arrays.copyOf(cpBuf, cpLen);
             if (onChar != null)
                 onChar.accept(codePoints);
             else {
                 LOGGER.log(Level.WARNING, "InputHandler is set to null, will ignore input: " + fromCodePoints(codePoints));
-                leftOverCodePoints = Arrays.copyOf(codePoints, codePoints.length);
+                leftOverCodePoints = codePoints;
             }
             cBuf.compact();
             if (result.isOverflow()) {
@@ -177,11 +183,6 @@ public class Decoder {
                 // Underflow: the decoder needs more input bytes to produce
                 // a complete character. Any partial bytes remain in bBuf for
                 // the next write() call to continue decoding.
-                if (bBuf.hasRemaining()) {
-                    // Partial multi-byte character — wait for more input
-                } else {
-                    // All input consumed
-                }
                 break;
             } else {
                 throw new UnsupportedOperationException("Handle me gracefully");
