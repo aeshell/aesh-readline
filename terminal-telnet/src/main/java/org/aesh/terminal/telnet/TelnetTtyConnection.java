@@ -22,6 +22,8 @@ package org.aesh.terminal.telnet;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
@@ -67,6 +69,13 @@ public final class TelnetTtyConnection extends TelnetHandler implements Connecti
     private volatile boolean reading = false;
 
     /**
+     * Per-connection executor for readline processing.
+     * All input decoding, event processing, action handling, and output generation
+     * runs on this single-thread executor, keeping the Netty IO thread free.
+     */
+    private ScheduledExecutorService readlineExecutor;
+
+    /**
      * Creates a new TelnetTtyConnection.
      *
      * @param inBinary true to enable binary mode for input
@@ -100,23 +109,33 @@ public final class TelnetTtyConnection extends TelnetHandler implements Connecti
     }
 
     /**
-     * Executes a task on the connection's event loop.
+     * Executes a task on the per-connection readline executor.
+     * Falls back to the Netty event loop if the executor is not yet initialized.
      *
      * @param task the task to execute
      */
     public void execute(Runnable task) {
-        conn.execute(task);
+        if (readlineExecutor != null) {
+            readlineExecutor.execute(task);
+        } else {
+            conn.execute(task);
+        }
     }
 
     /**
-     * Schedules a task to be executed after a delay.
+     * Schedules a task for delayed execution on the per-connection readline executor.
+     * Falls back to the Netty event loop if the executor is not yet initialized.
      *
      * @param task the task to execute
      * @param delay the delay before execution
      * @param unit the time unit of the delay
      */
     public void schedule(Runnable task, long delay, TimeUnit unit) {
-        conn.schedule(task, delay, unit);
+        if (readlineExecutor != null) {
+            readlineExecutor.schedule(task, delay, unit);
+        } else {
+            conn.schedule(task, delay, unit);
+        }
     }
 
     @Override
@@ -155,12 +174,24 @@ public final class TelnetTtyConnection extends TelnetHandler implements Connecti
     @Override
     protected void onData(byte[] data) {
         lastAccessedTime = System.currentTimeMillis();
-        decoder.write(data);
+        if (readlineExecutor != null) {
+            byte[] copy = data.clone();
+            readlineExecutor.execute(() -> decoder.write(copy));
+        } else {
+            // Before connection is accepted, process inline (telnet negotiation)
+            decoder.write(data);
+        }
     }
 
     @Override
     protected void onOpen(TelnetConnection conn) {
         this.conn = conn;
+
+        readlineExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread t = new Thread(r, "aesh-telnet-readline");
+            t.setDaemon(true);
+            return t;
+        });
 
         //set default size for now
         size = new Size(80, 24);
@@ -219,7 +250,12 @@ public final class TelnetTtyConnection extends TelnetHandler implements Connecti
     protected void onSize(int width, int height) {
         this.size = new Size(width, height);
         if (sizeHandler != null) {
-            sizeHandler.accept(size);
+            Size s = size;
+            if (readlineExecutor != null) {
+                readlineExecutor.execute(() -> sizeHandler.accept(s));
+            } else {
+                sizeHandler.accept(s);
+            }
         }
     }
 
@@ -279,6 +315,9 @@ public final class TelnetTtyConnection extends TelnetHandler implements Connecti
     @Override
     protected void onClose() {
         reading = false;
+        if (readlineExecutor != null) {
+            readlineExecutor.shutdownNow();
+        }
         if (closeHandler != null) {
             closeHandler.accept(null);
         }
