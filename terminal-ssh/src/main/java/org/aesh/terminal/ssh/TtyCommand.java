@@ -27,6 +27,8 @@ import java.nio.charset.Charset;
 import java.util.EnumSet;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
@@ -82,6 +84,14 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
     private Device device;
 
     /**
+     * Per-connection executor for readline processing.
+     * All input decoding, event processing, action handling, and output generation
+     * runs on this single-thread executor, keeping the Netty IO thread free for
+     * network I/O.
+     */
+    private ScheduledExecutorService readlineExecutor;
+
+    /**
      * Async write queue for serializing SSH channel writes.
      * SSHD throws WritePendingException if writeBuffer() is called while a
      * previous write is still in flight, so we queue writes and drain them
@@ -105,9 +115,11 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
     public int data(ChannelSession channel, byte[] buf, int start, int len) {
         if (decoder != null) {
             lastAccessedTime = System.currentTimeMillis();
-            decoder.write(buf, start, len);
-        } else {
-            // Data send too early ?
+            // Copy the buffer — SSHD may reuse it after data() returns.
+            // Dispatch to the readline executor to keep the Netty IO thread free.
+            byte[] copy = new byte[len];
+            System.arraycopy(buf, start, copy, 0, len);
+            readlineExecutor.execute(() -> decoder.write(copy, 0, copy.length));
         }
         return len;
     }
@@ -200,6 +212,13 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
         if (charset == null) {
             charset = defaultCharset;
         }
+
+        readlineExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread t = new Thread(r, "aesh-ssh-readline");
+            t.setDaemon(true);
+            return t;
+        });
+
         env.addSignalListener((ch, signal) -> updateSize(env), EnumSet.of(org.apache.sshd.server.Signal.WINCH));
         updateSize(env);
 
@@ -225,18 +244,20 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
         String columns = env.getEnv().get(Environment.ENV_COLUMNS);
         String lines = env.getEnv().get(Environment.ENV_LINES);
         if (lines != null && columns != null) {
-            Size size;
+            Size newSize;
             try {
                 int width = Integer.parseInt(columns);
                 int height = Integer.parseInt(lines);
-                size = new Size(width, height);
+                newSize = new Size(width, height);
             } catch (Exception ignore) {
-                size = null;
+                newSize = null;
             }
-            if (size != null) {
-                this.size = size;
+            if (newSize != null) {
+                this.size = newSize;
                 if (conn != null && conn.sizeHandler() != null) {
-                    conn.sizeHandler().accept(size);
+                    // Dispatch to readline executor to avoid racing with input processing
+                    Size s = newSize;
+                    readlineExecutor.execute(() -> conn.sizeHandler().accept(s));
                 }
             }
         }
@@ -251,6 +272,9 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
         if (conn != null) {
             conn.setReading(false);
         }
+        if (readlineExecutor != null) {
+            readlineExecutor.shutdownNow();
+        }
         ioOut.close(false).addListener(future -> {
             exitCallback.onExit(exit);
             if (closed.compareAndSet(false, true)) {
@@ -263,27 +287,29 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
 
     @Override
     public void destroy(ChannelSession channelSession) {
-        // Test this
+        if (readlineExecutor != null) {
+            readlineExecutor.shutdownNow();
+        }
     }
 
     /**
-     * Executes a task asynchronously using the SSH session's executor service.
+     * Executes a task on the per-connection readline executor.
      *
      * @param task the task to execute
      */
     protected void execute(Runnable task) {
-        session.getSession().getFactoryManager().getScheduledExecutorService().execute(task);
+        readlineExecutor.execute(task);
     }
 
     /**
-     * Schedules a task for delayed execution using the SSH session's executor service.
+     * Schedules a task for delayed execution on the per-connection readline executor.
      *
      * @param task the task to schedule
      * @param delay the delay before execution
      * @param unit the time unit for the delay
      */
     protected void schedule(Runnable task, long delay, TimeUnit unit) {
-        session.getSession().getFactoryManager().getScheduledExecutorService().schedule(task, delay, unit);
+        readlineExecutor.schedule(task, delay, unit);
     }
 
     private static Charset parseCharset(String value) {
