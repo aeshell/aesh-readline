@@ -21,6 +21,8 @@ package org.aesh.terminal.tty;
 
 import static org.junit.Assert.assertEquals;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -46,6 +48,47 @@ public class TtyOutputModeTest {
         out.accept(toCodePoints(actual));
         String result = fromCodePoints(builder.build().flatMapToInt(IntStream::of).toArray());
         assertEquals(expected, result);
+    }
+
+    /**
+     * Verify that accept() produces exactly one downstream call regardless
+     * of how many newlines the input contains. Previously, each \n caused
+     * 2-3 separate downstream calls (chunk before \n, the \r\n, chunk after).
+     */
+    @Test
+    public void testSingleCallPerAccept() {
+        assertCallCount("hello", 1);
+        assertCallCount("\n", 1);
+        assertCallCount("a\n", 1);
+        assertCallCount("\na", 1);
+        assertCallCount("a\nb\nc", 1);
+        assertCallCount("a\nb\nc\n", 1);
+        assertCallCount("\n\n\n", 1);
+    }
+
+    @Test
+    public void testEmptyInputProducesNoCalls() {
+        assertCallCount("", 0);
+    }
+
+    @Test
+    public void testNoNewlineForwardsOriginalArray() {
+        int[] input = toCodePoints("hello");
+        List<int[]> received = new ArrayList<>();
+        TtyOutputMode out = new TtyOutputMode(received::add);
+        out.accept(input);
+        assertEquals(1, received.size());
+        // Should forward the exact same array (no copy)
+        assertEquals(input, received.get(0));
+    }
+
+    private void assertCallCount(String input, int expectedCalls) {
+        List<int[]> received = new ArrayList<>();
+        TtyOutputMode out = new TtyOutputMode(received::add);
+        out.accept(toCodePoints(input));
+        assertEquals("Expected " + expectedCalls + " call(s) for input \""
+                + input.replace("\n", "\\n") + "\" but got " + received.size(),
+                expectedCalls, received.size());
     }
 
     int[] toCodePoints(String s) {

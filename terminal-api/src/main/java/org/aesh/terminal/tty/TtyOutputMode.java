@@ -42,33 +42,37 @@ public class TtyOutputMode implements Consumer<int[]> {
 
     @Override
     public void accept(int[] data) {
-        if (readHandler != null && data.length > 0) {
-            int prev = 0;
-            int ptr = 0;
-            while (ptr < data.length) {
-                // Simple implementation that works only on system that uses /n as line terminator
-                // equivalent to 'stty onlcr'
-                int cp = data[ptr];
-                if (cp == '\n') {
-                    if (ptr > prev) {
-                        sendChunk(data, prev, ptr);
-                    }
-                    readHandler.accept(new int[] { '\r', '\n' });
-                    prev = ++ptr;
-                } else {
-                    ptr++;
-                }
-            }
-            if (ptr > prev) {
-                sendChunk(data, prev, ptr);
+        if (readHandler == null || data.length == 0) {
+            return;
+        }
+
+        // Count newlines to determine if substitution is needed
+        int nlCount = 0;
+        for (int cp : data) {
+            if (cp == '\n') {
+                nlCount++;
             }
         }
-    }
 
-    private void sendChunk(int[] data, int prev, int ptr) {
-        int len = ptr - prev;
-        int[] buf = new int[len];
-        System.arraycopy(data, prev, buf, 0, len);
-        readHandler.accept(buf);
+        // Fast path: no newlines, forward as-is (no allocation)
+        if (nlCount == 0) {
+            readHandler.accept(data);
+            return;
+        }
+
+        // Build single output array with \n -> \r\n substitution.
+        // This produces one downstream accept() call instead of 2*N+1
+        // (where N is the number of newlines).
+        int[] out = new int[data.length + nlCount];
+        int j = 0;
+        for (int cp : data) {
+            if (cp == '\n') {
+                out[j++] = '\r';
+                out[j++] = '\n';
+            } else {
+                out[j++] = cp;
+            }
+        }
+        readHandler.accept(out);
     }
 }
