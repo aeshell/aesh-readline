@@ -143,7 +143,7 @@ public abstract class HttpTtyConnection extends AbstractConnection {
         this.size = size;
         this.eventDecoder = new EventDecoder(3, 4, 26);
         this.decoder = new Decoder(512, charset, eventDecoder);
-        this.stdout = new TtyOutputMode(new Encoder(charset, this::write));
+        this.stdout = new TtyOutputMode(new Encoder(charset, this::writeSlice));
 
         this.device = new HttpDevice();
         this.attributes = new Attributes();
@@ -202,6 +202,27 @@ public abstract class HttpTtyConnection extends AbstractConnection {
      * @param buffer the bytes to write
      */
     protected abstract void write(byte[] buffer);
+
+    /**
+     * Writes a slice of a byte buffer to the underlying transport.
+     * <p>
+     * Default implementation copies the slice and delegates to {@link #write(byte[])}.
+     * Subclasses may override for zero-copy writes when the transport supports
+     * offset/length (e.g., Netty ByteBuf).
+     *
+     * @param buf the source buffer
+     * @param off the start offset
+     * @param len the number of bytes to write
+     */
+    protected void writeSlice(byte[] buf, int off, int len) {
+        if (off == 0 && len == buf.length) {
+            write(buf);
+        } else {
+            byte[] copy = new byte[len];
+            System.arraycopy(buf, off, copy, 0, len);
+            write(copy);
+        }
+    }
 
     /**
      * Pauses reading from the underlying transport. Used for backpressure

@@ -131,7 +131,7 @@ public class TtyConnectionBenchmark {
         eventDecoder = new EventDecoder();
         eventDecoder.setInputHandler(input -> receivedInput = input);
 
-        encoder = new Encoder(StandardCharsets.UTF_8, data -> outputBuffer.append(new String(data, StandardCharsets.UTF_8)));
+        encoder = new Encoder(StandardCharsets.UTF_8, this::captureOutput);
     }
 
     @Setup(Level.Invocation)
@@ -142,6 +142,10 @@ public class TtyConnectionBenchmark {
         // Decoder must be recreated per invocation because it carries ByteBuffer state
         // from the previous decode. EventDecoder and Encoder are reused.
         decoder = new Decoder(512, StandardCharsets.UTF_8, eventDecoder);
+    }
+
+    private void captureOutput(byte[] buf, int off, int len) {
+        outputBuffer.append(new String(buf, off, len, StandardCharsets.UTF_8));
     }
 
     // ========== Decoder Benchmarks ==========

@@ -61,7 +61,7 @@ public final class TelnetTtyConnection extends TelnetHandler implements Connecti
     private final EventDecoder eventDecoder = new EventDecoder(3, 4, 26);
     private final ReadBuffer readBuffer = new ReadBuffer(this::execute);
     private final Decoder decoder = new Decoder(512, TelnetCharset.INSTANCE, readBuffer);
-    private final Encoder encoder = new Encoder(StandardCharsets.US_ASCII, data -> conn.write(data));
+    private final Encoder encoder = new Encoder(StandardCharsets.US_ASCII, this::writeToConn);
     private final Consumer<int[]> stdout = new TtyOutputMode(encoder);
     private final Consumer<Connection> handler;
     private long lastAccessedTime = System.currentTimeMillis();
@@ -116,6 +116,14 @@ public final class TelnetTtyConnection extends TelnetHandler implements Connecti
      */
     public String terminalType() {
         return terminalType;
+    }
+
+    /**
+     * Writes encoded output to the underlying telnet connection.
+     * Used as the {@link org.aesh.terminal.io.ByteWriter} for the Encoder.
+     */
+    private void writeToConn(byte[] buf, int off, int len) {
+        conn.write(buf, off, len);
     }
 
     /**

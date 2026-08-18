@@ -39,7 +39,12 @@ public class EncoderTest {
         Decoder decoder = new Decoder(charset, result::add);
 
         final byte[] output = new byte[4];
-        Encoder encoder = new Encoder(charset, event -> System.arraycopy(event, 0, output, 0, event.length));
+        Encoder encoder = new Encoder(charset, new ByteWriter() {
+            @Override
+            public void write(byte[] buf, int off, int len) {
+                System.arraycopy(buf, off, output, 0, len);
+            }
+        });
 
         decoder.write(incoming.getBytes());
 

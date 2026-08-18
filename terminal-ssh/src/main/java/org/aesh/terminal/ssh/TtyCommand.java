@@ -72,7 +72,7 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
     private final Charset defaultCharset;
     private Charset charset;
     private Decoder decoder;
-    private Consumer<byte[]> out;
+    // Output is handled by the writeOutput() method reference passed to Encoder
     private Size size = null;
     /** The SSH channel session associated with this command. */
     protected ChannelSession session;
@@ -166,10 +166,18 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
     @Override
     public void setIoOutputStream(IoOutputStream out) {
         this.ioOut = out;
-        this.out = bytes -> {
-            writeQueue.add(bytes);
-            drainWriteQueue();
-        };
+    }
+
+    /**
+     * Writes output bytes to the async write queue. Copies the buffer slice
+     * because the queue stores byte arrays by reference for async draining,
+     * and the Encoder's buffer is reused between calls.
+     */
+    private void writeOutput(byte[] buf, int off, int len) {
+        byte[] copy = new byte[len];
+        System.arraycopy(buf, off, copy, 0, len);
+        writeQueue.add(copy);
+        drainWriteQueue();
     }
 
     /**
@@ -244,7 +252,7 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
 
         org.aesh.terminal.Attributes attrs = SSHAttributesBuilder.builder().environment(env).build();
         EventDecoder ed = new EventDecoder(attrs);
-        Consumer<int[]> stdoutHandler = new TtyOutputMode(new Encoder(charset, out));
+        Consumer<int[]> stdoutHandler = new TtyOutputMode(new Encoder(charset, this::writeOutput));
         conn = new SSHConnection(attrs, ed, stdoutHandler);
         decoder = new Decoder(512, charset, ed);
 

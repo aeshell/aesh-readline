@@ -184,7 +184,7 @@ public class TerminalConnection extends AbstractConnection {
         decoder = new Decoder(512, inputEncoding(), eventDecoder);
 
         if (terminal.getCodePointConsumer() == null) {
-            stdout = new Encoder(outputEncoding(), this::write);
+            stdout = new Encoder(outputEncoding(), this::writeBytes);
         } else {
             stdout = terminal.getCodePointConsumer();
         }
@@ -439,9 +439,9 @@ public class TerminalConnection extends AbstractConnection {
         }
     }
 
-    private void write(byte[] data) {
+    private void writeBytes(byte[] buf, int off, int len) {
         try {
-            terminal.output().write(data);
+            terminal.output().write(buf, off, len);
         } catch (IOException e) {
             LOGGER.log(Level.WARNING, "Failed to write out.", e);
         }
@@ -571,7 +571,8 @@ public class TerminalConnection extends AbstractConnection {
                 cleanup.append(ANSI.FOCUS_TRACKING_DISABLE);
             }
             if (cleanup.length() > 0) {
-                write(cleanup.toString().getBytes());
+                byte[] cleanupBytes = cleanup.toString().getBytes();
+                writeBytes(cleanupBytes, 0, cleanupBytes.length);
             }
         } catch (Exception e) {
             LOGGER.log(Level.WARNING, "Failed to disable terminal modes during close", e);

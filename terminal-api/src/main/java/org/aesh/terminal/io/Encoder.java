@@ -26,13 +26,16 @@ import java.nio.charset.CharsetEncoder;
 import java.nio.charset.CoderResult;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.function.Consumer;
 
 import org.aesh.terminal.utils.CodePointUtils;
 
 /**
- * Encodes int arrays (unicode code points) to byte arrays using a specified charset.
+ * Encodes int arrays (unicode code points) and Strings to bytes using a specified charset.
+ * <p>
+ * Uses a reusable internal byte buffer ({@code byteBuf}) for all encoding paths to avoid
+ * per-call allocations. The output is passed to a {@link ByteWriter} as a buffer slice
+ * (offset + length), enabling zero-copy writes for consumers that process data synchronously.
  *
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
@@ -41,19 +44,19 @@ public class Encoder implements Consumer<int[]> {
     private Charset charset;
     private boolean isUtf8;
     private CharsetEncoder cachedEncoder;
-    private final Consumer<byte[]> out;
+    private final ByteWriter out;
 
-    // Reusable buffers
+    // Reusable buffers — shared across all encoding paths, never shrunk
     private char[] charBuf = new char[256]; // general path only
-    private byte[] byteBuf = new byte[512]; // shared by both UTF-8 and general paths
+    private byte[] byteBuf = new byte[512]; // shared by UTF-8 and general paths
 
     /**
-     * Create a new Encoder with the specified charset and output consumer.
+     * Create a new Encoder with the specified charset and output writer.
      *
      * @param charset the charset to use for encoding, or null for the default charset
-     * @param out the consumer to receive encoded byte arrays
+     * @param out the writer to receive encoded byte buffer slices
      */
-    public Encoder(Charset charset, Consumer<byte[]> out) {
+    public Encoder(Charset charset, ByteWriter out) {
         if (charset != null)
             this.charset = charset;
         else
@@ -91,7 +94,17 @@ public class Encoder implements Consumer<int[]> {
     }
 
     /**
-     * Encode an array of Unicode code points and send the resulting bytes to the output consumer.
+     * Ensure byteBuf has at least the specified capacity.
+     * Grows the buffer if needed; never shrinks.
+     */
+    private void ensureByteBufCapacity(int needed) {
+        if (byteBuf.length < needed) {
+            byteBuf = new byte[needed];
+        }
+    }
+
+    /**
+     * Encode an array of Unicode code points and send the resulting bytes to the output writer.
      *
      * @param input the code points to encode
      */
@@ -107,7 +120,7 @@ public class Encoder implements Consumer<int[]> {
     /**
      * Encode a String directly to bytes, bypassing the int[] intermediary.
      * For UTF-8 with ASCII-only strings (the common case for ANSI sequences),
-     * this converts directly from String chars to byte[] in a single pass.
+     * this encodes directly into the reusable byte buffer with zero allocation.
      *
      * @param s the string to encode
      */
@@ -116,35 +129,77 @@ public class Encoder implements Consumer<int[]> {
             return;
 
         if (isUtf8) {
-            out.accept(s.getBytes(StandardCharsets.UTF_8));
+            acceptUtf8String(s);
         } else {
             accept(CodePointUtils.toCodePoints(s));
         }
     }
 
     /**
-     * Direct UTF-8 encoding from code points to bytes.
-     * ASCII fast path: allocates exact-size byte[len] and encodes in a single pass.
-     * Falls back to two-pass encoding for inputs containing non-ASCII code points.
+     * UTF-8 String encoding into the reusable byteBuf.
+     * Handles ASCII, BMP, and supplementary characters.
+     */
+    private void acceptUtf8String(String s) {
+        int len = s.length();
+        ensureByteBufCapacity(len * 3); // worst case: all 3-byte BMP chars
+        int pos = 0;
+        for (int i = 0; i < len; i++) {
+            char c = s.charAt(i);
+            if (c < 0x80) {
+                byteBuf[pos++] = (byte) c;
+            } else if (c < 0x800) {
+                byteBuf[pos++] = (byte) (0xC0 | (c >> 6));
+                byteBuf[pos++] = (byte) (0x80 | (c & 0x3F));
+            } else if (Character.isHighSurrogate(c) && i + 1 < len) {
+                char low = s.charAt(++i);
+                if (Character.isLowSurrogate(low)) {
+                    int cp = Character.toCodePoint(c, low);
+                    // Ensure capacity for 4 bytes (surrogate pair)
+                    if (pos + 4 > byteBuf.length) {
+                        ensureByteBufCapacity(pos + (len - i) * 3 + 4);
+                    }
+                    byteBuf[pos++] = (byte) (0xF0 | (cp >> 18));
+                    byteBuf[pos++] = (byte) (0x80 | ((cp >> 12) & 0x3F));
+                    byteBuf[pos++] = (byte) (0x80 | ((cp >> 6) & 0x3F));
+                    byteBuf[pos++] = (byte) (0x80 | (cp & 0x3F));
+                } else {
+                    // Unpaired high surrogate — encode as replacement
+                    byteBuf[pos++] = (byte) (0xE0 | (c >> 12));
+                    byteBuf[pos++] = (byte) (0x80 | ((c >> 6) & 0x3F));
+                    byteBuf[pos++] = (byte) (0x80 | (c & 0x3F));
+                    i--; // re-process low char
+                }
+            } else {
+                byteBuf[pos++] = (byte) (0xE0 | (c >> 12));
+                byteBuf[pos++] = (byte) (0x80 | ((c >> 6) & 0x3F));
+                byteBuf[pos++] = (byte) (0x80 | (c & 0x3F));
+            }
+        }
+        out.write(byteBuf, 0, pos);
+    }
+
+    /**
+     * Direct UTF-8 encoding from code points to bytes using the reusable byteBuf.
+     * ASCII fast path: encodes directly without counting pass.
+     * Falls back to multi-byte encoding for inputs containing non-ASCII code points.
      */
     private void acceptUtf8(int[] input) {
         int len = input.length;
-        // ASCII fast path: exact-size allocation, no trim needed
-        byte[] bytes = new byte[len];
+        ensureByteBufCapacity(len);
         for (int i = 0; i < len; i++) {
             int cp = input[i];
             if (cp >= 0x80) {
                 acceptUtf8MultiByte(input);
                 return;
             }
-            bytes[i] = (byte) cp;
+            byteBuf[i] = (byte) cp;
         }
-        out.accept(bytes);
+        out.write(byteBuf, 0, len);
     }
 
     /**
      * UTF-8 encoding for inputs containing non-ASCII code points.
-     * Two-pass: count exact byte size, then encode into exact-size array.
+     * Two-pass: count exact byte size, then encode into the reusable byteBuf.
      */
     private void acceptUtf8MultiByte(int[] input) {
         int byteCount = 0;
@@ -159,26 +214,26 @@ public class Encoder implements Consumer<int[]> {
                 byteCount += 4;
         }
 
-        byte[] bytes = new byte[byteCount];
+        ensureByteBufCapacity(byteCount);
         int pos = 0;
         for (int cp : input) {
             if (cp < 0x80) {
-                bytes[pos++] = (byte) cp;
+                byteBuf[pos++] = (byte) cp;
             } else if (cp < 0x800) {
-                bytes[pos++] = (byte) (0xC0 | (cp >> 6));
-                bytes[pos++] = (byte) (0x80 | (cp & 0x3F));
+                byteBuf[pos++] = (byte) (0xC0 | (cp >> 6));
+                byteBuf[pos++] = (byte) (0x80 | (cp & 0x3F));
             } else if (cp < 0x10000) {
-                bytes[pos++] = (byte) (0xE0 | (cp >> 12));
-                bytes[pos++] = (byte) (0x80 | ((cp >> 6) & 0x3F));
-                bytes[pos++] = (byte) (0x80 | (cp & 0x3F));
+                byteBuf[pos++] = (byte) (0xE0 | (cp >> 12));
+                byteBuf[pos++] = (byte) (0x80 | ((cp >> 6) & 0x3F));
+                byteBuf[pos++] = (byte) (0x80 | (cp & 0x3F));
             } else {
-                bytes[pos++] = (byte) (0xF0 | (cp >> 18));
-                bytes[pos++] = (byte) (0x80 | ((cp >> 12) & 0x3F));
-                bytes[pos++] = (byte) (0x80 | ((cp >> 6) & 0x3F));
-                bytes[pos++] = (byte) (0x80 | (cp & 0x3F));
+                byteBuf[pos++] = (byte) (0xF0 | (cp >> 18));
+                byteBuf[pos++] = (byte) (0x80 | ((cp >> 12) & 0x3F));
+                byteBuf[pos++] = (byte) (0x80 | ((cp >> 6) & 0x3F));
+                byteBuf[pos++] = (byte) (0x80 | (cp & 0x3F));
             }
         }
-        out.accept(bytes);
+        out.write(byteBuf, 0, pos);
     }
 
     /**
@@ -189,8 +244,7 @@ public class Encoder implements Consumer<int[]> {
         int charLen = codePointsToChars(input);
 
         int maxBytes = (int) (charLen * cachedEncoder.maxBytesPerChar()) + 1;
-        if (byteBuf.length < maxBytes)
-            byteBuf = new byte[maxBytes];
+        ensureByteBufCapacity(maxBytes);
 
         CharBuffer cbuf = CharBuffer.wrap(charBuf, 0, charLen);
         ByteBuffer bbuf = ByteBuffer.wrap(byteBuf);
@@ -200,12 +254,7 @@ public class Encoder implements Consumer<int[]> {
         if (!result.isError())
             cachedEncoder.flush(bbuf);
 
-        int len = bbuf.position();
-        if (len == byteBuf.length) {
-            out.accept(byteBuf);
-        } else {
-            out.accept(Arrays.copyOf(byteBuf, len));
-        }
+        out.write(byteBuf, 0, bbuf.position());
     }
 
     /**
@@ -223,7 +272,7 @@ public class Encoder implements Consumer<int[]> {
                 charBuf[pos++] = (char) cp;
             } else {
                 if (pos + 1 >= charBuf.length)
-                    charBuf = Arrays.copyOf(charBuf, charBuf.length + (charBuf.length >> 1));
+                    charBuf = java.util.Arrays.copyOf(charBuf, charBuf.length + (charBuf.length >> 1));
                 charBuf[pos++] = Character.highSurrogate(cp);
                 charBuf[pos++] = Character.lowSurrogate(cp);
             }

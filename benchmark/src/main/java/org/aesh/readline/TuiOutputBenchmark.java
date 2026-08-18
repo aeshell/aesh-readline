@@ -104,7 +104,7 @@ public class TuiOutputBenchmark {
     public void setup() {
         capturedOutput = null;
         byteStream = new ByteArrayOutputStream(8192);
-        encoder = new Encoder(StandardCharsets.UTF_8, bytes -> writeBytes(byteStream, bytes));
+        encoder = new Encoder(StandardCharsets.UTF_8, this::writeBytesSlice);
         encoderConsumer = encoder;
 
         buffer = new Buffer(new Prompt("> "));
@@ -119,6 +119,14 @@ public class TuiOutputBenchmark {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private static void writeBytesSlice(ByteArrayOutputStream stream, byte[] buf, int off, int len) {
+        stream.write(buf, off, len);
+    }
+
+    private void writeBytesSlice(byte[] buf, int off, int len) {
+        byteStream.write(buf, off, len);
     }
 
     // ========== Output Pipeline Isolation ==========
@@ -141,7 +149,7 @@ public class TuiOutputBenchmark {
     @Benchmark
     public void bufferInsertWithEncodingAndStream(Blackhole bh) {
         ByteArrayOutputStream stream = new ByteArrayOutputStream(256);
-        Encoder enc = new Encoder(StandardCharsets.UTF_8, bytes -> writeBytes(stream, bytes));
+        Encoder enc = new Encoder(StandardCharsets.UTF_8, (buf1, off, len) -> writeBytesSlice(stream, buf1, off, len));
         Buffer buf = new Buffer(new Prompt("> "));
         buf.insert(enc, WORD, TERMINAL_WIDTH);
         bh.consume(stream.toByteArray());
@@ -210,7 +218,7 @@ public class TuiOutputBenchmark {
     @Benchmark
     public void writeUnbuffered(Blackhole bh) {
         ByteArrayOutputStream stream = new ByteArrayOutputStream(8192);
-        Encoder enc = new Encoder(StandardCharsets.UTF_8, bytes -> writeBytes(stream, bytes));
+        Encoder enc = new Encoder(StandardCharsets.UTF_8, (buf, off, len) -> writeBytesSlice(stream, buf, off, len));
         // 24 lines, each as a separate Encoder.accept() + stream.write() (current behavior)
         for (int row = 0; row < TERMINAL_HEIGHT; row++) {
             enc.accept(SCREEN_LINES[row]);
@@ -222,9 +230,9 @@ public class TuiOutputBenchmark {
     public void writeWithBufferedStream(Blackhole bh) {
         ByteArrayOutputStream stream = new ByteArrayOutputStream(8192);
         BufferedOutputStream buffered = new BufferedOutputStream(stream, 8192);
-        Encoder enc = new Encoder(StandardCharsets.UTF_8, bytes -> {
+        Encoder enc = new Encoder(StandardCharsets.UTF_8, (buf, off, len) -> {
             try {
-                buffered.write(bytes);
+                buffered.write(buf, off, len);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -244,7 +252,7 @@ public class TuiOutputBenchmark {
     @Benchmark
     public void writeBatchedIntArrays(Blackhole bh) {
         ByteArrayOutputStream stream = new ByteArrayOutputStream(8192);
-        Encoder enc = new Encoder(StandardCharsets.UTF_8, bytes -> writeBytes(stream, bytes));
+        Encoder enc = new Encoder(StandardCharsets.UTF_8, (buf, off, len) -> writeBytesSlice(stream, buf, off, len));
         // Collect all 24 lines into one IntArrayBuilder, single Encoder.accept()
         IntArrayBuilder builder = new IntArrayBuilder(TERMINAL_HEIGHT * 100);
         for (int row = 0; row < TERMINAL_HEIGHT; row++) {

@@ -196,6 +196,21 @@ public abstract class TelnetConnection {
         }
     }
 
+    /**
+     * Write data from a buffer slice. Copies the slice into a new array
+     * before delegating to {@link #write(byte[])} because that method
+     * may mutate the array (strips high bit in non-binary mode).
+     *
+     * @param data the source buffer (not modified)
+     * @param off the start offset in the buffer
+     * @param len the number of bytes to write
+     */
+    public final void write(byte[] data, int off, int len) {
+        byte[] copy = new byte[len];
+        System.arraycopy(data, off, copy, 0, len);
+        write(copy);
+    }
+
     /** Method. */
     protected void onClose() {
         handler.onClose();

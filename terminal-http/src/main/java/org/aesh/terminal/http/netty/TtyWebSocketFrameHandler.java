@@ -75,6 +75,13 @@ public class TtyWebSocketFrameHandler extends SimpleChannelInboundHandler<TextWe
                 }
 
                 @Override
+                protected void writeSlice(byte[] buf, int off, int len) {
+                    ByteBuf byteBuf = Unpooled.buffer(len);
+                    byteBuf.writeBytes(buf, off, len);
+                    context.writeAndFlush(new TextWebSocketFrame(byteBuf));
+                }
+
+                @Override
                 protected void pauseReads() {
                     if (context.channel().isActive()) {
                         context.channel().config().setAutoRead(false);
