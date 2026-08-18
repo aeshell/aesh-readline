@@ -94,7 +94,18 @@ public class TelnetClientRule extends ExternalResource {
     public void disconnect(boolean clean) throws IOException {
         if (client.isConnected()) {
             if (clean) {
-                client.disconnect();
+                try {
+                    client.disconnect();
+                } catch (SocketException e) {
+                    // Race condition in Apache Commons Net TelnetClient: the
+                    // reader thread may have buffered telnet option negotiation
+                    // bytes in _output_ that couldn't be flushed because closing
+                    // the input stream already closed the underlying socket.
+                    // The socket IS closed, so the disconnect succeeded.
+                    if (!"Socket closed".equals(e.getMessage())) {
+                        throw e;
+                    }
+                }
             } else {
                 socket.close();
             }
