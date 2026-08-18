@@ -205,6 +205,134 @@ public class KittyImageTest {
         }
     }
 
+    // ==================== Placement API ====================
+
+    @Test
+    public void testSupportsPlacement() {
+        KittyImage image = new KittyImage(MINIMAL_PNG);
+        assertTrue("KittyImage should support placement", image.supportsPlacement());
+    }
+
+    @Test
+    public void testTransmit() {
+        KittyImage image = new KittyImage(MINIMAL_PNG);
+        String result = image.transmit(10);
+
+        // Should contain transmit-only action, not transmit-and-display
+        assertTrue("Should contain a=t", result.contains("a=t,"));
+        assertFalse("Should NOT contain a=T", result.contains("a=T"));
+        assertTrue("Should contain image ID", result.contains("i=10"));
+        assertTrue("Should contain PNG format", result.contains("f=100"));
+        assertTrue("Should contain direct transmission", result.contains("t=d"));
+        // Should have Base64 payload
+        assertTrue("Should contain payload separator", result.contains(";"));
+        assertTrue("Should start with APC", result.startsWith("\u001B_G"));
+        assertTrue("Should end with ST", result.endsWith("\u001B\\"));
+    }
+
+    @Test
+    public void testTransmitAndDisplay() {
+        KittyImage image = new KittyImage(MINIMAL_PNG);
+        image.widthCells(30);
+        String result = image.transmitAndDisplay(42);
+
+        assertTrue("Should contain a=T", result.contains("a=T"));
+        assertTrue("Should contain image ID", result.contains("i=42"));
+        assertTrue("Should contain display columns", result.contains("c=30"));
+        // Should have Base64 payload (same as encode)
+        assertTrue("Should contain payload separator", result.contains(";"));
+    }
+
+    @Test
+    public void testPlace() {
+        KittyImage image = new KittyImage(MINIMAL_PNG);
+        image.widthCells(25);
+        String result = image.place(10);
+
+        assertTrue("Should contain a=p", result.contains("a=p"));
+        assertTrue("Should contain image ID", result.contains("i=10"));
+        assertTrue("Should contain display columns", result.contains("c=25"));
+        assertTrue("Should suppress response", result.contains("q=2"));
+        // Should NOT contain any Base64 payload (no semicolon separator)
+        assertFalse("Should NOT contain payload separator", result.contains(";"));
+        // Should be a single short escape sequence
+        assertTrue("Should start with APC", result.startsWith("\u001B_G"));
+        assertTrue("Should end with ST", result.endsWith("\u001B\\"));
+        // Place command should be very short (no image data)
+        assertTrue("Place should be lightweight (<100 chars), was " + result.length(),
+                result.length() < 100);
+    }
+
+    @Test
+    public void testPlaceWithPlacementId() {
+        KittyImage image = new KittyImage(MINIMAL_PNG);
+        String result = image.place(10, 5);
+
+        assertTrue("Should contain image ID", result.contains("i=10"));
+        assertTrue("Should contain placement ID", result.contains("p=5"));
+        assertTrue("Should contain a=p", result.contains("a=p"));
+    }
+
+    @Test
+    public void testPlaceWithoutPlacementId() {
+        KittyImage image = new KittyImage(MINIMAL_PNG);
+        String result = image.place(10);
+
+        assertTrue("Should contain image ID", result.contains("i=10"));
+        assertFalse("Should NOT contain placement ID p=", result.contains(",p="));
+    }
+
+    @Test
+    public void testDelete() {
+        String result = KittyImage.delete(10);
+
+        assertTrue("Should contain delete action", result.contains("a=d"));
+        assertTrue("Should delete by image ID", result.contains("d=I"));
+        assertTrue("Should contain image ID", result.contains("i=10"));
+        assertTrue("Should suppress response", result.contains("q=2"));
+        assertTrue("Should start with APC", result.startsWith("\u001B_G"));
+        assertTrue("Should end with ST", result.endsWith("\u001B\\"));
+    }
+
+    @Test
+    public void testTransmitChunking() {
+        // Use a large image that requires chunking
+        byte[] largePng = createLargePngData();
+        KittyImage image = new KittyImage(largePng);
+        String result = image.transmit(99);
+
+        // Should have multiple chunks
+        int apcCount = countOccurrences(result, "\u001B_G");
+        assertTrue("Large image transmit should produce multiple chunks, got " + apcCount,
+                apcCount > 1);
+        // First chunk should have a=t and image ID
+        assertTrue("First chunk should have transmit action", result.contains("a=t,"));
+        assertTrue("First chunk should have image ID", result.contains("i=99"));
+        // Should have continuation markers
+        assertTrue("Should have m=1 for non-last chunks", result.contains("m=1"));
+        assertTrue("Should have m=0 for last chunk", result.contains("m=0"));
+    }
+
+    @Test
+    public void testEncodeStillWorks() {
+        // Verify backward compatibility: encode() still works without image ID
+        KittyImage image = new KittyImage(MINIMAL_PNG);
+        image.widthCells(40);
+        String result = image.encode();
+
+        assertTrue("encode() should contain a=T", result.contains("a=T"));
+        assertTrue("encode() should contain c=40", result.contains("c=40"));
+        assertFalse("encode() should NOT contain image ID i=",
+                result.contains(",i="));
+    }
+
+    @Test
+    public void testITermImageDoesNotSupportPlacement() {
+        ITermImage image = new ITermImage(MINIMAL_PNG, "test.png");
+        assertFalse("ITermImage should not support placement",
+                image.supportsPlacement());
+    }
+
     private int countOccurrences(String str, String sub) {
         int count = 0;
         int idx = 0;

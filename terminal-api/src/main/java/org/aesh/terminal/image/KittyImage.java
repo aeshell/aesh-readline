@@ -192,12 +192,74 @@ public class KittyImage implements TerminalImage {
 
     @Override
     public String encode() {
-        // Ensure we have PNG data (convert if necessary)
+        return buildChunkedPayload("a=T", 0, 0);
+    }
+
+    @Override
+    public boolean supportsPlacement() {
+        return true;
+    }
+
+    @Override
+    public String transmit(int imageId) {
+        return buildChunkedPayload("a=t", imageId, 0);
+    }
+
+    @Override
+    public String transmitAndDisplay(int imageId) {
+        return buildChunkedPayload("a=T", imageId, 0);
+    }
+
+    @Override
+    public String place(int imageId) {
+        return place(imageId, 0);
+    }
+
+    @Override
+    public String place(int imageId, int placementId) {
+        StringBuilder result = new StringBuilder();
+        result.append(APC);
+        result.append("a=p,i=").append(imageId);
+        if (placementId > 0) {
+            result.append(",p=").append(placementId);
+        }
+        appendDisplayParams(result);
+        if (suppressResponse) {
+            result.append(",q=2");
+        }
+        result.append(ST);
+        return result.toString();
+    }
+
+    /**
+     * Delete a previously transmitted image from the terminal's memory.
+     * This removes the image data and all its placements.
+     *
+     * @param imageId the image ID to delete
+     * @return the escape sequence for deletion
+     */
+    public static String delete(int imageId) {
+        return APC + "a=d,d=I,i=" + imageId + ",q=2" + ST;
+    }
+
+    // =========================================================================
+    // Internal methods
+    // =========================================================================
+
+    /**
+     * Build the complete chunked APC payload for transmitting image data.
+     * Shared by encode(), transmit(), and transmitAndDisplay().
+     *
+     * @param action the action string (e.g., "a=T" or "a=t")
+     * @param imageId the image ID (0 = none)
+     * @param placementId the placement ID (0 = none)
+     * @return the complete escape sequence string
+     */
+    private String buildChunkedPayload(String action, int imageId, int placementId) {
         byte[] data = getPngData();
         String base64Data = Base64.getEncoder().encodeToString(data);
         StringBuilder result = new StringBuilder();
 
-        // Split into chunks if necessary
         int offset = 0;
         boolean isFirst = true;
 
@@ -209,11 +271,9 @@ public class KittyImage implements TerminalImage {
             result.append(APC);
 
             if (isFirst) {
-                // First chunk includes all control parameters
-                result.append(buildControlParams(hasMore));
+                result.append(buildFirstChunkParams(action, imageId, placementId, hasMore));
                 isFirst = false;
             } else {
-                // Continuation chunks only need m parameter
                 result.append("m=").append(hasMore ? "1" : "0");
             }
 
@@ -227,11 +287,14 @@ public class KittyImage implements TerminalImage {
         return result.toString();
     }
 
-    private String buildControlParams(boolean hasMore) {
+    /**
+     * Build control parameters for the first chunk of a transmission.
+     */
+    private String buildFirstChunkParams(String action, int imageId,
+            int placementId, boolean hasMore) {
         StringBuilder params = new StringBuilder();
 
-        // Action: transmit and display
-        params.append("a=T");
+        params.append(action);
 
         // Format: PNG (100)
         params.append(",f=100");
@@ -239,15 +302,17 @@ public class KittyImage implements TerminalImage {
         // Transmission: direct (base64 in escape sequence)
         params.append(",t=d");
 
-        // Display columns
-        if (widthCells > 0) {
-            params.append(",c=").append(widthCells);
+        // Image ID
+        if (imageId > 0) {
+            params.append(",i=").append(imageId);
         }
 
-        // Display rows
-        if (heightCells > 0) {
-            params.append(",r=").append(heightCells);
+        // Placement ID
+        if (placementId > 0) {
+            params.append(",p=").append(placementId);
         }
+
+        appendDisplayParams(params);
 
         // Source dimensions (optional for PNG)
         if (sourceWidth > 0) {
@@ -271,6 +336,19 @@ public class KittyImage implements TerminalImage {
         params.append(",m=").append(hasMore ? "1" : "0");
 
         return params.toString();
+    }
+
+    /**
+     * Append display layout parameters (columns, rows) to the param builder.
+     * Shared by transmission and placement methods.
+     */
+    private void appendDisplayParams(StringBuilder params) {
+        if (widthCells > 0) {
+            params.append(",c=").append(widthCells);
+        }
+        if (heightCells > 0) {
+            params.append(",r=").append(heightCells);
+        }
     }
 
     @Override
