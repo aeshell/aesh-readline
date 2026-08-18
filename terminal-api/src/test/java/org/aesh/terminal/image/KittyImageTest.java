@@ -287,11 +287,22 @@ public class KittyImageTest {
         String result = KittyImage.delete(10);
 
         assertTrue("Should contain delete action", result.contains("a=d"));
-        assertTrue("Should delete by image ID", result.contains("d=I"));
+        assertTrue("Should delete by image ID (uppercase I)", result.contains("d=I"));
         assertTrue("Should contain image ID", result.contains("i=10"));
         assertTrue("Should suppress response", result.contains("q=2"));
         assertTrue("Should start with APC", result.startsWith("\u001B_G"));
         assertTrue("Should end with ST", result.endsWith("\u001B\\"));
+    }
+
+    @Test
+    public void testDeletePlacement() {
+        String result = KittyImage.deletePlacement(10);
+
+        assertTrue("Should contain delete action", result.contains("a=d"));
+        assertTrue("Should delete placements only (lowercase i)", result.contains("d=i"));
+        assertFalse("Should NOT use uppercase I (which deletes data)", result.contains("d=I"));
+        assertTrue("Should contain image ID", result.contains("i=10"));
+        assertTrue("Should suppress response", result.contains("q=2"));
     }
 
     @Test

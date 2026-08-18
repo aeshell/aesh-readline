@@ -31,6 +31,7 @@ import org.aesh.terminal.formatting.Color;
 import org.aesh.terminal.formatting.TerminalColor;
 import org.aesh.terminal.formatting.TerminalString;
 import org.aesh.terminal.detect.ImageProtocol;
+import org.aesh.terminal.image.KittyImage;
 import org.aesh.terminal.image.TerminalImage;
 import org.aesh.terminal.image.TerminalImageBuilder;
 import org.aesh.terminal.tty.Signal;
@@ -61,6 +62,7 @@ public class SyncImageDemoExample {
     private static volatile boolean syncEnabled = true;
     private static volatile int imageCells = 30;
     private static volatile double speed = 1.0;
+    private static final int IMAGE_ID = 1;
 
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm:ss.SSS");
     private static final String[] SPINNER = { "\u25DC", "\u25DD", "\u25DE", "\u25DF" };
@@ -123,19 +125,26 @@ public class SyncImageDemoExample {
 
             connection.write(ANSI.CURSOR_HIDE);
 
-            // Pre-encode the image once — the data doesn't change between frames,
-            // only the position. This avoids JPEG→PNG conversion on every frame
-            // (which was 93.6% of CPU according to profiling).
+            // Build the image once. For Kitty (supportsPlacement), transmit
+            // the data with an ID and use lightweight place() per frame.
+            // For other protocols, pre-encode the full escape sequence.
+            TerminalImage image = null;
             String encodedImage = null;
+            boolean usePlacement = false;
             int lastImageCells = imageCells;
             if (imageProtocol != ImageProtocol.NONE) {
-                TerminalImage image = TerminalImageBuilder.builder(imageProtocol)
+                image = TerminalImageBuilder.builder(imageProtocol)
                         .data(imageData)
                         .filename(filename)
                         .widthCells(imageCells)
                         .preserveAspectRatio(true)
                         .build();
-                if (image != null) {
+                if (image != null && image.supportsPlacement()) {
+                    // Kitty: transmit once (~500KB), then place per frame (~30 bytes)
+                    usePlacement = true;
+                    connection.write(image.transmit(IMAGE_ID));
+                } else if (image != null) {
+                    // iTerm2/Sixel: pre-encode for repeated use
                     encodedImage = image.encode();
                 }
             }
@@ -155,7 +164,10 @@ public class SyncImageDemoExample {
 
             while (running) {
                 long now = System.currentTimeMillis();
-                if (now - lastTime < 100) { // ~10 fps — higher rates overwhelm the terminal
+                // With placement: ~30 bytes per frame allows 25fps.
+                // Without placement: ~500KB per frame requires slower 10fps.
+                int frameDelay = usePlacement ? 40 : 100;
+                if (now - lastTime < frameDelay) {
                     Thread.sleep(5);
                     continue;
                 }
@@ -199,8 +211,11 @@ public class SyncImageDemoExample {
                 if (syncEnabled)
                     buffer.append(ANSI.MODE_2026_ENABLE);
 
-                // Clear screen
-                buffer.append("\u001B[2J");
+                // Clear screen — but NOT when using image placement, because
+                // ESC[2J destroys transmitted image data in both Kitty and Ghostty
+                if (!usePlacement) {
+                    buffer.append("\u001B[2J");
+                }
 
                 // ===== Title bar =====
                 moveCursor(buffer, 1, 1);
@@ -215,11 +230,31 @@ public class SyncImageDemoExample {
                 // ===== Image at bouncing position =====
                 moveCursor(buffer, curRow, curCol);
 
-                if (imageProtocol != ImageProtocol.NONE) {
-                    // Re-encode only if zoom level changed
+                if (usePlacement) {
+                    // Kitty placement: re-transmit only if zoom changed
                     if (imageCells != lastImageCells) {
                         lastImageCells = imageCells;
-                        TerminalImage image = TerminalImageBuilder.builder(imageProtocol)
+                        image = TerminalImageBuilder.builder(imageProtocol)
+                                .data(imageData)
+                                .filename(filename)
+                                .widthCells(imageCells)
+                                .preserveAspectRatio(true)
+                                .build();
+                        if (image != null) {
+                            connection.write(image.transmit(IMAGE_ID));
+                        }
+                    }
+                    // Delete old placement (keeps image data in memory),
+                    // then place at new cursor position
+                    buffer.append(KittyImage.deletePlacement(IMAGE_ID));
+                    if (image != null) {
+                        buffer.append(image.place(IMAGE_ID));
+                    }
+                } else if (imageProtocol != ImageProtocol.NONE) {
+                    // Non-Kitty: re-encode only if zoom changed
+                    if (imageCells != lastImageCells) {
+                        lastImageCells = imageCells;
+                        image = TerminalImageBuilder.builder(imageProtocol)
                                 .data(imageData)
                                 .filename(filename)
                                 .widthCells(imageCells)
@@ -304,6 +339,8 @@ public class SyncImageDemoExample {
         } finally {
             if (connection != null) {
                 try {
+                    // Delete the transmitted image from terminal memory
+                    connection.write(KittyImage.delete(IMAGE_ID));
                     connection.write(ANSI.MODE_2026_DISABLE + ANSI.CURSOR_SHOW + "\u001B[2J\u001B[H");
                     connection.write("Bouncing image demo finished. Rendered " + frame + " frames.\n");
                     if (savedAttributes != null)

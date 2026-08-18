@@ -242,6 +242,21 @@ public class KittyImage implements TerminalImage {
         return APC + "a=d,d=I,i=" + imageId + ",q=2" + ST;
     }
 
+    /**
+     * Delete all placements of an image without removing the image data
+     * from terminal memory. The image can be re-placed afterwards.
+     * <p>
+     * Uses lowercase {@code d=i} which deletes placements only.
+     * Use {@link #delete(int)} (uppercase {@code d=I}) to also free
+     * the image data.
+     *
+     * @param imageId the image ID whose placements to remove
+     * @return the escape sequence for placement deletion
+     */
+    public static String deletePlacement(int imageId) {
+        return APC + "a=d,d=i,i=" + imageId + ",q=2" + ST;
+    }
+
     // =========================================================================
     // Internal methods
     // =========================================================================
@@ -312,7 +327,10 @@ public class KittyImage implements TerminalImage {
             params.append(",p=").append(placementId);
         }
 
-        appendDisplayParams(params);
+        // Display params only for transmit-and-display (a=T), not transmit-only (a=t)
+        if ("a=T".equals(action)) {
+            appendDisplayParams(params);
+        }
 
         // Source dimensions (optional for PNG)
         if (sourceWidth > 0) {
