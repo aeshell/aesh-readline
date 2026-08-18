@@ -155,7 +155,7 @@ public class SyncImageDemoExample {
 
             while (running) {
                 long now = System.currentTimeMillis();
-                if (now - lastTime < 40) { // ~25 fps for visible tearing
+                if (now - lastTime < 100) { // ~10 fps — higher rates overwhelm the terminal
                     Thread.sleep(5);
                     continue;
                 }
