@@ -123,6 +123,23 @@ public class SyncImageDemoExample {
 
             connection.write(ANSI.CURSOR_HIDE);
 
+            // Pre-encode the image once — the data doesn't change between frames,
+            // only the position. This avoids JPEG→PNG conversion on every frame
+            // (which was 93.6% of CPU according to profiling).
+            String encodedImage = null;
+            int lastImageCells = imageCells;
+            if (imageProtocol != ImageProtocol.NONE) {
+                TerminalImage image = TerminalImageBuilder.builder(imageProtocol)
+                        .data(imageData)
+                        .filename(filename)
+                        .widthCells(imageCells)
+                        .preserveAspectRatio(true)
+                        .build();
+                if (image != null) {
+                    encodedImage = image.encode();
+                }
+            }
+
             StringBuilder buffer = new StringBuilder(16384);
             long lastTime = System.currentTimeMillis();
 
@@ -199,15 +216,21 @@ public class SyncImageDemoExample {
                 moveCursor(buffer, curRow, curCol);
 
                 if (imageProtocol != ImageProtocol.NONE) {
-                    TerminalImage image = TerminalImageBuilder.builder(imageProtocol)
-                            .data(imageData)
-                            .filename(filename)
-                            .widthCells(imageCells)
-                            .preserveAspectRatio(true)
-                            .build();
-
-                    if (image != null) {
-                        buffer.append(image.encode());
+                    // Re-encode only if zoom level changed
+                    if (imageCells != lastImageCells) {
+                        lastImageCells = imageCells;
+                        TerminalImage image = TerminalImageBuilder.builder(imageProtocol)
+                                .data(imageData)
+                                .filename(filename)
+                                .widthCells(imageCells)
+                                .preserveAspectRatio(true)
+                                .build();
+                        if (image != null) {
+                            encodedImage = image.encode();
+                        }
+                    }
+                    if (encodedImage != null) {
+                        buffer.append(encodedImage);
                     }
                 } else {
                     // No image protocol — draw a bouncing box placeholder
