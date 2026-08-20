@@ -442,6 +442,7 @@ public class TerminalConnection extends AbstractConnection {
     private void writeBytes(byte[] buf, int off, int len) {
         try {
             terminal.output().write(buf, off, len);
+            terminal.output().flush();
         } catch (IOException e) {
             LOGGER.log(Level.WARNING, "Failed to write out.", e);
         }
