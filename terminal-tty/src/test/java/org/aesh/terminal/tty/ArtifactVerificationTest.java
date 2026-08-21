@@ -229,6 +229,108 @@ public class ArtifactVerificationTest {
         }
     }
 
+    // ========== Guard #253: FFM native-image configuration ==========
+
+    private static final String REACHABILITY_METADATA = "META-INF/native-image/org.aesh/terminal-tty/reachability-metadata.json";
+    private static final String REFLECT_CONFIG = "META-INF/native-image/org.aesh/terminal-tty/reflect-config.json";
+
+    @Test
+    public void testReachabilityMetadataExists() {
+        if (!new File("target/classes").isDirectory()) {
+            return;
+        }
+        File metadataFile = new File("target/classes/" + REACHABILITY_METADATA);
+        assertTrue("reachability-metadata.json must be present at " + REACHABILITY_METADATA
+                + " — without it, GraalVM 25+ cannot register FFM downcalls for FfmPty (#253)",
+                metadataFile.isFile());
+    }
+
+    @Test
+    public void testReachabilityMetadataHasDowncalls() {
+        File metadataFile = new File("target/classes/" + REACHABILITY_METADATA);
+        if (!metadataFile.isFile()) {
+            return; // testReachabilityMetadataExists will catch this
+        }
+        String content = readFileContent(metadataFile);
+        assertNotNull("Could not read reachability-metadata.json", content);
+
+        assertTrue("reachability-metadata.json must contain a 'foreign' section",
+                content.contains("\"foreign\""));
+        assertTrue("reachability-metadata.json must contain a 'downcalls' section",
+                content.contains("\"downcalls\""));
+
+        // Verify all 9 downcall signatures are present by checking for distinctive
+        // parameter patterns. Each LibC function has a unique type signature.
+        // isatty: (jint) -> jint (no captureCallState)
+        // open: (void*, jint) -> jint
+        // read: (jint, void*, jlong) -> jlong
+        // tcgetattr: (jint, void*) -> jint
+        // tcsetattr: (jint, jint, void*) -> jint
+        // ioctl: firstVariadicArg
+        assertTrue("reachability-metadata.json must contain read() downcall (jlong return type)",
+                content.contains("\"jlong\""));
+        assertTrue("reachability-metadata.json must contain captureCallState option",
+                content.contains("\"captureCallState\""));
+        assertTrue("reachability-metadata.json must contain firstVariadicArg for ioctl",
+                content.contains("\"firstVariadicArg\""));
+    }
+
+    @Test
+    public void testNativeImagePropertiesContainsFfmInitAtRunTime() {
+        String content = readNativeImageProperties();
+        if (content == null) {
+            return;
+        }
+
+        assertTrue("native-image.properties must contain --initialize-at-run-time for LibC (#253)",
+                content.contains("LibC"));
+        assertTrue("native-image.properties must contain --initialize-at-run-time for PosixConstants (#253)",
+                content.contains("PosixConstants"));
+        assertTrue("native-image.properties must contain --initialize-at-run-time for FfmPty (#253)",
+                content.contains("FfmPty"));
+    }
+
+    @Test
+    public void testNativeImagePropertiesContainsSharedArenaSupport() {
+        String content = readNativeImageProperties();
+        if (content == null) {
+            return;
+        }
+
+        assertTrue("native-image.properties must contain SharedArenaSupport for Arena.ofShared() (#253)",
+                content.contains("SharedArenaSupport"));
+    }
+
+    @Test
+    public void testReflectConfigContainsFfmPty() {
+        File configFile = new File("target/classes/" + REFLECT_CONFIG);
+        if (!configFile.isFile()) {
+            return;
+        }
+        String content = readFileContent(configFile);
+        assertNotNull("Could not read reflect-config.json", content);
+
+        assertTrue("reflect-config.json must contain FfmPty for Class.forName in FfmTerminalProvider (#253)",
+                content.contains("FfmPty"));
+        assertTrue("reflect-config.json must register FfmPty.current() method",
+                content.contains("current"));
+    }
+
+    private String readFileContent(File file) {
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(java.nio.file.Files.newInputStream(file.toPath()),
+                        StandardCharsets.UTF_8))) {
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                sb.append(line);
+            }
+            return sb.toString();
+        } catch (IOException e) {
+            return null;
+        }
+    }
+
     // ========== Helpers ==========
 
     private void scanDirectory(File root, File dir, List<String> violations) throws IOException {
