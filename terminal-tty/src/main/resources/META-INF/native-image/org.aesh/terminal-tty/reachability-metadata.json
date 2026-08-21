@@ -1,0 +1,50 @@
+{
+  "foreign": {
+    "downcalls": [
+      {
+        "returnType": "jint",
+        "parameterTypes": ["jint"]
+      },
+      {
+        "returnType": "jint",
+        "parameterTypes": ["void*", "jint"],
+        "options": { "captureCallState": true }
+      },
+      {
+        "returnType": "jint",
+        "parameterTypes": ["jint"],
+        "options": { "captureCallState": true }
+      },
+      {
+        "returnType": "jlong",
+        "parameterTypes": ["jint", "void*", "jlong"],
+        "options": { "captureCallState": true }
+      },
+      {
+        "returnType": "jint",
+        "parameterTypes": ["void*", "jlong", "jint"],
+        "options": { "captureCallState": true }
+      },
+      {
+        "returnType": "jint",
+        "parameterTypes": ["void*", "jint", "jint"],
+        "options": { "captureCallState": true }
+      },
+      {
+        "returnType": "jint",
+        "parameterTypes": ["jint", "void*"],
+        "options": { "captureCallState": true }
+      },
+      {
+        "returnType": "jint",
+        "parameterTypes": ["jint", "jint", "void*"],
+        "options": { "captureCallState": true }
+      },
+      {
+        "returnType": "jint",
+        "parameterTypes": ["jint", "jlong", "void*"],
+        "options": { "captureCallState": true, "firstVariadicArg": 2 }
+      }
+    ]
+  }
+}

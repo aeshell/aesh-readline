@@ -30,5 +30,14 @@
     "methods": [
       { "name": "isTerminal", "parameterTypes": [] }
     ]
+  },
+  {
+    "name": "org.aesh.terminal.tty.impl.FfmPty",
+    "condition": {
+      "typeReachable": "org.aesh.terminal.tty.provider.FfmTerminalProvider"
+    },
+    "methods": [
+      { "name": "current", "parameterTypes": [] }
+    ]
   }
 ]

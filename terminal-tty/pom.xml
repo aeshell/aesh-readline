@@ -314,13 +314,21 @@
             </build>
         </profile>
         <!-- Native-image test compilation: validates GraalVM metadata -->
-        <profile>
+         <profile>
             <id>native</id>
             <activation>
                 <property>
                     <name>env.GRAALVM_HOME</name>
                 </property>
             </activation>
+            <properties>
+                <!-- Set to true to delete FFM classes before native-image build.
+                     Required for GraalVM < 25 which does not support FFM downcalls.
+                     On GraalVM 25+, set to false (-Dnative.delete.ffm=false) to
+                     enable the FFM terminal provider (FfmPty) in native images
+                     for better performance (poll-based read, no stty spawning). -->
+                <native.delete.ffm>true</native.delete.ffm>
+            </properties>
             <dependencies>
                 <dependency>
                     <!-- JUnit 5.x ONLY — 6.x is incompatible with native-maven-plugin 1.1.3 -->
@@ -339,11 +347,13 @@
             </dependencies>
             <build>
                 <plugins>
-                    <!-- Delete FFM classes from test-classes so native-image does not
-                         include them. GraalVM does not yet support FFM downcall
-                         registration (#206). Without these classes, FfmTerminalProvider
-                         fails with ClassNotFoundException and falls through to
-                         ExecPtyTerminalProvider (POSIX) or JNI WinConsoleNative (Windows). -->
+                    <!-- Delete FFM classes from test-classes for GraalVM < 25 which
+                         does not support FFM downcall registration. Without these
+                         classes, FfmTerminalProvider fails with ClassNotFoundException
+                         and falls through to ExecPtyTerminalProvider (POSIX) or
+                         JNI WinConsoleNative (Windows).
+                         On GraalVM 25+, pass -Dnative.delete.ffm=false to keep FFM
+                         classes and use the FFM terminal provider in native images. -->
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-antrun-plugin</artifactId>
@@ -353,7 +363,9 @@
                                 <phase>process-test-classes</phase>
                                 <goals><goal>run</goal></goals>
                                 <configuration>
-                                    <target>
+                                    <skip>${native.delete.ffm.skip}</skip>
+                                    <target if="${native.delete.ffm}">
+                                        <echo>Deleting FFM classes for GraalVM &lt; 25 compatibility (pass -Dnative.delete.ffm=false on GraalVM 25+)</echo>
                                         <delete failonerror="false">
                                             <fileset dir="${project.build.testOutputDirectory}/org/aesh/terminal/tty/impl"
                                                      erroronmissingdir="false">
