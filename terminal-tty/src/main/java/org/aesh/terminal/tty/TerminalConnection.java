@@ -444,7 +444,15 @@ public class TerminalConnection extends AbstractConnection {
             terminal.output().write(buf, off, len);
             terminal.output().flush();
         } catch (IOException e) {
-            LOGGER.log(Level.WARNING, "Failed to write out.", e);
+            // During shutdown (closed=true), write/flush failures are expected
+            // because the user's signal handler may have already closed the
+            // connection before Readline.finish() writes cleanup sequences.
+            // Log at FINE to avoid noisy WARNING messages during normal exit.
+            if (closed) {
+                LOGGER.log(Level.FINE, "Write after close (expected during shutdown)", e);
+            } else {
+                LOGGER.log(Level.WARNING, "Failed to write out.", e);
+            }
         }
     }
 

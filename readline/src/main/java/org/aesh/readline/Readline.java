@@ -430,15 +430,16 @@ public class Readline {
                                     conn.stdoutHandler().accept(Config.CR);
                                 }
                             }
-                            // finish() BEFORE the user's signal handler so that
-                            // cleanup sequences (disable Mode 2026, restore
-                            // attributes) are written while the connection is
-                            // still open. The user's handler can then safely
-                            // call conn.close(). (#251)
-                            finish("");
+                            // User's signal handler runs first so that
+                            // sub-command mode and other stateful handlers can
+                            // decide how to handle the interrupt before the
+                            // readline session ends. If the handler calls
+                            // conn.close(), the cleanup writes in finish()
+                            // will fail silently (logged at FINE level). (#251)
                             if (prevSignalHandler != null) {
                                 prevSignalHandler.accept(signal);
                             }
+                            finish("");
                             break;
                         case CONT:
                             conn.enterRawMode();

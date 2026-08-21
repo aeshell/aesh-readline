@@ -20,12 +20,14 @@
 package org.aesh.readline.terminal;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.aesh.readline.completion.Completion;
 import org.aesh.readline.tty.terminal.TestReadlineConnection;
 import org.aesh.terminal.Attributes;
 import org.aesh.terminal.Key;
@@ -80,42 +82,24 @@ public class SignalTest {
     }
 
     /**
-     * Verify that finish() runs BEFORE the user's signal handler on Ctrl+C.
-     * This ensures cleanup sequences (disable Mode 2026, restore attributes)
-     * are written while the connection is still open, so the user's handler
-     * can safely call conn.close(). (#251)
-     *
-     * The TestReadlineConnection constructor starts a readline session
-     * automatically, with the signal handler set as prevSignalHandler.
-     * When Ctrl+C arrives, Readline's own handler calls finish() then
-     * prevSignalHandler. We verify the ordering by tracking events.
+     * Verify that Ctrl+C delivers an empty string result via finish().
      */
     @Test
-    public void testSignalHandlerOrderingOnInterrupt() {
-        List<String> events = new ArrayList<>();
-
-        // Set up signal handler BEFORE constructing TestReadlineConnection,
-        // so it becomes prevSignalHandler when Readline starts
+    public void testCtrlCDeliversEmptyString() {
         TestReadlineConnection connection = new TestReadlineConnection(null, null, null, null, null, null, null);
 
-        // The constructor already started readline with the default handler.
-        // Set our tracking handler — Readline saved the previous one as
-        // prevSignalHandler and will call it on INT after finish().
-        // Since we're setting it after readline started, we need to trigger
-        // the signal via the existing handler chain.
-
-        // Use assertLine to check the result delivered by finish()
         connection.read("hello");
         connection.read(Key.CTRL_C);
 
-        // finish() delivers "" to the request handler, which adds to out queue
+        // finish() delivers "" to the request handler
         connection.assertLine("");
     }
 
     /**
-     * Verify that calling close() in the signal handler works without errors
-     * after the fix. Since finish() runs first, the connection is still open
-     * during cleanup, and close() in the signal handler is safe.
+     * Verify that calling close() in the signal handler works without errors.
+     * The user's signal handler runs before finish(), so close() may close
+     * the terminal before finish() writes cleanup sequences. The cleanup
+     * writes should fail silently (logged at FINE level, not WARNING). (#251)
      */
     @Test
     public void testCloseInSignalHandlerNoError() {
@@ -124,7 +108,6 @@ public class SignalTest {
 
         TestReadlineConnection connection = new TestReadlineConnection(null, null, null, null, null, null, null);
 
-        // Set signal handler that closes the connection — the documented pattern
         connection.setSignalHandler(signal -> {
             if (signal == Signal.INT) {
                 try {
@@ -141,8 +124,51 @@ public class SignalTest {
 
         assertTrue("close() in signal handler should complete without error",
                 closedCleanly.get());
-        assertTrue("No error should occur during close()",
-                !errorOccurred.get());
+        assertFalse("No error should occur during close()",
+                errorOccurred.get());
+    }
+
+    /**
+     * Verify that tab completion works after Ctrl+C clears the line
+     * and a new readline session is started. This mimics sub-command mode
+     * where Ctrl+C clears the current input but doesn't exit — a new
+     * readline session starts for the next command.
+     *
+     * Regression test: if finish() runs before the user's signal handler,
+     * it ends the readline session prematurely, and the user's handler
+     * cannot keep the sub-command mode active. The completion in the
+     * subsequent readline cycle fails.
+     */
+    @Test
+    public void testCompletionWorksAfterCtrlC() {
+        List<Completion> completions = new ArrayList<>();
+        completions.add(co -> {
+            String buf = co.getBuffer();
+            for (String cmd : new String[] { "build", "deploy" }) {
+                if (cmd.startsWith(buf)) {
+                    co.addCompletionCandidate(cmd);
+                }
+            }
+        });
+
+        TestReadlineConnection term = new TestReadlineConnection(completions);
+
+        // Cycle 1: type "bu" + TAB → should complete to "build "
+        term.read("bu");
+        term.read(Key.CTRL_I);
+        term.assertBuffer("build ");
+
+        // Ctrl+C → finish("") clears the line, ends cycle 1
+        term.read(Key.CTRL_C);
+        term.assertLine("");
+
+        // Cycle 2: start a new readline session with same completions
+        term.readline(completions);
+
+        // Type "de" + TAB → should complete to "deploy "
+        term.read("de");
+        term.read(Key.CTRL_I);
+        term.assertBuffer("deploy ");
     }
 
 }
