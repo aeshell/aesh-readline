@@ -27,7 +27,10 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
+import org.aesh.terminal.AbstractConnection;
 import org.aesh.terminal.Attributes;
 import org.aesh.terminal.Connection;
 import org.aesh.terminal.Device;
@@ -35,39 +38,39 @@ import org.aesh.terminal.EventDecoder;
 import org.aesh.terminal.io.Decoder;
 import org.aesh.terminal.io.Encoder;
 import org.aesh.terminal.tty.Capability;
-import org.aesh.terminal.tty.Signal;
 import org.aesh.terminal.tty.Size;
 import org.aesh.terminal.tty.TtyOutputMode;
 
 /**
- * A telnet handler that implements {@link org.aesh.terminal.Connection}.
+ * A telnet handler that implements {@link Connection} via {@link AbstractConnection}.
+ * <p>
+ * Extends {@link AbstractConnection} for common handler plumbing (signal, stdin,
+ * stdout, size, close, mouse, focus, theme change, printAbove, statusLine) and
+ * implements {@link TelnetHandler} for telnet protocol callbacks.
  *
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
  */
-public final class TelnetTtyConnection extends TelnetHandler implements Connection {
+public final class TelnetTtyConnection extends AbstractConnection implements TelnetHandler {
+
+    private static final Logger LOGGER = Logger.getLogger(TelnetTtyConnection.class.getName());
 
     private final boolean inBinary;
     private final boolean outBinary;
     private boolean receivingBinary;
     private boolean sendingBinary;
     private boolean accepted;
+    private volatile boolean closed;
     private Size size;
     private String terminalType;
-    private Consumer<Size> sizeHandler;
-    private Consumer<Void> closeHandler;
     /** The underlying telnet connection. */
     private TelnetConnection conn;
     private final Charset charset;
-    private final EventDecoder eventDecoder = new EventDecoder(3, 4, 26);
     private final ReadBuffer readBuffer = new ReadBuffer(this::execute);
     private final Decoder decoder = new Decoder(512, TelnetCharset.INSTANCE, readBuffer);
     private final Encoder encoder = new Encoder(StandardCharsets.US_ASCII, this::writeToConn);
-    private final Consumer<int[]> stdout = new TtyOutputMode(encoder);
     private final Consumer<Connection> handler;
     private long lastAccessedTime = System.currentTimeMillis();
     private Device device;
-    private Attributes attributes;
-    private volatile boolean reading = false;
 
     /**
      * Per-connection executor for readline processing.
@@ -98,6 +101,8 @@ public final class TelnetTtyConnection extends TelnetHandler implements Connecti
         this.inBinary = inBinary;
         this.outBinary = outBinary;
         this.handler = handler;
+        // Initialize inherited fields — eventDecoder and stdout are assigned
+        // in onOpen() after the TelnetConnection is available.
     }
 
     /**
@@ -123,7 +128,15 @@ public final class TelnetTtyConnection extends TelnetHandler implements Connecti
      * Used as the {@link org.aesh.terminal.io.ByteWriter} for the Encoder.
      */
     private void writeToConn(byte[] buf, int off, int len) {
-        conn.write(buf, off, len);
+        try {
+            conn.write(buf, off, len);
+        } catch (Exception e) {
+            if (closed) {
+                LOGGER.log(Level.FINE, "Write after close (expected during shutdown)", e);
+            } else {
+                LOGGER.log(Level.WARNING, "Failed to write to telnet connection", e);
+            }
+        }
     }
 
     /**
@@ -173,7 +186,7 @@ public final class TelnetTtyConnection extends TelnetHandler implements Connecti
     }
 
     @Override
-    protected void onSendBinary(boolean binary) {
+    public void onSendBinary(boolean binary) {
         sendingBinary = binary;
         if (binary) {
             encoder.setCharset(charset);
@@ -182,7 +195,7 @@ public final class TelnetTtyConnection extends TelnetHandler implements Connecti
     }
 
     @Override
-    protected void onReceiveBinary(boolean binary) {
+    public void onReceiveBinary(boolean binary) {
         receivingBinary = binary;
         if (binary) {
             decoder.setCharset(charset);
@@ -191,7 +204,7 @@ public final class TelnetTtyConnection extends TelnetHandler implements Connecti
     }
 
     @Override
-    protected void onData(byte[] data) {
+    public void onData(byte[] data) {
         lastAccessedTime = System.currentTimeMillis();
         if (accepted && readlineExecutor != null && !readlineExecutor.isShutdown()) {
             // Connection accepted — dispatch to readline executor
@@ -221,7 +234,7 @@ public final class TelnetTtyConnection extends TelnetHandler implements Connecti
     }
 
     @Override
-    protected void onOpen(TelnetConnection conn) {
+    public void onOpen(TelnetConnection conn) {
         this.conn = conn;
 
         readlineExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
@@ -251,7 +264,10 @@ public final class TelnetTtyConnection extends TelnetHandler implements Connecti
         // Get some info about user
         conn.writeDoOption(Option.TERMINAL_TYPE);
 
-        attributes = new Attributes();
+        // Initialize inherited fields from AbstractConnection
+        this.eventDecoder = new EventDecoder(3, 4, 26);
+        this.stdout = new TtyOutputMode(encoder);
+        this.attributes = new Attributes();
 
         //
         checkAccept();
@@ -271,7 +287,7 @@ public final class TelnetTtyConnection extends TelnetHandler implements Connecti
     }
 
     @Override
-    protected void onTerminalType(String terminalType) {
+    public void onTerminalType(String terminalType) {
         this.terminalType = terminalType;
 
         device = new TelnetDevice(terminalType);
@@ -284,7 +300,7 @@ public final class TelnetTtyConnection extends TelnetHandler implements Connecti
     }
 
     @Override
-    protected void onSize(int width, int height) {
+    public void onSize(int width, int height) {
         this.size = new Size(width, height);
         if (sizeHandler != null) {
             Size s = size;
@@ -305,58 +321,20 @@ public final class TelnetTtyConnection extends TelnetHandler implements Connecti
     }
 
     @Override
-    public Consumer<Size> sizeHandler() {
-        return sizeHandler;
-    }
-
-    @Override
-    public void setSizeHandler(Consumer<Size> handler) {
-        this.sizeHandler = handler;
-    }
-
-    @Override
-    public Consumer<Signal> signalHandler() {
-        return eventDecoder.getSignalHandler();
-    }
-
-    @Override
-    public void setSignalHandler(Consumer<Signal> handler) {
-        eventDecoder.setSignalHandler(handler);
-    }
-
-    @Override
-    public Consumer<int[]> stdinHandler() {
-        return eventDecoder.getInputHandler();
-    }
-
-    @Override
-    public void setStdinHandler(Consumer<int[]> handler) {
-        eventDecoder.setInputHandler(handler);
-    }
-
-    @Override
-    public Consumer<int[]> stdoutHandler() {
-        return stdout;
-    }
-
-    @Override
-    public void setCloseHandler(Consumer<Void> closeHandler) {
-        this.closeHandler = closeHandler;
-    }
-
-    @Override
-    public Consumer<Void> closeHandler() {
-        return closeHandler;
-    }
-
-    @Override
-    protected void onClose() {
+    public void onClose() {
+        if (closed)
+            return;
+        closed = true;
         reading = false;
         if (readlineExecutor != null) {
             readlineExecutor.shutdownNow();
         }
-        if (closeHandler != null) {
-            closeHandler.accept(null);
+        try {
+            if (closeHandler != null) {
+                closeHandler.accept(null);
+            }
+        } catch (Exception e) {
+            LOGGER.log(Level.FINE, "Close handler threw exception", e);
         }
     }
 
@@ -374,22 +352,18 @@ public final class TelnetTtyConnection extends TelnetHandler implements Connecti
     }
 
     @Override
-    public boolean reading() {
-        return reading;
-    }
-
-    @Override
     public boolean put(Capability capability, Object... params) {
         return false;
     }
 
-    @Override
-    public Attributes attributes() {
-        return attributes;
-    }
-
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Telnet PTY modes are negotiated during session setup and cannot be
+     * changed afterward — this method is intentionally a no-op.
+     */
     @Override
     public void setAttributes(Attributes attr) {
-
+        // No-op: telnet attributes are read-only after negotiation
     }
 }

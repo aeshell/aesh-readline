@@ -25,24 +25,20 @@ package org.aesh.terminal.telnet;
  *
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
  */
-public class TelnetHandler {
-
-    /** Constructor. */
-    public TelnetHandler() {
-    }
+public interface TelnetHandler {
 
     /**
      * The telnet connection opened.
      *
      * @param conn the connection
      */
-    protected void onOpen(TelnetConnection conn) {
+    default void onOpen(TelnetConnection conn) {
     }
 
     /**
      * The telnet connection closed.
      */
-    protected void onClose() {
+    default void onClose() {
     }
 
     /**
@@ -50,7 +46,7 @@ public class TelnetHandler {
      *
      * @param data the data
      */
-    protected void onData(byte[] data) {
+    default void onData(byte[] data) {
     }
 
     /**
@@ -59,7 +55,7 @@ public class TelnetHandler {
      * @param width the new terminal width in columns
      * @param height the new terminal height in rows
      */
-    protected void onSize(int width, int height) {
+    default void onSize(int width, int height) {
     }
 
     /**
@@ -67,7 +63,7 @@ public class TelnetHandler {
      *
      * @param terminalType the terminal type string (e.g., "xterm", "vt100")
      */
-    protected void onTerminalType(String terminalType) {
+    default void onTerminalType(String terminalType) {
     }
 
     /**
@@ -75,7 +71,7 @@ public class TelnetHandler {
      *
      * @param command the command byte
      */
-    protected void onCommand(byte command) {
+    default void onCommand(byte command) {
     }
 
     /**
@@ -83,7 +79,7 @@ public class TelnetHandler {
      *
      * @param naws true if the client supports NAWS, false otherwise
      */
-    protected void onNAWS(boolean naws) {
+    default void onNAWS(boolean naws) {
     }
 
     /**
@@ -91,7 +87,7 @@ public class TelnetHandler {
      *
      * @param echo true if echo is enabled, false otherwise
      */
-    protected void onEcho(boolean echo) {
+    default void onEcho(boolean echo) {
     }
 
     /**
@@ -99,7 +95,7 @@ public class TelnetHandler {
      *
      * @param sga true if SGA is enabled, false otherwise
      */
-    protected void onSGA(boolean sga) {
+    default void onSGA(boolean sga) {
     }
 
     /**
@@ -107,7 +103,7 @@ public class TelnetHandler {
      *
      * @param binary true if binary mode is enabled for sending, false otherwise
      */
-    protected void onSendBinary(boolean binary) {
+    default void onSendBinary(boolean binary) {
     }
 
     /**
@@ -115,7 +111,7 @@ public class TelnetHandler {
      *
      * @param binary true if binary mode is enabled for receiving, false otherwise
      */
-    protected void onReceiveBinary(boolean binary) {
+    default void onReceiveBinary(boolean binary) {
     }
 
 }

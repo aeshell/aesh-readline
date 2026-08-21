@@ -303,18 +303,32 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
         }
         ioOut.close(false).addListener(future -> {
             exitCallback.onExit(exit);
-            if (closed.compareAndSet(false, true)) {
-                if (conn != null && conn.closeHandler() != null) {
-                    conn.closeHandler().accept(null);
-                }
-            }
+            invokeCloseHandler();
         });
     }
 
     @Override
     public void destroy(ChannelSession channelSession) {
+        // Ensure close handler fires even on abnormal disconnect where
+        // SSHD calls destroy() without calling close() first.
+        invokeCloseHandler();
         if (readlineExecutor != null) {
             readlineExecutor.shutdownNow();
+        }
+    }
+
+    /**
+     * Invokes the close handler exactly once, guarded by CAS on {@link #closed}.
+     */
+    private void invokeCloseHandler() {
+        if (closed.compareAndSet(false, true)) {
+            if (conn != null && conn.closeHandler() != null) {
+                try {
+                    conn.closeHandler().accept(null);
+                } catch (Exception e) {
+                    LOGGER.log(Level.FINE, "Close handler threw exception", e);
+                }
+            }
         }
     }
 

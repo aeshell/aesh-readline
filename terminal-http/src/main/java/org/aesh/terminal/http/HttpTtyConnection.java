@@ -108,6 +108,7 @@ public abstract class HttpTtyConnection extends AbstractConnection {
     private Consumer<String> termHandler;
     private long lastAccessedTime = System.currentTimeMillis();
     private boolean initialized = false;
+    private volatile boolean closed;
 
     /**
      * Per-connection executor for readline processing.
@@ -215,12 +216,20 @@ public abstract class HttpTtyConnection extends AbstractConnection {
      * @param len the number of bytes to write
      */
     protected void writeSlice(byte[] buf, int off, int len) {
-        if (off == 0 && len == buf.length) {
-            write(buf);
-        } else {
-            byte[] copy = new byte[len];
-            System.arraycopy(buf, off, copy, 0, len);
-            write(copy);
+        try {
+            if (off == 0 && len == buf.length) {
+                write(buf);
+            } else {
+                byte[] copy = new byte[len];
+                System.arraycopy(buf, off, copy, 0, len);
+                write(copy);
+            }
+        } catch (Exception e) {
+            if (closed) {
+                LOGGER.log(Level.FINE, "Write after close (expected during shutdown)", e);
+            } else {
+                LOGGER.log(Level.WARNING, "Failed to write to HTTP connection", e);
+            }
         }
     }
 
@@ -398,10 +407,17 @@ public abstract class HttpTtyConnection extends AbstractConnection {
      */
     @Override
     public void close() {
+        if (closed)
+            return;
+        closed = true;
         reading = false;
         readlineExecutor.shutdownNow();
-        if (closeHandler != null) {
-            closeHandler.accept(null);
+        try {
+            if (closeHandler != null) {
+                closeHandler.accept(null);
+            }
+        } catch (Exception e) {
+            LOGGER.log(Level.FINE, "Close handler threw exception", e);
         }
     }
 
