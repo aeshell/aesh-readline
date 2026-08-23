@@ -27,6 +27,7 @@ import org.aesh.terminal.TestBase;
 import org.apache.sshd.client.SshClient;
 import org.apache.sshd.client.session.ClientSession;
 import org.apache.sshd.core.CoreModuleProperties;
+import org.apache.sshd.netty.NettyIoServiceFactoryFactory;
 import org.apache.sshd.server.SshServer;
 import org.apache.sshd.server.auth.AsyncAuthException;
 import org.apache.sshd.server.auth.password.PasswordAuthenticator;
@@ -36,34 +37,48 @@ import org.apache.sshd.server.session.ServerUserAuthServiceFactory;
 import org.apache.sshd.util.test.EchoShellFactory;
 import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
+
+import io.netty.channel.nio.NioEventLoopGroup;
 
 /**
  * Tests for synchronous and asynchronous SSH password authentication.
  * <p>
- * Each test takes ~2s due to SSHD's built-in auth failure delay — this is
- * intentional SSH protocol behavior to prevent brute-force attacks and cannot
- * be reduced without patching the SSHD server internals.
+ * Most tests use Netty transport and password-only auth for fast execution.
+ * {@link #testSyncAuthFailedDefaultTransport()} uses the default NIO2
+ * transport to verify backward compatibility.
  *
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
  */
 public class AsyncAuthTest extends TestBase {
 
-    SshServer server;
-    int port;
+    private SshServer server;
+    private SshClient client;
+    private NioEventLoopGroup eventLoopGroup;
+    private int port;
 
     private PasswordAuthenticator authenticator;
 
-    public void startServer() throws Exception {
+    @Before
+    public void setUp() {
+        eventLoopGroup = new NioEventLoopGroup();
+        client = SshClient.setUpDefaultClient();
+        client.setIoServiceFactoryFactory(new NettyIoServiceFactoryFactory(eventLoopGroup));
+        client.start();
+    }
+
+    private void startServer() throws Exception {
         startServer(null);
     }
 
-    public void startServer(Integer timeout) throws Exception {
+    private void startServer(Integer timeout) throws Exception {
         if (server != null) {
             throw failure("Server already started");
         }
         port = findAvailablePort();
         server = SshServer.setUpDefaultServer();
+        server.setIoServiceFactoryFactory(new NettyIoServiceFactoryFactory(eventLoopGroup));
         if (timeout != null) {
             server.getProperties().put(CoreModuleProperties.AUTH_TIMEOUT.getName(), timeout.toString());
         }
@@ -77,9 +92,22 @@ public class AsyncAuthTest extends TestBase {
     }
 
     @After
-    public void stopServer() throws Exception {
+    public void tearDown() throws Exception {
         if (server != null) {
-            server.stop();
+            try {
+                server.stop();
+            } catch (Exception ignore) {
+            }
+            server = null;
+        }
+        if (client != null) {
+            try {
+                client.stop();
+            } catch (Exception ignore) {
+            }
+        }
+        if (eventLoopGroup != null) {
+            eventLoopGroup.shutdownGracefully(0, 2, TimeUnit.SECONDS).await(3, TimeUnit.SECONDS);
         }
     }
 
@@ -170,6 +198,7 @@ public class AsyncAuthTest extends TestBase {
             Assert.assertFalse("Key file should not exist yet", keyFile.exists());
             port = findAvailablePort();
             server = SshServer.setUpDefaultServer();
+            server.setIoServiceFactoryFactory(new NettyIoServiceFactoryFactory(eventLoopGroup));
             server.setPort(port);
             server.setKeyPairProvider(new SimpleGeneratorHostKeyProvider(keyFile.toPath()));
             authenticator = (username, password, sess) -> true;
@@ -191,6 +220,7 @@ public class AsyncAuthTest extends TestBase {
             long keySize = keyFile.length();
             port = findAvailablePort();
             server = SshServer.setUpDefaultServer();
+            server.setIoServiceFactoryFactory(new NettyIoServiceFactoryFactory(eventLoopGroup));
             server.setPort(port);
             server.setKeyPairProvider(new SimpleGeneratorHostKeyProvider(keyFile.toPath()));
             server.setPasswordAuthenticator((username, password, sess) -> true);
@@ -207,20 +237,61 @@ public class AsyncAuthTest extends TestBase {
         }
     }
 
-    protected boolean authenticate() {
-        try (SshClient client = SshClient.setUpDefaultClient()) {
-            client.start();
+    /**
+     * Verifies that SSH auth works with the default NIO2 transport (no Netty).
+     * This ensures backward compatibility for deployments that don't use Netty.
+     */
+    @Test
+    public void testSyncAuthFailedDefaultTransport() throws Exception {
+        // Use standalone server and client with default NIO2 transport
+        int nio2Port = findAvailablePort();
+        SshServer nio2Server = SshServer.setUpDefaultServer();
+        nio2Server.setPort(nio2Port);
+        nio2Server.setKeyPairProvider(new SimpleGeneratorHostKeyProvider(new File("hostkey.ser").toPath()));
+        nio2Server.setPasswordAuthenticator((username, password, sess) -> false);
+        nio2Server.setShellFactory(new EchoShellFactory());
+        nio2Server.setServiceFactories(
+                Arrays.asList(ServerConnectionServiceFactory.INSTANCE, ServerUserAuthServiceFactory.INSTANCE));
+        nio2Server.start();
+        try {
+            try (SshClient nio2Client = SshClient.setUpDefaultClient()) {
+                nio2Client.start();
+                ClientSession sess = nio2Client
+                        .connect("whatever", "localhost", nio2Port)
+                        .verify(TimeUnit.SECONDS.toMillis(5))
+                        .getSession();
+                sess.setKeyIdentityProvider(null);
+                sess.addPasswordIdentity("whocares");
+                CoreModuleProperties.PREFERRED_AUTHS.set(sess, "password");
+                try {
+                    sess.auth().verify(TimeUnit.SECONDS.toMillis(5));
+                    Assert.fail("Auth should have failed");
+                } catch (Exception expected) {
+                    // Expected — auth fails
+                }
+            }
+        } finally {
+            nio2Server.stop();
+        }
+    }
+
+    private boolean authenticate() {
+        try {
             ClientSession sess = client
                     .connect("whatever", "localhost", port)
                     .verify(TimeUnit.SECONDS.toMillis(5))
                     .getSession();
-            // Disable key identity so the client uses password auth,
-            // but still negotiates all default auth methods (publickey,
-            // keyboard-interactive, password) to exercise the full path.
-            sess.setKeyIdentityProvider(null);
-            sess.addPasswordIdentity("whocares");
-            sess.auth().verify(TimeUnit.SECONDS.toMillis(5));
-            return true;
+            try {
+                sess.setKeyIdentityProvider(null);
+                sess.addPasswordIdentity("whocares");
+                CoreModuleProperties.PREFERRED_AUTHS.set(sess, "password");
+                sess.auth().verify(TimeUnit.SECONDS.toMillis(5));
+                return true;
+            } catch (Exception e) {
+                return false;
+            } finally {
+                sess.close();
+            }
         } catch (Exception e) {
             return false;
         }

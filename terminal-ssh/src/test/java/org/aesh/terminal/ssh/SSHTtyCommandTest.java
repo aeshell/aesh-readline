@@ -15,6 +15,7 @@ import org.apache.sshd.client.channel.ChannelShell;
 import org.apache.sshd.client.channel.ClientChannelEvent;
 import org.apache.sshd.client.session.ClientSession;
 import org.apache.sshd.common.util.io.output.NoCloseOutputStream;
+import org.apache.sshd.core.CoreModuleProperties;
 import org.junit.Test;
 
 public class SSHTtyCommandTest {
@@ -38,6 +39,7 @@ public class SSHTtyCommandTest {
                     .verify(TIMEOUT_SECS, TimeUnit.SECONDS)
                     .getClientSession()) {
                 session.addPasswordIdentity("password");
+                CoreModuleProperties.PREFERRED_AUTHS.set(session, "password");
                 session.auth().verify(TIMEOUT_SECS, TimeUnit.SECONDS);
 
                 try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream();

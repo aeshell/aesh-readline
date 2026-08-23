@@ -33,6 +33,7 @@ import org.apache.sshd.client.SshClient;
 import org.apache.sshd.client.channel.ChannelShell;
 import org.apache.sshd.client.session.ClientSession;
 import org.apache.sshd.common.util.io.output.NoCloseOutputStream;
+import org.apache.sshd.core.CoreModuleProperties;
 import org.junit.After;
 
 /**
@@ -73,6 +74,7 @@ public class SshTtyTestBase extends TtyTestBase {
                 .verify(10, TimeUnit.SECONDS)
                 .getClientSession();
         session.addPasswordIdentity("password");
+        CoreModuleProperties.PREFERRED_AUTHS.set(session, "password");
         session.auth().verify(10, TimeUnit.SECONDS);
 
         channel = session.createShellChannel();
