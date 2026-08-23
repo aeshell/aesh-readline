@@ -19,9 +19,9 @@
  */
 package org.aesh.terminal;
 
-import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.Consumer;
 
 import org.aesh.terminal.detect.TerminalTheme;
@@ -51,12 +51,12 @@ public class EventDecoder implements Consumer<int[]> {
     private final int eof;
 
     private Consumer<Signal> signalHandler;
-    private Consumer<int[]> inputHandler;
+    private volatile Consumer<int[]> inputHandler;
     private Consumer<TerminalTheme> themeChangeHandler;
     private Consumer<MouseEvent> mouseHandler;
     private Consumer<Boolean> focusHandler;
 
-    private final Queue<int[]> inputQueue = new ArrayDeque<>(10);
+    private final Queue<int[]> inputQueue = new ConcurrentLinkedQueue<>();
 
     // ---- VtParser-based sequence filtering ----
     // A single VtParser instance replaces the three hand-rolled state machines
