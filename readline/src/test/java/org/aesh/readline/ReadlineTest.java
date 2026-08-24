@@ -34,7 +34,6 @@ import org.aesh.readline.tty.terminal.TestReadlineConnection;
 import org.aesh.terminal.Key;
 import org.aesh.terminal.tty.Size;
 import org.aesh.terminal.utils.Config;
-import org.junit.Ignore;
 import org.junit.Test;
 
 /**
@@ -42,17 +41,12 @@ import org.junit.Test;
  */
 public class ReadlineTest {
 
-    @Ignore
     @Test
-    public void testArrowsThroughSsh() {
+    public void testArrowKeys() {
         TestConnection term = new TestReadlineConnection();
         term.read("1234");
-        for (int c : Key.LEFT.getKeyValues()) {
-            term.read(c);
-        }
-        for (int c : Key.LEFT.getKeyValues()) {
-            term.read(c);
-        }
+        term.read(Key.LEFT);
+        term.read(Key.LEFT);
         term.read(Key.BACKSPACE);
         term.read(Key.ENTER);
         term.assertLine("134");
