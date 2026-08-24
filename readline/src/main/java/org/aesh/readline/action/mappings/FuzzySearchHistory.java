@@ -119,7 +119,10 @@ public class FuzzySearchHistory implements ActionEvent {
             return;
         }
 
-        if (action instanceof Enter) {
+        if (action instanceof Enter
+                || action instanceof Complete
+                || action instanceof ForwardChar
+                || key == Key.RIGHT || key == Key.RIGHT_2) {
             nextAction = InputAction.SELECT;
             return;
         }
