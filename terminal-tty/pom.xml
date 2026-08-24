@@ -385,7 +385,7 @@
                         <groupId>org.graalvm.buildtools</groupId>
                         <!-- 1.1.6 is broken: missing org.apache.maven.shared.utils.logging.MessageUtils -->
                         <artifactId>native-maven-plugin</artifactId>
-                        <version>1.1.9</version>
+                        <version>1.1.10</version>
                         <extensions>true</extensions>
                         <executions>
                             <execution>
