@@ -394,12 +394,13 @@ public class ANSI {
     }
 
     /**
-     * we assume that value is > 0
+     * Converts a positive integer to an array of its ASCII digit code points.
+     * For example, 123 becomes {49, 50, 51} ('1', '2', '3').
      *
-     * @param value int value (non ascii value)
-     * @return ascii represented int value
+     * @param value the positive integer to convert
+     * @return an int array of ASCII digit code points
      */
-    private static int[] intToAsciiInts(int value) {
+    public static int[] intToAsciiInts(int value) {
         int length = getAsciiSize(value);
         int[] asciiValue = new int[length];
 
@@ -416,7 +417,13 @@ public class ANSI {
         return asciiValue;
     }
 
-    private static int getAsciiSize(int value) {
+    /**
+     * Returns the number of decimal digits in a positive integer.
+     *
+     * @param value the positive integer
+     * @return the number of digits (1-5)
+     */
+    public static int getAsciiSize(int value) {
         if (value < 10)
             return 1;
         if (value < 100)

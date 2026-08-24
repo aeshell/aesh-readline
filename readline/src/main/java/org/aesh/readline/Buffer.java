@@ -115,7 +115,7 @@ public final class Buffer {
      * @throws IndexOutOfBoundsException if the position is out of bounds
      */
     public int get(int pos) {
-        if (pos > -1 && pos <= size)
+        if (pos >= 0 && pos < size)
             return line[pos];
         else
             throw new IndexOutOfBoundsException();
@@ -555,7 +555,7 @@ public final class Buffer {
             out[3] = direction;
             return out;
         } else {
-            int[] asciiColumn = intToAsciiInts(column);
+            int[] asciiColumn = ANSI.intToAsciiInts(column);
             int[] out = new int[3 + asciiColumn.length];
             out[0] = 27; // esc
             out[1] = '['; // [
@@ -585,8 +585,8 @@ public final class Buffer {
             out[7] = direction;
             return out;
         } else {
-            int[] asciiRow = intToAsciiInts(row);
-            int[] asciiColumn = intToAsciiInts(column);
+            int[] asciiRow = ANSI.intToAsciiInts(row);
+            int[] asciiColumn = ANSI.intToAsciiInts(column);
             int[] out = new int[6 + asciiColumn.length + asciiRow.length];
             out[0] = 27; //esc, \033
             out[1] = '[';
@@ -1155,46 +1155,10 @@ public final class Buffer {
     }
 
     private void doReplace(Consumer<int[]> out, int pos, int rChar) {
-        if (pos > -1 && pos <= size) {
+        if (pos >= 0 && pos < size) {
             line[pos] = rChar;
             out.accept(new int[] { rChar });
         }
     }
 
-    /**
-     * we assume that value is > 0
-     *
-     * @param value int value (non ascii value)
-     * @return ascii represented int value
-     */
-    private static int[] intToAsciiInts(int value) {
-        int length = getAsciiSize(value);
-        int[] asciiValue = new int[length];
-
-        if (length == 1) {
-            asciiValue[0] = 48 + value;
-        } else {
-            while (length > 0) {
-                length--;
-                int num = value % 10;
-                asciiValue[length] = 48 + num;
-                value = value / 10;
-            }
-        }
-        return asciiValue;
-    }
-
-    private static int getAsciiSize(int value) {
-        if (value < 10)
-            return 1;
-        //very simple way of getting the length
-        if (value < 99)
-            return 2;
-        else if (value > 99 && value < 999)
-            return 3;
-        else if (value > 999 && value < 9999)
-            return 4;
-        else
-            return 5;
-    }
 }

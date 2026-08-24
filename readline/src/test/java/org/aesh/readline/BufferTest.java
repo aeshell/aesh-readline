@@ -274,14 +274,17 @@ public class BufferTest {
         List<int[]> outConsumer = new ArrayList<>();
         buffer.insert(outConsumer::add, "foo bar", 100);
         outConsumer.clear();
+        // Cursor is at end-of-line (pos 7, size 7) — replace is a no-op
         buffer.replace(outConsumer::add, 'R');
-        assertEquals("R", Parser.fromCodePoints(outConsumer.get(0)));
-        outConsumer.clear();
+        Assert.assertTrue("Replace at end-of-line should be no-op", outConsumer.isEmpty());
         assertEquals("foo bar", buffer.asString());
+        // Move back one, replace the last char
         buffer.move(outConsumer::add, -1, 120);
+        outConsumer.clear();
         buffer.replace(outConsumer::add, 'R');
         assertEquals("foo baR", buffer.asString());
         buffer.move(outConsumer::add, -4, 120);
+        outConsumer.clear();
         buffer.replace(outConsumer::add, 'O');
         assertEquals("foO baR", buffer.asString());
     }
