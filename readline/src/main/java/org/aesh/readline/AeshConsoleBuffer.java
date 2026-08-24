@@ -61,8 +61,28 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
             EditMode editMode, History history,
             CompletionHandler completionHandler,
             boolean ansi, CursorListener listener) {
+        this(connection, prompt, null, editMode, history, completionHandler, ansi, listener);
+    }
+
+    /**
+     * Creates a new AeshConsoleBuffer with a configurable continuation prompt.
+     *
+     * @param connection the terminal connection
+     * @param prompt the initial prompt
+     * @param continuationPrompt the prompt for continuation lines, or null for default ({@code "> "})
+     * @param editMode the editing mode (vi or emacs)
+     * @param history the command history, or null to use a new in-memory history
+     * @param completionHandler the tab completion handler
+     * @param ansi whether ANSI mode is enabled
+     * @param listener the cursor movement listener, or null
+     */
+    public AeshConsoleBuffer(Connection connection, Prompt prompt, Prompt continuationPrompt,
+            EditMode editMode, History history,
+            CompletionHandler completionHandler,
+            boolean ansi, CursorListener listener) {
         this.connection = connection;
         this.buffer = new Buffer(prompt);
+        this.buffer.setContinuationPrompt(continuationPrompt);
         pasteManager = new PasteManager();
         undoManager = new UndoManager();
         if (history == null) {

@@ -52,9 +52,12 @@ import org.aesh.terminal.Connection;
  */
 public class ReadlineRequest {
 
+    private static final Prompt DEFAULT_CONTINUATION_PROMPT = new Prompt("> ");
+
     private final Connection connection;
     private final Prompt prompt;
     private final Supplier<Prompt> promptSupplier;
+    private final Prompt continuationPrompt;
     private final Consumer<String> requestHandler;
     private final List<Completion> completions;
     private final List<Function<String, Optional<String>>> preProcessors;
@@ -66,6 +69,9 @@ public class ReadlineRequest {
         this.connection = builder.connection;
         this.prompt = builder.prompt;
         this.promptSupplier = builder.promptSupplier;
+        this.continuationPrompt = builder.continuationPrompt != null
+                ? builder.continuationPrompt
+                : DEFAULT_CONTINUATION_PROMPT;
         this.requestHandler = builder.requestHandler;
         this.completions = builder.completions;
         this.preProcessors = builder.preProcessors;
@@ -106,6 +112,18 @@ public class ReadlineRequest {
             return supplied != null ? supplied : (prompt != null ? prompt : new Prompt());
         }
         return prompt;
+    }
+
+    /**
+     * Returns the prompt to display for continuation lines in multi-line input
+     * (e.g., after a trailing backslash or unclosed quote).
+     * <p>
+     * Defaults to {@code "> "} if not explicitly set.
+     *
+     * @return the continuation prompt, never null
+     */
+    public Prompt continuationPrompt() {
+        return continuationPrompt;
     }
 
     /**
@@ -171,6 +189,7 @@ public class ReadlineRequest {
         private Connection connection;
         private Prompt prompt;
         private Supplier<Prompt> promptSupplier;
+        private Prompt continuationPrompt;
         private Consumer<String> requestHandler;
         private List<Completion> completions;
         private List<Function<String, Optional<String>>> preProcessors;
@@ -242,6 +261,33 @@ public class ReadlineRequest {
          */
         public Builder promptSupplier(Supplier<Prompt> promptSupplier) {
             this.promptSupplier = promptSupplier;
+            return this;
+        }
+
+        /**
+         * Sets the prompt to display for continuation lines in multi-line
+         * input (e.g., after a trailing backslash or unclosed quote).
+         * <p>
+         * Defaults to {@code "> "} if not set.
+         *
+         * @param continuationPrompt the continuation prompt
+         * @return this builder
+         */
+        public Builder continuationPrompt(Prompt continuationPrompt) {
+            this.continuationPrompt = continuationPrompt;
+            return this;
+        }
+
+        /**
+         * Sets the prompt to display for continuation lines using a string.
+         * <p>
+         * Defaults to {@code "> "} if not set.
+         *
+         * @param continuationPrompt the continuation prompt string
+         * @return this builder
+         */
+        public Builder continuationPrompt(String continuationPrompt) {
+            this.continuationPrompt = new Prompt(continuationPrompt);
             return this;
         }
 

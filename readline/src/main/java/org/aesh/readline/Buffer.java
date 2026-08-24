@@ -58,6 +58,7 @@ public final class Buffer {
     private boolean disablePrompt = false;
     private boolean multiLine = false;
     private int[] multiLineBuffer = new int[0];
+    private Prompt continuationPrompt = new Prompt("> ");
     private boolean isPromptDisplayed = false;
     private boolean deletingBackward = true;
     private int mark = -1;
@@ -244,6 +245,18 @@ public final class Buffer {
     }
 
     /**
+     * Sets the prompt to use for continuation lines in multi-line input.
+     * Defaults to {@code "> "} if never called.
+     *
+     * @param continuationPrompt the continuation prompt
+     */
+    public void setContinuationPrompt(Prompt continuationPrompt) {
+        if (continuationPrompt != null) {
+            this.continuationPrompt = continuationPrompt;
+        }
+    }
+
+    /**
      * Returns the length of the buffer content.
      * If masking with a null mask character, returns 1.
      *
@@ -335,7 +348,7 @@ public final class Buffer {
         }
         locator.addLine(cmdSize, prompt.getLength());
         clear();
-        prompt = new Prompt("> ");
+        prompt = continuationPrompt;
         cursor = 0;
         size = 0;
     }

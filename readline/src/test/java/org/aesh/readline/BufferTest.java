@@ -405,6 +405,43 @@ public class BufferTest {
     }
 
     @Test
+    public void customContinuationPrompt() {
+        Buffer buffer = new Buffer(new Prompt("$ "));
+        buffer.setContinuationPrompt(new Prompt("... "));
+        List<int[]> outConsumer = new ArrayList<>();
+        buffer.insert(outConsumer::add, "foo bar\\", 100);
+        buffer.setMultiLine(true);
+        buffer.updateMultiLineBuffer();
+        outConsumer.clear();
+        buffer.insert(outConsumer::add, "baz", 100);
+
+        // The continuation prompt should be "... " not "> "
+        String output = Parser.fromCodePoints(outConsumer.get(0));
+        Assert.assertTrue("Expected '... ' continuation prompt, got: " + output,
+                output.contains("... baz"));
+
+        assertEquals("foo barbaz", buffer.asString());
+    }
+
+    @Test
+    public void defaultContinuationPrompt() {
+        // Verify backward compatibility: without setContinuationPrompt, "> " is used
+        Buffer buffer = new Buffer(new Prompt("$ "));
+        List<int[]> outConsumer = new ArrayList<>();
+        buffer.insert(outConsumer::add, "hello\\", 100);
+        buffer.setMultiLine(true);
+        buffer.updateMultiLineBuffer();
+        outConsumer.clear();
+        buffer.insert(outConsumer::add, "world", 100);
+
+        String output = Parser.fromCodePoints(outConsumer.get(0));
+        Assert.assertTrue("Expected '> ' default continuation prompt, got: " + output,
+                output.contains("> world"));
+
+        assertEquals("helloworld", buffer.asString());
+    }
+
+    @Test
     public void manyLinesInsert() {
         Buffer buffer = new Buffer(new Prompt(": "));
         List<int[]> outConsumer = new ArrayList<>();

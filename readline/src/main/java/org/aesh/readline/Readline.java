@@ -237,7 +237,8 @@ public class Readline {
                 throw new IllegalStateException("Already reading a line");
             }
             inputProcessor = new AeshInputProcessor(request.connection(), request.prompt(),
-                    request.requestHandler(), request.completions(), request.preProcessors(),
+                    request.continuationPrompt(), request.requestHandler(),
+                    request.completions(), request.preProcessors(),
                     request.history(), request.cursorListener(), request.flags());
             inputProcessor.start();
             //inputProcessor can be set to null from the start() method
@@ -283,6 +284,7 @@ public class Readline {
         private AeshInputProcessor(
                 Connection conn,
                 Prompt prompt,
+                Prompt continuationPrompt,
                 Consumer<String> requestHandler,
                 List<Completion> completions,
                 List<Function<String, Optional<String>>> preProcessors,
@@ -290,7 +292,7 @@ public class Readline {
 
             completionHandler.clear();
             completionHandler.addCompletions(completions);
-            consoleBuffer = new AeshConsoleBuffer(conn, prompt, editMode,
+            consoleBuffer = new AeshConsoleBuffer(conn, prompt, continuationPrompt, editMode,
                     //use newHistory if its not null
                     newHistory != null ? newHistory : history,
                     completionHandler, true, listener);
