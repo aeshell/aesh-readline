@@ -78,6 +78,56 @@ public class FuzzySearchHistoryTest {
         term.assertLine("git push origin main");
     }
 
+    @Test
+    public void testSelectWithTab() {
+        TestReadlineConnection term = setupWithHistory("ls -la", "git status", "mvn clean test");
+        term.read(Key.CTRL_R);
+        term.read(Key.CTRL_I); // Tab
+        // Tab accepts the selection, same as Enter
+        term.assertBuffer("mvn clean test");
+        term.assertLine(null); // not submitted yet
+        term.read(Key.ENTER);
+        term.assertLine("mvn clean test");
+    }
+
+    @Test
+    public void testSelectWithTabAfterQuery() {
+        TestReadlineConnection term = setupWithHistory("ls -la", "git status", "mvn clean test");
+        term.read(Key.CTRL_R);
+        term.read(Key.g);
+        term.read(Key.s);
+        term.read(Key.CTRL_I); // Tab
+        term.assertBuffer("git status");
+        term.assertLine(null);
+        term.read(Key.ENTER);
+        term.assertLine("git status");
+    }
+
+    @Test
+    public void testSelectWithRightArrow() {
+        TestReadlineConnection term = setupWithHistory("ls -la", "git status", "mvn clean test");
+        term.read(Key.CTRL_R);
+        term.read(Key.RIGHT);
+        // Right arrow accepts the selection, same as Enter
+        term.assertBuffer("mvn clean test");
+        term.assertLine(null); // not submitted yet
+        term.read(Key.ENTER);
+        term.assertLine("mvn clean test");
+    }
+
+    @Test
+    public void testSelectWithRightArrowAfterQuery() {
+        TestReadlineConnection term = setupWithHistory("ls -la", "git status", "mvn clean test");
+        term.read(Key.CTRL_R);
+        term.read(Key.l);
+        term.read(Key.s);
+        term.read(Key.RIGHT_2); // alternate right arrow sequence
+        term.assertBuffer("ls -la");
+        term.assertLine(null);
+        term.read(Key.ENTER);
+        term.assertLine("ls -la");
+    }
+
     // ---- Cancel ----
 
     @Test

@@ -313,8 +313,12 @@ public class Vi implements EditMode {
         else {
             if (newStatus.getCurrentStatus() == status) {
                 if (newStatus.getAction() instanceof ActionEvent) {
-                    currentAction = (ActionEvent) newStatus.getAction();
-                    currentAction.input(newStatus.getAction(), event);
+                    // Only set currentAction if no other ActionEvent currently
+                    // has focus (see Emacs.getAction() for the same guard).
+                    if (currentAction == null || !currentAction.keepFocus()) {
+                        currentAction = (ActionEvent) newStatus.getAction();
+                        currentAction.input(newStatus.getAction(), event);
+                    }
                 } else {
                     if (newStatus.nextStatus == Status.REPEAT) {
                         return previousAction;

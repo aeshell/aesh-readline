@@ -129,13 +129,13 @@ public class AliasManager {
                 }
 
                 if (keepGoing) {
-                    FileWriter fw = new FileWriter(aliasFile);
-                    Collections.sort(aliases); // not very efficient, but it'll do for now...
-                    for (Alias a : aliases) {
-                        fw.write(ALIAS_SPACE + a.toString() + Config.getLineSeparator());
+                    try (FileWriter fw = new FileWriter(aliasFile)) {
+                        Collections.sort(aliases); // not very efficient, but it'll do for now...
+                        for (Alias a : aliases) {
+                            fw.write(ALIAS_SPACE + a.toString() + Config.getLineSeparator());
+                        }
+                        fw.flush();
                     }
-                    fw.flush();
-                    fw.close();
                 }
             } catch (IOException e) {
                 LOGGER.log(Level.WARNING, "Could not persist to alias file:", e);

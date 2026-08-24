@@ -279,7 +279,12 @@ public class Emacs implements EditMode {
         } else {
             action = parseKeyEventActions(event);
         }
-        if (action != null && action instanceof ActionEvent) {
+        // Only set currentAction if no other ActionEvent currently has focus.
+        // When an ActionEvent has focus (e.g., FuzzySearchHistory), getAction()
+        // is called to resolve the key for input() — we must not overwrite
+        // currentAction with the resolved action (e.g., Complete for Tab).
+        if (action != null && action instanceof ActionEvent
+                && (currentAction == null || !currentAction.keepFocus())) {
             currentAction = (ActionEvent) action;
             currentAction.input(action, event);
         }

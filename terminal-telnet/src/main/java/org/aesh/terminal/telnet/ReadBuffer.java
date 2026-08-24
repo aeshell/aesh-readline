@@ -20,8 +20,8 @@
 
 package org.aesh.terminal.telnet;
 
-import java.util.ArrayDeque;
 import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executor;
 import java.util.function.Consumer;
 
@@ -32,7 +32,7 @@ import java.util.function.Consumer;
  */
 public class ReadBuffer implements Consumer<int[]> {
 
-    private final Queue<int[]> queue = new ArrayDeque<>(10);
+    private final Queue<int[]> queue = new ConcurrentLinkedQueue<>();
     private final Executor executor;
     private volatile Consumer<int[]> readHandler;
 
