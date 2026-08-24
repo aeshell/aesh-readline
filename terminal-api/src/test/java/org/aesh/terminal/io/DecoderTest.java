@@ -80,6 +80,99 @@ public class DecoderTest {
         assertEquals('\u20AC', (int) codePoints.get(0));
     }
 
+    @Test
+    public void testMalformedUtf8ReplacedWithFFFD() {
+        // 0xFE and 0xFF are never valid in UTF-8
+        final List<Integer> codePoints = new ArrayList<>();
+        Decoder decoder = new Decoder(10, StandardCharsets.UTF_8, event -> codePoints.addAll(list(event)));
+        decoder.write(new byte[] { 'A', (byte) 0xFE, 'B' });
+        assertEquals(3, codePoints.size());
+        assertEquals('A', (int) codePoints.get(0));
+        assertEquals(0xFFFD, (int) codePoints.get(1)); // replacement char
+        assertEquals('B', (int) codePoints.get(2));
+    }
+
+    @Test
+    public void testMalformedUtf8TwoInvalidBytes() {
+        // Two consecutive invalid bytes should each produce a replacement
+        final List<Integer> codePoints = new ArrayList<>();
+        Decoder decoder = new Decoder(10, StandardCharsets.UTF_8, event -> codePoints.addAll(list(event)));
+        decoder.write(new byte[] { (byte) 0xFF, (byte) 0xFE });
+        assertEquals(2, codePoints.size());
+        assertEquals(0xFFFD, (int) codePoints.get(0));
+        assertEquals(0xFFFD, (int) codePoints.get(1));
+    }
+
+    @Test
+    public void testTruncatedMultiByteFollowedByAscii() {
+        // Start of a 2-byte sequence (0xC3) followed by ASCII instead of continuation
+        final List<Integer> codePoints = new ArrayList<>();
+        Decoder decoder = new Decoder(10, StandardCharsets.UTF_8, event -> codePoints.addAll(list(event)));
+        decoder.write(new byte[] { (byte) 0xC3, 'X' });
+        // The CharsetDecoder with REPLACE will handle this: 0xC3 alone is
+        // malformed (missing continuation), so it becomes U+FFFD, then 'X'
+        assertEquals(2, codePoints.size());
+        assertEquals(0xFFFD, (int) codePoints.get(0));
+        assertEquals('X', (int) codePoints.get(1));
+    }
+
+    @Test
+    public void testEmojiDecoding() {
+        // U+1F600 (grinning face) = F0 9F 98 80 in UTF-8
+        // This is a 4-byte sequence that produces a surrogate pair in UTF-16
+        final List<Integer> codePoints = new ArrayList<>();
+        Decoder decoder = new Decoder(10, StandardCharsets.UTF_8, event -> codePoints.addAll(list(event)));
+        decoder.write(new byte[] { (byte) 0xF0, (byte) 0x9F, (byte) 0x98, (byte) 0x80 });
+        assertEquals(1, codePoints.size());
+        assertEquals(0x1F600, (int) codePoints.get(0));
+    }
+
+    @Test
+    public void testEmojiWithAscii() {
+        // Mix of ASCII and emoji
+        final List<Integer> codePoints = new ArrayList<>();
+        Decoder decoder = new Decoder(10, StandardCharsets.UTF_8, event -> codePoints.addAll(list(event)));
+        decoder.write(new byte[] { 'H', 'i', (byte) 0xF0, (byte) 0x9F, (byte) 0x98, (byte) 0x80, '!' });
+        assertEquals(4, codePoints.size());
+        assertEquals('H', (int) codePoints.get(0));
+        assertEquals('i', (int) codePoints.get(1));
+        assertEquals(0x1F600, (int) codePoints.get(2));
+        assertEquals('!', (int) codePoints.get(3));
+    }
+
+    @Test
+    public void testEmojiSplitAcrossWrites() {
+        // U+1F600 bytes split across two write() calls
+        final List<Integer> codePoints = new ArrayList<>();
+        Decoder decoder = new Decoder(10, StandardCharsets.UTF_8, event -> codePoints.addAll(list(event)));
+        decoder.write(new byte[] { (byte) 0xF0, (byte) 0x9F });
+        assertEquals(0, codePoints.size()); // underflow — waiting for more bytes
+        decoder.write(new byte[] { (byte) 0x98, (byte) 0x80 });
+        assertEquals(1, codePoints.size());
+        assertEquals(0x1F600, (int) codePoints.get(0));
+    }
+
+    @Test
+    public void testOverlongEncodingReplaced() {
+        // Overlong encoding of NUL: C0 80 (should be just 00)
+        // This is invalid UTF-8 and should be replaced
+        final List<Integer> codePoints = new ArrayList<>();
+        Decoder decoder = new Decoder(10, StandardCharsets.UTF_8, event -> codePoints.addAll(list(event)));
+        decoder.write(new byte[] { (byte) 0xC0, (byte) 0x80 });
+        // Both bytes are malformed — decoder replaces with U+FFFD
+        for (int cp : codePoints) {
+            assertEquals(0xFFFD, cp);
+        }
+    }
+
+    @Test
+    public void testEmptyInput() {
+        final List<Integer> codePoints = new ArrayList<>();
+        Decoder decoder = new Decoder(10, StandardCharsets.UTF_8, event -> codePoints.addAll(list(event)));
+        decoder.write(new byte[0]);
+        assertEquals(0, codePoints.size());
+    }
+
     public static List<Integer> list(int... list) {
         ArrayList<Integer> result = new ArrayList<>(list.length);
         for (int i : list) {

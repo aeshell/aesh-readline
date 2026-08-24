@@ -24,6 +24,7 @@ import java.nio.CharBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CoderResult;
+import java.nio.charset.CodingErrorAction;
 import java.util.Arrays;
 import java.util.function.Consumer;
 import java.util.logging.Level;
@@ -34,6 +35,8 @@ import java.util.logging.Logger;
  * <p>
  * This decoder handles multi-byte character sequences and surrogate pairs,
  * converting raw bytes from terminal input into code points for processing.
+ * Malformed or unmappable input is replaced with U+FFFD (Unicode replacement
+ * character) rather than throwing an exception.
  * <p>
  * Code is based on Julien Viet's BinaryDecoder in termd.
  *
@@ -43,6 +46,9 @@ public class Decoder {
 
     private static final ByteBuffer EMPTY = ByteBuffer.allocate(0);
     private static final Logger LOGGER = Logger.getLogger(Decoder.class.getName());
+
+    /** Unicode replacement character, used for malformed or unmappable input. */
+    private static final int REPLACEMENT_CHAR = 0xFFFD;
 
     private CharsetDecoder decoder;
     private ByteBuffer bBuf;
@@ -77,12 +83,22 @@ public class Decoder {
             throw new IllegalArgumentException("Initial size must be at least 2");
         }
         if (charset != null)
-            decoder = charset.newDecoder();
+            decoder = createDecoder(charset);
         else
-            decoder = Charset.defaultCharset().newDecoder();
+            decoder = createDecoder(Charset.defaultCharset());
         bBuf = EMPTY;
         cBuf = CharBuffer.allocate(initialSize); // We need at least 2
         this.onChar = onChar;
+    }
+
+    /**
+     * Creates a CharsetDecoder configured to replace malformed and unmappable
+     * input with U+FFFD instead of throwing exceptions.
+     */
+    private static CharsetDecoder createDecoder(Charset charset) {
+        return charset.newDecoder()
+                .onMalformedInput(CodingErrorAction.REPLACE)
+                .onUnmappableCharacter(CodingErrorAction.REPLACE);
     }
 
     /**
@@ -91,7 +107,7 @@ public class Decoder {
      * @param charset the charset to use
      */
     public void setCharset(Charset charset) {
-        decoder = charset.newDecoder();
+        decoder = createDecoder(charset);
     }
 
     /**
@@ -135,7 +151,8 @@ public class Decoder {
         // Drain the byte buffer
         while (true) {
             // Ensure cpBuf can hold at most bBuf.remaining() code points
-            int maxCodePoints = bBuf.remaining();
+            // (+1 for a possible replacement character from error handling)
+            int maxCodePoints = bBuf.remaining() + 1;
             if (cpBuf.length < maxCodePoints) {
                 cpBuf = new int[maxCodePoints];
             }
@@ -150,20 +167,29 @@ public class Decoder {
                         if (cBuf.hasRemaining()) {
                             char low = cBuf.get();
                             if (Character.isLowSurrogate(low)) {
-                                int codePoint = Character.toCodePoint(c, low);
-                                if (Character.isValidCodePoint(codePoint)) {
-                                    cpBuf[cpLen++] = codePoint;
-                                } else {
-                                    throw new UnsupportedOperationException("Handle me gracefully");
-                                }
+                                cpBuf[cpLen++] = Character.toCodePoint(c, low);
                             } else {
-                                throw new UnsupportedOperationException("Handle me gracefully");
+                                // High surrogate followed by non-low-surrogate:
+                                // emit replacement for the orphaned high surrogate,
+                                // then process the non-surrogate char normally
+                                cpBuf[cpLen++] = REPLACEMENT_CHAR;
+                                if (!Character.isSurrogate(low)) {
+                                    cpBuf[cpLen++] = (int) low;
+                                } else {
+                                    cpBuf[cpLen++] = REPLACEMENT_CHAR;
+                                }
                             }
                         } else {
-                            throw new UnsupportedOperationException("Handle me gracefully");
+                            // High surrogate at end of CharBuffer — the low
+                            // surrogate should appear in the next decode
+                            // iteration. This is unreachable with UTF-8
+                            // (decoder writes pairs atomically), but handle
+                            // gracefully for other charsets.
+                            cpBuf[cpLen++] = REPLACEMENT_CHAR;
                         }
                     } else {
-                        throw new UnsupportedOperationException("Handle me gracefully");
+                        // Lone low surrogate — replace with U+FFFD
+                        cpBuf[cpLen++] = REPLACEMENT_CHAR;
                     }
                 } else {
                     cpBuf[cpLen++] = (int) c;
@@ -185,7 +211,12 @@ public class Decoder {
                 // the next write() call to continue decoding.
                 break;
             } else {
-                throw new UnsupportedOperationException("Handle me gracefully");
+                // Malformed or unmappable input — should not happen because
+                // the decoder is configured with CodingErrorAction.REPLACE,
+                // but handle defensively just in case.
+                LOGGER.log(Level.FINE, "Unexpected CoderResult: {0}, skipping {1} bytes",
+                        new Object[] { result, result.length() });
+                bBuf.position(bBuf.position() + result.length());
             }
         }
         bBuf.compact();
