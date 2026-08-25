@@ -586,6 +586,29 @@ public class TerminalConnection extends AbstractConnection {
         } catch (Exception e) {
             LOGGER.log(Level.WARNING, "Failed to disable terminal modes during close", e);
         }
+        // Close the input stream to unblock any thread blocked in
+        // openBlockingLegacy's terminal.input().read() call. Without this,
+        // ExecPty-based terminals require the user to press a key after
+        // exit before the application terminates (#252).
+        // Guard against closing System.in or streams wrapping stdin's fd
+        // (CygwinPty uses new FileInputStream(FileDescriptor.in)) — closing
+        // those would destroy stdin for the entire JVM.
+        try {
+            if (terminal != null) {
+                InputStream in = terminal.input();
+                if (in != null && in != System.in) {
+                    if (in instanceof java.io.FileInputStream) {
+                        if (((java.io.FileInputStream) in).getFD() != java.io.FileDescriptor.in) {
+                            in.close();
+                        }
+                    } else {
+                        in.close();
+                    }
+                }
+            }
+        } catch (Exception e) {
+            LOGGER.log(Level.FINE, "Failed to close terminal input stream", e);
+        }
         try {
             //reset attributes and close terminal
             if (attributes != null && terminal != null) {
