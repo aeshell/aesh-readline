@@ -68,6 +68,7 @@
                         </manifest>
                         <manifestEntries>
                             <Automatic-Module-Name>${javaModuleName}</Automatic-Module-Name>
+                            <Multi-Release>true</Multi-Release>
                         </manifestEntries>
                         <index>true</index>
                     </archive>
@@ -78,5 +79,120 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <!-- Multi-release JAR: compile FFM variant when building with Java 22+ -->
+        <profile>
+            <id>java22-ffm</id>
+            <activation>
+                <jdk>[22,)</jdk>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>compile-java-22</id>
+                                <phase>compile</phase>
+                                <goals><goal>compile</goal></goals>
+                                <configuration>
+                                    <release>22</release>
+                                    <compileSourceRoots>
+                                        <compileSourceRoot>${project.basedir}/src/main/java22</compileSourceRoot>
+                                    </compileSourceRoots>
+                                    <multiReleaseOutput>true</multiReleaseOutput>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <argLine>--enable-native-access=ALL-UNNAMED</argLine>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <!-- Compile JNI native library for the current platform -->
+        <profile>
+            <id>native-posix</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-antrun-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>compile-native-lib</id>
+                                <phase>process-classes</phase>
+                                <goals><goal>run</goal></goals>
+                                <configuration>
+                                    <target>
+                                        <mkdir dir="${project.build.outputDirectory}/native/linux-x86_64"/>
+                                        <exec executable="gcc" dir="${project.basedir}/src/main/native"
+                                              failonerror="true">
+                                            <arg value="-shared"/>
+                                            <arg value="-O2"/>
+                                            <arg value="-fPIC"/>
+                                            <arg value="-Wl,-z,noexecstack"/>
+                                            <arg value="-I${env.JAVA_HOME}/include"/>
+                                            <arg value="-I${env.JAVA_HOME}/include/linux"/>
+                                            <arg value="-o"/>
+                                            <arg value="${project.build.outputDirectory}/native/linux-x86_64/libterminal-detect.so"/>
+                                            <arg value="terminal_detect.c"/>
+                                        </exec>
+                                        <exec executable="strip" failonerror="false">
+                                            <arg value="${project.build.outputDirectory}/native/linux-x86_64/libterminal-detect.so"/>
+                                        </exec>
+                                    </target>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <!-- Cross-compile JNI native library for Linux aarch64 -->
+        <profile>
+            <id>cross-linux-aarch64</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-antrun-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>cross-compile-aarch64</id>
+                                <phase>process-classes</phase>
+                                <goals><goal>run</goal></goals>
+                                <configuration>
+                                    <target>
+                                        <mkdir dir="${project.build.outputDirectory}/native/linux-aarch64"/>
+                                        <exec executable="aarch64-linux-gnu-gcc" dir="${project.basedir}/src/main/native"
+                                              failonerror="true">
+                                            <arg value="-shared"/>
+                                            <arg value="-O2"/>
+                                            <arg value="-fPIC"/>
+                                            <arg value="--sysroot=/usr/aarch64-redhat-linux/sys-root/fc43"/>
+                                            <arg value="-I${env.JAVA_HOME}/include"/>
+                                            <arg value="-I${env.JAVA_HOME}/include/linux"/>
+                                            <arg value="-o"/>
+                                            <arg value="${project.build.outputDirectory}/native/linux-aarch64/libterminal-detect.so"/>
+                                            <arg value="terminal_detect.c"/>
+                                        </exec>
+                                        <exec executable="aarch64-linux-gnu-strip" failonerror="false">
+                                            <arg value="${project.build.outputDirectory}/native/linux-aarch64/libterminal-detect.so"/>
+                                        </exec>
+                                    </target>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 
 </project>

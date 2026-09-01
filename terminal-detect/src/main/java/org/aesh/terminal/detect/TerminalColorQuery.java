@@ -23,6 +23,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -56,6 +57,83 @@ final class TerminalColorQuery {
             return null;
         }
 
+        // Try JNI-based path first (avoids stty subprocesses)
+        if (TerminalNative.isAvailable()) {
+            TerminalColorQuery result = queryJni();
+            if (result != null) {
+                return result;
+            }
+        }
+
+        return queryStty();
+    }
+
+    /**
+     * JNI-based query path: uses TerminalNative for all I/O.
+     * Opens /dev/tty once, does tcgetattr/tcsetattr + write/read on the
+     * same fd, avoiding any FileInputStream/FileOutputStream overhead.
+     */
+    private static TerminalColorQuery queryJni() {
+        int fd = TerminalNative.openTty();
+        if (fd < 0) {
+            return null;
+        }
+
+        try {
+            byte[] savedTermios = TerminalNative.tcgetattr(fd);
+            if (savedTermios == null) {
+                return null;
+            }
+
+            try {
+                // Set raw query mode. VTIME=5 is set by setRawQueryMode but the
+                // native readWithTimeout() uses poll() for timing instead.
+                // VTIME is harmless — it only affects bare read() without poll().
+                byte[] rawTermios = savedTermios.clone();
+                TermiosHelper.setRawQueryMode(rawTermios);
+
+                if (TerminalNative.tcsetattr(fd, 2 /* TCSAFLUSH */, rawTermios) != 0) {
+                    return null;
+                }
+
+                // Build query batch
+                StringBuilder queries = new StringBuilder();
+                queries.append("\033[c"); // DA1 query
+                queries.append("\033]10;?").append(BEL);
+                queries.append("\033]11;?").append(BEL);
+                for (int i = 0; i <= 15; i++) {
+                    queries.append("\033]4;").append(i).append(";?").append(BEL);
+                }
+                queries.append("\033]4;255;?").append(BEL);
+
+                // Write and read on the same fd — no extra file opens
+                if (TerminalNative.writeAll(fd, queries.toString().getBytes(StandardCharsets.ISO_8859_1)) < 0) {
+                    return null;
+                }
+
+                // Read responses with poll()-based timeout (500ms max wait).
+                // Exits early when all 20 response terminators are found.
+                byte[] responseBytes = TerminalNative.readWithTimeout(fd, 500, 20);
+                if (responseBytes == null || responseBytes.length == 0) {
+                    return null;
+                }
+
+                String response = new String(responseBytes);
+                return parseResponse(response);
+
+            } finally {
+                // Restore saved terminal state
+                TerminalNative.tcsetattr(fd, 2 /* TCSAFLUSH */, savedTermios);
+            }
+        } finally {
+            TerminalNative.closeFd(fd);
+        }
+    }
+
+    /**
+     * stty subprocess-based query path (fallback).
+     */
+    static TerminalColorQuery queryStty() {
         String savedState = sttyGet();
         if (savedState == null) {
             return null;
@@ -63,7 +141,18 @@ final class TerminalColorQuery {
 
         try {
             sttyRaw();
+            return doQuery();
+        } finally {
+            sttyRestore(savedState);
+        }
+    }
 
+    /**
+     * Sends OSC/DA1 queries via FileOutputStream and reads responses via
+     * FileInputStream. Used by the stty fallback path.
+     */
+    private static TerminalColorQuery doQuery() {
+        try {
             // Build batch: DA1 + OSC 10 (fg) + OSC 11 (bg) + OSC 4 for 0-15 + color 255
             StringBuilder queries = new StringBuilder();
             queries.append("\033[c"); // DA1 query
@@ -75,7 +164,7 @@ final class TerminalColorQuery {
             queries.append("\033]4;255;?").append(BEL);
 
             try (FileOutputStream ttyOut = new FileOutputStream(DEV_TTY)) {
-                ttyOut.write(queries.toString().getBytes());
+                ttyOut.write(queries.toString().getBytes(StandardCharsets.ISO_8859_1));
                 ttyOut.flush();
             }
 
@@ -85,24 +174,29 @@ final class TerminalColorQuery {
                 return null;
             }
 
-            TerminalColorQuery result = new TerminalColorQuery();
-            parseDA1Response(response, result);
-            result.foreground = parseOscColorResponse(response, 10, -1);
-            result.background = parseOscColorResponse(response, 11, -1);
-            result.palette = new LinkedHashMap<>();
-            for (int i = 0; i <= 15; i++) {
-                int[] color = parseOscColorResponse(response, 4, i);
-                if (color != null) {
-                    result.palette.put(i, color);
-                }
-            }
-            result.supports256 = parseOscColorResponse(response, 4, 255) != null;
-            return result;
+            return parseResponse(response);
         } catch (IOException ignored) {
             return null;
-        } finally {
-            sttyRestore(savedState);
         }
+    }
+
+    /**
+     * Parses a raw terminal response string into a TerminalColorQuery result.
+     */
+    private static TerminalColorQuery parseResponse(String response) {
+        TerminalColorQuery result = new TerminalColorQuery();
+        parseDA1Response(response, result);
+        result.foreground = parseOscColorResponse(response, 10, -1);
+        result.background = parseOscColorResponse(response, 11, -1);
+        result.palette = new LinkedHashMap<>();
+        for (int i = 0; i <= 15; i++) {
+            int[] color = parseOscColorResponse(response, 4, i);
+            if (color != null) {
+                result.palette.put(i, color);
+            }
+        }
+        result.supports256 = parseOscColorResponse(response, 4, 255) != null;
+        return result;
     }
 
     private static String sttyGet() {
@@ -116,7 +210,7 @@ final class TerminalColorQuery {
             StringBuilder sb = new StringBuilder();
             int n;
             while ((n = p.getInputStream().read(buf)) != -1) {
-                sb.append(new String(buf, 0, n));
+                sb.append(new String(buf, 0, n, StandardCharsets.ISO_8859_1));
             }
             p.waitFor();
             return p.exitValue() == 0 ? sb.toString().trim() : null;
@@ -166,7 +260,7 @@ final class TerminalColorQuery {
             StringBuilder sb = new StringBuilder();
             int n;
             while ((n = ttyIn.read(buf)) > 0) {
-                sb.append(new String(buf, 0, n));
+                sb.append(new String(buf, 0, n, StandardCharsets.ISO_8859_1));
                 if (countTerminators(sb) >= expectedResponses) {
                     break;
                 }

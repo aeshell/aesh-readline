@@ -37,14 +37,34 @@ public class DetectExample {
         System.out.println("Theme:          " + caps.theme());
         System.out.printf("Detection time:  %.3f ms%n%n", elapsed / 1_000_000.0);
 
+        // Direct synchronous query — JNI/FFM path (cold)
+        start = System.nanoTime();
+        TerminalColorQuery directResult = TerminalColorQuery.query();
+        long directTime = System.nanoTime() - start;
+        System.out.printf("Native query (cold): %.3f ms%n", directTime / 1_000_000.0);
+
+        // Direct synchronous query — JNI/FFM path (warm)
+        start = System.nanoTime();
+        directResult = TerminalColorQuery.query();
+        directTime = System.nanoTime() - start;
+        System.out.printf("Native query (warm): %.3f ms%n", directTime / 1_000_000.0);
+
+        // Force stty path for comparison
+        start = System.nanoTime();
+        TerminalColorQuery sttyResult = TerminalColorQuery.queryStty();
+        long sttyTime = System.nanoTime() - start;
+        System.out.printf("Stty query:          %.3f ms%n", sttyTime / 1_000_000.0);
+
         start = System.nanoTime();
         TerminalCapabilities async = TerminalCapabilities.detectAsync();
         long returnTime = System.nanoTime() - start;
         System.out.printf("--- detectAsync() (returned in %.3f ms) ---%n", returnTime / 1_000_000.0);
 
-        async.awaitColors(2, TimeUnit.SECONDS);
+        boolean completed = async.awaitColors(2, TimeUnit.SECONDS);
         elapsed = System.nanoTime() - start;
+        System.out.printf("Query wall time: %.3f ms%n", elapsed / 1_000_000.0);
 
+        System.out.println("Query completed: " + completed);
         System.out.println("Theme:          " + async.theme());
         System.out.println("256 colors:     " + async.supports256Colors());
         System.out.println("Foreground:     " + formatRGB(async.foregroundRGB()));
@@ -54,10 +74,23 @@ public class DetectExample {
         if (!palette.isEmpty()) {
             System.out.println("Palette colors:");
             for (Map.Entry<Integer, int[]> entry : palette.entrySet()) {
-                System.out.printf("  %2d: %s%n", entry.getKey(), formatRGB(entry.getValue()));
+                int[] rgb = entry.getValue();
+                // Show a colored block using true color (ESC[48;2;r;g;bm) + reset (ESC[0m)
+                String block = "\033[48;2;" + rgb[0] + ";" + rgb[1] + ";" + rgb[2] + "m    \033[0m";
+                System.out.printf("  %2d: %s %s%n", entry.getKey(), block, formatRGB(rgb));
             }
+            // Also show all 16 colors in a row as a compact strip
+            System.out.print("  Strip: ");
+            for (int i = 0; i <= 15; i++) {
+                int[] rgb = palette.get(i);
+                if (rgb != null) {
+                    System.out.printf("\033[48;2;%d;%d;%dm  \033[0m", rgb[0], rgb[1], rgb[2]);
+                }
+            }
+            System.out.println();
         }
 
+        System.out.println("Image protocol: " + async.imageProtocol());
         System.out.printf("Total time:      %.3f ms%n", elapsed / 1_000_000.0);
     }
 
