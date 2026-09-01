@@ -55,7 +55,22 @@ public class FfmTerminalProvider implements TerminalProvider {
     @Override
     public boolean isSupported() {
         // FFM PTY is only for POSIX (not Windows, not Cygwin)
-        return !OSUtils.IS_WINDOWS && !OSUtils.IS_CYGWIN;
+        if (OSUtils.IS_WINDOWS || OSUtils.IS_CYGWIN) {
+            return false;
+        }
+        // Check if native access is enabled. Without it, creating FFM
+        // downcall handles triggers a JVM warning (and will be blocked
+        // in a future JDK release). Falls back silently to ExecPty.
+        // The check is delegated to FfmPty.isNativeAccessEnabled() in
+        // the java22 MRJAR overlay via reflection — a single reflective
+        // call with no overhead from loading FFM/Linker classes.
+        try {
+            Class<?> ffmPtyClass = Class.forName("org.aesh.terminal.tty.impl.FfmPty");
+            return (Boolean) ffmPtyClass.getMethod("isNativeAccessEnabled").invoke(null);
+        } catch (Exception e) {
+            // Pre-Java 22: FfmPty class doesn't exist
+            return false;
+        }
     }
 
     @Override

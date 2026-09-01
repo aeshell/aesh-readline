@@ -98,6 +98,17 @@ public class FfmPty implements Pty {
     private int peekedByte = -2;
 
     /**
+     * Check if native access is enabled for this module.
+     * Called reflectively by {@code FfmTerminalProvider.isSupported()}
+     * to avoid loading FFM/Linker classes when native access is not granted.
+     *
+     * @return true if native access is enabled
+     */
+    public static boolean isNativeAccessEnabled() {
+        return FfmPty.class.getModule().isNativeAccessEnabled();
+    }
+
+    /**
      * Creates an FfmPty for the current terminal.
      *
      * @return a new FfmPty instance
