@@ -77,13 +77,41 @@ public final class TtyDetect {
      * @return true if the file descriptor is connected to a terminal
      */
     public static boolean isTty(int fd) {
-        // Try FFM-based isatty first (Java 22+, POSIX)
+        // Try Console.isTerminal() first (Java 22+, no FFM needed).
+        // This avoids loading LibC and triggering FFM restricted method
+        // warnings when --enable-native-access is not set.
+        Boolean consoleResult = tryConsoleIsTerminal();
+        if (consoleResult != null) {
+            return consoleResult;
+        }
+        // Try FFM-based isatty for per-fd detection (Java 22+, POSIX)
         Boolean result = tryNativeIsatty(fd);
         if (result != null) {
             return result;
         }
-        // Fallback: use System.console() heuristic
-        return fallbackIsTty(fd);
+        // Fallback: System.console() != null heuristic (pre-Java 22)
+        return System.console() != null;
+    }
+
+    /**
+     * Try Console.isTerminal() (Java 22+). Returns null if not available.
+     * This is preferred over FFM isatty() because it doesn't trigger
+     * restricted method warnings.
+     */
+    private static Boolean tryConsoleIsTerminal() {
+        Console console = System.console();
+        if (console == null) {
+            return Boolean.FALSE;
+        }
+        try {
+            Method isTerminal = Console.class.getMethod("isTerminal");
+            return (Boolean) isTerminal.invoke(console);
+        } catch (NoSuchMethodException e) {
+            // Pre-Java 22: Console.isTerminal() doesn't exist
+            return null;
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     /**
@@ -147,24 +175,4 @@ public final class TtyDetect {
         }
     }
 
-    /**
-     * Fallback TTY detection using System.console() and Console.isTerminal().
-     */
-    private static boolean fallbackIsTty(int fd) {
-        Console console = System.console();
-        if (console == null) {
-            return false;
-        }
-        // Console.isTerminal() was introduced in Java 22
-        try {
-            Method isTerminal = Console.class.getMethod("isTerminal");
-            return (boolean) isTerminal.invoke(console);
-        } catch (NoSuchMethodException e) {
-            // Pre-Java 22: System.console() != null is our best guess
-            return true;
-        } catch (Exception e) {
-            LOGGER.log(Level.FINE, "Failed to invoke Console.isTerminal()", e);
-            return console != null;
-        }
-    }
 }

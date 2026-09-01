@@ -190,6 +190,11 @@ public class TerminalConnection extends AbstractConnection {
         }
         if (terminal instanceof ExternalTerminal)
             ansi = false;
+        // Suppress ANSI output when stdout is not a TTY (redirected to file/pipe).
+        // Standard POSIX behavior: programs check isatty(STDOUT_FILENO) to decide
+        // whether to emit escape sequences.
+        if (!TtyDetect.isStdoutTty())
+            ansi = false;
 
         if (handler != null)
             handler.accept(this);
