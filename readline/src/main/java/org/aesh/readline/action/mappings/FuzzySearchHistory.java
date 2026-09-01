@@ -383,14 +383,27 @@ public class FuzzySearchHistory implements ActionEvent {
 
         // Insert the selected entry into the command line for editing
         // (do NOT call setReturnValue — that would execute it immediately)
-        inputProcessor.buffer().replace(selected);
+        if (selected.length == 0) {
+            // Buffer.replace() short-circuits for empty-to-empty, skipping
+            // the prompt redraw. Force a redraw after cleanup erased the UI.
+            inputProcessor.buffer().drawLineForceDisplay();
+        } else {
+            inputProcessor.buffer().replace(selected);
+        }
 
         state = State.DONE;
     }
 
     private void cancel(InputProcessor inputProcessor) {
         cleanupAndRestore(inputProcessor);
-        inputProcessor.buffer().replace(savedBuffer != null ? savedBuffer : new int[0]);
+        int[] restored = savedBuffer != null ? savedBuffer : new int[0];
+        if (restored.length == 0) {
+            // Buffer.replace() short-circuits for empty-to-empty, skipping
+            // the prompt redraw. Force a redraw after cleanup erased the UI.
+            inputProcessor.buffer().drawLineForceDisplay();
+        } else {
+            inputProcessor.buffer().replace(restored);
+        }
         state = State.DONE;
     }
 
