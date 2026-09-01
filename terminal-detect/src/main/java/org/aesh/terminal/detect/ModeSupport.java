@@ -11,7 +11,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.aesh.terminal;
+package org.aesh.terminal.detect;
 
 /**
  * Three-state result of a DEC private mode probe via DECRQM.

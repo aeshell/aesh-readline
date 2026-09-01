@@ -30,6 +30,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.aesh.terminal.detect.ImageProtocol;
+import org.aesh.terminal.detect.ModeSupport;
+import org.aesh.terminal.detect.TerminalCapabilities;
 import org.aesh.terminal.detect.TerminalTheme;
 import org.aesh.terminal.image.ImageProtocolDetector;
 import org.aesh.terminal.tty.Capability;
@@ -73,15 +75,7 @@ public class TerminalFeatures {
      */
     public static final long FAST_QUERY_TIMEOUT_MS = 150;
 
-    /**
-     * Default timeout for the batched terminal probe (DECRQM + DA1 fence).
-     * Shorter than individual query timeouts because DA1 is near-universally
-     * supported and responds quickly.
-     */
-    public static final long PROBE_TIMEOUT_MS = 200;
-
     private final Connection connection;
-    private volatile TerminalProbeResult cachedProbeResult;
 
     /**
      * Constructor.
@@ -159,181 +153,8 @@ public class TerminalFeatures {
         return typedResult;
     }
 
-    // =========================================================================
-    // Batched terminal probe with DA1 fence
-    // =========================================================================
-
-    /**
-     * Returns the cached probe result, running the probe lazily on first access.
-     * Returns null if the connection does not support ANSI or is not reading.
-     *
-     * @return the probe result, or null if probing is not possible
-     */
-    public TerminalProbeResult getProbeResult() {
-        if (cachedProbeResult == null) {
-            cachedProbeResult = probeModes(PROBE_TIMEOUT_MS);
-        }
-        return cachedProbeResult;
-    }
-
-    /**
-     * Probes the terminal for DEC private mode support by sending DECRQM
-     * queries for Mode 2026 and Mode 2027, terminated by a DA1 request.
-     * <p>
-     * The DA1 response acts as a fence: when it arrives, all DECRPM
-     * responses the terminal will send have already been received. This
-     * enables single-round-trip detection of multiple modes.
-     * <p>
-     * If Mode 2027 is NOT_SUPPORTED but DA1 responded, a cursor-position
-     * probe is attempted to detect native grapheme cluster support.
-     *
-     * @param timeoutMs timeout in milliseconds
-     * @return the probe result, never null
-     */
-    public TerminalProbeResult probeModes(long timeoutMs) {
-        TerminalProbeResult result = new TerminalProbeResult();
-
-        if (!connection.supportsAnsi() || !connection.reading()) {
-            return result; // all NO_RESPONSE
-        }
-
-        Consumer<int[]> prevInputHandler = connection.stdinHandler();
-        CountDownLatch latch = new CountDownLatch(1);
-        StringBuilder responseBuffer = new StringBuilder();
-        Attributes savedAttributes = connection.enterRawMode();
-
-        connection.setStdinHandler(ints -> {
-            for (int c : ints) {
-                responseBuffer.appendCodePoint(c);
-            }
-            // Check if DA1 response has arrived (fence)
-            if (ANSI.findDA1Response(responseBuffer.toString(), 0) >= 0) {
-                latch.countDown();
-            }
-        });
-
-        try {
-            connection.write(ANSI.buildBatchedProbeQuery());
-            latch.await(timeoutMs, TimeUnit.MILLISECONDS);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        } finally {
-            connection.setStdinHandler(prevInputHandler);
-            connection.setAttributes(savedAttributes);
-        }
-
-        // Parse the accumulated responses
-        String response = responseBuffer.toString();
-        parseBatchedResponse(response, result);
-
-        // If DA1 responded but Mode 2027 is not supported, try cursor probe
-        if (result.da1Received() && result.mode2027() == ModeSupport.NOT_SUPPORTED) {
-            boolean nativeGC = probeGraphemeClusteringViaCursor(timeoutMs);
-            result.setNativeGraphemeClustering(nativeGC);
-        }
-
-        LOGGER.log(Level.FINE, "Terminal probe result: {0}", result);
-        return result;
-    }
-
-    /**
-     * Parse the accumulated response buffer for DECRPM and DA1 responses.
-     */
-    private void parseBatchedResponse(String response, TerminalProbeResult result) {
-        boolean foundDA1 = ANSI.findDA1Response(response, 0) >= 0;
-        result.setDa1Received(foundDA1);
-
-        if (!foundDA1) {
-            // No DA1 response — all modes are NO_RESPONSE (dumb terminal)
-            return;
-        }
-
-        // DA1 received — modes that didn't respond are NOT_SUPPORTED (not NO_RESPONSE)
-        result.setMode2026(ModeSupport.NOT_SUPPORTED);
-        result.setMode2027(ModeSupport.NOT_SUPPORTED);
-
-        // Parse DECRPM responses
-        int pos = 0;
-        while (pos < response.length()) {
-            int[] decrpm = ANSI.parseDECRPM(response, pos);
-            if (decrpm == null)
-                break;
-
-            int mode = decrpm[0];
-            int ps = decrpm[1];
-            pos = decrpm[2];
-
-            // Ps: 1=set, 2=reset(recognized), 3=permanently set → SUPPORTED
-            //     0=not recognized, 4=permanently reset → NOT_SUPPORTED
-            ModeSupport support = (ps >= 1 && ps <= 3)
-                    ? ModeSupport.SUPPORTED
-                    : ModeSupport.NOT_SUPPORTED;
-
-            if (mode == 2026) {
-                result.setMode2026(support);
-            } else if (mode == 2027) {
-                result.setMode2027(support);
-            }
-        }
-    }
-
-    /**
-     * Probe grapheme cluster support via cursor position measurement.
-     * <p>
-     * Writes a test emoji (flag sequence 🇫🇷), queries cursor position,
-     * and checks whether the terminal treated it as one grapheme cluster
-     * (2 columns) or two separate regional indicators (4 columns).
-     * <p>
-     * Only called when DA1 responded (confirming DSR/CPR is safe to use)
-     * but Mode 2027 is not supported.
-     */
-    private boolean probeGraphemeClusteringViaCursor(long timeoutMs) {
-        // Save cursor, write test emoji, query position, restore
-        String probe = ANSI.CURSOR_SAVE
-                + "\r" // move to column 0
-                + ANSI.ERASE_LINE_FROM_CURSOR_STRING
-                + "\uD83C\uDDEB\uD83C\uDDF7" // 🇫🇷 (flag: France, two regional indicators)
-                + "\u001B[6n" // DSR: query cursor position
-        ;
-
-        Point cursorPos = queryTerminal(probe, timeoutMs, ints -> {
-            // Parse CPR response: ESC [ row ; col R
-            StringBuilder sb = new StringBuilder();
-            for (int c : ints)
-                sb.appendCodePoint(c);
-            String s = sb.toString();
-            int rIdx = s.indexOf('R');
-            if (rIdx < 0)
-                return null;
-            int escIdx = s.lastIndexOf('\u001B', rIdx);
-            if (escIdx < 0)
-                return null;
-            String params = s.substring(escIdx + 2, rIdx); // skip ESC [
-            String[] parts = params.split(";");
-            if (parts.length >= 2) {
-                try {
-                    int row = Integer.parseInt(parts[0]);
-                    int col = Integer.parseInt(parts[1]);
-                    return new Point(row, col);
-                } catch (NumberFormatException e) {
-                    return null;
-                }
-            }
-            return null;
-        });
-
-        // Restore cursor and erase the test emoji
-        connection.write(ANSI.CURSOR_RESTORE + ANSI.ERASE_LINE_FROM_CURSOR_STRING);
-
-        if (cursorPos == null) {
-            return false;
-        }
-
-        // If the flag emoji occupied 2 columns (one cluster), col should be 3
-        // (column 1 = start, emoji takes 2 columns, cursor at column 3)
-        // If 4 columns (two separate indicators), col should be 5
-        return cursorPos.y() <= 3;
-    }
+    // No probe methods here — terminal mode detection is done in
+    // terminal-detect (TerminalColorQuery) via direct /dev/tty I/O.
 
     /**
      * Get the current cursor position in the terminal.
@@ -799,14 +620,15 @@ public class TerminalFeatures {
         if (connection.device() == null || !connection.supportsAnsi()) {
             return false;
         }
-        TerminalProbeResult probe = cachedProbeResult;
-        if (probe != null) {
-            if (probe.mode2026() == ModeSupport.SUPPORTED)
+        // Check terminal-detect probe results if available
+        ModeSupport probed = TerminalCapabilities.getInstance().synchronizedOutputSupport();
+        if (probed != null) {
+            if (probed == ModeSupport.SUPPORTED)
                 return true;
-            if (probe.mode2026() == ModeSupport.NOT_SUPPORTED)
+            if (probed == ModeSupport.NOT_SUPPORTED)
                 return false;
         }
-        // NO_RESPONSE or not probed yet: fall back to heuristic
+        // Not probed or NO_RESPONSE: fall back to heuristic
         return connection.device().supportsSynchronizedOutput();
     }
 
@@ -835,16 +657,21 @@ public class TerminalFeatures {
         if (connection.device() == null || !connection.supportsAnsi()) {
             return false;
         }
-        TerminalProbeResult probe = cachedProbeResult;
-        if (probe != null) {
-            if (probe.mode2027() == ModeSupport.SUPPORTED)
+        // Check terminal-detect probe results if available
+        TerminalCapabilities caps = TerminalCapabilities.getInstance();
+        ModeSupport probed = caps.graphemeClusterSupport();
+        if (probed != null) {
+            if (probed == ModeSupport.SUPPORTED)
                 return true;
-            if (probe.nativeGraphemeClustering())
-                return true;
-            if (probe.mode2027() == ModeSupport.NOT_SUPPORTED)
+            if (probed == ModeSupport.NOT_SUPPORTED) {
+                // Mode 2027 not supported, but check native clustering
+                Boolean nativeGC = caps.nativeGraphemeClustering();
+                if (nativeGC != null && nativeGC)
+                    return true;
                 return false;
+            }
         }
-        // NO_RESPONSE or not probed yet: fall back to heuristic
+        // Not probed or NO_RESPONSE: fall back to heuristic
         return connection.device().supportsGraphemeClusterMode();
     }
 

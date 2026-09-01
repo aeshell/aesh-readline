@@ -54,6 +54,9 @@ public final class TerminalCapabilities {
     private volatile Map<Integer, int[]> paletteColors;
     private volatile Boolean queried256;
     private volatile ImageProtocol queriedImageProtocol;
+    private volatile ModeSupport mode2026Support;
+    private volatile ModeSupport mode2027Support;
+    private volatile Boolean nativeGraphemeClustering;
     private final CountDownLatch colorQueryLatch;
 
     private TerminalCapabilities(TerminalDetector detector, CountDownLatch latch) {
@@ -121,6 +124,32 @@ public final class TerminalCapabilities {
         if (caps.detector.theme == TerminalTheme.UNKNOWN) {
             caps.resolvedTheme = TerminalDetector.detectPlatformTheme();
         }
+
+        // Run terminal mode + color queries
+        if (!caps.detector.isInMultiplexer()) {
+            TerminalColorQuery result = TerminalColorQuery.query();
+            if (result != null) {
+                caps.foregroundRGB = result.foreground;
+                caps.backgroundRGB = result.background;
+                caps.paletteColors = result.palette;
+                caps.queried256 = result.supports256;
+                caps.mode2026Support = result.mode2026;
+                caps.mode2027Support = result.mode2027;
+                if (result.supportsSixel && caps.detector.imageProtocol == ImageProtocol.NONE) {
+                    caps.queriedImageProtocol = ImageProtocol.SIXEL;
+                }
+                if (result.background != null && caps.resolvedTheme == null) {
+                    caps.resolvedTheme = themeFromRGB(result.background);
+                }
+
+                // Cursor-position grapheme probe: only when DA1 responded
+                // but Mode 2027 is not supported
+                if (result.da1Received && result.mode2027 == ModeSupport.NOT_SUPPORTED) {
+                    boolean nativeGC = TerminalColorQuery.probeGraphemeClustering();
+                    caps.nativeGraphemeClustering = nativeGC;
+                }
+            }
+        }
         return caps;
     }
 
@@ -153,6 +182,9 @@ public final class TerminalCapabilities {
                         caps.backgroundRGB = result.background;
                         caps.paletteColors = result.palette;
                         caps.queried256 = result.supports256;
+                        caps.mode2026Support = result.mode2026;
+                        caps.mode2027Support = result.mode2027;
+                        caps.nativeGraphemeClustering = result.nativeGraphemeClustering;
                         if (result.supportsSixel && detector.imageProtocol == ImageProtocol.NONE) {
                             caps.queriedImageProtocol = ImageProtocol.SIXEL;
                         }
@@ -443,6 +475,41 @@ public final class TerminalCapabilities {
      */
     public int[] brightWhite() {
         return paletteColor(15);
+    }
+
+    /**
+     * Support status for Mode 2026 (synchronized output).
+     * <p>
+     * Only available after a terminal query via {@link #detectAsync()}.
+     * Returns {@code null} if not yet queried.
+     *
+     * @return the mode support status, or null if not queried
+     */
+    public ModeSupport synchronizedOutputSupport() {
+        return mode2026Support;
+    }
+
+    /**
+     * Support status for Mode 2027 (grapheme cluster mode).
+     * <p>
+     * Only available after a terminal query via {@link #detectAsync()}.
+     * Returns {@code null} if not yet queried.
+     *
+     * @return the mode support status, or null if not queried
+     */
+    public ModeSupport graphemeClusterSupport() {
+        return mode2027Support;
+    }
+
+    /**
+     * Whether the terminal natively clusters grapheme sequences even
+     * without Mode 2027 support. Detected via cursor-position probe
+     * in {@link #detectFull()}.
+     *
+     * @return true if native clustering detected, null if not probed
+     */
+    public Boolean nativeGraphemeClustering() {
+        return nativeGraphemeClustering;
     }
 
     /**

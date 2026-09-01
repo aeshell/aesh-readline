@@ -47,6 +47,10 @@ final class TerminalColorQuery {
     boolean supportsSixel;
     int da1DeviceClass = -1;
     List<Integer> da1Features;
+    boolean da1Received;
+    ModeSupport mode2026 = ModeSupport.NO_RESPONSE;
+    ModeSupport mode2027 = ModeSupport.NO_RESPONSE;
+    boolean nativeGraphemeClustering;
 
     TerminalColorQuery() {
     }
@@ -64,9 +68,12 @@ final class TerminalColorQuery {
         try {
             sttyRaw();
 
-            // Build batch: DA1 + OSC 10 (fg) + OSC 11 (bg) + OSC 4 for 0-15 + color 255
+            // Build batch: DECRQM probes + DA1 + OSC colors
+            // DECRQM responses arrive before DA1 (DA1 acts as fence)
             StringBuilder queries = new StringBuilder();
-            queries.append("\033[c"); // DA1 query
+            queries.append("\033[?2026$p"); // DECRQM: Mode 2026 (synchronized output)
+            queries.append("\033[?2027$p"); // DECRQM: Mode 2027 (grapheme cluster)
+            queries.append("\033[c"); // DA1 query (fence)
             queries.append("\033]10;?").append(BEL);
             queries.append("\033]11;?").append(BEL);
             for (int i = 0; i <= 15; i++) {
@@ -79,14 +86,17 @@ final class TerminalColorQuery {
                 ttyOut.flush();
             }
 
-            // 20 expected terminators: 1 DA1 + 19 OSC responses
-            String response = readResponse(20);
+            // 22 expected terminators: 2 DECRPM + 1 DA1 + 19 OSC responses
+            // (terminals that don't support DECRQM won't send DECRPM, so
+            // the DA1 fence ensures we don't wait for them)
+            String response = readResponse(22);
             if (response == null || response.isEmpty()) {
                 return null;
             }
 
             TerminalColorQuery result = new TerminalColorQuery();
             parseDA1Response(response, result);
+            parseDECRPMResponses(response, result);
             result.foreground = parseOscColorResponse(response, 10, -1);
             result.background = parseOscColorResponse(response, 11, -1);
             result.palette = new LinkedHashMap<>();
@@ -195,7 +205,11 @@ final class TerminalColorQuery {
                 // DA1 response: ESC[?...c
                 count++;
                 inCsi = false;
-            } else if (inCsi && !Character.isDigit(c) && c != ';' && c != '?') {
+            } else if (inCsi && c == 'y') {
+                // DECRPM response: ESC[?<mode>;<Ps>$y
+                count++;
+                inCsi = false;
+            } else if (inCsi && !Character.isDigit(c) && c != ';' && c != '?' && c != '$') {
                 inCsi = false;
             }
         }
@@ -307,6 +321,138 @@ final class TerminalColorQuery {
             return rgb;
         } catch (NumberFormatException e) {
             return null;
+        }
+    }
+
+    // ==================== Grapheme Cluster Probe ====================
+
+    /**
+     * Probe grapheme cluster support via cursor position measurement.
+     * Writes a flag emoji (🇫🇷), queries cursor position, checks whether
+     * the terminal treated it as one cluster (2 columns) or two separate
+     * regional indicators (4 columns).
+     *
+     * @return true if native grapheme clustering is detected
+     */
+    static boolean probeGraphemeClustering() {
+        if (!DEV_TTY.exists() || !DEV_TTY.canRead() || !DEV_TTY.canWrite()) {
+            return false;
+        }
+
+        String savedState = sttyGet();
+        if (savedState == null) {
+            return false;
+        }
+
+        try {
+            sttyRaw();
+
+            // Save cursor, move to column 0, erase line, write flag emoji, query position
+            String probe = "\0337" // save cursor (DECSC)
+                    + "\r" // column 0
+                    + "\033[K" // erase line
+                    + "\uD83C\uDDEB\uD83C\uDDF7" // 🇫🇷 (two regional indicators)
+                    + "\033[6n"; // DSR: query cursor position
+
+            try (FileOutputStream ttyOut = new FileOutputStream(DEV_TTY)) {
+                ttyOut.write(probe.getBytes("UTF-8"));
+                ttyOut.flush();
+            }
+
+            // Read CPR response: ESC [ row ; col R
+            String response = readResponse(1); // expect 1 terminator (the 'R')
+
+            // Restore cursor and erase the test emoji
+            try (FileOutputStream ttyOut = new FileOutputStream(DEV_TTY)) {
+                ttyOut.write(("\0338\033[K").getBytes()); // restore cursor + erase line
+                ttyOut.flush();
+            }
+
+            if (response == null || response.isEmpty()) {
+                return false;
+            }
+
+            // Parse CPR: ESC [ row ; col R
+            int rIdx = response.indexOf('R');
+            if (rIdx < 0)
+                return false;
+            int escIdx = response.lastIndexOf('\033', rIdx);
+            if (escIdx < 0 || escIdx + 2 >= rIdx)
+                return false;
+            String params = response.substring(escIdx + 2, rIdx);
+            String[] parts = params.split(";");
+            if (parts.length >= 2) {
+                try {
+                    int col = Integer.parseInt(parts[1].trim());
+                    // Flag emoji: 2 columns if clustered, 4 if not
+                    return col <= 3;
+                } catch (NumberFormatException e) {
+                    return false;
+                }
+            }
+            return false;
+        } catch (IOException ignored) {
+            return false;
+        } finally {
+            sttyRestore(savedState);
+        }
+    }
+
+    // ==================== DECRPM Response Parsing ====================
+
+    /**
+     * Parse DECRPM (DEC Private Mode Report) responses for Mode 2026 and 2027.
+     * Format: ESC [ ? {mode} ; {Ps} $ y
+     * Ps: 0=not recognized, 1=set, 2=reset(recognized), 3=permanently set, 4=permanently reset
+     */
+    static void parseDECRPMResponses(String response, TerminalColorQuery result) {
+        // If DA1 was received, default unresponded modes to NOT_SUPPORTED
+        if (result.da1DeviceClass >= 0) {
+            result.da1Received = true;
+            result.mode2026 = ModeSupport.NOT_SUPPORTED;
+            result.mode2027 = ModeSupport.NOT_SUPPORTED;
+        }
+
+        int pos = 0;
+        while (pos < response.length()) {
+            // Find ESC [ ?
+            int start = response.indexOf("\033[?", pos);
+            if (start < 0)
+                break;
+
+            // Find $ y (DECRPM terminator)
+            int dollarY = response.indexOf("$y", start + 3);
+            if (dollarY < 0) {
+                // Try to find 'c' (DA1) or other terminator to advance past this CSI
+                int cPos = response.indexOf('c', start + 3);
+                if (cPos >= 0) {
+                    pos = cPos + 1;
+                    continue;
+                }
+                break;
+            }
+
+            // Parse the params between ESC[? and $y
+            String params = response.substring(start + 3, dollarY);
+            String[] parts = params.split(";");
+            if (parts.length >= 2) {
+                try {
+                    int mode = Integer.parseInt(parts[0].trim());
+                    int ps = Integer.parseInt(parts[1].trim());
+                    // Ps: 1=set, 2=reset(recognized), 3=permanently set → SUPPORTED
+                    //     0=not recognized, 4=permanently reset → NOT_SUPPORTED
+                    ModeSupport support = (ps >= 1 && ps <= 3)
+                            ? ModeSupport.SUPPORTED
+                            : ModeSupport.NOT_SUPPORTED;
+
+                    if (mode == 2026)
+                        result.mode2026 = support;
+                    else if (mode == 2027)
+                        result.mode2027 = support;
+                } catch (NumberFormatException ignored) {
+                }
+            }
+            pos = dollarY + 2;
         }
     }
 
