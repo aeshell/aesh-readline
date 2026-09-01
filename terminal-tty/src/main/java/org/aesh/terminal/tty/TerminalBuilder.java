@@ -165,12 +165,20 @@ public final class TerminalBuilder {
     /**
      * Whether we should try to create a system terminal (connected to
      * the local console) vs an external terminal (explicit streams).
+     * <p>
+     * When {@code system} is not explicitly set, this checks that the
+     * streams are System.in/System.out AND that stdin is a real TTY
+     * (not redirected or piped). This follows standard POSIX convention:
+     * programs check {@code isatty(STDIN_FILENO)} to decide whether to
+     * run interactively.
      */
     private boolean isSystemTerminal() {
-        return (system != null && system)
-                || (system == null
-                        && (in == null || in == System.in)
-                        && (out == null || out == System.out));
+        if (system != null) {
+            return system;
+        }
+        return (in == null || in == System.in)
+                && (out == null || out == System.out)
+                && TtyDetect.isStdinTty();
     }
 
     /**
