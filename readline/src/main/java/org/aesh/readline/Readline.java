@@ -236,10 +236,19 @@ public class Readline {
             if (inputProcessor != null) {
                 throw new IllegalStateException("Already reading a line");
             }
+            // Enable history autosuggestions if requested and not already active
+            if (request.historySuggestions() && suggestionProvider == null) {
+                enableHistorySuggestions();
+            }
             inputProcessor = new AeshInputProcessor(request.connection(), request.prompt(),
                     request.continuationPrompt(), request.requestHandler(),
                     request.completions(), request.preProcessors(),
                     request.history(), request.cursorListener(), request.flags());
+            // Apply ghost text style if configured
+            if (request.ghostTextStyleOn() != null && request.ghostTextStyleOff() != null) {
+                inputProcessor.consoleBuffer.setGhostTextStyle(
+                        request.ghostTextStyleOn(), request.ghostTextStyleOff());
+            }
             inputProcessor.start();
             //inputProcessor can be set to null from the start() method
             if (inputProcessor != null)

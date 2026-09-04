@@ -296,7 +296,7 @@ public class EditModeBuilder {
         emacs.addAction(Key.CTRL_L, "clear-screen"); //ctrl-l
         emacs.addAction(Key.ESC, "no-action");
         emacs.addAction(Key.CTRL_LEFT, "backward-word"); //ctrl-left
-        emacs.addAction(Key.CTRL_RIGHT, "forward-word"); //ctrl-right
+        emacs.addAction(Key.CTRL_RIGHT, "forward-char-or-accept-ghost-char");
         emacs.addAction(Key.META_RIGHT, "forward-word"); //alt-right
         emacs.addAction(Key.PGUP, "no-action"); //page-up
         emacs.addAction(Key.PGDOWN, "no-action"); //page-down

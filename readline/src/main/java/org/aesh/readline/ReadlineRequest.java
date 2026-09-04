@@ -64,6 +64,9 @@ public class ReadlineRequest {
     private final History history;
     private final CursorListener cursorListener;
     private final EnumMap<ReadlineFlag, Integer> flags;
+    private final boolean historySuggestions;
+    private final String ghostTextStyleOn;
+    private final String ghostTextStyleOff;
 
     private ReadlineRequest(Builder builder) {
         this.connection = builder.connection;
@@ -78,6 +81,9 @@ public class ReadlineRequest {
         this.history = builder.history;
         this.cursorListener = builder.cursorListener;
         this.flags = builder.flags;
+        this.historySuggestions = builder.historySuggestions;
+        this.ghostTextStyleOn = builder.ghostTextStyleOn;
+        this.ghostTextStyleOff = builder.ghostTextStyleOff;
     }
 
     /**
@@ -181,6 +187,31 @@ public class ReadlineRequest {
     }
 
     /**
+     * Returns whether fish-style history autosuggestions are enabled.
+     * When enabled, the most recent matching history entry is shown as
+     * greyed-out ghost text after the cursor as the user types.
+     *
+     * @return true if history autosuggestions are enabled
+     */
+    public boolean historySuggestions() {
+        return historySuggestions;
+    }
+
+    /**
+     * Returns the ANSI escape to enable ghost text styling, or null for default.
+     */
+    public String ghostTextStyleOn() {
+        return ghostTextStyleOn;
+    }
+
+    /**
+     * Returns the ANSI escape to disable ghost text styling, or null for default.
+     */
+    public String ghostTextStyleOff() {
+        return ghostTextStyleOff;
+    }
+
+    /**
      * Builder for constructing {@link ReadlineRequest} instances.
      * The {@link #connection(Connection)}, {@link #prompt(Prompt)}, and
      * {@link #requestHandler(Consumer)} fields are required.
@@ -196,6 +227,9 @@ public class ReadlineRequest {
         private History history;
         private CursorListener cursorListener;
         private EnumMap<ReadlineFlag, Integer> flags = new EnumMap<>(ReadlineFlag.class);
+        private boolean historySuggestions;
+        private String ghostTextStyleOn;
+        private String ghostTextStyleOff;
 
         private Builder() {
         }
@@ -354,6 +388,37 @@ public class ReadlineRequest {
          */
         public Builder flags(EnumMap<ReadlineFlag, Integer> flags) {
             this.flags = flags != null ? flags : new EnumMap<>(ReadlineFlag.class);
+            return this;
+        }
+
+        /**
+         * Enables fish-style history autosuggestions. When enabled, the most
+         * recent matching history entry is shown as greyed-out ghost text
+         * after the cursor as the user types. Accept with Right arrow or End.
+         *
+         * @param enable true to enable history autosuggestions
+         * @return this builder
+         */
+        public Builder historySuggestions(boolean enable) {
+            this.historySuggestions = enable;
+            return this;
+        }
+
+        /**
+         * Sets the ANSI style for ghost text (autosuggestion) rendering.
+         * Default is SGR 2 (dim/faint). Common alternatives:
+         * <ul>
+         * <li>{@code "\033[90m"} / {@code "\033[39m"} — bright black (grey)</li>
+         * <li>{@code "\033[2;3m"} / {@code "\033[22;23m"} — dim + italic</li>
+         * </ul>
+         *
+         * @param styleOn ANSI escape to enable the style
+         * @param styleOff ANSI escape to disable the style
+         * @return this builder
+         */
+        public Builder ghostTextStyle(String styleOn, String styleOff) {
+            this.ghostTextStyleOn = styleOn;
+            this.ghostTextStyleOff = styleOff;
             return this;
         }
 

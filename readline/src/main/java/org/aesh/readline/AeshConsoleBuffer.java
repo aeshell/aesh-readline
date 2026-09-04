@@ -42,6 +42,8 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
     private Size size;
 
     private String ghostText;
+    private String ghostTextStyleOn = ANSI.DIM_STRING;
+    private String ghostTextStyleOff = ANSI.DIM_OFF_STRING;
 
     private static final Logger LOGGER = LoggerUtil.getLogger(AeshConsoleBuffer.class.getName());
     private final CursorListener cursorListener;
@@ -288,16 +290,29 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
         }
     }
 
+    /**
+     * Sets the ANSI style used for rendering ghost text (autosuggestions).
+     * Default is SGR 2 (dim/faint). Use SGR 90 (bright black) for
+     * terminals where dim rendering is poor.
+     *
+     * @param styleOn the ANSI escape to enable the style (e.g., "\033[2m" for dim, "\033[90m" for grey)
+     * @param styleOff the ANSI escape to disable the style (e.g., "\033[22m" for dim off, "\033[39m" for default fg)
+     */
+    public void setGhostTextStyle(String styleOn, String styleOff) {
+        this.ghostTextStyleOn = styleOn;
+        this.ghostTextStyleOff = styleOff;
+    }
+
     @Override
     public void showGhostText(String suggestion) {
         if (suggestion == null || suggestion.isEmpty())
             return;
         clearGhostText();
-        // Save cursor, write dim text, erase rest of line, restore cursor — single write
+        // Save cursor, write styled text, erase rest of line, restore cursor — single write
         connection.write(ANSI.CURSOR_SAVE
-                + ANSI.DIM_STRING
+                + ghostTextStyleOn
                 + suggestion
-                + ANSI.DIM_OFF_STRING
+                + ghostTextStyleOff
                 + ANSI.ERASE_LINE_FROM_CURSOR_STRING
                 + ANSI.CURSOR_RESTORE);
         ghostText = suggestion;
@@ -332,6 +347,27 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
             String remaining = ghostText.substring(i);
 
             // Erase the ghost text display first (screen-level to handle wrapping)
+            connection.write(ANSI.CURSOR_SAVE
+                    + ANSI.ERASE_SCREEN_FROM_CURSOR_STRING
+                    + ANSI.CURSOR_RESTORE);
+
+            ghostText = null;
+            writeString(accepted);
+
+            // Show remaining ghost text if any
+            if (!remaining.isEmpty()) {
+                showGhostText(remaining);
+            }
+        }
+    }
+
+    @Override
+    public void acceptGhostTextChar() {
+        if (ghostText != null && !ghostText.isEmpty()) {
+            String accepted = ghostText.substring(0, 1);
+            String remaining = ghostText.substring(1);
+
+            // Erase the ghost text display
             connection.write(ANSI.CURSOR_SAVE
                     + ANSI.ERASE_SCREEN_FROM_CURSOR_STRING
                     + ANSI.CURSOR_RESTORE);

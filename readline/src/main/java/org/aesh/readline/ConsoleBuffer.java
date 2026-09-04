@@ -247,6 +247,22 @@ public interface ConsoleBuffer {
     }
 
     /**
+     * Accept a single character from the currently displayed ghost text into the buffer.
+     * The remaining ghost text continues to be displayed.
+     */
+    default void acceptGhostTextChar() {
+    }
+
+    /**
+     * Sets the ANSI style used for rendering ghost text (autosuggestions).
+     *
+     * @param styleOn the ANSI escape to enable the style
+     * @param styleOff the ANSI escape to disable the style
+     */
+    default void setGhostTextStyle(String styleOn, String styleOff) {
+    }
+
+    /**
      * Get the ghost text for autocompletion preview, wrapped in Optional.
      *
      * @return an Optional containing the ghost text, or empty if none

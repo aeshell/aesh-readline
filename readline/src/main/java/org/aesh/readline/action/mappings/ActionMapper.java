@@ -116,6 +116,8 @@ public class ActionMapper {
                 return new DeleteChar(); //TODO: need a proper impl
             case "forward-char":
                 return new ForwardChar();
+            case "forward-char-or-accept-ghost-char":
+                return new ForwardCharOrAcceptGhostChar();
             case "forward-search-history":
                 return new ForwardSearchHistory();
             case "forward-word":
