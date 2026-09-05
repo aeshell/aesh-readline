@@ -202,11 +202,18 @@ public class TerminalEnvironmentTest {
         }
     }
 
+    // Note: These live-environment tests guard against JetBrains because its
+    // TERMINAL_EMULATOR env var is inherited by child processes (including test
+    // runners) alongside the host terminal's env vars (e.g., GHOSTTY_RESOURCES_DIR).
+    // JetBrains has the highest detection priority, so when both are present,
+    // getTerminalType() correctly returns JETBRAINS. The deterministic tests
+    // below (testDetect*) cover the isolated detection logic.
+
     @Test
     public void testKittyDetection() {
         TerminalEnvironment env = TerminalEnvironment.getInstance();
 
-        if (env.isKitty()) {
+        if (env.isKitty() && !env.isJetBrains()) {
             assertEquals("Kitty should map to KITTY terminal type",
                     Device.TerminalType.KITTY, env.getTerminalType());
         }
@@ -216,7 +223,7 @@ public class TerminalEnvironmentTest {
     public void testGhosttyDetection() {
         TerminalEnvironment env = TerminalEnvironment.getInstance();
 
-        if (env.isGhostty()) {
+        if (env.isGhostty() && !env.isJetBrains()) {
             assertEquals("Ghostty should map to GHOSTTY terminal type",
                     Device.TerminalType.GHOSTTY, env.getTerminalType());
         }
@@ -226,7 +233,7 @@ public class TerminalEnvironmentTest {
     public void testWezTermDetection() {
         TerminalEnvironment env = TerminalEnvironment.getInstance();
 
-        if (env.isWezTerm()) {
+        if (env.isWezTerm() && !env.isJetBrains()) {
             assertEquals("WezTerm should map to WEZTERM terminal type",
                     Device.TerminalType.WEZTERM, env.getTerminalType());
         }
@@ -236,7 +243,7 @@ public class TerminalEnvironmentTest {
     public void testITerm2Detection() {
         TerminalEnvironment env = TerminalEnvironment.getInstance();
 
-        if (env.isITerm2()) {
+        if (env.isITerm2() && !env.isJetBrains()) {
             assertEquals("iTerm2 should map to ITERM2 terminal type",
                     Device.TerminalType.ITERM2, env.getTerminalType());
         }
@@ -246,7 +253,7 @@ public class TerminalEnvironmentTest {
     public void testWindowsTerminalDetection() {
         TerminalEnvironment env = TerminalEnvironment.getInstance();
 
-        if (env.isWindowsTerminal()) {
+        if (env.isWindowsTerminal() && !env.isJetBrains()) {
             assertEquals("Windows Terminal should map to WINDOWS_TERMINAL type",
                     Device.TerminalType.WINDOWS_TERMINAL, env.getTerminalType());
         }
@@ -256,7 +263,7 @@ public class TerminalEnvironmentTest {
     public void testConEmuDetection() {
         TerminalEnvironment env = TerminalEnvironment.getInstance();
 
-        if (env.isConEmu()) {
+        if (env.isConEmu() && !env.isJetBrains()) {
             assertEquals("ConEmu should map to CONEMU terminal type",
                     Device.TerminalType.CONEMU, env.getTerminalType());
         }
@@ -266,7 +273,7 @@ public class TerminalEnvironmentTest {
     public void testAlacrittyDetection() {
         TerminalEnvironment env = TerminalEnvironment.getInstance();
 
-        if (env.isAlacritty()) {
+        if (env.isAlacritty() && !env.isJetBrains()) {
             assertEquals("Alacritty should map to ALACRITTY terminal type",
                     Device.TerminalType.ALACRITTY, env.getTerminalType());
         }
