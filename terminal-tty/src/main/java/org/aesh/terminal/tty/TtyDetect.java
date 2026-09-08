@@ -87,9 +87,9 @@ public final class TtyDetect {
                 return winResult;
             }
             // Fallback for Windows when native library is not available:
-            // assume TTY if not explicitly piped (conservative — avoids
-            // touching System.console()).
-            return true;
+            // deny by default — ExternalTerminal handles pipes correctly,
+            // and claiming a console we can't drive is dangerous.
+            return false;
         }
         // Try Console.isTerminal() first (Java 22+, no FFM needed).
         // This avoids loading LibC and triggering FFM restricted method

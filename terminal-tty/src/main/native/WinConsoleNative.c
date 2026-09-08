@@ -23,6 +23,11 @@ typedef int BOOL;
 
 #include <jni.h>
 
+/* Validate a console handle passed from Java. Returns 0 (invalid) or 1 (valid). */
+static int isValidHandle(jlong handle) {
+    return handle != -1L && handle != 0L;
+}
+
 /*
  * Class:     org_aesh_terminal_tty_impl_WinConsoleNative
  * Method:    getStdHandle
@@ -43,11 +48,14 @@ JNIEXPORT jlong JNICALL Java_org_aesh_terminal_tty_impl_WinConsoleNative_getStdH
 /*
  * Class:     org_aesh_terminal_tty_impl_WinConsoleNative
  * Method:    getConsoleMode
+ * Returns:   the console mode flags, or -1 on error/invalid handle
  */
 JNIEXPORT jint JNICALL Java_org_aesh_terminal_tty_impl_WinConsoleNative_getConsoleMode
   (JNIEnv *env, jclass cls, jlong handle)
 {
 #ifdef _WIN32
+    if (!isValidHandle(handle))
+        return -1;
     DWORD mode;
     if (!GetConsoleMode((HANDLE)(intptr_t)handle, &mode))
         return -1;
@@ -60,11 +68,14 @@ JNIEXPORT jint JNICALL Java_org_aesh_terminal_tty_impl_WinConsoleNative_getConso
 /*
  * Class:     org_aesh_terminal_tty_impl_WinConsoleNative
  * Method:    setConsoleMode
+ * Returns:   true if successful, false on error/invalid handle
  */
 JNIEXPORT jboolean JNICALL Java_org_aesh_terminal_tty_impl_WinConsoleNative_setConsoleMode
   (JNIEnv *env, jclass cls, jlong handle, jint mode)
 {
 #ifdef _WIN32
+    if (!isValidHandle(handle))
+        return JNI_FALSE;
     return SetConsoleMode((HANDLE)(intptr_t)handle, (DWORD)mode) ? JNI_TRUE : JNI_FALSE;
 #else
     return JNI_FALSE;
@@ -74,26 +85,30 @@ JNIEXPORT jboolean JNICALL Java_org_aesh_terminal_tty_impl_WinConsoleNative_setC
 /*
  * Class:     org_aesh_terminal_tty_impl_WinConsoleNative
  * Method:    getConsoleOutputCP
+ * Returns:   the output code page, or -1 on non-Windows
  */
 JNIEXPORT jint JNICALL Java_org_aesh_terminal_tty_impl_WinConsoleNative_getConsoleOutputCP
   (JNIEnv *env, jclass cls)
 {
 #ifdef _WIN32
-    return (jint)GetConsoleOutputCP();
+    UINT cp = GetConsoleOutputCP();
+    return cp != 0 ? (jint)cp : -1;
 #else
-    return 65001; /* UTF-8 fallback */
+    return -1;
 #endif
 }
 
 /*
  * Class:     org_aesh_terminal_tty_impl_WinConsoleNative
  * Method:    getConsoleSize
- * Returns:   int[]{width, height} or NULL on error
+ * Returns:   int[]{width, height} or NULL on error/invalid handle
  */
 JNIEXPORT jintArray JNICALL Java_org_aesh_terminal_tty_impl_WinConsoleNative_getConsoleSize
   (JNIEnv *env, jclass cls, jlong handle)
 {
 #ifdef _WIN32
+    if (!isValidHandle(handle))
+        return NULL;
     CONSOLE_SCREEN_BUFFER_INFO info;
     if (!GetConsoleScreenBufferInfo((HANDLE)(intptr_t)handle, &info))
         return NULL;
@@ -111,48 +126,19 @@ JNIEXPORT jintArray JNICALL Java_org_aesh_terminal_tty_impl_WinConsoleNative_get
 
 /*
  * Class:     org_aesh_terminal_tty_impl_WinConsoleNative
- * Method:    readConsoleKeyEvent
- * Returns:   int[]{keyDown, repeatCount, vKeyCode, unicodeChar, controlKeyState}
- *            or NULL if no key event was read
- */
-JNIEXPORT jintArray JNICALL Java_org_aesh_terminal_tty_impl_WinConsoleNative_readConsoleKeyEvent
-  (JNIEnv *env, jclass cls, jlong handle)
-{
-#ifdef _WIN32
-    INPUT_RECORD record;
-    DWORD eventsRead;
-    if (!ReadConsoleInputW((HANDLE)(intptr_t)handle, &record, 1, &eventsRead))
-        return NULL;
-    if (eventsRead == 0 || record.EventType != KEY_EVENT)
-        return NULL;
-    KEY_EVENT_RECORD *ke = &record.Event.KeyEvent;
-    jint fields[5];
-    fields[0] = ke->bKeyDown ? 1 : 0;
-    fields[1] = (jint)ke->wRepeatCount;
-    fields[2] = (jint)ke->wVirtualKeyCode;
-    fields[3] = (jint)ke->uChar.UnicodeChar;
-    fields[4] = (jint)ke->dwControlKeyState;
-    jintArray result = (*env)->NewIntArray(env, 5);
-    if (result == NULL) return NULL;
-    (*env)->SetIntArrayRegion(env, result, 0, 5, fields);
-    return result;
-#else
-    return NULL;
-#endif
-}
-
-/*
- * Class:     org_aesh_terminal_tty_impl_WinConsoleNative
  * Method:    readConsoleInputEvent
  * Returns:   int[] where first element is the event type:
- *            KEY_EVENT (1):              {1, keyDown, repeatCount, vKeyCode, unicodeChar, controlKeyState}
+ *            KEY_EVENT (1):                {1, keyDown, repeatCount, vKeyCode, unicodeChar, controlKeyState}
+ *            MOUSE_EVENT (2):              {2, x, y, buttonState, controlKeyState, eventFlags}
  *            WINDOW_BUFFER_SIZE_EVENT (4): {4, width, height}
- *            or NULL if no relevant event was read
+ *            Returns NULL for other event types (focus, menu) or on error/invalid handle.
  */
 JNIEXPORT jintArray JNICALL Java_org_aesh_terminal_tty_impl_WinConsoleNative_readConsoleInputEvent
   (JNIEnv *env, jclass cls, jlong handle)
 {
 #ifdef _WIN32
+    if (!isValidHandle(handle))
+        return NULL;
     INPUT_RECORD record;
     DWORD eventsRead;
     if (!ReadConsoleInputW((HANDLE)(intptr_t)handle, &record, 1, &eventsRead))
@@ -212,17 +198,25 @@ JNIEXPORT jintArray JNICALL Java_org_aesh_terminal_tty_impl_WinConsoleNative_rea
 /*
  * Class:     org_aesh_terminal_tty_impl_WinConsoleNative
  * Method:    writeConsole
+ * Returns:   true if all characters were written, false on error/partial write/invalid args
  */
 JNIEXPORT jboolean JNICALL Java_org_aesh_terminal_tty_impl_WinConsoleNative_writeConsole
   (JNIEnv *env, jclass cls, jlong handle, jcharArray buffer, jint length)
 {
 #ifdef _WIN32
+    if (!isValidHandle(handle))
+        return JNI_FALSE;
+    if (buffer == NULL || length < 0)
+        return JNI_FALSE;
+    jsize arrayLen = (*env)->GetArrayLength(env, buffer);
+    if (length > arrayLen)
+        return JNI_FALSE;
     jchar *chars = (*env)->GetCharArrayElements(env, buffer, NULL);
     if (chars == NULL) return JNI_FALSE;
     DWORD written;
     BOOL ok = WriteConsoleW((HANDLE)(intptr_t)handle, chars, (DWORD)length, &written, NULL);
     (*env)->ReleaseCharArrayElements(env, buffer, chars, JNI_ABORT);
-    return ok ? JNI_TRUE : JNI_FALSE;
+    return (ok && written == (DWORD)length) ? JNI_TRUE : JNI_FALSE;
 #else
     return JNI_FALSE;
 #endif

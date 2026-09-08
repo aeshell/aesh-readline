@@ -71,7 +71,7 @@ public final class WinConsoleNative {
     /**
      * Returns the console output code page.
      *
-     * @return the output code page identifier
+     * @return the output code page identifier, or -1 on error/non-Windows
      */
     public static native int getConsoleOutputCP();
 
@@ -92,8 +92,6 @@ public final class WinConsoleNative {
 
     /** Console mode flag: enable virtual terminal processing on output handle. */
     public static final int ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x0004;
-    /** Console mode flag: enable virtual terminal input on input handle. */
-    public static final int ENABLE_VIRTUAL_TERMINAL_INPUT = 0x0200;
 
     /**
      * Read a console input event (key or window resize).
@@ -113,8 +111,8 @@ public final class WinConsoleNative {
      *
      * @param handle the console output handle
      * @param buffer the characters to write
-     * @param length the number of characters to write
-     * @return true if successful
+     * @param length the number of characters to write (must be &lt;= buffer.length)
+     * @return true if all characters were written successfully
      */
     public static native boolean writeConsole(long handle, char[] buffer, int length);
 

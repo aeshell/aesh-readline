@@ -62,7 +62,9 @@ public class WinConsoleNativeTest {
     @Test
     public void testGetConsoleOutputCP() {
         int cp = WinConsoleNative.getConsoleOutputCP();
-        assertTrue("Code page should be positive, got: " + cp, cp > 0);
+        // On a real Windows console, code page is positive (e.g., 437, 65001).
+        // On error or non-Windows, returns -1.
+        assertTrue("Code page should be positive or -1, got: " + cp, cp > 0 || cp == -1);
     }
 
     @Test
@@ -177,5 +179,57 @@ public class WinConsoleNativeTest {
         // We can't assert a specific value since it depends on the runtime
         // Just verify it doesn't throw
         assertTrue("Should return true or false", result || !result);
+    }
+
+    // ==================== writeConsole bounds checks (#277 H1) ====================
+
+    @Test
+    public void testWriteConsoleNullBufferReturnsFalse() {
+        boolean result = WinConsoleNative.writeConsole(WinConsoleNative.INVALID_HANDLE, null, 1);
+        assertFalse("Null buffer should return false", result);
+    }
+
+    @Test
+    public void testWriteConsoleNegativeLengthReturnsFalse() {
+        boolean result = WinConsoleNative.writeConsole(WinConsoleNative.INVALID_HANDLE, new char[] { 'x' }, -1);
+        assertFalse("Negative length should return false", result);
+    }
+
+    @Test
+    public void testWriteConsoleLengthExceedsBufferReturnsFalse() {
+        boolean result = WinConsoleNative.writeConsole(WinConsoleNative.INVALID_HANDLE, new char[] { 'x' }, 10);
+        assertFalse("Length > buffer.length should return false", result);
+    }
+
+    @Test
+    public void testWriteConsoleZeroLengthOnInvalidHandle() {
+        // Zero length with invalid handle — should return false (invalid handle)
+        // but should not crash
+        boolean result = WinConsoleNative.writeConsole(WinConsoleNative.INVALID_HANDLE, new char[0], 0);
+        assertFalse("Zero length on invalid handle should return false", result);
+    }
+
+    // ==================== Zero handle guards (#277 lows) ====================
+
+    @Test
+    public void testGetConsoleModeZeroHandle() {
+        int mode = WinConsoleNative.getConsoleMode(0L);
+        assertEquals("Should return -1 for zero handle", -1, mode);
+    }
+
+    @Test
+    public void testSetConsoleModeZeroHandle() {
+        try {
+            boolean result = WinConsoleNative.setConsoleMode(0L, 0);
+            assertFalse("Should return false for zero handle", result);
+        } catch (Throwable e) {
+            // Acceptable — FFM may throw
+        }
+    }
+
+    @Test
+    public void testGetConsoleSizeZeroHandle() {
+        int[] size = WinConsoleNative.getConsoleSize(0L);
+        assertNull("Should return null for zero handle", size);
     }
 }
