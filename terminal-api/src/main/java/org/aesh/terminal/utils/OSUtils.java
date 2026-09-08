@@ -38,10 +38,19 @@ public final class OSUtils {
     /** True if running on Windows. */
     public static final boolean IS_WINDOWS = System.getProperty("os.name").toLowerCase().contains("win");
 
-    /** True if running on Cygwin (Windows with POSIX environment). */
-    public static final boolean IS_CYGWIN = IS_WINDOWS
-            && System.getenv("PWD") != null
-            && System.getenv("PWD").startsWith("/");
+    /**
+     * True if running in a Cygwin, MSYS2, or Git-Bash POSIX environment on Windows.
+     * <p>
+     * Detection uses multiple indicators because no single env var is reliable
+     * across all launch contexts (IDE, cmd.exe, PowerShell, mintty):
+     * <ul>
+     * <li>{@code MSYSTEM} — set by MSYS2 and Git-Bash (e.g., {@code MINGW64}, {@code UCRT64})</li>
+     * <li>{@code CYGWIN} — set in Cygwin environments</li>
+     * <li>{@code TERM_PROGRAM=mintty} — the default Cygwin/MSYS2 terminal</li>
+     * <li>{@code PWD} starting with {@code /} — legacy heuristic, still valid in many setups</li>
+     * </ul>
+     */
+    public static final boolean IS_CYGWIN = IS_WINDOWS && detectCygwinOrMsys();
 
     /** True if running on macOS. */
     public static final boolean IS_OSX = System.getProperty("os.name").toLowerCase().contains("mac");
@@ -51,6 +60,27 @@ public final class OSUtils {
 
     /** True if running on SunOS/Solaris. */
     public static final boolean IS_SUNOS = System.getProperty("os.name").toLowerCase().contains("sunos");
+
+    /**
+     * Detects Cygwin, MSYS2, or Git-Bash environments on Windows.
+     */
+    private static boolean detectCygwinOrMsys() {
+        // MSYSTEM is set by MSYS2 and Git-Bash (e.g., MINGW64, UCRT64, MSYS)
+        if (System.getenv("MSYSTEM") != null) {
+            return true;
+        }
+        // CYGWIN env var is set in Cygwin installations
+        if (System.getenv("CYGWIN") != null) {
+            return true;
+        }
+        // mintty is the default terminal for Cygwin/MSYS2
+        if ("mintty".equals(System.getenv("TERM_PROGRAM"))) {
+            return true;
+        }
+        // Legacy heuristic: PWD starting with / indicates a POSIX-style path
+        String pwd = System.getenv("PWD");
+        return pwd != null && pwd.startsWith("/");
+    }
 
     /** Path to the tty command. */
     public static final String TTY_COMMAND;
