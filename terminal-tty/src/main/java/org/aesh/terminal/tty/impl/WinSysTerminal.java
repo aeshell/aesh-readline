@@ -82,7 +82,6 @@ public class WinSysTerminal extends AbstractWindowsTerminal {
      */
     public WinSysTerminal(String name, boolean nativeSignals, SignalHandler signalHandler) throws IOException {
         super(setVTMode(), System.out, name, nativeSignals, signalHandler);
-        enableVTInput();
     }
 
     protected int getConsoleOutputCP() {
@@ -147,7 +146,32 @@ public class WinSysTerminal extends AbstractWindowsTerminal {
             return new byte[0];
         }
 
-        // Key event: {1, keyDown, repeatCount, vKeyCode, unicodeChar, controlKeyState}
+        return processKeyEvent(event, this::getEscapeSequence, this::getSequence);
+    }
+
+    /**
+     * Converts a Windows KEY_EVENT record into terminal bytes.
+     * <p>
+     * Extracted as a package-private static method so it can be unit-tested
+     * without a live Windows console.
+     * <p>
+     * Note: ENABLE_VIRTUAL_TERMINAL_INPUT is deliberately NOT enabled on the
+     * console input handle. That flag causes Windows to generate duplicate
+     * KEY_EVENT records per keypress (one traditional, one VT with vk=0),
+     * leading to double character input (#276). Instead, we use traditional
+     * ReadConsoleInput KEY_EVENT records and translate virtual key codes to
+     * ANSI escape sequences manually via {@code escapeSequenceLookup}.
+     * Mouse events are handled separately via ENABLE_MOUSE_INPUT and
+     * native MOUSE_EVENT records.
+     *
+     * @param event the KEY_EVENT record: {1, keyDown, repeatCount, vKeyCode, unicodeChar, controlKeyState}
+     * @param escapeSequenceLookup maps virtual key codes to escape sequences (e.g., arrow keys)
+     * @param capabilityLookup maps terminal capabilities to sequences (e.g., key_btab)
+     * @return the bytes to feed to the terminal input pipe, or empty array for filtered events
+     */
+    static byte[] processKeyEvent(int[] event,
+            java.util.function.Function<Short, String> escapeSequenceLookup,
+            java.util.function.Function<Capability, String> capabilityLookup) {
         boolean keyDown = event[1] != 0;
         int repeatCount = event[2];
         short vKeyCode = (short) event[3];
@@ -169,7 +193,10 @@ public class WinSysTerminal extends AbstractWindowsTerminal {
             if (unicodeChar > 0) {
                 boolean shiftPressed = (controlKeyState & SHIFT_PRESSED) != 0;
                 if (unicodeChar == '\t' && shiftPressed) {
-                    sb.append(getSequence(Capability.key_btab));
+                    String btab = capabilityLookup.apply(Capability.key_btab);
+                    if (btab != null) {
+                        sb.append(btab);
+                    }
                 } else {
                     if (isAlt) {
                         sb.append('\033');
@@ -178,7 +205,7 @@ public class WinSysTerminal extends AbstractWindowsTerminal {
                 }
             } else {
                 // virtual keycodes: http://msdn.microsoft.com/en-us/library/windows/desktop/dd375731(v=vs.85).aspx
-                String escapeSequence = getEscapeSequence(vKeyCode);
+                String escapeSequence = escapeSequenceLookup.apply(vKeyCode);
                 if (escapeSequence != null) {
                     for (int k = 0; k < repeatCount; k++) {
                         if (isAlt) {
@@ -198,12 +225,6 @@ public class WinSysTerminal extends AbstractWindowsTerminal {
         return sb.toString().getBytes();
     }
 
-    /**
-     * Try to enable VT input mode on the console input handle.
-     * When enabled, Windows Terminal delivers special keys and mouse events
-     * as VT escape sequences through KEY_EVENT records instead of as
-     * virtual key codes or MOUSE_EVENT records.
-     */
     /**
      * Set the mouse event handler. Enables/disables ENABLE_MOUSE_INPUT
      * on the console input handle.
@@ -236,20 +257,6 @@ public class WinSysTerminal extends AbstractWindowsTerminal {
      */
     public Consumer<MouseEvent> getMouseHandler() {
         return mouseHandler;
-    }
-
-    private void enableVTInput() {
-        if (Handles.INPUT == WinConsoleNative.INVALID_HANDLE) {
-            return;
-        }
-        int mode = WinConsoleNative.getConsoleMode(Handles.INPUT);
-        if (mode == -1) {
-            return;
-        }
-        originalInputMode = mode;
-        if (WinConsoleNative.setConsoleMode(Handles.INPUT, mode | ENABLE_VIRTUAL_TERMINAL_INPUT)) {
-            vtInputEnabled = true;
-        }
     }
 
     private static boolean setVTMode() {

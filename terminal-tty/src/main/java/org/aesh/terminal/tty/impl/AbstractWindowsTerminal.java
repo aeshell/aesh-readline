@@ -85,8 +85,6 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
     protected static final int ENABLE_INSERT_MODE = 0x0020;
     /** Enable quick edit mode. */
     protected static final int ENABLE_QUICK_EDIT_MODE = 0x0040;
-    /** Enable virtual terminal input (VT sequences for special keys and mouse). */
-    protected static final int ENABLE_VIRTUAL_TERMINAL_INPUT = 0x0200;
 
     /** Slave input pipe. */
     protected final OutputStream slaveInputPipe;
@@ -107,10 +105,6 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
 
     private volatile boolean closing;
     private final ConsoleOutput cpConsumer;
-    /** Whether VT input mode was successfully enabled on the input handle. */
-    protected boolean vtInputEnabled;
-    /** Original console input mode, saved for restoration on close. */
-    protected int originalInputMode = -1;
     /** Peeked byte for non-blocking peek support. READ_EXPIRED means no peeked byte. */
     private int peekedByte = READ_EXPIRED;
 
@@ -242,9 +236,6 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
         }
         // Always enable ENABLE_WINDOW_INPUT for resize events
         mode |= ENABLE_WINDOW_INPUT;
-        if (vtInputEnabled) {
-            mode |= ENABLE_VIRTUAL_TERMINAL_INPUT;
-        }
         setConsoleMode(mode);
     }
 
@@ -387,10 +378,6 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
         try {
             slaveInputPipe.close();
         } catch (IOException ignored) {
-        }
-        // Restore original console input mode before closing
-        if (originalInputMode != -1) {
-            setConsoleMode(originalInputMode);
         }
         ShutdownHooks.remove(closer);
         for (Map.Entry<Signal, Object> entry : nativeHandlers.entrySet()) {

@@ -51,8 +51,6 @@ public final class WinConsoleNative {
 
     /** Console mode flag: enable virtual terminal processing on output handle */
     public static final int ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x0004;
-    /** Console mode flag: enable virtual terminal input on input handle */
-    public static final int ENABLE_VIRTUAL_TERMINAL_INPUT = 0x0200;
 
     // CONSOLE_SCREEN_BUFFER_INFO struct layout (22 bytes, 2-byte aligned):
     //   0: dwSize.X            2: dwSize.Y
