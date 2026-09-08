@@ -85,6 +85,8 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
     protected static final int ENABLE_INSERT_MODE = 0x0020;
     /** Enable quick edit mode. */
     protected static final int ENABLE_QUICK_EDIT_MODE = 0x0040;
+    /** Enable extended flags (required to disable ENABLE_QUICK_EDIT_MODE). */
+    protected static final int ENABLE_EXTENDED_FLAGS = 0x0080;
 
     /** Slave input pipe. */
     protected final OutputStream slaveInputPipe;
@@ -105,6 +107,10 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
 
     private volatile boolean closing;
     private final ConsoleOutput cpConsumer;
+    /** Original console input mode, saved at construction for restoration on close. */
+    private int originalInputMode = -1;
+    /** Whether mouse input is currently enabled. */
+    protected boolean mouseInputEnabled;
     /** Peeked byte for non-blocking peek support. READ_EXPIRED means no peeked byte. */
     private int peekedByte = READ_EXPIRED;
 
@@ -134,6 +140,8 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
                         Signals.register(signal.name(), () -> raise(signal)));
             }
         }
+        // Save original console mode for restoration on close
+        originalInputMode = getConsoleMode();
         pump = new Thread(this::pump, "WindowsStreamPump");
         pump.setDaemon(true);
         pump.start();
@@ -214,17 +222,12 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
      */
     public void setAttributes(Attributes attr) {
         attributes.copy(attr);
-        // Start from current mode and modify only the flags that Attributes
-        // maps to, preserving all other Windows-specific flags (ENABLE_MOUSE_INPUT,
-        // ENABLE_WINDOW_INPUT, ENABLE_QUICK_EDIT_MODE, ENABLE_EXTENDED_FLAGS, etc.)
-        int mode = getConsoleMode();
-        if (mode == -1) {
-            mode = 0;
-        }
-        // Clear only the flags we manage — preserve everything else
-        // (ENABLE_MOUSE_INPUT, ENABLE_QUICK_EDIT_MODE, ENABLE_EXTENDED_FLAGS, etc.)
-        mode &= ~(ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT);
-        // Set them based on Attributes
+        // Build the console mode from scratch (matching JLine 3's approach).
+        // This ensures stale flags like ENABLE_QUICK_EDIT_MODE are cleared
+        // when entering raw mode, rather than being preserved from the OS
+        // default. ENABLE_QUICK_EDIT_MODE blocks ReadConsoleInputW while
+        // text selection is active, causing lost keystrokes.
+        int mode = ENABLE_WINDOW_INPUT;
         if (attr.getLocalFlag(Attributes.LocalFlag.ECHO)) {
             mode |= ENABLE_ECHO_INPUT;
         }
@@ -234,8 +237,11 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
         if (attr.getLocalFlag(Attributes.LocalFlag.ISIG)) {
             mode |= ENABLE_PROCESSED_INPUT;
         }
-        // Always enable ENABLE_WINDOW_INPUT for resize events
-        mode |= ENABLE_WINDOW_INPUT;
+        if (mouseInputEnabled) {
+            mode |= ENABLE_MOUSE_INPUT;
+            // ENABLE_EXTENDED_FLAGS is required to disable ENABLE_QUICK_EDIT_MODE
+            mode |= ENABLE_EXTENDED_FLAGS;
+        }
         setConsoleMode(mode);
     }
 
@@ -378,6 +384,10 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
         try {
             slaveInputPipe.close();
         } catch (IOException ignored) {
+        }
+        // Restore original console input mode before closing
+        if (originalInputMode != -1) {
+            setConsoleMode(originalInputMode);
         }
         ShutdownHooks.remove(closer);
         for (Map.Entry<Signal, Object> entry : nativeHandlers.entrySet()) {

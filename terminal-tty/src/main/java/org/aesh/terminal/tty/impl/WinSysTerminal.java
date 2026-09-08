@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 
+import org.aesh.terminal.Attributes;
 import org.aesh.terminal.tty.Capability;
 import org.aesh.terminal.tty.MouseEvent;
 import org.aesh.terminal.tty.Signal;
@@ -233,21 +234,10 @@ public class WinSysTerminal extends AbstractWindowsTerminal {
      */
     public void setMouseHandler(Consumer<MouseEvent> handler) {
         this.mouseHandler = handler;
-        if (Handles.INPUT == WinConsoleNative.INVALID_HANDLE) {
-            return;
-        }
-        int mode = WinConsoleNative.getConsoleMode(Handles.INPUT);
-        if (mode == -1) {
-            return;
-        }
-        if (handler != null) {
-            mode |= ENABLE_MOUSE_INPUT;
-            // Disable quick edit mode — it conflicts with mouse tracking
-            mode &= ~ENABLE_QUICK_EDIT_MODE;
-        } else {
-            mode &= ~ENABLE_MOUSE_INPUT;
-        }
-        WinConsoleNative.setConsoleMode(Handles.INPUT, mode);
+        mouseInputEnabled = handler != null;
+        // Re-apply the current attributes to update ENABLE_MOUSE_INPUT
+        // and ENABLE_EXTENDED_FLAGS in the console mode
+        setAttributes(new Attributes(attributes));
     }
 
     /**
