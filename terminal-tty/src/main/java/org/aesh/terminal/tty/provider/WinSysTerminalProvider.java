@@ -53,10 +53,11 @@ public class WinSysTerminalProvider implements TerminalProvider {
         if (!OSUtils.IS_WINDOWS || OSUtils.IS_CYGWIN) {
             return false;
         }
-        // Check for a real console, not piped/redirected
-        if (System.console() == null) {
-            return false;
-        }
+        // Do NOT call System.console() here — on Windows it triggers the
+        // JDK's internal JLine terminal (JnaWinSysTerminal + WindowsStreamPump)
+        // which competes with our pump for ReadConsoleInputW events (#276).
+        // TtyDetect.isStdinTty() handles the piped/redirected check via
+        // WinConsoleNative.getConsoleMode() without this side effect.
         String term = System.getenv("TERM");
         if ("dumb".equals(term)) {
             return false;

@@ -77,6 +77,20 @@ public final class TtyDetect {
      * @return true if the file descriptor is connected to a terminal
      */
     public static boolean isTty(int fd) {
+        // On Windows, avoid System.console() entirely — it triggers the
+        // JDK's internal JLine terminal initialization (JnaWinSysTerminal),
+        // which starts a WindowsStreamPump thread that competes with our
+        // own pump for ReadConsoleInputW events, causing lost keystrokes (#276).
+        if (OSUtils.IS_WINDOWS) {
+            Boolean winResult = tryWindowsConsoleHandle();
+            if (winResult != null) {
+                return winResult;
+            }
+            // Fallback for Windows when native library is not available:
+            // assume TTY if not explicitly piped (conservative — avoids
+            // touching System.console()).
+            return true;
+        }
         // Try Console.isTerminal() first (Java 22+, no FFM needed).
         // This avoids loading LibC and triggering FFM restricted method
         // warnings when --enable-native-access is not set.
@@ -151,6 +165,38 @@ public final class TtyDetect {
             cachedStderr = isTty(FD_STDERR) ? 1 : 0;
         }
         return cachedStderr == 1;
+    }
+
+    /**
+     * Try to detect a Windows console via WinConsoleNative.getStdHandle() +
+     * getConsoleMode(). This avoids System.console() which triggers the JDK's
+     * internal JLine terminal (JnaWinSysTerminal + WindowsStreamPump) that
+     * competes for ReadConsoleInputW events (#276).
+     * <p>
+     * WinConsoleNative's static init is side-effect-free (loads JNI DLL or
+     * creates FFM downcall handles — no threads, no pumps).
+     *
+     * @return TRUE if a valid console handle exists, FALSE if piped/redirected,
+     *         null if the native library is not available
+     */
+    private static Boolean tryWindowsConsoleHandle() {
+        try {
+            Class<?> winNative = Class.forName("org.aesh.terminal.tty.impl.WinConsoleNative");
+            // STD_INPUT_HANDLE = -10
+            Method getStdHandle = winNative.getMethod("getStdHandle", int.class);
+            long handle = (Long) getStdHandle.invoke(null, -10);
+            // INVALID_HANDLE = -1L
+            if (handle == -1L) {
+                return Boolean.FALSE;
+            }
+            Method getConsoleMode = winNative.getMethod("getConsoleMode", long.class);
+            int mode = (Integer) getConsoleMode.invoke(null, handle);
+            // getConsoleMode returns -1 on failure (pipe/redirected)
+            return mode != -1;
+        } catch (Throwable e) {
+            LOGGER.log(Level.FINE, "WinConsoleNative not available for TTY detection", e);
+            return null;
+        }
     }
 
     /**
