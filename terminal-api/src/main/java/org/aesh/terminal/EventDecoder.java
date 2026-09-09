@@ -79,6 +79,20 @@ public class EventDecoder implements Consumer<int[]> {
     private int sequenceBytesLen;
 
     /**
+     * True if the last emitted codepoint was a carriage return. A chunk
+     * starting with LF then completes a (possibly split) CRLF pair and the
+     * LF is dropped, so one ENTER yields one submit. Set when a chunk ends
+     * with an emitted CR; cleared when the next non-empty chunk resolves it.
+     * Backs CRLF normalization across read() chunk boundaries — cooked-mode
+     * line discipline (MSYS2/Cygwin pipes and consoles, pasted CRLF text)
+     * delivers CRLF per ENTER, and without collapsing the LF would complete
+     * a second, empty submit. Emitted CRs are never withheld, so trailing
+     * CRs always submit promptly (unlike a deferral design, which would
+     * lose a final submit at end-of-stream).
+     */
+    private volatile boolean pendingCr;
+
+    /**
      * Create a new EventDecoder with default control character values.
      * Default values: INTR=3 (Ctrl+C), EOF=4 (Ctrl+D), SUSP=26 (Ctrl+Z).
      */
@@ -247,6 +261,7 @@ public class EventDecoder implements Consumer<int[]> {
      */
     @Override
     public void accept(int[] input) {
+        input = collapseCrLf(input);
         if (signalHandler != null && input.length > 0) {
             // Single-pass signal extraction: scan once, dispatch signals and
             // input segments without re-scanning the remainder.
@@ -295,6 +310,67 @@ public class EventDecoder implements Consumer<int[]> {
             else
                 inputQueue.add(input);
         }
+    }
+
+    /**
+     * Collapse CR LF pairs into a single CR so one ENTER keypress yields one
+     * submit even when the input delivers CRLF (cooked-mode line discipline,
+     * pasted CRLF text). Every codepoint is emitted immediately — nothing is
+     * ever withheld, so trailing CRs submit promptly. Only an LF immediately
+     * following an emitted CR (possibly across chunk boundaries, tracked via
+     * {@link #pendingCr}) is dropped. Lone CR, lone LF, CR CR and LF LF all
+     * pass through; a trailing LF after a collapsed pair is kept, so
+     * explicit blank lines still submit.
+     *
+     * @param input the input code points to normalize
+     * @return the normalized code points, possibly the same array if unchanged
+     */
+    private int[] collapseCrLf(int[] input) {
+        if (input.length == 0) {
+            return input;
+        }
+        int offset = 0;
+        if (pendingCr) {
+            pendingCr = false;
+            if (input[0] == 10) {
+                offset = 1;
+            }
+        }
+        boolean hasCr = false;
+        for (int i = offset; i < input.length; i++) {
+            if (input[i] == 13) {
+                hasCr = true;
+                break;
+            }
+        }
+        if (!hasCr) {
+            if (offset == 0) {
+                return input;
+            }
+            pendingCr = false; // dropped LF completed the split pair
+            int[] rest = new int[input.length - 1];
+            System.arraycopy(input, 1, rest, 0, rest.length);
+            return rest;
+        }
+        int[] collapsed = new int[input.length - offset];
+        int n = 0;
+        boolean prevWasCr = false;
+        for (int i = offset; i < input.length; i++) {
+            int c = input[i];
+            if (c == 10 && prevWasCr) {
+                prevWasCr = false;
+                continue;
+            }
+            collapsed[n++] = c;
+            prevWasCr = (c == 13);
+        }
+        pendingCr = (n > 0 && collapsed[n - 1] == 13);
+        if (n == collapsed.length) {
+            return collapsed;
+        }
+        int[] trimmed = new int[n];
+        System.arraycopy(collapsed, 0, trimmed, 0, n);
+        return trimmed;
     }
 
     // =========================================================================
