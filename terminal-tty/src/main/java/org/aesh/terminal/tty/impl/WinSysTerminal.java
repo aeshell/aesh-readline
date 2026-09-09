@@ -82,7 +82,10 @@ public class WinSysTerminal extends AbstractWindowsTerminal {
      * @throws IOException if an I/O error occurs
      */
     public WinSysTerminal(String name, boolean nativeSignals, SignalHandler signalHandler) throws IOException {
-        super(setVTMode(), System.out, name, nativeSignals, signalHandler);
+        // Pass false: VT output mode is enabled below, AFTER super() has saved
+        // the original output mode. Enabling it here would corrupt the save.
+        super(false, System.out, name, nativeSignals, signalHandler);
+        setConsumeCP(setVTMode());
     }
 
     protected int getConsoleOutputCP() {
@@ -101,6 +104,21 @@ public class WinSysTerminal extends AbstractWindowsTerminal {
     protected void setConsoleMode(int mode) {
         if (Handles.INPUT != WinConsoleNative.INVALID_HANDLE) {
             WinConsoleNative.setConsoleMode(Handles.INPUT, mode);
+        }
+    }
+
+    @Override
+    protected int getOutputConsoleMode() {
+        if (Handles.OUTPUT == WinConsoleNative.INVALID_HANDLE) {
+            return -1;
+        }
+        return WinConsoleNative.getConsoleMode(Handles.OUTPUT);
+    }
+
+    @Override
+    protected void setOutputConsoleMode(int mode) {
+        if (Handles.OUTPUT != WinConsoleNative.INVALID_HANDLE) {
+            WinConsoleNative.setConsoleMode(Handles.OUTPUT, mode);
         }
     }
 

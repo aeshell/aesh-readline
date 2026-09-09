@@ -32,6 +32,7 @@ import java.nio.CharBuffer;
 import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -106,9 +107,12 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
     protected final Thread pump;
 
     private volatile boolean closing;
-    private final ConsoleOutput cpConsumer;
+    private final AtomicBoolean closed = new AtomicBoolean();
+    private ConsoleOutput cpConsumer;
     /** Original console input mode, saved at construction for restoration on close. */
     private int originalInputMode = -1;
+    /** Original console output mode, saved at construction for restoration on close. */
+    private int originalOutputMode = -1;
     /** Whether mouse input is currently enabled. */
     protected boolean mouseInputEnabled;
     /** Peeked byte for non-blocking peek support. READ_EXPIRED means no peeked byte. */
@@ -140,8 +144,9 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
                         Signals.register(signal.name(), () -> raise(signal)));
             }
         }
-        // Save original console mode for restoration on close
+        // Save original console modes for restoration on close
         originalInputMode = getConsoleMode();
+        originalOutputMode = getOutputConsoleMode();
         pump = new Thread(this::pump, "WindowsStreamPump");
         pump.setDaemon(true);
         pump.start();
@@ -270,6 +275,30 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
     protected abstract void setConsoleMode(int mode);
 
     /**
+     * Get the current console output mode.
+     *
+     * @return the output console mode flags
+     */
+    protected abstract int getOutputConsoleMode();
+
+    /**
+     * Set the console output mode.
+     *
+     * @param mode the mode flags to set
+     */
+    protected abstract void setOutputConsoleMode(int mode);
+
+    /**
+     * Sets whether console output goes through the native WriteConsoleW path.
+     * Used by subclasses that enable output features after construction.
+     *
+     * @param consumeCP true to write via WriteConsoleW, false for the byte stream
+     */
+    protected void setConsumeCP(boolean consumeCP) {
+        this.cpConsumer = consumeCP ? new ConsoleOutput() : null;
+    }
+
+    /**
      * Set the terminal size. Not supported on Windows.
      *
      * @param size the size to set
@@ -366,6 +395,9 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
     }
 
     public void close() {
+        if (!closed.compareAndSet(false, true)) {
+            return;
+        }
         closing = true;
         pump.interrupt();
         // Close the slave input pipe so readers get EOF
@@ -376,6 +408,10 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
         // Restore original console input mode before closing
         if (originalInputMode != -1) {
             setConsoleMode(originalInputMode);
+        }
+        // Restore original console output mode before closing
+        if (originalOutputMode != -1) {
+            setOutputConsoleMode(originalOutputMode);
         }
         ShutdownHooks.remove(closer);
         for (Map.Entry<Signal, Object> entry : nativeHandlers.entrySet()) {

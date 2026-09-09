@@ -51,25 +51,36 @@ public class AbstractWindowsTerminalTest {
     private static class StubWindowsTerminal extends AbstractWindowsTerminal {
 
         private static volatile int INIT_MODE = 0;
+        private static volatile int INIT_OUTPUT_MODE = 0;
         private static volatile boolean CONSTRUCTED = false;
 
         int currentMode;
+        int outputMode;
+        int setInputModeCalls;
+        int setOutputModeCalls;
         boolean closed;
 
         StubWindowsTerminal(int initialMode) throws IOException {
-            // Set the mode BEFORE calling super() — super() calls getConsoleMode()
-            // to save originalInputMode, and we need it to return initialMode.
-            this(setInitMode(initialMode));
+            this(initialMode, 0);
+        }
+
+        StubWindowsTerminal(int initialMode, int initialOutputMode) throws IOException {
+            // Set the modes BEFORE calling super() — super() calls getConsoleMode()
+            // and getOutputConsoleMode() to save the originals, and we need them
+            // to return the initial values.
+            this(setInitModes(initialMode, initialOutputMode));
         }
 
         private StubWindowsTerminal(boolean ignored) throws IOException {
             super(false, System.out, "test", false, SignalHandlers.SIG_DFL);
             CONSTRUCTED = true;
             this.currentMode = INIT_MODE;
+            this.outputMode = INIT_OUTPUT_MODE;
         }
 
-        private static boolean setInitMode(int mode) {
+        private static boolean setInitModes(int mode, int outputMode) {
             INIT_MODE = mode;
+            INIT_OUTPUT_MODE = outputMode;
             CONSTRUCTED = false;
             return true;
         }
@@ -89,6 +100,19 @@ public class AbstractWindowsTerminalTest {
         @Override
         protected void setConsoleMode(int mode) {
             currentMode = mode;
+            setInputModeCalls++;
+        }
+
+        @Override
+        protected int getOutputConsoleMode() {
+            // Same construction-time rule as getConsoleMode above.
+            return CONSTRUCTED ? outputMode : INIT_OUTPUT_MODE;
+        }
+
+        @Override
+        protected void setOutputConsoleMode(int mode) {
+            outputMode = mode;
+            setOutputModeCalls++;
         }
 
         @Override
@@ -240,5 +264,50 @@ public class AbstractWindowsTerminalTest {
         term.close();
         assertEquals("close() should restore original mode without mouse flags",
                 originalMode, term.currentMode);
+    }
+
+    // ==================== close() output restore + idempotency (#278) ====================
+
+    @Test
+    public void testCloseRestoresOriginalOutputMode() throws IOException {
+        int originalInput = ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT;
+        int originalOutput = 0x0004; // e.g. ENABLE_VIRTUAL_TERMINAL_PROCESSING pre-set
+        StubWindowsTerminal term = new StubWindowsTerminal(originalInput, originalOutput);
+
+        // Simulate VT-output enable changing the output mode, plus raw input mode
+        term.setOutputConsoleMode(0x0104);
+        Attributes raw = new Attributes();
+        term.setAttributes(raw);
+
+        term.close();
+        assertEquals("close() should restore the original output console mode",
+                originalOutput, term.outputMode);
+        assertEquals("close() should still restore the original input console mode",
+                originalInput, term.currentMode);
+    }
+
+    @Test
+    public void testDoubleCloseRestoresOnce() throws IOException {
+        int originalInput = ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT;
+        int originalOutput = 0x0004;
+        StubWindowsTerminal term = new StubWindowsTerminal(originalInput, originalOutput);
+
+        Attributes raw = new Attributes();
+        term.setAttributes(raw);
+        term.setOutputConsoleMode(0x0104);
+
+        term.close();
+        int inputSetsAfterFirstClose = term.setInputModeCalls;
+        int outputSetsAfterFirstClose = term.setOutputModeCalls;
+
+        term.close();
+        assertEquals("Second close() must not touch the input console mode again",
+                inputSetsAfterFirstClose, term.setInputModeCalls);
+        assertEquals("Second close() must not touch the output console mode again",
+                outputSetsAfterFirstClose, term.setOutputModeCalls);
+        assertEquals("Restored input mode must survive double close",
+                originalInput, term.currentMode);
+        assertEquals("Restored output mode must survive double close",
+                originalOutput, term.outputMode);
     }
 }
