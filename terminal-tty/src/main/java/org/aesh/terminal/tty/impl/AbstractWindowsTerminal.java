@@ -284,9 +284,8 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
      * <p>
      * Returns false because Windows peek goes through a PipedInputStream
      * which has pump thread latency — unreliable for timing-sensitive
-     * escape sequence disambiguation. The poll-based pump loop uses
-     * {@link #supportsNonBlockingWait()} directly via
-     * {@link WinConsoleNative#supportsNonBlockingWait()}.
+     * escape sequence disambiguation. The internal pump loop always uses
+     * WaitForSingleObject with a timeout instead.
      */
     @Override
     public boolean supportsNonBlockingRead() {

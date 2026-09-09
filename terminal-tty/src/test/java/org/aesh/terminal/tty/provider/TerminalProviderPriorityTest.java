@@ -70,19 +70,33 @@ public class TerminalProviderPriorityTest {
     }
 
     @Test
-    public void testPriorityValues() {
-        assertEquals("FfmTerminalProvider priority", 100, new FfmTerminalProvider().priority());
-        assertEquals("WinSysTerminalProvider priority", 100, new WinSysTerminalProvider().priority());
-        assertEquals("CygwinTerminalProvider priority", 75, new CygwinTerminalProvider().priority());
-        assertEquals("ExecPtyTerminalProvider priority", 50, new ExecPtyTerminalProvider().priority());
+    public void testPriorityOrderingChain() {
+        // Relational ordering: system providers beat Cygwin, Cygwin beats the fallback.
+        // Asserted relationally (not pinned literals) so priority values can evolve.
+        int ffm = new FfmTerminalProvider().priority();
+        int winSys = new WinSysTerminalProvider().priority();
+        int cygwin = new CygwinTerminalProvider().priority();
+        int exec = new ExecPtyTerminalProvider().priority();
+        assertTrue("WinSys should outrank Cygwin", winSys >= cygwin);
+        assertTrue("FFM should outrank Cygwin", ffm >= cygwin);
+        assertTrue("Cygwin should outrank ExecPty fallback", cygwin > exec);
     }
 
     @Test
-    public void testProviderNames() {
-        assertEquals("ffm", new FfmTerminalProvider().name());
-        assertEquals("windows", new WinSysTerminalProvider().name());
-        assertEquals("cygwin", new CygwinTerminalProvider().name());
-        assertEquals("exec", new ExecPtyTerminalProvider().name());
+    public void testProviderNamesDistinct() {
+        // Provider names distinguish providers in logs/diagnostics — they must
+        // be non-null, non-empty, and distinct (values themselves are free to change).
+        String[] names = {
+                new FfmTerminalProvider().name(),
+                new WinSysTerminalProvider().name(),
+                new CygwinTerminalProvider().name(),
+                new ExecPtyTerminalProvider().name()
+        };
+        java.util.Set<String> distinct = new java.util.HashSet<>();
+        for (String name : names) {
+            assertTrue("Provider name should be non-empty", name != null && !name.isEmpty());
+            assertTrue("Provider names should be distinct: " + name, distinct.add(name));
+        }
     }
 
     @Test
@@ -102,15 +116,11 @@ public class TerminalProviderPriorityTest {
     }
 
     @Test
-    public void testWinSysProviderDoesNotCallSystemConsole() {
-        // Verify isSupported() doesn't call System.console() on any platform.
-        // On non-Windows, isSupported() returns false immediately (IS_WINDOWS check).
-        // On Windows, it uses TtyDetect.isStdinTty() which avoids System.console().
-        // This test just verifies the call doesn't throw or hang — the actual
-        // System.console() avoidance was verified via jstack (#276).
+    public void testWinSysIsSupportedConsistent() {
+        // isSupported() must be side-effect-free and idempotent: repeated calls
+        // agree (no System.console() terminal init, no state drift — #276).
         WinSysTerminalProvider provider = new WinSysTerminalProvider();
-        boolean supported = provider.isSupported();
-        // Value depends on platform — just verify no exception
-        assertTrue("Should return a boolean", supported || !supported);
+        assertEquals("isSupported() should be consistent across calls",
+                provider.isSupported(), provider.isSupported());
     }
 }

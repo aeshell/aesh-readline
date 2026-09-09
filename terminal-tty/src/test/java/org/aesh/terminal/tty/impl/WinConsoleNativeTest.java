@@ -170,17 +170,6 @@ public class WinConsoleNativeTest {
         }
     }
 
-    @Test
-    public void testSupportsNonBlockingWait() {
-        // On the JNI path, this returns false.
-        // On the FFM path (Java 22+), this returns true.
-        // Either way, the method should not throw.
-        boolean result = WinConsoleNative.supportsNonBlockingWait();
-        // We can't assert a specific value since it depends on the runtime
-        // Just verify it doesn't throw
-        assertTrue("Should return true or false", result || !result);
-    }
-
     // ==================== writeConsole bounds checks (#277 H1) ====================
 
     @Test

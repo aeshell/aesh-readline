@@ -141,16 +141,6 @@ public final class WinConsoleNative {
      */
     public static native int getNumberOfConsoleInputEvents(long handle);
 
-    /**
-     * Whether this implementation supports non-blocking wait with timeout.
-     * Both JNI and FFM variants now have real WaitForSingleObject bindings.
-     *
-     * @return true — WaitForSingleObject is available
-     */
-    public static boolean supportsNonBlockingWait() {
-        return true;
-    }
-
     static {
         if (System.getProperty("os.name", "").toLowerCase().contains("win")) {
             loadLibrary();

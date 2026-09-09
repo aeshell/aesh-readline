@@ -48,19 +48,13 @@ public class TtyDetectWindowsTest {
     }
 
     @Test
-    public void testWindowsFallbackDenyByDefault() {
+    public void testIsTtyDeterministic() {
         if (OSUtils.IS_WINDOWS) {
             return; // Only tests the POSIX fallback path
         }
-        // On non-Windows, the Windows path in isTty() should not return true
-        // because tryWindowsConsoleHandle() returns null and the fallback is false.
-        // We can't directly test this without mocking IS_WINDOWS, but we verify
-        // that the POSIX path (Console.isTerminal / FFM isatty / System.console)
-        // is what actually runs on this platform.
-        // Just verify the method doesn't throw
-        boolean result = TtyDetect.isTty(TtyDetect.FD_STDIN);
-        // Can be true or false depending on whether we're in a TTY
-        assertTrue("Should return a boolean", result || !result);
+        // Detection must be deterministic within a process: repeated calls agree.
+        assertTrue("isTty() should be deterministic",
+                TtyDetect.isTty(TtyDetect.FD_STDIN) == TtyDetect.isTty(TtyDetect.FD_STDIN));
     }
 
     @Test
