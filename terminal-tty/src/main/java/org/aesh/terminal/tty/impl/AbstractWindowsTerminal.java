@@ -293,17 +293,6 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
         return false;
     }
 
-    /**
-     * Whether the pump can use WaitForSingleObject with timeout.
-     * This is separate from {@link #supportsNonBlockingRead()} which
-     * controls whether external callers (Readline) can use peek().
-     *
-     * @return {@code true} if the pump can use non-blocking wait
-     */
-    protected boolean supportsNonBlockingWait() {
-        return WinConsoleNative.supportsNonBlockingWait();
-    }
-
     @Override
     public int read(long timeoutMs) throws IOException {
         // Return peeked byte if available
@@ -511,66 +500,41 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
     /**
      * Pump thread that reads console input and processes it.
      * <p>
-     * On Java 22+ (FFM), uses WaitForSingleObject with a timeout for clean
-     * shutdown without needing to close the console handle. On Java 8-21 (JNI),
-     * blocks on ReadConsoleInputW.
+     * Uses WaitForSingleObject with a timeout so the loop naturally yields
+     * control on each timeout, enabling clean shutdown when {@code closing}
+     * is set — without needing to close the console handle or inject events.
+     * After the first event arrives, drains all pending events before flushing
+     * the pipe. This ensures multi-byte sequences (e.g., escape sequences for
+     * arrow keys) arrive at EventDecoder as complete chunks rather than
+     * byte-by-byte.
      */
     protected void pump() {
         try {
-            if (WinConsoleNative.supportsNonBlockingWait()) {
-                pumpWithTimeout();
-            } else {
-                pumpBlocking();
+            long inputHandle = WinConsoleNative.getStdHandle(WinConsoleNative.STD_INPUT_HANDLE);
+            while (!closing) {
+                int waitResult = WinConsoleNative.waitForSingleObject(inputHandle, PUMP_TIMEOUT_MS);
+                if (waitResult == WinConsoleNative.WAIT_TIMEOUT) {
+                    // Timeout — loop back to check closing flag
+                    continue;
+                }
+                if (waitResult == WinConsoleNative.WAIT_FAILED) {
+                    break;
+                }
+                // WAIT_OBJECT_0: input available — read first event and drain remaining
+                processInputByteNoFlush(readConsoleInput());
+                // Drain all remaining pending events without waiting
+                int pending = WinConsoleNative.getNumberOfConsoleInputEvents(inputHandle);
+                while (pending > 0 && !closing) {
+                    processInputByteNoFlush(readConsoleInput());
+                    pending--;
+                }
+                slaveInputPipe.flush();
             }
         } catch (IOException e) {
             if (!closing) {
                 LOGGER.log(Level.WARNING, "Error in WindowsStreamPump", e);
             }
         }
-    }
-
-    /**
-     * Non-blocking pump loop using WaitForSingleObject with timeout (Java 22+ FFM).
-     * <p>
-     * After the first event arrives, drains all pending events before flushing
-     * the pipe. This ensures multi-byte VT sequences (e.g., ESC [ I for focus
-     * events) arrive at EventDecoder as complete chunks rather than byte-by-byte.
-     */
-    private void pumpWithTimeout() throws IOException {
-        long inputHandle = WinConsoleNative.getStdHandle(WinConsoleNative.STD_INPUT_HANDLE);
-        while (!closing) {
-            int waitResult = WinConsoleNative.waitForSingleObject(inputHandle, PUMP_TIMEOUT_MS);
-            if (waitResult == WinConsoleNative.WAIT_TIMEOUT) {
-                // Timeout — loop back to check closing flag
-                continue;
-            }
-            if (waitResult == WinConsoleNative.WAIT_FAILED) {
-                break;
-            }
-            // WAIT_OBJECT_0: input available — read first event and drain remaining
-            processInputByteNoFlush(readConsoleInput());
-            // Drain all remaining pending events without waiting
-            int pending = WinConsoleNative.getNumberOfConsoleInputEvents(inputHandle);
-            while (pending > 0 && !closing) {
-                processInputByteNoFlush(readConsoleInput());
-                pending--;
-            }
-            slaveInputPipe.flush();
-        }
-    }
-
-    /**
-     * Blocking pump loop (Java 8-21 JNI path).
-     */
-    private void pumpBlocking() throws IOException {
-        while (!closing) {
-            processInputByte(readConsoleInput());
-        }
-    }
-
-    private void processInputByte(byte[] buf) throws IOException {
-        processInputByteNoFlush(buf);
-        slaveInputPipe.flush();
     }
 
     private void processInputByteNoFlush(byte[] buf) throws IOException {

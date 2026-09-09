@@ -125,43 +125,30 @@ public final class WinConsoleNative {
 
     /**
      * Waits for the specified object to be signaled or the timeout to elapse.
-     * <p>
-     * JNI fallback: always returns {@link #WAIT_OBJECT_0} (no timeout support).
-     * The FFM multi-release variant calls the real kernel32 function.
      *
-     * @param handle the object handle
-     * @param timeoutMs timeout in milliseconds
-     * @return {@link #WAIT_OBJECT_0}, {@link #WAIT_TIMEOUT}, or {@link #WAIT_FAILED}
+     * @param handle the object handle (e.g., console input handle)
+     * @param timeoutMs timeout in milliseconds; -1 (0xFFFFFFFF) for infinite
+     * @return {@link #WAIT_OBJECT_0} if signaled, {@link #WAIT_TIMEOUT} if timed out,
+     *         or {@link #WAIT_FAILED} on error
      */
-    public static int waitForSingleObject(long handle, int timeoutMs) {
-        // JNI path: no WaitForSingleObject binding, always report ready
-        return WAIT_OBJECT_0;
-    }
+    public static native int waitForSingleObject(long handle, int timeoutMs);
 
     /**
      * Returns the number of unread console input events.
-     * <p>
-     * JNI fallback: always returns {@code -1} (unsupported).
-     * The FFM multi-release variant calls the real kernel32 function.
      *
      * @param handle the console input handle
-     * @return the number of pending events, or -1 if unsupported
+     * @return the number of pending events, or -1 on error
      */
-    public static int getNumberOfConsoleInputEvents(long handle) {
-        // JNI path: not supported
-        return -1;
-    }
+    public static native int getNumberOfConsoleInputEvents(long handle);
 
     /**
      * Whether this implementation supports non-blocking wait with timeout.
-     * <p>
-     * JNI fallback: returns {@code false}.
-     * The FFM multi-release variant returns {@code true}.
+     * Both JNI and FFM variants now have real WaitForSingleObject bindings.
      *
-     * @return true if WaitForSingleObject is available
+     * @return true — WaitForSingleObject is available
      */
     public static boolean supportsNonBlockingWait() {
-        return false;
+        return true;
     }
 
     static {

@@ -221,3 +221,40 @@ JNIEXPORT jboolean JNICALL Java_org_aesh_terminal_tty_impl_WinConsoleNative_writ
     return JNI_FALSE;
 #endif
 }
+
+/*
+ * Class:     org_aesh_terminal_tty_impl_WinConsoleNative
+ * Method:    waitForSingleObject
+ * Returns:   WAIT_OBJECT_0 (0), WAIT_TIMEOUT (0x102), or WAIT_FAILED (0xFFFFFFFF)
+ */
+JNIEXPORT jint JNICALL Java_org_aesh_terminal_tty_impl_WinConsoleNative_waitForSingleObject
+  (JNIEnv *env, jclass cls, jlong handle, jint timeoutMs)
+{
+#ifdef _WIN32
+    if (!isValidHandle(handle))
+        return 0xFFFFFFFF; /* WAIT_FAILED */
+    return (jint)WaitForSingleObject((HANDLE)(intptr_t)handle, (DWORD)timeoutMs);
+#else
+    return 0xFFFFFFFF; /* WAIT_FAILED */
+#endif
+}
+
+/*
+ * Class:     org_aesh_terminal_tty_impl_WinConsoleNative
+ * Method:    getNumberOfConsoleInputEvents
+ * Returns:   the number of pending events, or -1 on error/invalid handle
+ */
+JNIEXPORT jint JNICALL Java_org_aesh_terminal_tty_impl_WinConsoleNative_getNumberOfConsoleInputEvents
+  (JNIEnv *env, jclass cls, jlong handle)
+{
+#ifdef _WIN32
+    if (!isValidHandle(handle))
+        return -1;
+    DWORD count;
+    if (!GetNumberOfConsoleInputEvents((HANDLE)(intptr_t)handle, &count))
+        return -1;
+    return (jint)count;
+#else
+    return -1;
+#endif
+}

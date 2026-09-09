@@ -8,7 +8,9 @@
       { "name": "getConsoleOutputCP", "parameterTypes": [] },
       { "name": "getConsoleSize", "parameterTypes": ["long"] },
       { "name": "readConsoleInputEvent", "parameterTypes": ["long"] },
-      { "name": "writeConsole", "parameterTypes": ["long", "char[]", "int"] }
+      { "name": "writeConsole", "parameterTypes": ["long", "char[]", "int"] },
+      { "name": "waitForSingleObject", "parameterTypes": ["long", "int"] },
+      { "name": "getNumberOfConsoleInputEvents", "parameterTypes": ["long"] }
     ]
   }
 ]
