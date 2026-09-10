@@ -23,15 +23,13 @@ import java.io.IOException;
 
 import org.aesh.readline.Readline;
 import org.aesh.readline.ReadlineBuilder;
-import org.aesh.terminal.tty.Capability;
 import org.aesh.terminal.tty.TerminalConnection;
 
 /**
  * Minimal readline echo example.
  * <p>
- * Enters the alternate screen once at startup and leaves it on exit, so
- * output behaves the same on terminals with and without the
- * {@code smcup} capability.
+ * Writes everything to the main buffer so output accumulates and persists
+ * after exit on all terminals, regardless of terminfo capabilities.
  *
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
@@ -39,7 +37,6 @@ public class SimpleTestExample {
 
     public static void main(String... args) throws IOException {
         TerminalConnection connection = new TerminalConnection();
-        connection.put(Capability.enter_ca_mode);
         read(connection, ReadlineBuilder.builder().enableHistory(false).build(), "");
         connection.openBlocking();
     }
@@ -49,7 +46,6 @@ public class SimpleTestExample {
 
             if (input != null && input.equals("exit")) {
                 connection.write("we're exiting\n");
-                connection.put(Capability.exit_ca_mode);
                 connection.close();
             } else {
                 connection.write("=====> " + input + "\n");
