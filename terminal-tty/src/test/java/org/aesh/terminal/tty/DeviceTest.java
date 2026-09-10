@@ -73,6 +73,24 @@ public class DeviceTest {
     }
 
     @Test
+    public void testWindowsAlternateScreen() {
+        Device device = DeviceBuilder.builder().name("windows").build();
+        String enterCap = device.getStringCapability(Capability.enter_ca_mode);
+        assertNotNull(enterCap);
+        String exitCap = device.getStringCapability(Capability.exit_ca_mode);
+        assertNotNull(exitCap);
+        // Translate the device capabilities like ANSI does
+        ArrayList<int[]> out = new ArrayList<>();
+        Consumer<int[]> capabilityConsumer = out::add;
+        device.puts(capabilityConsumer, Capability.enter_ca_mode);
+        // Also check the out variable against a hardcoded value \u001B[?1049h
+        assertArrayEquals(new int[] { 27, 91, 63, 49, 48, 52, 57, 104 }, out.get(0));
+        device.puts(capabilityConsumer, Capability.exit_ca_mode);
+        // And \u001B[?1049l for the return to main buffer
+        assertArrayEquals(new int[] { 27, 91, 63, 49, 48, 52, 57, 108 }, out.get(1));
+    }
+
+    @Test
     public void testXTermCapabilities() {
         Device device = DeviceBuilder.builder().name("xterm-256color").build();
         String deviceCap = device.getStringCapability(Capability.enter_ca_mode);

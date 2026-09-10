@@ -65,8 +65,10 @@ public class InfoCmpTest {
 
         assertEquals(6, ints.size());
         assertEquals(4, bools.size());
-        assertEquals(58, strings.size());
+        assertEquals(60, strings.size());
         assertTrue(strings.containsKey(Capability.byName("smso")));
+        assertTrue(strings.containsKey(Capability.byName("smcup")));
+        assertTrue(strings.containsKey(Capability.byName("rmcup")));
     }
 
     @Test
