@@ -27,7 +27,11 @@ import org.aesh.terminal.tty.Capability;
 import org.aesh.terminal.tty.TerminalConnection;
 
 /**
- * Used by TestReadlineInSeparateProcess test
+ * Minimal readline echo example.
+ * <p>
+ * Enters the alternate screen once at startup and leaves it on exit, so
+ * output behaves the same on terminals with and without the
+ * {@code smcup} capability.
  *
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
@@ -35,6 +39,7 @@ public class SimpleTestExample {
 
     public static void main(String... args) throws IOException {
         TerminalConnection connection = new TerminalConnection();
+        connection.put(Capability.enter_ca_mode);
         read(connection, ReadlineBuilder.builder().enableHistory(false).build(), "");
         connection.openBlocking();
     }
@@ -42,7 +47,6 @@ public class SimpleTestExample {
     private static void read(TerminalConnection connection, Readline readline, String prompt) {
         readline.readline(connection, prompt, input -> {
 
-            connection.put(Capability.enter_ca_mode);
             if (input != null && input.equals("exit")) {
                 connection.write("we're exiting\n");
                 connection.put(Capability.exit_ca_mode);
