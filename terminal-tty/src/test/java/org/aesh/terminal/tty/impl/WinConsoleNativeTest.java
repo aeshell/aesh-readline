@@ -231,9 +231,13 @@ public class WinConsoleNativeTest {
     @Test
     public void testWaitForSingleObjectBindingPresent() {
         try {
-            assertEquals("Should return WAIT_FAILED for invalid handle",
-                    WinConsoleNative.WAIT_FAILED,
-                    WinConsoleNative.waitForSingleObject(WinConsoleNative.INVALID_HANDLE, 0));
+            int result = WinConsoleNative.waitForSingleObject(WinConsoleNative.INVALID_HANDLE, 0);
+            // NOTE: the kernel may return WAIT_TIMEOUT (258) instead of
+            // WAIT_FAILED for an invalid handle with a zero timeout. Either
+            // proves the binding exists (a stale DLL would throw
+            // UnsatisfiedLinkError instead, which is what this gate guards).
+            assertTrue("Should return WAIT_FAILED or WAIT_TIMEOUT for invalid handle, got: " + result,
+                    result == WinConsoleNative.WAIT_FAILED || result == WinConsoleNative.WAIT_TIMEOUT);
         } catch (UnsatisfiedLinkError e) {
             throw new AssertionError(
                     "aesh-console.dll predates the waitForSingleObject binding; "
