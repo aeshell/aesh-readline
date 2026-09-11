@@ -217,6 +217,10 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
         attributes.setLocalFlag(Attributes.LocalFlag.ECHO, (mode & ENABLE_ECHO_INPUT) != 0);
         attributes.setLocalFlag(Attributes.LocalFlag.ICANON, (mode & ENABLE_LINE_INPUT) != 0);
         attributes.setLocalFlag(Attributes.LocalFlag.ISIG, (mode & ENABLE_PROCESSED_INPUT) != 0);
+        // Always report ECHOCTL (see CygwinPty.fromConsoleMode): readline's INT
+        // handler uses it solely for ^C feedback, keeping Ctrl+C identical
+        // across Windows and POSIX.
+        attributes.setLocalFlag(Attributes.LocalFlag.ECHOCTL, true);
         return new Attributes(attributes);
     }
 

@@ -303,6 +303,11 @@ public class CygwinPty extends AbstractExecPty {
         attr.setLocalFlag(Attributes.LocalFlag.ECHO, (mode & ENABLE_ECHO_INPUT) != 0);
         attr.setLocalFlag(Attributes.LocalFlag.ICANON, (mode & ENABLE_LINE_INPUT) != 0);
         attr.setLocalFlag(Attributes.LocalFlag.ISIG, (mode & ENABLE_PROCESSED_INPUT) != 0);
+        // Always report ECHOCTL: POSIX cooked mode has it on, and readline's
+        // INT handler uses it solely to decide ^C feedback (kernel echo is
+        // off in raw mode, so nothing else can observe it). Keeps Ctrl+C
+        // feedback identical across Windows and POSIX.
+        attr.setLocalFlag(Attributes.LocalFlag.ECHOCTL, true);
         return attr;
     }
 

@@ -129,6 +129,18 @@ public class CygwinPtyConsoleModeTest {
     }
 
     @Test
+    public void testFromConsoleModeAlwaysReportsEchoCtl() {
+        // Readline's INT handler prints ^C iff ECHOCTL is set. POSIX cooked
+        // mode has it on, so Windows must report it too for identical
+        // Ctrl+C feedback — in both cooked and raw mappings.
+        Attributes cooked = CygwinPty.fromConsoleMode(
+                ENABLE_WINDOW_INPUT | ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT);
+        assertTrue(cooked.getLocalFlag(Attributes.LocalFlag.ECHOCTL));
+        Attributes raw = CygwinPty.fromConsoleMode(ENABLE_WINDOW_INPUT);
+        assertTrue(raw.getLocalFlag(Attributes.LocalFlag.ECHOCTL));
+    }
+
+    @Test
     public void testMappingRoundTrip() {
         for (boolean echo : new boolean[] { false, true }) {
             for (boolean icanon : new boolean[] { false, true }) {

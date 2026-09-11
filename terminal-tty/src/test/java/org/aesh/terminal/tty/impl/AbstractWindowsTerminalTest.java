@@ -230,6 +230,19 @@ public class AbstractWindowsTerminalTest {
         term.close();
     }
 
+    @Test
+    public void testGetAttributesReportsEchoCtl() throws IOException {
+        // Readline's INT handler prints ^C iff ECHOCTL is set. POSIX cooked
+        // mode has it on, so report it for identical Ctrl+C feedback.
+        StubWindowsTerminal term = new StubWindowsTerminal(
+                ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT);
+        assertTrue(term.getAttributes().getLocalFlag(Attributes.LocalFlag.ECHOCTL));
+        Attributes raw = new Attributes();
+        term.setAttributes(raw);
+        assertTrue(term.getAttributes().getLocalFlag(Attributes.LocalFlag.ECHOCTL));
+        term.close();
+    }
+
     // ==================== close() mode restore (#277 M5) ====================
 
     @Test
