@@ -85,7 +85,32 @@ public class WinSysTerminal extends AbstractWindowsTerminal {
         // Pass false: VT output mode is enabled below, AFTER super() has saved
         // the original output mode. Enabling it here would corrupt the save.
         super(false, System.out, name, nativeSignals, signalHandler);
-        setConsumeCP(setVTMode());
+        enableVTOutput();
+        // Transport selection depends only on having a real console, not on
+        // VTP success: WriteConsoleW renders text correctly with or without
+        // VT interpretation, while the Encoder byte path depends on the
+        // console output codepage matching the JVM charset.
+        setConsumeCP(isOutputConsoleValid());
+    }
+
+    /**
+     * Enables virtual terminal processing on the output handle so ANSI
+     * escape sequences render. Independent of output transport selection.
+     *
+     * @return true if VT processing was enabled
+     */
+    protected boolean enableVTOutput() {
+        return setVTMode();
+    }
+
+    /**
+     * Whether console output goes through WriteConsoleW (UTF-16,
+     * codepage-independent) rather than the Encoder byte stream.
+     *
+     * @return true when the output handle is a real console
+     */
+    protected boolean isOutputConsoleValid() {
+        return Handles.OUTPUT != WinConsoleNative.INVALID_HANDLE;
     }
 
     protected int getConsoleOutputCP() {

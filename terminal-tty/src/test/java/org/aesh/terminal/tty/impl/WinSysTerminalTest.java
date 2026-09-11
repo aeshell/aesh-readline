@@ -15,6 +15,9 @@ package org.aesh.terminal.tty.impl;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import java.util.function.Function;
 
@@ -220,6 +223,115 @@ public class WinSysTerminalTest {
             byte[] result = WinSysTerminal.processKeyEvent(event, NO_ESCAPE, NO_CAPABILITY);
             assertEquals("Shift+key for '" + c + "' should produce the character",
                     String.valueOf(c), new String(result));
+        }
+    }
+
+    // ==================== Output transport selection ====================
+
+    /**
+     * WinSysTerminal with stubbed console access for headless testing.
+     * Overrides every native touchpoint so no console, DLL, or FFM is needed.
+     */
+    private static class TestableWinSysTerminal extends WinSysTerminal {
+        static boolean consoleValid = true;
+        static boolean vtEnableResult = true;
+        boolean vtOutputEnabled;
+
+        TestableWinSysTerminal() throws java.io.IOException {
+            super("test", false, SignalHandlers.SIG_DFL);
+        }
+
+        @Override
+        protected boolean enableVTOutput() {
+            vtOutputEnabled = true;
+            return vtEnableResult;
+        }
+
+        @Override
+        protected boolean isOutputConsoleValid() {
+            return consoleValid;
+        }
+
+        @Override
+        protected int getConsoleMode() {
+            return 0;
+        }
+
+        @Override
+        protected void setConsoleMode(int mode) {
+        }
+
+        @Override
+        protected int getOutputConsoleMode() {
+            return 0;
+        }
+
+        @Override
+        protected void setOutputConsoleMode(int mode) {
+        }
+
+        @Override
+        protected int getConsoleOutputCP() {
+            return 65001;
+        }
+
+        @Override
+        protected byte[] readConsoleInput() {
+            return new byte[0];
+        }
+
+        @Override
+        protected void pump() {
+        }
+
+        @Override
+        public org.aesh.terminal.tty.Size getSize() {
+            return new org.aesh.terminal.tty.Size(80, 24);
+        }
+    }
+
+    @Test
+    public void testValidConsoleSelectsWriteConsolePath() throws java.io.IOException {
+        TestableWinSysTerminal.consoleValid = true;
+        TestableWinSysTerminal.vtEnableResult = true;
+        TestableWinSysTerminal term = new TestableWinSysTerminal();
+        try {
+            assertNotNull("Valid console should use the WriteConsoleW codepoint consumer",
+                    term.getCodePointConsumer());
+            assertTrue("VT output should still be enabled", term.vtOutputEnabled);
+        } finally {
+            term.close();
+        }
+    }
+
+    @Test
+    public void testInvalidConsoleFallsBackToEncoderPath() throws java.io.IOException {
+        TestableWinSysTerminal.consoleValid = false;
+        TestableWinSysTerminal.vtEnableResult = true;
+        TestableWinSysTerminal term = new TestableWinSysTerminal();
+        try {
+            assertNull("Pipes should fall back to the Encoder byte stream (null consumer)",
+                    term.getCodePointConsumer());
+        } finally {
+            TestableWinSysTerminal.consoleValid = true;
+            term.close();
+        }
+    }
+
+    @Test
+    public void testVtFailureStillSelectsWriteConsolePath() throws java.io.IOException {
+        TestableWinSysTerminal.consoleValid = true;
+        TestableWinSysTerminal.vtEnableResult = false;
+        TestableWinSysTerminal term = new TestableWinSysTerminal();
+        try {
+            // Transport depends only on having a real console: WriteConsoleW
+            // renders text correctly with or without VT interpretation,
+            // while the Encoder byte path depends on codepage agreement.
+            assertNotNull("WriteConsoleW path must not depend on VTP success",
+                    term.getCodePointConsumer());
+        } finally {
+            TestableWinSysTerminal.vtEnableResult = true;
+            term.close();
         }
     }
 }
