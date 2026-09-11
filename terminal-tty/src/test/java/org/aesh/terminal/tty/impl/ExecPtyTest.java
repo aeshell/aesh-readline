@@ -267,6 +267,32 @@ public class ExecPtyTest {
     }
 
     @Test
+    public void testParseAttributesLinuxWithCRLF() {
+        // stty output and samples transported through Windows checkouts
+        // carry \r\n. Parsing must be identical to the LF case (regression:
+        // splitting on the platform separator glued "iutf8\nopost" and
+        // silently dropped IUTF8).
+        Attributes attributes = ExecPty.doGetLinuxAttr(linuxSttySample.replace("\n", "\r\n"));
+        checkAttributestLinux(attributes);
+    }
+
+    @Test
+    public void testParseAttributesUbuntuWithCRLF() {
+        Attributes attributes = ExecPty.doGetLinuxAttr(ubuntuSttySample.replace("\n", "\r\n"));
+        checkAttributestUbuntu(attributes);
+    }
+
+    @Test
+    public void testParseSizeHPUXWithCRLF() {
+        // Explicit CRLF variant: must parse identically to the LF file.
+        String crlf = "TERM='vt200'; export TERM;\r\nLINES=47; export LINES;\r\n"
+                + "COLUMNS=112; export COLUMNS;\r\nERASE='^?'; export ERASE;\r\n";
+        Size size = ExecPty.doGetHPUXSize(crlf);
+        assertEquals(47, size.getHeight());
+        assertEquals(112, size.getWidth());
+    }
+
+    @Test
     public void testParseSizeHPUX() throws IOException {
         if (Config.isOSPOSIXCompatible()) {
             String input = new String(Files.readAllBytes(

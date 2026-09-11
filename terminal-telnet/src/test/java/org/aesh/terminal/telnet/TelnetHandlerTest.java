@@ -385,7 +385,20 @@ public abstract class TelnetHandlerTest extends TelnetTestBase {
         int num = reader.read(hello);
         assertEquals(5, num);
         assertEquals("hello", new String(hello));
+        // The spy stream captures bytes asynchronously: negotiation bytes may
+        // still be in flight when the hello read completes. Wait boundedly
+        // instead of asserting immediately (flaky on loaded CI runners).
         byte[] data = baos.toByteArray();
+        long deadline = System.currentTimeMillis() + 5000;
+        while (data.length < 10 && System.currentTimeMillis() < deadline) {
+            try {
+                Thread.sleep(50);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+            data = baos.toByteArray();
+        }
         assertEquals(10, data.length);
         assertEquals((byte) 'h', data[3]);
         assertEquals((byte) 'e', data[4]);

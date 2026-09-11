@@ -221,4 +221,37 @@ public class WinConsoleNativeTest {
         int[] size = WinConsoleNative.getConsoleSize(0L);
         assertNull("Should return null for zero handle", size);
     }
+
+    // ==================== DLL freshness gate ====================
+    // These call bindings added after the June DLL build. Against a stale
+    // DLL they throw UnsatisfiedLinkError instead of returning sentinels —
+    // failing loudly here keeps a stale binary from shipping silently.
+    // Invalid handles need no console, so these run headless on Windows CI.
+
+    @Test
+    public void testWaitForSingleObjectBindingPresent() {
+        try {
+            assertEquals("Should return WAIT_FAILED for invalid handle",
+                    WinConsoleNative.WAIT_FAILED,
+                    WinConsoleNative.waitForSingleObject(WinConsoleNative.INVALID_HANDLE, 0));
+        } catch (UnsatisfiedLinkError e) {
+            throw new AssertionError(
+                    "aesh-console.dll predates the waitForSingleObject binding; "
+                            + "rebuild with -Pnative-windows or -Pcross-windows",
+                    e);
+        }
+    }
+
+    @Test
+    public void testGetNumberOfConsoleInputEventsBindingPresent() {
+        try {
+            assertEquals("Should return -1 for invalid handle", -1,
+                    WinConsoleNative.getNumberOfConsoleInputEvents(WinConsoleNative.INVALID_HANDLE));
+        } catch (UnsatisfiedLinkError e) {
+            throw new AssertionError(
+                    "aesh-console.dll predates the getNumberOfConsoleInputEvents binding; "
+                            + "rebuild with -Pnative-windows or -Pcross-windows",
+                    e);
+        }
+    }
 }

@@ -35,7 +35,6 @@ import java.util.logging.Logger;
 
 import org.aesh.terminal.Attributes;
 import org.aesh.terminal.tty.Size;
-import org.aesh.terminal.utils.Config;
 import org.aesh.terminal.utils.ExecHelper;
 import org.aesh.terminal.utils.LoggerUtil;
 import org.aesh.terminal.utils.OSUtils;
@@ -269,7 +268,11 @@ public class ExecPty extends AbstractExecPty {
     }
 
     private static void doParseLinuxOptions(String options, Attributes attributes) {
-        String[] optionLines = options.split(Config.getLineSeparator());
+        // Split on newline tolerant of CRLF: stty output and samples use \n,
+        // but files checked out on Windows carry \r\n. Splitting on the
+        // platform separator would glue the last token of each line to the
+        // first token of the next (e.g. "iutf8\nopost"), silently dropping flags.
+        String[] optionLines = options.split("\\r?\\n");
         for (String line : optionLines)
             for (String option : line.trim().split(" ")) {
                 //options starting with - are ignored
@@ -319,7 +322,11 @@ public class ExecPty extends AbstractExecPty {
      * @return size
      */
     static Size doGetHPUXSize(String cfg) {
-        String[] tokens = cfg.split(";");
+        // Strip carriage returns first: files checked out on Windows carry
+        // CRLF, which shifts every positional substring below by one. The
+        // remaining layout is what the indices were written against, and
+        // single-line live ttytype output contains no CR to strip.
+        String[] tokens = cfg.replace("\r", "").split(";");
         return new Size(Integer.parseInt(tokens[4].substring(9)),
                 Integer.parseInt(tokens[2].substring(7)));
     }
