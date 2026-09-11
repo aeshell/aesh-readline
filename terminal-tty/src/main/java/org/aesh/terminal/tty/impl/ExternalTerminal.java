@@ -40,6 +40,14 @@ import java.util.logging.Logger;
 public class ExternalTerminal extends LineDisciplineTerminal {
 
     private static final Logger LOGGER = Logger.getLogger(ExternalTerminal.class.getName());
+
+    /**
+     * Idle poll interval for the pump loop. The pump sleeps this long when
+     * no input is available, so close() (via interrupt) always wakes it
+     * promptly. Bounded worst-case added input latency, negligible CPU idle.
+     */
+    private static final int PUMP_POLL_MS = 10;
+
     private final AtomicBoolean closed = new AtomicBoolean();
     private final Thread pumpThread;
 
@@ -80,20 +88,33 @@ public class ExternalTerminal extends LineDisciplineTerminal {
      * Pumps data from the master input stream to the terminal.
      * This method runs in a separate thread and continuously reads
      * from the master input, processing the bytes through the line discipline.
+     * <p>
+     * Never blocks indefinitely: when no input is available the loop sleeps
+     * briefly (interruptible), so close() always stops the thread even on
+     * uninterruptible, unclosable streams like System.in (#269).
      */
     public void pump() {
         try {
             byte[] bBuf = new byte[1024];
-            while (true) {
-                int c = masterInput.read(bBuf);
-                if (c < 0 || closed.get()) {
-                    //make to close the slaveInputPipe()
-                    //this will prevent the
-                    //Write end dead Exception coming from PipedInputStream
-                    closeSlaveInputPipe();
-                    break;
+            while (!closed.get()) {
+                if (masterInput.available() > 0) {
+                    int c = masterInput.read(bBuf);
+                    if (c < 0) {
+                        //make to close the slaveInputPipe()
+                        //this will prevent the
+                        //Write end dead Exception coming from PipedInputStream
+                        closeSlaveInputPipe();
+                        break;
+                    }
+                    processInputBytes(bBuf, c);
+                } else {
+                    try {
+                        Thread.sleep(PUMP_POLL_MS);
+                    } catch (InterruptedException e) {
+                        // close() interrupted the idle sleep — exit promptly
+                        break;
+                    }
                 }
-                processInputBytes(bBuf, c);
             }
         } catch (IOException e) {
             try {
