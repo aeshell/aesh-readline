@@ -9,8 +9,10 @@
 # Required: JAVA_HOME must point to a JDK with include/jni.h
 
 CC ?= x86_64-w64-mingw32-gcc
-NOEXECSTACK ?= -Wl,--noexecstack
-CFLAGS = -shared -O2 -Wall -Wextra -Werror $(NOEXECSTACK)
+# NOTE: --noexecstack is an ELF-only option and fails on the PE linker.
+# --nxcompat is the Windows equivalent (marks the DLL DEP-compatible).
+NXCOMPAT ?= -Wl,--nxcompat
+CFLAGS = -shared -O2 -Wall -Wextra -Werror -Wno-unused-parameter $(NXCOMPAT)
 
 # JDK includes: prefer the JDK's own win32 jni_md.h over the local shim.
 # The local ./win32/jni_md.h is a minimal fallback for cross-compilation

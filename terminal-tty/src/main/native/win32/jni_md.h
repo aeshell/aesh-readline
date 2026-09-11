@@ -8,7 +8,10 @@
 
 #define JNIEXPORT __declspec(dllexport)
 #define JNIIMPORT __declspec(dllimport)
-#define JNICALL __stdcall
+#ifndef JNICALL
+/* Empty on x86_64 (single calling convention); __stdcall only matters for x86 */
+#define JNICALL
+#endif
 
 typedef long jint;
 typedef long long jlong;

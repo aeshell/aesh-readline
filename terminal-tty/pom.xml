@@ -125,6 +125,14 @@
     <profiles>
         <profile>
             <id>native-windows</id>
+            <!-- Auto-activate only on Windows CI runners: the DLL must be rebuilt
+                 from current sources so tests exercise the real JNI bindings.
+                 Local Windows dev builds without a C compiler are unaffected
+                 (profile stays manual via -Pnative-windows). -->
+            <activation>
+                <os><family>windows</family></os>
+                <property><name>env.GITHUB_ACTIONS</name></property>
+            </activation>
             <build>
                 <plugins>
                     <plugin>
@@ -156,11 +164,11 @@
                                         </condition>
                                         <exec executable="gcc" dir="${project.build.directory}"
                                               failonerror="false" failifexecutionfails="false"
-                                              resultproperty="gcc.noexecstack.result"
+                                              resultproperty="gcc.hardening.result"
                                               if:set="cl.failed">
                                             <arg value="-shared"/>
                                             <arg value="-O2"/>
-                                            <arg value="-Wl,--noexecstack"/>
+                                            <arg value="-Wl,--nxcompat"/>
                                             <arg value="-I${env.JAVA_HOME}\include"/>
                                             <arg value="-I${env.JAVA_HOME}\include\win32"/>
                                             <arg value="-o"/>
@@ -168,12 +176,12 @@
                                             <arg value="${project.basedir}\src\main\native\WinConsoleNative.c"/>
                                             <arg value="-lkernel32"/>
                                         </exec>
-                                        <condition property="gcc.noexecstack.failed">
-                                            <not><equals arg1="${gcc.noexecstack.result}" arg2="0"/></not>
+                                        <condition property="gcc.hardening.failed">
+                                            <not><equals arg1="${gcc.hardening.result}" arg2="0"/></not>
                                         </condition>
                                         <exec executable="gcc" dir="${project.build.directory}"
                                               failonerror="true" failifexecutionfails="true"
-                                              if:set="gcc.noexecstack.failed">
+                                              if:set="gcc.hardening.failed">
                                             <arg value="-shared"/>
                                             <arg value="-O2"/>
                                             <arg value="-I${env.JAVA_HOME}\include"/>
@@ -210,15 +218,15 @@
                                               outputproperty="cross.ld.help" failonerror="true">
                                             <arg value="--help"/>
                                         </exec>
-                                        <condition property="cross.ld.noexecstack.supported">
-                                            <contains string="${cross.ld.help}" substring="--noexecstack"/>
+                                        <condition property="cross.ld.nxcompat.supported">
+                                            <contains string="${cross.ld.help}" substring="--nxcompat"/>
                                         </condition>
                                         <exec executable="x86_64-w64-mingw32-gcc" dir="${project.basedir}/src/main/native"
                                               failonerror="true" failifexecutionfails="true"
-                                              if:set="cross.ld.noexecstack.supported">
+                                              if:set="cross.ld.nxcompat.supported">
                                             <arg value="-shared"/>
                                             <arg value="-O2"/>
-                                            <arg value="-Wl,--noexecstack"/>
+                                            <arg value="-Wl,--nxcompat"/>
                                             <arg value="-I${env.JAVA_HOME}/include"/>
                                             <arg value="-I${project.basedir}/src/main/native/win32"/>
                                             <arg value="-o"/>
@@ -228,7 +236,7 @@
                                         </exec>
                                         <exec executable="x86_64-w64-mingw32-gcc" dir="${project.basedir}/src/main/native"
                                               failonerror="true" failifexecutionfails="true"
-                                              unless:set="cross.ld.noexecstack.supported">
+                                              unless:set="cross.ld.nxcompat.supported">
                                             <arg value="-shared"/>
                                             <arg value="-O2"/>
                                             <arg value="-I${env.JAVA_HOME}/include"/>
