@@ -266,6 +266,13 @@ public class TerminalConnection extends AbstractConnection {
 
     /** Default poll timeout (ms) for the non-blocking read loop. */
     private static final int POLL_TIMEOUT_MS = 100;
+    /**
+     * Poll interval (ms) for the legacy read loop. Bounds the added input
+     * latency (~half the interval on average) and the delay between close()
+     * and reader-thread exit, while keeping idle CPU at one non-blocking
+     * syscall per interval.
+     */
+    private static final int LEGACY_POLL_INTERVAL_MS = 10;
 
     /**
      * Opens the Connection stream with an initial buffer. This method will block and wait for input.
@@ -326,10 +333,16 @@ public class TerminalConnection extends AbstractConnection {
     }
 
     /**
-     * Legacy blocking read loop (Java 8-21, SSH/telnet, non-FFM terminals).
+     * Legacy read loop for terminals without non-blocking read support
+     * (Java 8-21, non-FFM terminals).
      * <p>
-     * Uses {@link InputStream#read(byte[])} which blocks indefinitely. Suspend/awake
-     * uses a {@link CountDownLatch} to pause the reader thread.
+     * Polls {@link InputStream#available()} instead of blocking in
+     * {@link InputStream#read(byte[])} so {@link #close()} — which only flips
+     * the {@code reading} flag — stops the loop within one poll interval.
+     * The underlying stream is never closed here: it may be JVM-global state
+     * such as {@code System.in}, and on some platforms (macOS) closing a tty
+     * fd while another thread reads from it blocks the closer indefinitely.
+     * While suspended, bytes are left in the kernel buffer until awake().
      */
     private void openBlockingLegacy(String buffer) {
         try {
@@ -339,19 +352,33 @@ public class TerminalConnection extends AbstractConnection {
                 decoder.write(buffer.getBytes(inputCharset));
             }
             while (reading) {
+                if (waiting) {
+                    // Suspended (stdin handler removed): don't consume; awake()
+                    // clears the flag and the loop resumes consuming.
+                    if (!sleepPollInterval()) {
+                        close();
+                        break;
+                    }
+                    continue;
+                }
+                int available;
+                try {
+                    available = terminal.input().available();
+                } catch (IOException ioe) {
+                    LOGGER.log(Level.WARNING, "Failed while reading, exiting", ioe);
+                    close();
+                    break;
+                }
+                if (available <= 0) {
+                    if (!sleepPollInterval()) {
+                        close();
+                        break;
+                    }
+                    continue;
+                }
                 int read = terminal.input().read(bBuf);
                 if (read > 0) {
                     decoder.write(bBuf, 0, read);
-                    if (waiting && reading) {
-                        try {
-                            latch.await();
-                        } catch (InterruptedException e) {
-                            Thread.currentThread().interrupt();
-                            LOGGER.log(Level.WARNING,
-                                    "Reader thread was interrupted while waiting on the latch", e);
-                            close();
-                        }
-                    }
                 } else if (read < 0) {
                     close();
                 }
@@ -359,6 +386,21 @@ public class TerminalConnection extends AbstractConnection {
         } catch (IOException ioe) {
             LOGGER.log(Level.WARNING, "Failed while reading, exiting", ioe);
             close();
+        }
+    }
+
+    /**
+     * Sleeps briefly between legacy poll iterations.
+     *
+     * @return false if the thread was interrupted (caller should close and exit)
+     */
+    private static boolean sleepPollInterval() {
+        try {
+            Thread.sleep(LEGACY_POLL_INTERVAL_MS);
+            return true;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return false;
         }
     }
 
@@ -591,29 +633,13 @@ public class TerminalConnection extends AbstractConnection {
         } catch (Exception e) {
             LOGGER.log(Level.WARNING, "Failed to disable terminal modes during close", e);
         }
-        // Close the input stream to unblock any thread blocked in
-        // openBlockingLegacy's terminal.input().read() call. Without this,
-        // ExecPty-based terminals require the user to press a key after
-        // exit before the application terminates (#252).
-        // Guard against closing System.in or streams wrapping stdin's fd
-        // (CygwinPty uses new FileInputStream(FileDescriptor.in)) — closing
-        // those would destroy stdin for the entire JVM.
-        try {
-            if (terminal != null) {
-                InputStream in = terminal.input();
-                if (in != null && in != System.in) {
-                    if (in instanceof java.io.FileInputStream) {
-                        if (((java.io.FileInputStream) in).getFD() != java.io.FileDescriptor.in) {
-                            in.close();
-                        }
-                    } else {
-                        in.close();
-                    }
-                }
-            }
-        } catch (Exception e) {
-            LOGGER.log(Level.FINE, "Failed to close terminal input stream", e);
-        }
+        // NOTE: the input stream is deliberately never closed here.
+        // openBlockingLegacy() polls available() instead of blocking in
+        // read(), so setting reading = false above is sufficient to stop the
+        // reader within one poll interval. Closing the stream is both
+        // unnecessary and unsafe: it may be JVM-global state such as
+        // System.in, and on some platforms (macOS) closing a tty fd while
+        // another thread reads from it blocks the closer indefinitely (#288).
         try {
             //reset attributes and close terminal
             if (attributes != null && terminal != null) {
