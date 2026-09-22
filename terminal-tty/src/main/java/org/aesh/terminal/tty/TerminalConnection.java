@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -41,9 +42,11 @@ import org.aesh.terminal.Terminal;
 import org.aesh.terminal.io.Decoder;
 import org.aesh.terminal.io.Encoder;
 import org.aesh.terminal.tty.impl.ExternalTerminal;
+import org.aesh.terminal.tty.impl.PosixSysTerminal;
 import org.aesh.terminal.tty.impl.WinSysTerminal;
 import org.aesh.terminal.utils.ANSI;
 import org.aesh.terminal.utils.LoggerUtil;
+import org.aesh.terminal.utils.OSUtils;
 
 /**
  * Implementation of Connection meant for local terminal connections.
@@ -80,21 +83,22 @@ public class TerminalConnection extends AbstractConnection {
      */
     public TerminalConnection(Charset inputCharset, Charset outputCharset, InputStream inputStream,
             OutputStream outputStream, Consumer<Connection> handler) throws IOException {
-        if (inputCharset != null)
-            this.inputCharset = inputCharset;
-        else
-            this.inputCharset = Charset.defaultCharset();
-        if (outputCharset != null)
-            this.outputCharset = outputCharset;
-        else
-            this.outputCharset = Charset.defaultCharset();
         this.handler = handler;
-        init(TerminalBuilder.builder()
+        Terminal terminal = TerminalBuilder.builder()
                 .input(inputStream)
                 .output(outputStream)
                 .nativeSignals(true)
                 .name("Aesh console")
-                .build());
+                .build();
+        if (inputCharset != null)
+            this.inputCharset = inputCharset;
+        else
+            this.inputCharset = defaultConnectionCharset(terminal, OSUtils.IS_CYGWIN);
+        if (outputCharset != null)
+            this.outputCharset = outputCharset;
+        else
+            this.outputCharset = defaultConnectionCharset(terminal, OSUtils.IS_CYGWIN);
+        init(terminal);
     }
 
     /**
@@ -148,8 +152,8 @@ public class TerminalConnection extends AbstractConnection {
      * @param terminal the terminal to wrap
      */
     public TerminalConnection(Terminal terminal) {
-        this.inputCharset = Charset.defaultCharset();
-        this.outputCharset = Charset.defaultCharset();
+        this.inputCharset = defaultConnectionCharset(terminal, OSUtils.IS_CYGWIN);
+        this.outputCharset = defaultConnectionCharset(terminal, OSUtils.IS_CYGWIN);
         init(terminal);
     }
 
@@ -582,6 +586,28 @@ public class TerminalConnection extends AbstractConnection {
     @Override
     public org.aesh.terminal.tty.ScreenRegion currentRegion() {
         return currentRegion;
+    }
+
+    /**
+     * Default charset for connection I/O when the caller did not specify one.
+     * <p>
+     * Cygwin/MSYS2 consoles (mintty) speak UTF-8, while the JVM default on
+     * Windows without beta-UTF-8 is a legacy codepage — decoding/encoding
+     * with the JVM default garbles non-ASCII text (#280). Explicitly passed
+     * charsets always win; this only chooses the default.
+     * <p>
+     * Package-private for testing: the Cygwin environment flag is a parameter
+     * because OSUtils.IS_CYGWIN is a static constant.
+     *
+     * @param terminal the terminal being wrapped
+     * @param cygwinEnvironment whether running in Cygwin/MSYS2 on Windows
+     * @return the charset to use for unspecified connection I/O
+     */
+    static Charset defaultConnectionCharset(Terminal terminal, boolean cygwinEnvironment) {
+        if (cygwinEnvironment && terminal instanceof PosixSysTerminal) {
+            return StandardCharsets.UTF_8;
+        }
+        return Charset.defaultCharset();
     }
 
     /**
