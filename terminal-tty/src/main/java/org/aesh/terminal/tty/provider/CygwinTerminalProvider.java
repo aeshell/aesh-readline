@@ -59,6 +59,12 @@ public class CygwinTerminalProvider implements TerminalProvider {
     public Terminal createTerminal(String name, String type, boolean nativeSignals) throws IOException {
         if (type == null) {
             type = System.getenv("TERM");
+            // Cygwin/MSYS default TERM to bare "xterm", but mintty and modern
+            // consoles all support 256 colors — upgrade when TERM is unmodified.
+            // An explicitly passed type is respected as-is.
+            if ("xterm".equals(type)) {
+                type = "xterm-256color";
+            }
         }
         // No GetConsoleMode check here: mintty has no Windows console, so the
         // ground truth for this path is the `tty` command inside

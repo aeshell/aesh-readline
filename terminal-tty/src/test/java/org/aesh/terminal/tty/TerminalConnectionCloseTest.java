@@ -17,6 +17,7 @@ package org.aesh.terminal.tty;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -25,6 +26,7 @@ import java.io.PipedOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.aesh.terminal.utils.ANSI;
 import org.junit.Test;
 
 /**
@@ -106,5 +108,35 @@ public class TerminalConnectionCloseTest {
         TerminalConnection conn = createConnection();
         // Don't set a close handler — close should still work
         conn.close(); // should not throw NPE
+    }
+
+    @Test
+    public void testCloseCleanupSequencesAnsi() {
+        String seq = TerminalConnection.closeCleanupSequences(true, false);
+        assertTrue("Must end synchronized output",
+                seq.contains(ANSI.MODE_2026_DISABLE));
+        assertTrue("Must exit the alternate screen (#273)",
+                seq.contains(ANSI.MAIN_BUFFER));
+        assertTrue("Must ensure the cursor is visible (#273)",
+                seq.contains(ANSI.CURSOR_SHOW));
+        assertFalse("Must not disable focus tracking when not enabled",
+                seq.contains(ANSI.FOCUS_TRACKING_DISABLE));
+        // Order: synchronized-output end, alt-screen exit, cursor show
+        assertTrue("2026-disable must precede alt-screen exit",
+                seq.indexOf(ANSI.MODE_2026_DISABLE) < seq.indexOf(ANSI.MAIN_BUFFER));
+        assertTrue("Alt-screen exit must precede cursor show",
+                seq.indexOf(ANSI.MAIN_BUFFER) < seq.indexOf(ANSI.CURSOR_SHOW));
+    }
+
+    @Test
+    public void testCloseCleanupSequencesNoAnsi() {
+        // External terminals and redirected stdout get no escape sequences
+        assertEquals("", TerminalConnection.closeCleanupSequences(false, false));
+    }
+
+    @Test
+    public void testCloseCleanupSequencesFocus() {
+        assertEquals(ANSI.FOCUS_TRACKING_DISABLE,
+                TerminalConnection.closeCleanupSequences(false, true));
     }
 }

@@ -584,6 +584,35 @@ public class TerminalConnection extends AbstractConnection {
         return currentRegion;
     }
 
+    /**
+     * Build the escape sequence written on close() to release terminal modes.
+     * <p>
+     * Package-private for testing: the byte content of the close cleanup is
+     * verified headless, while the ansi/focus gates are exercised live.
+     *
+     * @param ansi whether ANSI output is enabled (false for external
+     *        terminals and redirected stdout)
+     * @param focusTracking whether focus tracking was enabled
+     * @return the cleanup sequence (possibly empty, never null)
+     */
+    static String closeCleanupSequences(boolean ansi, boolean focusTracking) {
+        StringBuilder cleanup = new StringBuilder();
+        if (ansi) {
+            cleanup.append(ANSI.MODE_2026_DISABLE);
+            // Exit the alternate screen (no-op when already on the main
+            // screen) and ensure the cursor is visible — the same pair Vim
+            // writes on exit. Pty4j-based terminals (IntelliJ) only notice
+            // child exit while processing output; without this the shell
+            // prompt can appear stuck until a keypress (#273).
+            cleanup.append(ANSI.MAIN_BUFFER);
+            cleanup.append(ANSI.CURSOR_SHOW);
+        }
+        if (focusTracking) {
+            cleanup.append(ANSI.FOCUS_TRACKING_DISABLE);
+        }
+        return cleanup.toString();
+    }
+
     @Override
     public void close() {
         if (closed) {
@@ -619,15 +648,9 @@ public class TerminalConnection extends AbstractConnection {
         // Leaving BSU (Mode 2026) without ESU causes the terminal
         // to buffer all output indefinitely.
         try {
-            StringBuilder cleanup = new StringBuilder();
-            if (supportsAnsi()) {
-                cleanup.append(ANSI.MODE_2026_DISABLE);
-            }
-            if (focusHandler() != null) {
-                cleanup.append(ANSI.FOCUS_TRACKING_DISABLE);
-            }
-            if (cleanup.length() > 0) {
-                byte[] cleanupBytes = cleanup.toString().getBytes();
+            String cleanup = closeCleanupSequences(supportsAnsi(), focusHandler() != null);
+            if (!cleanup.isEmpty()) {
+                byte[] cleanupBytes = cleanup.getBytes();
                 writeBytes(cleanupBytes, 0, cleanupBytes.length);
             }
         } catch (Exception e) {
