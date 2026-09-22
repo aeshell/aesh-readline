@@ -116,7 +116,11 @@ jobs:
     strategy:
       matrix:
         java-version: ['17', '25']
-    name: windows-test (JDK ${{ matrix.java-version }})
+        # Validate charset-default paths (Phase 3a, #280): the runners'
+        # default JVM charset is windows-1252, the UTF-8 leg pins the
+        # Cygwin/UTF-8 agreement explicitly.
+        file-encoding: ['UTF-8', 'windows-1252']
+    name: windows-test (JDK ${{ matrix.java-version }}, ${{ matrix.file-encoding }})
 
     steps:
     - uses: actions/checkout@v7
@@ -132,4 +136,44 @@ jobs:
       run: mvn clean install -pl terminal-api -am -DskipTests -Dformat.skip=true
     - name: Build and test terminal-tty
       shell: bash
+      env:
+        JAVA_TOOL_OPTIONS: -Dfile.encoding=${{ matrix.file-encoding }}
       run: mvn clean test -pl terminal-tty -Dformat.skip=true
+
+  # Provider selection per Windows environment (#289): isSupported() is a
+  # pure env heuristic, so each leg controls the env and the
+  # self-activating TerminalProviderEnvTest assertions run for real.
+  # Legs: msys (Git Bash default), dumb-term (TERM=dumb decline),
+  # native (Cygwin indicators removed).
+  windows-env-matrix:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        include:
+          - name: msys
+            setup: export MSYSTEM=MINGW64
+          - name: dumb-term
+            setup: export MSYSTEM=MINGW64; export TERM=dumb
+          - name: native
+            setup: unset MSYSTEM; unset PWD
+    name: windows-env (${{ matrix.name }})
+
+    steps:
+    - uses: actions/checkout@v7
+    - name: Set up JDK 17
+      uses: actions/setup-java@v6
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: maven
+    - uses: ilammy/msvc-dev-cmd@v1
+    - name: Install dependencies
+      shell: bash
+      run: mvn clean install -pl terminal-api -am -DskipTests -Dformat.skip=true
+    - name: Run provider selection tests
+      shell: bash
+      run: |
+        ${{ matrix.setup }}
+        mvn clean test -pl terminal-tty -Dformat.skip=true \
+          -Dtest='TerminalProviderEnvTest,TerminalProviderTest,TerminalProviderPriorityTest' \
+          -Dsurefire.failIfNoSpecifiedTests=false

@@ -198,6 +198,27 @@ public class TerminalProviderTest {
     }
 
     /**
+     * CygwinTerminalProvider.createTerminal() must decline with IOException
+     * when stdin is not a PTY. The ground truth is the `tty` command inside
+     * CygwinPty.current() (mintty has no Windows console, so GetConsoleMode
+     * does not apply here); throwing lets TerminalBuilder fall through to
+     * the next provider (#289).
+     */
+    @Test
+    public void testCygwinProviderDeclinesWithoutPty() throws IOException {
+        if (TtyDetect.isStdinTty()) {
+            return; // interactive PTY: the provider legitimately succeeds
+        }
+        CygwinTerminalProvider provider = new CygwinTerminalProvider();
+        try {
+            provider.createTerminal("test", "xterm-256color", false);
+            fail("Expected IOException without a PTY");
+        } catch (IOException expected) {
+            // expected: tty ground-truth decline
+        }
+    }
+
+    /**
      * WinSysTerminalProvider.createTerminal() must decline with IOException
      * when stdin is not a console. The check is a fresh GetConsoleMode probe
      * (not the cached TTY state), so TerminalBuilder falls through to the
