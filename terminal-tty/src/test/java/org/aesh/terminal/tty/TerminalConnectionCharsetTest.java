@@ -27,6 +27,7 @@ import org.aesh.terminal.Attributes;
 import org.aesh.terminal.tty.impl.ExternalTerminal;
 import org.aesh.terminal.tty.impl.PosixSysTerminal;
 import org.aesh.terminal.tty.impl.Pty;
+import org.aesh.terminal.utils.OSUtils;
 import org.junit.Test;
 
 /**
@@ -118,13 +119,17 @@ public class TerminalConnectionCharsetTest {
 
     @Test
     public void testConnectionWiringUsesHelper() throws IOException {
-        // End-to-end through the public constructor on this (non-Cygwin)
-        // platform: unspecified charsets fall back to the JVM default.
+        // End-to-end through the public constructor: unspecified charsets
+        // follow the helper's decision for the real environment. On
+        // Cygwin-like Windows CI runners (Git for Windows sets MSYSTEM,
+        // so IS_CYGWIN is genuinely true) that is UTF-8, elsewhere the
+        // JVM default.
         PosixSysTerminal term = new PosixSysTerminal("test", "ansi", new FakePty(), false);
+        Charset expected = TerminalConnection.defaultConnectionCharset(term, OSUtils.IS_CYGWIN);
         TerminalConnection conn = new TerminalConnection(term);
         try {
-            assertEquals(Charset.defaultCharset(), conn.inputEncoding());
-            assertEquals(Charset.defaultCharset(), conn.outputEncoding());
+            assertEquals(expected, conn.inputEncoding());
+            assertEquals(expected, conn.outputEncoding());
         } finally {
             conn.close();
         }
