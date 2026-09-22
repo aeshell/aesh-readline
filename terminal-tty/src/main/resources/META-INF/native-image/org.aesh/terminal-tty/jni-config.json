@@ -10,7 +10,9 @@
       { "name": "readConsoleInputEvent", "parameterTypes": ["long"] },
       { "name": "writeConsole", "parameterTypes": ["long", "char[]", "int"] },
       { "name": "waitForSingleObject", "parameterTypes": ["long", "int"] },
-      { "name": "getNumberOfConsoleInputEvents", "parameterTypes": ["long"] }
+      { "name": "getNumberOfConsoleInputEvents", "parameterTypes": ["long"] },
+      { "name": "allocConsole", "parameterTypes": [] },
+      { "name": "freeConsole", "parameterTypes": [] }
     ]
   }
 ]

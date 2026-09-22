@@ -108,6 +108,8 @@ public final class WinConsoleNative {
     private static final MethodHandle WRITE_CONSOLE_W;
     private static final MethodHandle WAIT_FOR_SINGLE_OBJECT;
     private static final MethodHandle GET_NUMBER_OF_CONSOLE_INPUT_EVENTS;
+    private static final MethodHandle ALLOC_CONSOLE;
+    private static final MethodHandle FREE_CONSOLE;
 
     static {
         MethodHandle[] handles = initHandles();
@@ -120,6 +122,8 @@ public final class WinConsoleNative {
         WRITE_CONSOLE_W = handles[6];
         WAIT_FOR_SINGLE_OBJECT = handles[7];
         GET_NUMBER_OF_CONSOLE_INPUT_EVENTS = handles[8];
+        ALLOC_CONSOLE = handles[9];
+        FREE_CONSOLE = handles[10];
     }
 
     /**
@@ -137,6 +141,8 @@ public final class WinConsoleNative {
         MethodHandle writeConsole = null;
         MethodHandle waitForSingleObject = null;
         MethodHandle getNumberOfConsoleInputEvents = null;
+        MethodHandle allocConsole = null;
+        MethodHandle freeConsole = null;
         if (System.getProperty("os.name", "").toLowerCase().contains("win")) {
             try {
                 Linker linker = Linker.nativeLinker();
@@ -170,6 +176,10 @@ public final class WinConsoleNative {
                 getNumberOfConsoleInputEvents = lookup(linker, kernel32, "GetNumberOfConsoleInputEvents",
                         FunctionDescriptor.of(ValueLayout.JAVA_INT,
                                 ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+                allocConsole = lookup(linker, kernel32, "AllocConsole",
+                        FunctionDescriptor.of(ValueLayout.JAVA_INT));
+                freeConsole = lookup(linker, kernel32, "FreeConsole",
+                        FunctionDescriptor.of(ValueLayout.JAVA_INT));
             } catch (Throwable t) {
                 // Wine, minimal containers, or missing native access — keep
                 // whatever was resolved so far; the rest stay null and their
@@ -179,7 +189,8 @@ public final class WinConsoleNative {
         return new MethodHandle[] {
                 getStdHandle, getConsoleMode, setConsoleMode, getConsoleOutputCP,
                 getConsoleScreenBufferInfo, readConsoleInput, writeConsole,
-                waitForSingleObject, getNumberOfConsoleInputEvents
+                waitForSingleObject, getNumberOfConsoleInputEvents,
+                allocConsole, freeConsole
         };
     }
 
@@ -369,6 +380,45 @@ public final class WinConsoleNative {
             return numEvents.get(ValueLayout.JAVA_INT, 0);
         } catch (Throwable t) {
             throw new RuntimeException("GetNumberOfConsoleInputEvents failed", t);
+        }
+    }
+
+    /**
+     * Allocates a new console for the calling process.
+     * <p>
+     * Test-only surface for live-console CI tests (#290). Returns false
+     * when FFM is unavailable or when the process already has a console —
+     * call {@link #freeConsole()} only for consoles this method allocated.
+     *
+     * @return true if a console was allocated, false otherwise
+     */
+    public static boolean allocConsole() {
+        if (ALLOC_CONSOLE == null) {
+            return false;
+        }
+        try {
+            return ((int) ALLOC_CONSOLE.invokeExact()) != 0;
+        } catch (Throwable t) {
+            throw new RuntimeException("AllocConsole failed", t);
+        }
+    }
+
+    /**
+     * Detaches the calling process from its console.
+     * <p>
+     * Test-only companion to {@link #allocConsole()}: call only to release
+     * a console allocated by {@code allocConsole()}.
+     *
+     * @return true if detached, false otherwise
+     */
+    public static boolean freeConsole() {
+        if (FREE_CONSOLE == null) {
+            return false;
+        }
+        try {
+            return ((int) FREE_CONSOLE.invokeExact()) != 0;
+        } catch (Throwable t) {
+            throw new RuntimeException("FreeConsole failed", t);
         }
     }
 

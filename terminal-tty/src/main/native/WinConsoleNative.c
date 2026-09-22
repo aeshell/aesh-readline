@@ -258,3 +258,37 @@ JNIEXPORT jint JNICALL Java_org_aesh_terminal_tty_impl_WinConsoleNative_getNumbe
     return -1;
 #endif
 }
+
+/*
+ * Class:     org_aesh_terminal_tty_impl_WinConsoleNative
+ * Method:    allocConsole
+ * Returns:   true if a console was allocated, false on error or when the
+ *            process already has one. Test-only surface for live-console
+ *            CI tests (#290).
+ */
+JNIEXPORT jboolean JNICALL Java_org_aesh_terminal_tty_impl_WinConsoleNative_allocConsole
+  (JNIEnv *env, jclass cls)
+{
+#ifdef _WIN32
+    return AllocConsole() ? JNI_TRUE : JNI_FALSE;
+#else
+    return JNI_FALSE;
+#endif
+}
+
+/*
+ * Class:     org_aesh_terminal_tty_impl_WinConsoleNative
+ * Method:    freeConsole
+ * Returns:   true if detached, false otherwise. Releases only consoles
+ *            allocated by allocConsole; detaching an interactive console
+ *            discards its output.
+ */
+JNIEXPORT jboolean JNICALL Java_org_aesh_terminal_tty_impl_WinConsoleNative_freeConsole
+  (JNIEnv *env, jclass cls)
+{
+#ifdef _WIN32
+    return FreeConsole() ? JNI_TRUE : JNI_FALSE;
+#else
+    return JNI_FALSE;
+#endif
+}

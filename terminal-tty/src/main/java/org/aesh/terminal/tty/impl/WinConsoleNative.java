@@ -141,6 +141,30 @@ public final class WinConsoleNative {
      */
     public static native int getNumberOfConsoleInputEvents(long handle);
 
+    /**
+     * Allocates a new console for the calling process.
+     * <p>
+     * Test-only surface for live-console CI tests (#290): headless CI
+     * runners have no console, so tests allocate one to drive
+     * {@code WinSysTerminal} against a true handle. Fails (returns false)
+     * when the process already has a console — use {@code freeConsole()}
+     * only for consoles this method allocated.
+     *
+     * @return true if a console was allocated, false otherwise
+     */
+    public static native boolean allocConsole();
+
+    /**
+     * Detaches the calling process from its console.
+     * <p>
+     * Test-only companion to {@link #allocConsole()}: call only to release
+     * a console allocated by {@code allocConsole()}. Detaching an
+     * interactive console the process did not allocate discards its output.
+     *
+     * @return true if detached, false otherwise
+     */
+    public static native boolean freeConsole();
+
     static {
         if (System.getProperty("os.name", "").toLowerCase().contains("win")) {
             loadLibrary();

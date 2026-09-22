@@ -258,4 +258,60 @@ public class WinConsoleNativeTest {
                     e);
         }
     }
+
+    // ==================== AllocConsole/FreeConsole bindings (#290) ====================
+    // Same stale-DLL gate: a DLL predating the bindings throws
+    // UnsatisfiedLinkError instead of returning a boolean. freeConsole()
+    // is only invoked when safe — detaching an interactive console the
+    // process did not allocate would discard its output.
+
+    @Test
+    public void testAllocFreeConsoleBindingsPresent() {
+        boolean allocated;
+        try {
+            allocated = WinConsoleNative.allocConsole();
+        } catch (UnsatisfiedLinkError e) {
+            throw new AssertionError(
+                    "aesh-console.dll predates the allocConsole binding; "
+                            + "rebuild with -Pnative-windows or -Pcross-windows",
+                    e);
+        }
+        try {
+            if (allocated) {
+                // We own the console: freeing restores the prior state and
+                // proves the freeConsole binding in the same stroke.
+                assertTrue("freeConsole must release the console we allocated",
+                        callFreeConsole());
+            } else if (!hasConsole()) {
+                // Headless (CI): detaching is a no-op returning false, and
+                // the call proves the freeConsole binding exists.
+                callFreeConsole();
+            }
+            // Else: interactive console we must not detach — alloc gate suffices.
+        } finally {
+            if (allocated) {
+                try {
+                    WinConsoleNative.freeConsole();
+                } catch (Throwable ignored) {
+                }
+            }
+        }
+    }
+
+    private static boolean callFreeConsole() {
+        try {
+            return WinConsoleNative.freeConsole();
+        } catch (UnsatisfiedLinkError e) {
+            throw new AssertionError(
+                    "aesh-console.dll predates the freeConsole binding; "
+                            + "rebuild with -Pnative-windows or -Pcross-windows",
+                    e);
+        }
+    }
+
+    private static boolean hasConsole() {
+        long out = WinConsoleNative.getStdHandle(WinConsoleNative.STD_OUTPUT_HANDLE);
+        return out != WinConsoleNative.INVALID_HANDLE
+                && WinConsoleNative.getConsoleMode(out) != -1;
+    }
 }
