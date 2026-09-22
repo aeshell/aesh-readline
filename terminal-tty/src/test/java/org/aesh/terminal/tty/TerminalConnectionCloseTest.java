@@ -115,17 +115,16 @@ public class TerminalConnectionCloseTest {
         String seq = TerminalConnection.closeCleanupSequences(true, false);
         assertTrue("Must end synchronized output",
                 seq.contains(ANSI.MODE_2026_DISABLE));
-        assertTrue("Must exit the alternate screen (#273)",
-                seq.contains(ANSI.MAIN_BUFFER));
         assertTrue("Must ensure the cursor is visible (#273)",
                 seq.contains(ANSI.CURSOR_SHOW));
+        assertFalse("Must not exit the alternate screen: the restore slot "
+                + "is stale when this connection never entered it",
+                seq.contains(ANSI.MAIN_BUFFER));
         assertFalse("Must not disable focus tracking when not enabled",
                 seq.contains(ANSI.FOCUS_TRACKING_DISABLE));
-        // Order: synchronized-output end, alt-screen exit, cursor show
-        assertTrue("2026-disable must precede alt-screen exit",
-                seq.indexOf(ANSI.MODE_2026_DISABLE) < seq.indexOf(ANSI.MAIN_BUFFER));
-        assertTrue("Alt-screen exit must precede cursor show",
-                seq.indexOf(ANSI.MAIN_BUFFER) < seq.indexOf(ANSI.CURSOR_SHOW));
+        // Order: synchronized-output end before cursor show
+        assertTrue("2026-disable must precede cursor show",
+                seq.indexOf(ANSI.MODE_2026_DISABLE) < seq.indexOf(ANSI.CURSOR_SHOW));
     }
 
     @Test

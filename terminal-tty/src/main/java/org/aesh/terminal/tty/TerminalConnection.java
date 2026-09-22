@@ -625,12 +625,15 @@ public class TerminalConnection extends AbstractConnection {
         StringBuilder cleanup = new StringBuilder();
         if (ansi) {
             cleanup.append(ANSI.MODE_2026_DISABLE);
-            // Exit the alternate screen (no-op when already on the main
-            // screen) and ensure the cursor is visible — the same pair Vim
-            // writes on exit. Pty4j-based terminals (IntelliJ) only notice
-            // child exit while processing output; without this the shell
-            // prompt can appear stuck until a keypress (#273).
-            cleanup.append(ANSI.MAIN_BUFFER);
+            // Ensure the cursor is visible — showing an already-visible
+            // cursor is a no-op everywhere, so this is universally safe.
+            // Note: deliberately no rmcup (ESC[?1049l) here. Exiting the
+            // alternate screen restores the cursor from the slot saved by
+            // the last alt-screen entry; since this connection never enters
+            // alt-screen itself, that slot is stale (whatever fullscreen
+            // app ran before) and the restore visibly scrambles the screen
+            // on some terminals (#273 follow-up, maxandersen report).
+            // Exiting alt-screen remains the application's own job.
             cleanup.append(ANSI.CURSOR_SHOW);
         }
         if (focusTracking) {
