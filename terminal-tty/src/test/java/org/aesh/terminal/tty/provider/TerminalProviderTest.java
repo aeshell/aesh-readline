@@ -4,14 +4,17 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.junit.Assume.assumeFalse;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.ServiceLoader;
 
 import org.aesh.terminal.provider.TerminalProvider;
+import org.aesh.terminal.tty.TtyDetect;
 import org.aesh.terminal.utils.OSUtils;
 import org.junit.Test;
 
@@ -192,5 +195,25 @@ public class TerminalProviderTest {
         }
         CygwinTerminalProvider provider = new CygwinTerminalProvider();
         assertFalse(provider.isSupported());
+    }
+
+    /**
+     * WinSysTerminalProvider.createTerminal() must decline with IOException
+     * when stdin is not a console. The check is a fresh GetConsoleMode probe
+     * (not the cached TTY state), so TerminalBuilder falls through to the
+     * next provider instead of driving a console that isn't there (#289).
+     */
+    @Test
+    public void testWinProviderCreateTerminalThrowsWithoutConsole() throws IOException {
+        if (TtyDetect.isStdinTty()) {
+            return; // interactive console: would proceed to native construction
+        }
+        WinSysTerminalProvider provider = new WinSysTerminalProvider();
+        try {
+            provider.createTerminal("test", null, false);
+            fail("Expected IOException without a console on stdin");
+        } catch (IOException expected) {
+            // expected: ground-truth GetConsoleMode guard
+        }
     }
 }

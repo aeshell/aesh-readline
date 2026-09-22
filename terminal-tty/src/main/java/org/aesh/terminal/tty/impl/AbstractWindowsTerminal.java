@@ -33,6 +33,7 @@ import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -108,6 +109,13 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
 
     private volatile boolean closing;
     private final AtomicBoolean closed = new AtomicBoolean();
+    /**
+     * The single live Windows console terminal. Two input pumps on one
+     * console compete for ReadConsoleInputW events, losing keystrokes
+     * (#276). A second concurrent construction fails loudly instead, and
+     * TerminalBuilder falls through to the next provider (#289).
+     */
+    private static final AtomicReference<AbstractWindowsTerminal> LIVE = new AtomicReference<>();
     private ConsoleOutput cpConsumer;
     /** Original console input mode, saved at construction for restoration on close. */
     private int originalInputMode = -1;
@@ -121,37 +129,49 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
     AbstractWindowsTerminal(boolean consumeCP, OutputStream output, String name, boolean nativeSignals,
             SignalHandler signalHandler) throws IOException {
         super(name, "windows", signalHandler);
-        PipedInputStream input = new PipedInputStream(PIPE_SIZE);
-        this.slaveInputPipe = new PipedOutputStream(input);
-        this.input = new FilterInputStream(input) {
-        };
-        this.cpConsumer = consumeCP ? new ConsoleOutput() : null;
-        this.output = output;
-        String encoding = getConsoleEncoding();
-        if (encoding == null) {
-            encoding = Charset.defaultCharset().name();
+        // Claim the single live slot before registering signal handlers or
+        // starting the pump — a second live instance would compete for
+        // console input events (#276, #289).
+        if (!LIVE.compareAndSet(null, this)) {
+            throw new IOException(
+                    "A Windows system terminal is already running; close it before creating another");
         }
-        this.writer = new PrintWriter(new OutputStreamWriter(this.output, encoding));
-        // Attributes
-        attributes.setLocalFlag(Attributes.LocalFlag.ISIG, true);
-        attributes.setControlChar(Attributes.ControlChar.VINTR, ctrl('C'));
-        attributes.setControlChar(Attributes.ControlChar.VEOF, ctrl('D'));
-        attributes.setControlChar(Attributes.ControlChar.VSUSP, ctrl('Z'));
-        // Handle signals
-        if (nativeSignals) {
-            for (final Signal signal : Signal.values()) {
-                nativeHandlers.put(signal,
-                        Signals.register(signal.name(), () -> raise(signal)));
+        try {
+            PipedInputStream input = new PipedInputStream(PIPE_SIZE);
+            this.slaveInputPipe = new PipedOutputStream(input);
+            this.input = new FilterInputStream(input) {
+            };
+            this.cpConsumer = consumeCP ? new ConsoleOutput() : null;
+            this.output = output;
+            String encoding = getConsoleEncoding();
+            if (encoding == null) {
+                encoding = Charset.defaultCharset().name();
             }
+            this.writer = new PrintWriter(new OutputStreamWriter(this.output, encoding));
+            // Attributes
+            attributes.setLocalFlag(Attributes.LocalFlag.ISIG, true);
+            attributes.setControlChar(Attributes.ControlChar.VINTR, ctrl('C'));
+            attributes.setControlChar(Attributes.ControlChar.VEOF, ctrl('D'));
+            attributes.setControlChar(Attributes.ControlChar.VSUSP, ctrl('Z'));
+            // Handle signals
+            if (nativeSignals) {
+                for (final Signal signal : Signal.values()) {
+                    nativeHandlers.put(signal,
+                            Signals.register(signal.name(), () -> raise(signal)));
+                }
+            }
+            // Save original console modes for restoration on close
+            originalInputMode = getConsoleMode();
+            originalOutputMode = getOutputConsoleMode();
+            pump = new Thread(this::pump, "WindowsStreamPump");
+            pump.setDaemon(true);
+            pump.start();
+            closer = this::close;
+            ShutdownHooks.add(closer);
+        } catch (IOException | RuntimeException | Error e) {
+            LIVE.compareAndSet(this, null);
+            throw e;
         }
-        // Save original console modes for restoration on close
-        originalInputMode = getConsoleMode();
-        originalOutputMode = getOutputConsoleMode();
-        pump = new Thread(this::pump, "WindowsStreamPump");
-        pump.setDaemon(true);
-        pump.start();
-        closer = this::close;
-        ShutdownHooks.add(closer);
     }
 
     @Override
@@ -424,6 +444,8 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
         // Flush but do not close — the output stream (typically System.out)
         // is not owned by this terminal and may still be used after close.
         writer.flush();
+        // Release the single live slot so a later terminal can be created (#289).
+        LIVE.compareAndSet(this, null);
     }
 
     /**

@@ -16,6 +16,7 @@ package org.aesh.terminal.tty.impl;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.IOException;
 
@@ -141,14 +142,17 @@ public class AbstractWindowsTerminalTest {
         StubWindowsTerminal term = new StubWindowsTerminal(
                 ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT | ENABLE_QUICK_EDIT_MODE);
 
-        Attributes raw = new Attributes();
-        // All flags false by default in new Attributes
-        term.setAttributes(raw);
+        try {
+            Attributes raw = new Attributes();
+            // All flags false by default in new Attributes
+            term.setAttributes(raw);
 
-        // Should have ONLY ENABLE_WINDOW_INPUT — everything else cleared
-        assertEquals("Raw mode should have only WINDOW_INPUT",
-                ENABLE_WINDOW_INPUT, term.currentMode);
-        term.close();
+            // Should have ONLY ENABLE_WINDOW_INPUT — everything else cleared
+            assertEquals("Raw mode should have only WINDOW_INPUT",
+                    ENABLE_WINDOW_INPUT, term.currentMode);
+        } finally {
+            term.close();
+        }
     }
 
     @Test
@@ -156,29 +160,35 @@ public class AbstractWindowsTerminalTest {
         StubWindowsTerminal term = new StubWindowsTerminal(
                 ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT | ENABLE_QUICK_EDIT_MODE);
 
-        Attributes raw = new Attributes();
-        raw.setLocalFlag(Attributes.LocalFlag.ISIG, true);
-        term.setAttributes(raw);
+        try {
+            Attributes raw = new Attributes();
+            raw.setLocalFlag(Attributes.LocalFlag.ISIG, true);
+            term.setAttributes(raw);
 
-        assertEquals("Raw mode with ISIG should have WINDOW_INPUT + PROCESSED_INPUT",
-                ENABLE_WINDOW_INPUT | ENABLE_PROCESSED_INPUT, term.currentMode);
-        term.close();
+            assertEquals("Raw mode with ISIG should have WINDOW_INPUT + PROCESSED_INPUT",
+                    ENABLE_WINDOW_INPUT | ENABLE_PROCESSED_INPUT, term.currentMode);
+        } finally {
+            term.close();
+        }
     }
 
     @Test
     public void testCookedMode() throws IOException {
         StubWindowsTerminal term = new StubWindowsTerminal(0);
 
-        Attributes cooked = new Attributes();
-        cooked.setLocalFlag(Attributes.LocalFlag.ECHO, true);
-        cooked.setLocalFlag(Attributes.LocalFlag.ICANON, true);
-        cooked.setLocalFlag(Attributes.LocalFlag.ISIG, true);
-        term.setAttributes(cooked);
+        try {
+            Attributes cooked = new Attributes();
+            cooked.setLocalFlag(Attributes.LocalFlag.ECHO, true);
+            cooked.setLocalFlag(Attributes.LocalFlag.ICANON, true);
+            cooked.setLocalFlag(Attributes.LocalFlag.ISIG, true);
+            term.setAttributes(cooked);
 
-        int expected = ENABLE_WINDOW_INPUT | ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT;
-        assertEquals("Cooked mode should have WINDOW + ECHO + LINE + PROCESSED",
-                expected, term.currentMode);
-        term.close();
+            int expected = ENABLE_WINDOW_INPUT | ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT;
+            assertEquals("Cooked mode should have WINDOW + ECHO + LINE + PROCESSED",
+                    expected, term.currentMode);
+        } finally {
+            term.close();
+        }
     }
 
     @Test
@@ -187,14 +197,17 @@ public class AbstractWindowsTerminalTest {
         StubWindowsTerminal term = new StubWindowsTerminal(
                 ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT | ENABLE_QUICK_EDIT_MODE);
 
-        Attributes raw = new Attributes();
-        raw.setLocalFlag(Attributes.LocalFlag.ISIG, true);
-        term.setAttributes(raw);
+        try {
+            Attributes raw = new Attributes();
+            raw.setLocalFlag(Attributes.LocalFlag.ISIG, true);
+            term.setAttributes(raw);
 
-        // QUICK_EDIT_MODE must NOT be preserved — it blocks ReadConsoleInputW
-        assertEquals("QUICK_EDIT_MODE should be cleared in raw mode", 0,
-                term.currentMode & ENABLE_QUICK_EDIT_MODE);
-        term.close();
+            // QUICK_EDIT_MODE must NOT be preserved — it blocks ReadConsoleInputW
+            assertEquals("QUICK_EDIT_MODE should be cleared in raw mode", 0,
+                    term.currentMode & ENABLE_QUICK_EDIT_MODE);
+        } finally {
+            term.close();
+        }
     }
 
     @Test
@@ -202,16 +215,19 @@ public class AbstractWindowsTerminalTest {
         StubWindowsTerminal term = new StubWindowsTerminal(0);
         term.mouseInputEnabled = true;
 
-        Attributes raw = new Attributes();
-        term.setAttributes(raw);
+        try {
+            Attributes raw = new Attributes();
+            term.setAttributes(raw);
 
-        assertTrue("Mouse input should set ENABLE_MOUSE_INPUT",
-                (term.currentMode & ENABLE_MOUSE_INPUT) != 0);
-        assertTrue("Mouse input should set ENABLE_EXTENDED_FLAGS",
-                (term.currentMode & ENABLE_EXTENDED_FLAGS) != 0);
-        assertEquals("Mouse + raw should not have QUICK_EDIT_MODE", 0,
-                term.currentMode & ENABLE_QUICK_EDIT_MODE);
-        term.close();
+            assertTrue("Mouse input should set ENABLE_MOUSE_INPUT",
+                    (term.currentMode & ENABLE_MOUSE_INPUT) != 0);
+            assertTrue("Mouse input should set ENABLE_EXTENDED_FLAGS",
+                    (term.currentMode & ENABLE_EXTENDED_FLAGS) != 0);
+            assertEquals("Mouse + raw should not have QUICK_EDIT_MODE", 0,
+                    term.currentMode & ENABLE_QUICK_EDIT_MODE);
+        } finally {
+            term.close();
+        }
     }
 
     @Test
@@ -220,14 +236,17 @@ public class AbstractWindowsTerminalTest {
         int staleMode = 0xFFFF;
         StubWindowsTerminal term = new StubWindowsTerminal(staleMode);
 
-        Attributes raw = new Attributes();
-        term.setAttributes(raw);
+        try {
+            Attributes raw = new Attributes();
+            term.setAttributes(raw);
 
-        // Build-from-scratch should produce ONLY ENABLE_WINDOW_INPUT
-        // regardless of what was in the console mode before
-        assertEquals("Stale flags should not be preserved",
-                ENABLE_WINDOW_INPUT, term.currentMode);
-        term.close();
+            // Build-from-scratch should produce ONLY ENABLE_WINDOW_INPUT
+            // regardless of what was in the console mode before
+            assertEquals("Stale flags should not be preserved",
+                    ENABLE_WINDOW_INPUT, term.currentMode);
+        } finally {
+            term.close();
+        }
     }
 
     @Test
@@ -236,11 +255,14 @@ public class AbstractWindowsTerminalTest {
         // mode has it on, so report it for identical Ctrl+C feedback.
         StubWindowsTerminal term = new StubWindowsTerminal(
                 ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT);
-        assertTrue(term.getAttributes().getLocalFlag(Attributes.LocalFlag.ECHOCTL));
-        Attributes raw = new Attributes();
-        term.setAttributes(raw);
-        assertTrue(term.getAttributes().getLocalFlag(Attributes.LocalFlag.ECHOCTL));
-        term.close();
+        try {
+            assertTrue(term.getAttributes().getLocalFlag(Attributes.LocalFlag.ECHOCTL));
+            Attributes raw = new Attributes();
+            term.setAttributes(raw);
+            assertTrue(term.getAttributes().getLocalFlag(Attributes.LocalFlag.ECHOCTL));
+        } finally {
+            term.close();
+        }
     }
 
     // ==================== close() mode restore (#277 M5) ====================
@@ -250,15 +272,19 @@ public class AbstractWindowsTerminalTest {
         int originalMode = ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT | ENABLE_QUICK_EDIT_MODE;
         StubWindowsTerminal term = new StubWindowsTerminal(originalMode);
 
-        // Enter raw mode
-        Attributes raw = new Attributes();
-        term.setAttributes(raw);
-        assertNotEquals("Mode should change in raw mode", originalMode, term.currentMode);
+        try {
+            // Enter raw mode
+            Attributes raw = new Attributes();
+            term.setAttributes(raw);
+            assertNotEquals("Mode should change in raw mode", originalMode, term.currentMode);
 
-        // Close — should restore original mode
-        term.close();
-        assertEquals("close() should restore the original console mode",
-                originalMode, term.currentMode);
+            // Close — should restore original mode
+            term.close();
+            assertEquals("close() should restore the original console mode",
+                    originalMode, term.currentMode);
+        } finally {
+            term.close();
+        }
     }
 
     @Test
@@ -266,17 +292,21 @@ public class AbstractWindowsTerminalTest {
         int originalMode = ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT;
         StubWindowsTerminal term = new StubWindowsTerminal(originalMode);
 
-        // Enable mouse + raw mode
-        term.mouseInputEnabled = true;
-        Attributes raw = new Attributes();
-        term.setAttributes(raw);
-        assertTrue("Mouse mode should be active",
-                (term.currentMode & ENABLE_MOUSE_INPUT) != 0);
+        try {
+            // Enable mouse + raw mode
+            term.mouseInputEnabled = true;
+            Attributes raw = new Attributes();
+            term.setAttributes(raw);
+            assertTrue("Mouse mode should be active",
+                    (term.currentMode & ENABLE_MOUSE_INPUT) != 0);
 
-        // Close — should restore original (without mouse flags)
-        term.close();
-        assertEquals("close() should restore original mode without mouse flags",
-                originalMode, term.currentMode);
+            // Close — should restore original (without mouse flags)
+            term.close();
+            assertEquals("close() should restore original mode without mouse flags",
+                    originalMode, term.currentMode);
+        } finally {
+            term.close();
+        }
     }
 
     // ==================== close() output restore + idempotency (#278) ====================
@@ -287,16 +317,20 @@ public class AbstractWindowsTerminalTest {
         int originalOutput = 0x0004; // e.g. ENABLE_VIRTUAL_TERMINAL_PROCESSING pre-set
         StubWindowsTerminal term = new StubWindowsTerminal(originalInput, originalOutput);
 
-        // Simulate VT-output enable changing the output mode, plus raw input mode
-        term.setOutputConsoleMode(0x0104);
-        Attributes raw = new Attributes();
-        term.setAttributes(raw);
+        try {
+            // Simulate VT-output enable changing the output mode, plus raw input mode
+            term.setOutputConsoleMode(0x0104);
+            Attributes raw = new Attributes();
+            term.setAttributes(raw);
 
-        term.close();
-        assertEquals("close() should restore the original output console mode",
-                originalOutput, term.outputMode);
-        assertEquals("close() should still restore the original input console mode",
-                originalInput, term.currentMode);
+            term.close();
+            assertEquals("close() should restore the original output console mode",
+                    originalOutput, term.outputMode);
+            assertEquals("close() should still restore the original input console mode",
+                    originalInput, term.currentMode);
+        } finally {
+            term.close();
+        }
     }
 
     @Test
@@ -305,22 +339,48 @@ public class AbstractWindowsTerminalTest {
         int originalOutput = 0x0004;
         StubWindowsTerminal term = new StubWindowsTerminal(originalInput, originalOutput);
 
-        Attributes raw = new Attributes();
-        term.setAttributes(raw);
-        term.setOutputConsoleMode(0x0104);
+        try {
+            Attributes raw = new Attributes();
+            term.setAttributes(raw);
+            term.setOutputConsoleMode(0x0104);
 
-        term.close();
-        int inputSetsAfterFirstClose = term.setInputModeCalls;
-        int outputSetsAfterFirstClose = term.setOutputModeCalls;
+            term.close();
+            int inputSetsAfterFirstClose = term.setInputModeCalls;
+            int outputSetsAfterFirstClose = term.setOutputModeCalls;
 
-        term.close();
-        assertEquals("Second close() must not touch the input console mode again",
-                inputSetsAfterFirstClose, term.setInputModeCalls);
-        assertEquals("Second close() must not touch the output console mode again",
-                outputSetsAfterFirstClose, term.setOutputModeCalls);
-        assertEquals("Restored input mode must survive double close",
-                originalInput, term.currentMode);
-        assertEquals("Restored output mode must survive double close",
-                originalOutput, term.outputMode);
+            term.close();
+            assertEquals("Second close() must not touch the input console mode again",
+                    inputSetsAfterFirstClose, term.setInputModeCalls);
+            assertEquals("Second close() must not touch the output console mode again",
+                    outputSetsAfterFirstClose, term.setOutputModeCalls);
+            assertEquals("Restored input mode must survive double close",
+                    originalInput, term.currentMode);
+            assertEquals("Restored output mode must survive double close",
+                    originalOutput, term.outputMode);
+        } finally {
+            term.close();
+        }
+    }
+
+    // ==================== single live instance guard (#289) ====================
+
+    @Test
+    public void testSecondLiveTerminalRejectedAndSlotReusable() throws IOException {
+        // Two input pumps on one console compete for ReadConsoleInputW
+        // events (#276) — the second concurrent construction must fail.
+        StubWindowsTerminal first = new StubWindowsTerminal(0);
+        try {
+            try {
+                new StubWindowsTerminal(0);
+                fail("Second live Windows terminal must be rejected");
+            } catch (IOException expected) {
+                // expected: single live instance guard
+            }
+        } finally {
+            first.close();
+        }
+        // The slot is reusable after close — sequential use still works.
+        StubWindowsTerminal second = new StubWindowsTerminal(0);
+        second.close();
     }
 }

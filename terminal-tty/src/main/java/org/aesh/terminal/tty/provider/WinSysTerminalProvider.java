@@ -56,13 +56,14 @@ public class WinSysTerminalProvider implements TerminalProvider {
         // Do NOT call System.console() here — on Windows it triggers the
         // JDK's internal JLine terminal (JnaWinSysTerminal + WindowsStreamPump)
         // which competes with our pump for ReadConsoleInputW events (#276).
-        // TtyDetect.isStdinTty() handles the piped/redirected check via
-        // WinConsoleNative.getConsoleMode() without this side effect.
+        // The piped/redirected check lives in createTerminal() as a fresh
+        // GetConsoleMode probe, keeping isSupported() a fast, side-effect-free
+        // heuristic per the TerminalProvider contract.
         String term = System.getenv("TERM");
         if ("dumb".equals(term)) {
             return false;
         }
-        return TtyDetect.isStdinTty();
+        return true;
     }
 
     @Override
@@ -72,6 +73,13 @@ public class WinSysTerminalProvider implements TerminalProvider {
 
     @Override
     public Terminal createTerminal(String name, String type, boolean nativeSignals) throws IOException {
+        // Ground-truth check, probed fresh on every call (not the cached
+        // isStdinTty()): GetConsoleMode fails on pipes and redirected
+        // handles. Throwing here lets TerminalBuilder fall through to the
+        // next provider instead of driving a console that isn't there (#289).
+        if (!TtyDetect.isTty(TtyDetect.FD_STDIN)) {
+            throw new IOException("No Windows console attached to stdin (GetConsoleMode failed)");
+        }
         return new WinSysTerminal(name, nativeSignals);
     }
 }

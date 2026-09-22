@@ -60,6 +60,10 @@ public class CygwinTerminalProvider implements TerminalProvider {
         if (type == null) {
             type = System.getenv("TERM");
         }
+        // No GetConsoleMode check here: mintty has no Windows console, so the
+        // ground truth for this path is the `tty` command inside
+        // CygwinPty.current(), which throws IOException("Not a tty") when
+        // stdin is not a PTY. TerminalBuilder falls through on that (#289).
         return new PosixSysTerminal(name, type, CygwinPty.current(), nativeSignals);
     }
 }
