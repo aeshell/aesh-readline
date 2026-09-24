@@ -28,7 +28,7 @@ package org.aesh.terminal;
  * (terminal queries, process I/O) are exception-safe by construction
  * instead of hand-rolled save/set/restore.
  *
- * @since 3.19
+ * @since 3.18.2
  */
 public interface StdinLease extends AutoCloseable {
 
