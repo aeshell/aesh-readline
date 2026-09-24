@@ -96,7 +96,7 @@ public interface Connection extends Appendable, AutoCloseable {
      *
      * @param handler the temporary handler to process input as code point arrays
      * @return a lease restoring the previous handler on close
-     * @since 3.19
+     * @since 3.18.2
      */
     default StdinLease captureStdin(Consumer<int[]> handler) {
         Consumer<int[]> saved = stdinHandler();
