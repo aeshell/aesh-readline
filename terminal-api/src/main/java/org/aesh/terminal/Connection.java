@@ -80,6 +80,31 @@ public interface Connection extends Appendable, AutoCloseable {
     void setStdinHandler(Consumer<int[]> handler);
 
     /**
+     * Temporarily replace the stdin handler, restoring the previous one on
+     * {@link StdinLease#close()}. Prefer this over hand-rolled
+     * save/set/restore, which must each get exception-safety, nesting
+     * order, and staleness right by hand.
+     * <p>
+     * Ownership rule: the readline session owns the steady-state handler
+     * (installed when a read cycle arms, replaced by a buffering fallback
+     * in {@code AeshInputProcessor.finish()}); every other consumer leases.
+     * Leases are last-in-first-out — closing overlapping leases out of
+     * order restores a stale handler (logged best-effort, not prevented).
+     * <p>
+     * Restoring re-arms queue delivery: input queued while the lease was
+     * held is delivered to the restored handler.
+     *
+     * @param handler the temporary handler to process input as code point arrays
+     * @return a lease restoring the previous handler on close
+     * @since 3.19
+     */
+    default StdinLease captureStdin(Consumer<int[]> handler) {
+        Consumer<int[]> saved = stdinHandler();
+        setStdinHandler(handler);
+        return new StdinLeaseImpl(this, saved, handler);
+    }
+
+    /**
      * Whether this connection supports non-blocking read operations with timeouts.
      * <p>
      * When this returns {@code true}, {@link #peek(long)} provides timeout-based

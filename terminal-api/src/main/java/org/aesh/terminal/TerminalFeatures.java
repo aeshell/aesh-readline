@@ -125,26 +125,24 @@ public class TerminalFeatures {
             return null;
         }
 
-        Consumer<int[]> prevInputHandler = connection.stdinHandler();
         CountDownLatch latch = new CountDownLatch(1);
         final Object[] result = { null };
         Attributes savedAttributes = connection.enterRawMode();
 
-        connection.setStdinHandler(ints -> {
+        try (StdinLease ignored = connection.captureStdin(ints -> {
             T parsed = responseParser.apply(ints);
             if (parsed != null) {
                 result[0] = parsed;
                 latch.countDown();
             }
-        });
-
-        try {
-            connection.write(query);
-            latch.await(timeoutMs, TimeUnit.MILLISECONDS);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+        })) {
+            try {
+                connection.write(query);
+                latch.await(timeoutMs, TimeUnit.MILLISECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
         } finally {
-            connection.setStdinHandler(prevInputHandler);
             connection.setAttributes(savedAttributes);
         }
 
@@ -162,21 +160,25 @@ public class TerminalFeatures {
      * @return the current cursor position as a Point (row, column)
      */
     public Point getCursorPosition() {
-        Consumer<int[]> prevInputHandler = connection.stdinHandler();
         CountDownLatch latch = new CountDownLatch(1);
         final Point[] p = { null };
         Attributes attributes = connection.enterRawMode();
-        connection.setStdinHandler(ints -> {
+        // try-with-resources restores the previous handler on every exit
+        // path, including query timeout — the previous hand-rolled version
+        // restored only inside the response callback, leaking the hijack
+        // (and raw mode) when no response arrived.
+        try (StdinLease ignored = connection.captureStdin(ints -> {
             p[0] = ANSI.getActualCursor(ints);
-            connection.setStdinHandler(prevInputHandler);
             latch.countDown();
+        })) {
+            connection.stdoutHandler().accept(ANSI.CURSOR_POSITION_QUERY);
+            try {
+                latch.await(DEFAULT_QUERY_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+            } catch (InterruptedException e) {
+                LOGGER.log(Level.WARNING, "getCursorPosition interrupted", e);
+            }
+        } finally {
             connection.setAttributes(attributes);
-        });
-        connection.stdoutHandler().accept(ANSI.CURSOR_POSITION_QUERY);
-        try {
-            latch.await(DEFAULT_QUERY_TIMEOUT_MS, TimeUnit.MILLISECONDS);
-        } catch (InterruptedException e) {
-            LOGGER.log(Level.WARNING, "getCursorPosition interrupted", e);
         }
         return p[0];
     }
@@ -331,13 +333,12 @@ public class TerminalFeatures {
             String batchQuery,
             Function<int[], Map<Integer, int[]>> parser) {
 
-        Consumer<int[]> prevInputHandler = connection.stdinHandler();
         CountDownLatch latch = new CountDownLatch(1);
         final Map<Integer, int[]> results = new ConcurrentHashMap<>();
         final StringBuilder responseBuffer = new StringBuilder();
         Attributes savedAttributes = connection.enterRawMode();
 
-        connection.setStdinHandler(ints -> {
+        try (StdinLease ignored = connection.captureStdin(ints -> {
             for (int c : ints) {
                 responseBuffer.appendCodePoint(c);
             }
@@ -349,15 +350,14 @@ public class TerminalFeatures {
             if (results.size() >= expectedCount) {
                 latch.countDown();
             }
-        });
-
-        try {
-            connection.write(batchQuery);
-            latch.await(timeoutMs, TimeUnit.MILLISECONDS);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+        })) {
+            try {
+                connection.write(batchQuery);
+                latch.await(timeoutMs, TimeUnit.MILLISECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
         } finally {
-            connection.setStdinHandler(prevInputHandler);
             connection.setAttributes(savedAttributes);
         }
 
