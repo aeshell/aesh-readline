@@ -177,3 +177,48 @@ jobs:
         mvn clean test -pl terminal-tty -Dformat.skip=true \
           -Dtest='TerminalProviderEnvTest,TerminalProviderTest,TerminalProviderPriorityTest' \
           -Dsurefire.failIfNoSpecifiedTests=false
+
+  # Live Windows console tests (#290): allocate a real console via
+  # AllocConsole and drive WinSysTerminal against true handles. The tests
+  # skip wherever allocation fails; the canary step fails the job if
+  # nothing executed, so a window-station-less runner can't silently
+  # cover nothing (that outcome closes #290 as infeasible instead).
+  windows-live-console:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        java-version: ['17', '25']
+    name: windows-live-console (JDK ${{ matrix.java-version }})
+
+    steps:
+    - uses: actions/checkout@v7
+    - name: Set up JDK ${{ matrix.java-version }}
+      uses: actions/setup-java@v6
+      with:
+        java-version: ${{ matrix.java-version }}
+        distribution: 'temurin'
+        cache: maven
+    - uses: ilammy/msvc-dev-cmd@v1
+    - name: Install dependencies
+      shell: bash
+      run: mvn clean install -pl terminal-api -am -DskipTests -Dformat.skip=true
+    - name: Run live-console tests
+      shell: bash
+      run: mvn clean test -pl terminal-tty -Dformat.skip=true \
+          -Dtest='LiveWindowsConsoleTest' \
+          -Dsurefire.failIfNoSpecifiedTests=false
+    - name: Verify live-console tests executed (canary)
+      shell: bash
+      run: |
+        python3 - terminal-tty/target/surefire-reports/TEST-*LiveWindowsConsoleTest.xml <<'EOF'
+        import sys
+        import xml.etree.ElementTree as ET
+        root = ET.parse(sys.argv[1]).getroot()
+        tests = int(root.get('tests', 0))
+        skipped = int(root.get('skipped', 0))
+        print(f"live-console tests: {tests} total, {skipped} skipped")
+        if tests == 0 or skipped == tests:
+            print("::error::No live-console test executed — AllocConsole likely "
+                  "unavailable on this runner; investigate, do not silently skip")
+            sys.exit(1)
+        EOF
