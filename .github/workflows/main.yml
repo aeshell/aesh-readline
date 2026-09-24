@@ -204,7 +204,8 @@ jobs:
       run: mvn clean install -pl terminal-api -am -DskipTests -Dformat.skip=true
     - name: Run live-console tests
       shell: bash
-      run: mvn clean test -pl terminal-tty -Dformat.skip=true \
+      run: |
+        mvn clean test -pl terminal-tty -Dformat.skip=true \
           -Dtest='LiveWindowsConsoleTest' \
           -Dsurefire.failIfNoSpecifiedTests=false
     - name: Verify live-console tests executed (canary)
