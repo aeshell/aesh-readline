@@ -68,6 +68,8 @@
                         </manifest>
                         <manifestEntries>
                             <Automatic-Module-Name>${javaModuleName}</Automatic-Module-Name>
+                            <Multi-Release>true</Multi-Release>
+                            <Enable-Native-Access>ALL-UNNAMED</Enable-Native-Access>
                         </manifestEntries>
                         <index>true</index>
                     </archive>
@@ -78,5 +80,66 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <!-- Multi-release JAR: compile FFM variant when building with Java 22+ -->
+        <profile>
+            <id>java22-ffm</id>
+            <activation>
+                <jdk>[22,)</jdk>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>compile-java-22</id>
+                                <phase>compile</phase>
+                                <goals><goal>compile</goal></goals>
+                                <configuration>
+                                    <release>22</release>
+                                    <compileSourceRoots>
+                                        <compileSourceRoot>${project.basedir}/src/main/java22</compileSourceRoot>
+                                    </compileSourceRoots>
+                                    <multiReleaseOutput>true</multiReleaseOutput>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <argLine>--enable-native-access=ALL-UNNAMED</argLine>
+                        </configuration>
+                    </plugin>
+                    <!-- Copy MRJAR Java 22+ classes to test-classes so surefire can
+                         find them. MUST NOT copy to target/classes — that would put
+                         Java 22 bytecode in the base path of the released JAR,
+                         breaking older-JDK users. -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-antrun-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>copy-mrjar-for-test</id>
+                                <phase>process-test-classes</phase>
+                                <goals><goal>run</goal></goals>
+                                <configuration>
+                                    <target>
+                                        <copy todir="${project.build.testOutputDirectory}" overwrite="true"
+                                              failonerror="false">
+                                            <fileset dir="${project.build.outputDirectory}/META-INF/versions/22"
+                                                     erroronmissingdir="false"/>
+                                        </copy>
+                                    </target>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 
 </project>

@@ -25,8 +25,10 @@ import java.io.IOException;
  * Transport for standalone terminal probing (OSC color queries, DA1,
  * DECRQM mode probes, cursor-position probes).
  * <p>
- * The built-in transport talks to {@code /dev/tty} with {@code stty}
- * raw-mode handling, which only works on POSIX systems. Implement this
+ * The built-in transport talks to {@code /dev/tty} with raw-mode
+ * handling — direct syscalls via FFM on Java 22+ (with a {@code stty}
+ * subprocess fallback), {@code stty} subprocesses on older runtimes —
+ * which only works on POSIX systems. Implement this
  * interface to probe terminals where {@code /dev/tty} is unavailable —
  * for example via the Win32 Console API ({@code GetConsoleMode} /
  * {@code SetConsoleMode} for raw mode, {@code WriteConsoleW} /

@@ -33,9 +33,10 @@ import java.util.Map;
 /**
  * Direct terminal color queries via OSC escape sequences.
  * I/O goes through a {@link TerminalProbeTransport}: the built-in
- * {@code /dev/tty} + {@code stty} transport on POSIX, or a custom
- * transport injected via {@link #setTransport} (e.g. Win32 Console API
- * on native Windows). Response parsing is transport-agnostic.
+ * POSIX transport ({@code /dev/tty} with FFM raw-mode handling on
+ * Java 22+, {@code stty} subprocesses otherwise), or a custom transport
+ * injected via {@link #setTransport} (e.g. Win32 Console API on native
+ * Windows). Response parsing is transport-agnostic.
  */
 final class TerminalColorQuery {
 
@@ -86,10 +87,38 @@ final class TerminalColorQuery {
             // an embedder's own reader loop.
             return query(custom);
         }
+        TerminalProbeTransport ffm = loadFfmTransport();
+        if (ffm != null) {
+            TerminalColorQuery result = query(ffm);
+            if (result != null) {
+                return result;
+            }
+            // FFM attempted but yielded nothing (unresponsive terminal);
+            // fall through to the stty path as a safety net.
+        }
         if (!DevTtyProbeTransport.INSTANCE.isAvailable()) {
             return null;
         }
         return query(DevTtyProbeTransport.INSTANCE);
+    }
+
+    /**
+     * Load the FFM probe transport (Java 22+ MRJAR layer) reflectively.
+     * Returns null on pre-22 runtimes, without native access, on Windows,
+     * or when /dev/tty is absent — the stty path then applies. Class
+     * loading is cheap: downcall handles are lazy, so this never pays
+     * Linker initialization just to check availability.
+     *
+     * @return an available FFM transport, or null to use the stty path
+     */
+    private static TerminalProbeTransport loadFfmTransport() {
+        try {
+            Class<?> clazz = Class.forName("org.aesh.terminal.detect.FfmProbeTransport");
+            TerminalProbeTransport transport = (TerminalProbeTransport) clazz.getDeclaredConstructor().newInstance();
+            return transport.isAvailable() ? transport : null;
+        } catch (LinkageError | Exception ignored) {
+            return null;
+        }
     }
 
     static TerminalColorQuery query(TerminalProbeTransport transport) {
@@ -442,6 +471,13 @@ final class TerminalColorQuery {
         TerminalProbeTransport custom = customTransport;
         if (custom != null) {
             return probeGraphemeClustering(custom);
+        }
+        // FFM first when available; its answer is authoritative (same fd,
+        // same raw mode, same bytes as stty), so no fallback — falling back
+        // on "false" would re-probe every non-clustering terminal twice.
+        TerminalProbeTransport ffm = loadFfmTransport();
+        if (ffm != null) {
+            return probeGraphemeClustering(ffm);
         }
         if (!DevTtyProbeTransport.INSTANCE.isAvailable()) {
             return false;
