@@ -94,7 +94,15 @@ final class TerminalColorQuery {
                 return result;
             }
             // FFM attempted but yielded nothing (unresponsive terminal);
-            // fall through to the stty path as a safety net.
+            // fall through to the remaining built-ins as a safety net.
+        }
+        TerminalProbeTransport win32 = loadWin32Transport();
+        if (win32 != null) {
+            TerminalColorQuery result = query(win32);
+            if (result != null) {
+                return result;
+            }
+            // Same safety net: an unresponsive console falls through.
         }
         if (!DevTtyProbeTransport.INSTANCE.isAvailable()) {
             return null;
@@ -105,15 +113,34 @@ final class TerminalColorQuery {
     /**
      * Load the FFM probe transport (Java 22+ MRJAR layer) reflectively.
      * Returns null on pre-22 runtimes, without native access, on Windows,
-     * or when /dev/tty is absent — the stty path then applies. Class
-     * loading is cheap: downcall handles are lazy, so this never pays
-     * Linker initialization just to check availability.
+     * or when /dev/tty is absent — other built-in transports are then
+     * tried. Class loading is cheap: downcall handles are lazy, so this
+     * never pays Linker initialization just to check availability.
      *
-     * @return an available FFM transport, or null to use the stty path
+     * @return an available FFM transport, or null to try the next transport
      */
     private static TerminalProbeTransport loadFfmTransport() {
         try {
             Class<?> clazz = Class.forName("org.aesh.terminal.detect.FfmProbeTransport");
+            TerminalProbeTransport transport = (TerminalProbeTransport) clazz.getDeclaredConstructor().newInstance();
+            return transport.isAvailable() ? transport : null;
+        } catch (LinkageError | Exception ignored) {
+            return null;
+        }
+    }
+
+    /**
+     * Load the Win32 probe transport (Java 22+ MRJAR layer) reflectively.
+     * Returns null off-Windows, on pre-22 runtimes, without native access,
+     * or without a console — other built-in transports are then tried.
+     * Under Cygwin/MSYS2 there is no Windows console on stdin, so this
+     * transport stays unavailable and the POSIX stty path applies.
+     *
+     * @return an available Win32 transport, or null to try the next transport
+     */
+    private static TerminalProbeTransport loadWin32Transport() {
+        try {
+            Class<?> clazz = Class.forName("org.aesh.terminal.detect.Win32ProbeTransport");
             TerminalProbeTransport transport = (TerminalProbeTransport) clazz.getDeclaredConstructor().newInstance();
             return transport.isAvailable() ? transport : null;
         } catch (LinkageError | Exception ignored) {
@@ -472,12 +499,17 @@ final class TerminalColorQuery {
         if (custom != null) {
             return probeGraphemeClustering(custom);
         }
-        // FFM first when available; its answer is authoritative (same fd,
-        // same raw mode, same bytes as stty), so no fallback — falling back
-        // on "false" would re-probe every non-clustering terminal twice.
+        // Native transports first when available; their answers are
+        // authoritative (same device, same raw mode, same bytes as stty),
+        // so no fallback — falling back on "false" would re-probe every
+        // non-clustering terminal twice.
         TerminalProbeTransport ffm = loadFfmTransport();
         if (ffm != null) {
             return probeGraphemeClustering(ffm);
+        }
+        TerminalProbeTransport win32 = loadWin32Transport();
+        if (win32 != null) {
+            return probeGraphemeClustering(win32);
         }
         if (!DevTtyProbeTransport.INSTANCE.isAvailable()) {
             return false;
