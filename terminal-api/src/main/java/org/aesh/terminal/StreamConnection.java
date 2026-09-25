@@ -78,6 +78,7 @@ public class StreamConnection extends AbstractConnection {
     private final InputStream input;
     private final OutputStream output;
     private final Decoder decoder;
+    private final Device device = new BaseDevice("dumb");
     private final AtomicBoolean closed = new AtomicBoolean();
     private volatile Consumer<Throwable> deathHook;
     private volatile Size size = new Size(120, 40);
@@ -163,7 +164,7 @@ public class StreamConnection extends AbstractConnection {
 
     @Override
     public Device device() {
-        return new BaseDevice("dumb");
+        return device;
     }
 
     @Override
@@ -217,7 +218,7 @@ public class StreamConnection extends AbstractConnection {
     }
 
     private void startReader() {
-        if (readerThread != null) {
+        if (readerThread != null || closed.get()) {
             return;
         }
         reading = true;

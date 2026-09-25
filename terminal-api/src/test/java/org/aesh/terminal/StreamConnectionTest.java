@@ -16,6 +16,7 @@ package org.aesh.terminal;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -151,6 +152,35 @@ public class StreamConnectionTest {
             }
             assertTrue("Death hook must fire when the stream breaks",
                     death.get() instanceof java.io.IOException);
+        } finally {
+            conn.close();
+        }
+    }
+
+    @Test
+    public void testWriterCloseDeliversPendingAndStaysSilent() throws Exception {
+        // Clean writer close: pending bytes are still delivered, the death
+        // hook stays silent (no failure occurred), and the reader survives
+        // until explicit close (poll loop cannot see EOF on an empty pipe).
+        PipedOutputStream writer = new PipedOutputStream();
+        PipedInputStream reader = new PipedInputStream(writer, 4096);
+        StreamConnection conn = new StreamConnection(StandardCharsets.UTF_8, reader,
+                new ByteArrayOutputStream());
+        List<int[]> received = new ArrayList<>();
+        AtomicReference<Throwable> death = new AtomicReference<>();
+        try {
+            conn.setReaderDeathHook(death::set);
+            conn.setStdinHandler(recorder(received));
+            conn.openNonBlocking();
+            writer.write("go\n".getBytes(StandardCharsets.UTF_8));
+            writer.flush();
+            writer.close();
+            awaitSize(received, 1);
+            assertArrayEquals("go\n".codePoints().toArray(), received.get(0));
+            Thread.sleep(200);
+            assertNull("Clean writer close must not fire the death hook", death.get());
+            assertTrue("Reader must survive clean writer close until explicit close",
+                    conn.reading());
         } finally {
             conn.close();
         }
