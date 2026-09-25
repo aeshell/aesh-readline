@@ -21,6 +21,7 @@ package org.aesh.terminal.utils;
 
 import static org.junit.Assert.*;
 
+import org.aesh.terminal.detect.TerminalCapabilities;
 import org.aesh.terminal.detect.TerminalTheme;
 import org.junit.Test;
 
@@ -554,5 +555,26 @@ public class TerminalColorCapabilityTest {
         assertEquals(160, copy.getSuggestedFatalCode());
         // New override should be added
         assertEquals(196, copy.getSuggestedErrorCode());
+    }
+
+    @Test
+    public void testFromDetectedCapabilities() {
+        // Migration bridge: every mapped field must mirror the detection
+        // result, whatever the environment (null-safe throughout).
+        TerminalCapabilities caps = TerminalCapabilities.detect();
+        TerminalColorCapability cap = TerminalColorCapability.from(caps);
+        assertEquals(caps.theme(), cap.getTheme());
+        assertTrue(java.util.Arrays.equals(caps.foregroundRGB(), cap.getForegroundRGB()));
+        assertTrue(java.util.Arrays.equals(caps.backgroundRGB(), cap.getBackgroundRGB()));
+        assertEquals(caps.paletteColors(), cap.getPaletteColors());
+        if (caps.supportsTrueColor()) {
+            assertEquals(ColorDepth.TRUE_COLOR, cap.getColorDepth());
+        } else if (caps.supports256Colors()) {
+            assertEquals(ColorDepth.COLORS_256, cap.getColorDepth());
+        } else if (caps.supportsColor()) {
+            assertEquals(ColorDepth.COLORS_16, cap.getColorDepth());
+        } else {
+            assertEquals(ColorDepth.NO_COLOR, cap.getColorDepth());
+        }
     }
 }

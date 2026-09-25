@@ -32,9 +32,12 @@ import org.aesh.terminal.detect.TerminalTheme;
  * <li>Foreground and background RGB colors (if detectable)</li>
  * </ul>
  * <p>
- * Use {@code TerminalColorDetector} from the readline module to obtain
- * instances of this class, or use the static factory methods like
- * {@link #detectFromEnvironment()} for quick detection.
+ * New code should prefer {@code org.aesh.terminal.detect.TerminalCapabilities}
+ * for detection; this class remains as the presentation layer consumed by
+ * {@code ANSIBuilder}.
+ * <p>
+ * Use the static factory methods like {@link #detectFromEnvironment()} for
+ * quick detection.
  *
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
@@ -698,6 +701,38 @@ public class TerminalColorCapability {
     }
 
     /**
+     * Build a presentation capability from detected terminal capabilities.
+     * <p>
+     * Migration bridge from the removed {@code TerminalColorDetector}: feed
+     * {@code TerminalCapabilities.detectFull()} (or {@code detect()} /
+     * {@code detectAsync()}) results into the {@code ANSIBuilder}-compatible
+     * presentation layer. Cursor color has no counterpart in the detection
+     * API and stays unset; color depth maps best-effort (true color, 256,
+     * 16, or none).
+     *
+     * @param caps the detected capabilities
+     * @return a capability built from the detected values
+     */
+    public static TerminalColorCapability from(
+            org.aesh.terminal.detect.TerminalCapabilities caps) {
+        Builder builder = builder()
+                .theme(caps.theme())
+                .foregroundRGB(caps.foregroundRGB())
+                .backgroundRGB(caps.backgroundRGB())
+                .paletteColors(caps.paletteColors());
+        if (caps.supportsTrueColor()) {
+            builder.colorDepth(ColorDepth.TRUE_COLOR);
+        } else if (caps.supports256Colors()) {
+            builder.colorDepth(ColorDepth.COLORS_256);
+        } else if (caps.supportsColor()) {
+            builder.colorDepth(ColorDepth.COLORS_16);
+        } else {
+            builder.colorDepth(ColorDepth.NO_COLOR);
+        }
+        return builder.build();
+    }
+
+    /**
      * Create a new Builder for constructing a customized TerminalColorCapability.
      * <p>
      * Example usage:
@@ -724,8 +759,8 @@ public class TerminalColorCapability {
      * This allows you to start with detected values and customize specific colors:
      *
      * <pre>
-     * TerminalColorCapability detected = TerminalColorDetector.detect(connection.terminal());
-     * TerminalColorCapability custom = TerminalColorCapability.builder(detected)
+     * TerminalCapabilities caps = TerminalCapabilities.detectFull();
+     * TerminalColorCapability custom = TerminalColorCapability.builder()
      *         .errorCode(196) // Override just the error color
      *         .build();
      * </pre>

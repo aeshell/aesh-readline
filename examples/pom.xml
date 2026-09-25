@@ -41,6 +41,11 @@
         </dependency>
         <dependency>
             <groupId>org.aesh</groupId>
+            <artifactId>terminal-detect</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.aesh</groupId>
             <artifactId>terminal-tty</artifactId>
             <version>${project.version}</version>
         </dependency>

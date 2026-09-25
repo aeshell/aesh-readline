@@ -58,6 +58,16 @@ public final class TerminalCapabilities {
     private volatile ModeSupport mode2027Support;
     private volatile Boolean nativeGraphemeClustering;
     private final CountDownLatch colorQueryLatch;
+    /**
+     * True once synchronous full detection completed on this instance.
+     * Guards the shared-instance cache in {@link #detectFull()}.
+     */
+    private volatile boolean fullyDetected;
+    /**
+     * True once a background query started on this instance. Guards
+     * against starting one thread per {@link #detectAsync()} caller.
+     */
+    private volatile boolean asyncStarted;
 
     private TerminalCapabilities(TerminalDetector detector, CountDownLatch latch) {
         this.detector = detector;
@@ -96,6 +106,19 @@ public final class TerminalCapabilities {
     }
 
     /**
+     * Drop the shared instance so the next access re-detects. Call when the
+     * terminal environment changes mid-session (e.g. a theme toggle reported
+     * via a theme-change event) instead of re-running full detection
+     * manually — the next {@code detect()}, {@code detectFull()} or
+     * {@code detectAsync()} call rebuilds from scratch.
+     */
+    public static void invalidate() {
+        synchronized (TerminalCapabilities.class) {
+            instance = null;
+        }
+    }
+
+    /**
      * Detect terminal capabilities from environment variables only.
      * Fast (~1-2ms), no subprocess calls on Linux/macOS.
      *
@@ -116,10 +139,31 @@ public final class TerminalCapabilities {
      * <li>Windows: Apps dark mode registry key</li>
      * </ul>
      * This may take 10-50ms due to subprocess calls.
+     * <p>
+     * The result populates the shared instance: repeat calls return the
+     * cached capabilities instead of re-probing. Call {@link #invalidate()}
+     * first to force a fresh probe.
      *
      * @return the detected capabilities with resolved theme
      */
     public static TerminalCapabilities detectFull() {
+        TerminalCapabilities current = instance;
+        if (current != null && current.fullyDetected) {
+            return current;
+        }
+        synchronized (TerminalCapabilities.class) {
+            current = instance;
+            if (current != null && current.fullyDetected) {
+                return current;
+            }
+            TerminalCapabilities caps = computeFull();
+            caps.fullyDetected = true;
+            instance = caps;
+            return caps;
+        }
+    }
+
+    private static TerminalCapabilities computeFull() {
         TerminalCapabilities caps = detect();
         if (caps.detector.theme == TerminalTheme.UNKNOWN) {
             caps.resolvedTheme = TerminalDetector.detectPlatformTheme();
@@ -169,6 +213,23 @@ public final class TerminalCapabilities {
      * @return the detected capabilities with background color query running
      */
     public static TerminalCapabilities detectAsync() {
+        TerminalCapabilities current = instance;
+        if (current != null && (current.fullyDetected || current.asyncStarted)) {
+            return current;
+        }
+        synchronized (TerminalCapabilities.class) {
+            current = instance;
+            if (current != null && (current.fullyDetected || current.asyncStarted)) {
+                return current;
+            }
+            TerminalCapabilities caps = computeAsync();
+            caps.asyncStarted = true;
+            instance = caps;
+            return caps;
+        }
+    }
+
+    private static TerminalCapabilities computeAsync() {
         TerminalDetector detector = new TerminalDetector();
         CountDownLatch latch = new CountDownLatch(1);
         TerminalCapabilities caps = new TerminalCapabilities(detector, latch);

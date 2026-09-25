@@ -62,7 +62,17 @@ public final class PlatformThemeDetector {
      *
      * @param env the terminal environment
      * @return the detected theme, or UNKNOWN if not detectable
+     * @deprecated Platform theme probing lives in
+     *             {@code org.aesh.terminal.detect.TerminalDetector} (used by
+     *             {@code TerminalCapabilities.detectFull()}) — prefer that
+     *             path for new code. This method is frozen (no further
+     *             changes) and kept working for existing callers; note it
+     *             additionally covers IDE config files (JetBrains, VSCode),
+     *             Windows Terminal settings, ConEmu palettes, legacy console
+     *             colors and Alacritty config, which the terminal-detect
+     *             path does not (yet) probe.
      */
+    @Deprecated
     public static TerminalTheme detectPlatformTheme(TerminalEnvironment env) {
         // JetBrains IDEs: check config files
         if (env.isJetBrains()) {

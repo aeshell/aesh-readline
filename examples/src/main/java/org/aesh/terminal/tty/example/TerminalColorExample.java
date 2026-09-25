@@ -20,17 +20,16 @@
 package org.aesh.terminal.tty.example;
 
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.aesh.terminal.Device;
-import org.aesh.terminal.tty.TerminalColorDetector;
+import org.aesh.terminal.detect.TerminalCapabilities;
 import org.aesh.terminal.tty.TerminalConnection;
 import org.aesh.terminal.utils.ANSI;
 import org.aesh.terminal.utils.ANSIBuilder;
-import org.aesh.terminal.utils.ColorDepth;
-import org.aesh.terminal.utils.TerminalColorCapability;
 import org.aesh.terminal.utils.TerminalEnvironment;
 
 /**
@@ -87,23 +86,29 @@ public class TerminalColorExample {
      * @param connection the terminal connection to use for output
      */
     private static void runExample(TerminalConnection connection) {
-        // First, do environment-based detection to get capability for the builder
+        // First, do environment-based detection (fast, no terminal queries)
         long envStart = System.currentTimeMillis();
-        TerminalColorCapability envCap = TerminalColorCapability.detectFromEnvironment();
+        TerminalCapabilities envCaps = TerminalCapabilities.detect();
         long envTime = System.currentTimeMillis() - envStart;
 
-        // Fast detect (FG+BG only, for theme detection)
-        long fastStart = System.currentTimeMillis();
-        TerminalColorCapability fastCap = TerminalColorDetector.detect(connection.terminal());
-        long fastTime = System.currentTimeMillis() - fastStart;
+        // Async detect: heuristics now, real colors in the background
+        long asyncStart = System.currentTimeMillis();
+        TerminalCapabilities asyncCaps = TerminalCapabilities.detectAsync();
+        boolean colorsReady = false;
+        try {
+            colorsReady = asyncCaps.awaitColors(2, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        long asyncTime = System.currentTimeMillis() - asyncStart;
 
-        // Full detect (FG+BG+cursor+palette)
+        // Full detect (env + platform theme + live terminal queries)
         long fullStart = System.currentTimeMillis();
-        TerminalColorCapability fullCap = TerminalColorDetector.detectFull(connection.terminal());
+        TerminalCapabilities fullCaps = TerminalCapabilities.detectFull();
         long fullTime = System.currentTimeMillis() - fullStart;
 
-        // Create a single reusable ANSIBuilder with the detected capability
-        ANSIBuilder builder = ANSIBuilder.builder(fullCap);
+        // Plain ANSI builder for the demo output itself
+        ANSIBuilder builder = ANSIBuilder.builder();
 
         connection.write("\n");
         connection.write(builder.bold("=== Terminal Color Detection Example ===").toLine());
@@ -116,25 +121,25 @@ public class TerminalColorExample {
         connection.write("   Detection time: " + envTime + "ms\n");
         connection.write("\n");
 
-        printCapability(connection, "   ", envCap);
+        printCapability(connection, "   ", envCaps);
 
         connection.write("\n");
         builder.reset();
-        connection.write(builder.bold("2. Fast Detection (FG+BG only)").toLine());
-        connection.write("   Queries only foreground and background colors (OSC 10/11).\n");
-        connection.write("   Detection time: " + fastTime + "ms\n");
+        connection.write(builder.bold("2. Async Detection (background color query)").toLine());
+        connection.write("   Returns heuristics immediately, queries colors in the background.\n");
+        connection.write("   Detection time: " + asyncTime + "ms (colors ready: " + colorsReady + ")\n");
         connection.write("\n");
 
-        printCapability(connection, "   ", fastCap);
+        printCapability(connection, "   ", asyncCaps);
 
         connection.write("\n");
         builder.reset();
-        connection.write(builder.bold("3. Full Detection (FG+BG+cursor+palette)").toLine());
-        connection.write("   Queries all colors including cursor and 16 palette colors.\n");
+        connection.write(builder.bold("3. Full Detection (env + platform + live queries)").toLine());
+        connection.write("   Queries platform theme, colors and palette.\n");
         connection.write("   Detection time: " + fullTime + "ms\n");
         connection.write("\n");
 
-        printCapability(connection, "   ", fullCap);
+        printCapability(connection, "   ", fullCaps);
 
         connection.write("\n");
         builder.reset();
@@ -149,7 +154,7 @@ public class TerminalColorExample {
         connection.write(builder.bold("5. Color Depth Capabilities").toLine());
         connection.write("\n");
 
-        demonstrateColorDepth(connection, builder, fullCap.getColorDepth());
+        demonstrateColorDepth(connection, builder, fullCaps);
 
         connection.write("\n");
         builder.reset();
@@ -165,47 +170,40 @@ public class TerminalColorExample {
      *
      * @param connection the terminal connection to use for output
      * @param indent the indentation string to prefix each line
-     * @param cap the terminal color capability to print
+     * @param caps the detected terminal capabilities to print
      */
-    private static void printCapability(TerminalConnection connection, String indent, TerminalColorCapability cap) {
-        connection.write(indent + "Color Depth: " + cap.getColorDepth() +
-                " (" + cap.getColorDepth().getColorCount() + " colors)\n");
-        connection.write(indent + "Theme:       " + cap.getTheme() +
-                (cap.getTheme().isDark() ? " (using light text colors)" : " (using dark text colors)") + "\n");
+    private static void printCapability(TerminalConnection connection, String indent,
+            TerminalCapabilities caps) {
+        connection.write(indent + "True color:  " + (caps.supportsTrueColor() ? "Yes" : "No") + "\n");
+        connection.write(indent + "256 colors:  " + (caps.supports256Colors() ? "Yes" : "No") + "\n");
+        connection.write(indent + "Theme:       " + caps.theme() +
+                (caps.theme().isDark() ? " (using light text colors)" : " (using dark text colors)") + "\n");
 
-        if (cap.hasBackgroundColor()) {
-            int[] bg = cap.getBackgroundRGB();
-            connection.write(indent + "Background:  " + cap.getBackgroundHex() +
+        int[] bg = caps.backgroundRGB();
+        if (bg != null) {
+            connection.write(indent + "Background:  " + rgbToHex(bg) +
                     " RGB(" + bg[0] + ", " + bg[1] + ", " + bg[2] + ") " +
                     formatColorSwatch(bg) + "\n");
         } else {
             connection.write(indent + "Background:  Not detected\n");
         }
 
-        if (cap.hasForegroundColor()) {
-            int[] fg = cap.getForegroundRGB();
-            connection.write(indent + "Foreground:  " + cap.getForegroundHex() +
+        int[] fg = caps.foregroundRGB();
+        if (fg != null) {
+            connection.write(indent + "Foreground:  " + rgbToHex(fg) +
                     " RGB(" + fg[0] + ", " + fg[1] + ", " + fg[2] + ") " +
                     formatColorSwatch(fg) + "\n");
         } else {
             connection.write(indent + "Foreground:  Not detected\n");
         }
 
-        if (cap.hasCursorColor()) {
-            int[] cursor = cap.getCursorRGB();
-            connection.write(indent + "Cursor:      RGB(" + cursor[0] + ", " + cursor[1] + ", " + cursor[2] + ") " +
-                    formatColorSwatch(cursor) + "\n");
-        } else {
-            connection.write(indent + "Cursor:      Not detected\n");
-        }
-
-        if (cap.hasPaletteColors()) {
-            java.util.Map<Integer, int[]> palette = cap.getPaletteColors();
+        java.util.Map<Integer, int[]> palette = caps.paletteColors();
+        if (!palette.isEmpty()) {
             connection.write(indent + "Palette:     " + palette.size() + " colors detected\n");
             // Show the 8 standard colors in a compact format
             StringBuilder swatches = new StringBuilder(indent + "             ");
             String[] names = { "Blk", "Red", "Grn", "Yel", "Blu", "Mag", "Cyn", "Wht" };
-            for (int i = 0; i < 8 && i < palette.size(); i++) {
+            for (int i = 0; i < 8; i++) {
                 int[] color = palette.get(i);
                 if (color != null) {
                     swatches.append(formatColorSwatch(color));
@@ -220,6 +218,16 @@ public class TerminalColorExample {
         } else {
             connection.write(indent + "Palette:     Not detected (OSC 4 not supported)\n");
         }
+    }
+
+    /**
+     * Formats an RGB triple as a hex color string.
+     *
+     * @param rgb the RGB color values as an array of three integers
+     * @return the hex string (e.g. "#FF8040")
+     */
+    private static String rgbToHex(int[] rgb) {
+        return String.format("#%02X%02X%02X", rgb[0], rgb[1], rgb[2]);
     }
 
     /**
@@ -329,25 +337,23 @@ public class TerminalColorExample {
      *
      * @param connection the terminal connection to use for output
      * @param builder the reusable ANSIBuilder instance
-     * @param depth the color depth capability of the terminal
+     * @param caps the detected terminal capabilities
      */
-    private static void demonstrateColorDepth(TerminalConnection connection, ANSIBuilder builder, ColorDepth depth) {
+    private static void demonstrateColorDepth(TerminalConnection connection, ANSIBuilder builder,
+            TerminalCapabilities caps) {
         String indent = "   ";
 
         builder.reset();
         connection.write(builder.append(indent).append("Supports any color:  ")
-                .append(depth.supportsColor() ? "Yes" : "No").toLine());
-        builder.reset();
-        connection.write(builder.append(indent).append("Supports 16 colors:  ")
-                .append(depth.supports16Colors() ? "Yes" : "No").toLine());
+                .append(caps.supportsColor() ? "Yes" : "No").toLine());
         builder.reset();
         connection.write(builder.append(indent).append("Supports 256 colors: ")
-                .append(depth.supports256Colors() ? "Yes" : "No").toLine());
+                .append(caps.supports256Colors() ? "Yes" : "No").toLine());
         builder.reset();
         connection.write(builder.append(indent).append("Supports true color: ")
-                .append(depth.supportsTrueColor() ? "Yes" : "No").toLine());
+                .append(caps.supportsTrueColor() ? "Yes" : "No").toLine());
 
-        if (depth.supports256Colors()) {
+        if (caps.supports256Colors()) {
             connection.write("\n");
             builder.reset();
             connection.write(builder.append(indent).append("256-color palette sample:").toLine());
@@ -360,7 +366,7 @@ public class TerminalColorExample {
             connection.write(builder.toLine());
         }
 
-        if (depth.supportsTrueColor()) {
+        if (caps.supportsTrueColor()) {
             connection.write("\n");
             builder.reset();
             connection.write(builder.append(indent).append("True color gradient sample:").toLine());
@@ -570,11 +576,11 @@ public class TerminalColorExample {
     }
 
     /**
-     * Enable debug logging for the TerminalColorDetector class.
+     * Enable debug logging for the terminal-detect classes.
      */
     private static void enableDebugLogging() {
         // Configure java.util.logging to show FINE level messages
-        Logger logger = Logger.getLogger("org.aesh.terminal.tty.TerminalColorDetector");
+        Logger logger = Logger.getLogger("org.aesh.terminal.detect");
         logger.setLevel(Level.FINE);
 
         // Also need a handler that will output FINE messages
@@ -585,7 +591,7 @@ public class TerminalColorExample {
         // Don't pass to parent handlers to avoid duplicate output
         logger.setUseParentHandlers(false);
 
-        System.out.println(ANSIBuilder.builder().faint("[Debug logging enabled for TerminalColorDetector]").toString());
+        System.out.println(ANSIBuilder.builder().faint("[Debug logging enabled for terminal-detect]").toString());
         System.out.println();
     }
 }

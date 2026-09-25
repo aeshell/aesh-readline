@@ -70,4 +70,44 @@ public class TerminalCapabilitiesTest {
         assertNotNull(ImageProtocol.valueOf("ITERM2"));
         assertNotNull(ImageProtocol.valueOf("SIXEL"));
     }
+
+    @Test
+    public void testDetectFullCachesInstance() {
+        TerminalCapabilities saved = TerminalCapabilities.getInstance();
+        try {
+            TerminalCapabilities.invalidate();
+            TerminalCapabilities a = TerminalCapabilities.detectFull();
+            TerminalCapabilities b = TerminalCapabilities.detectFull();
+            assertSame("Repeat detectFull must return cached capabilities, not re-probe", a, b);
+        } finally {
+            TerminalCapabilities.setInstance(saved);
+        }
+    }
+
+    @Test
+    public void testDetectAsyncSharesInstance() {
+        TerminalCapabilities saved = TerminalCapabilities.getInstance();
+        try {
+            TerminalCapabilities.invalidate();
+            TerminalCapabilities a = TerminalCapabilities.detectAsync();
+            TerminalCapabilities b = TerminalCapabilities.detectAsync();
+            assertSame("Repeat detectAsync must share one background query", a, b);
+        } finally {
+            TerminalCapabilities.setInstance(saved);
+        }
+    }
+
+    @Test
+    public void testInvalidateForcesReprobe() {
+        TerminalCapabilities saved = TerminalCapabilities.getInstance();
+        try {
+            TerminalCapabilities.invalidate();
+            TerminalCapabilities a = TerminalCapabilities.detectFull();
+            TerminalCapabilities.invalidate();
+            TerminalCapabilities b = TerminalCapabilities.detectFull();
+            assertNotSame("Post-invalidate detectFull must re-probe", a, b);
+        } finally {
+            TerminalCapabilities.setInstance(saved);
+        }
+    }
 }
