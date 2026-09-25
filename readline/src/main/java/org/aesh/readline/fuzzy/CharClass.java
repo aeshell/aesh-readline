@@ -10,6 +10,9 @@
  */
 package org.aesh.readline.fuzzy;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 /**
  * Character classification and bonus matrix for fuzzy matching.
  * <p>
@@ -45,8 +48,16 @@ public final class CharClass {
     private static final int[] ASCII_CLASSES = new int[128];
 
     // Precomputed bonus matrix: bonusMatrix[prevClass][curClass]
-    // Indexed by character class constants above
+    // Indexed by character class constants above.
+    // Legacy global state for bonus(int, int) — do not use for new code.
+    // Each FuzzyAlgo instance must read its own scheme's matrix via
+    // bonus(int, int, FuzzyScheme) instead; sharing this mutable global
+    // across schemes silently corrupts scoring.
     private static final short[][] BONUS_MATRIX = new short[CLASS_COUNT][CLASS_COUNT];
+
+    // Per-scheme matrices, computed once and never mutated. FuzzyScheme has
+    // a private constructor, so the key set is closed (DEFAULT/PATH/HISTORY).
+    private static final Map<FuzzyScheme, short[][]> MATRICES = new ConcurrentHashMap<>();
 
     // Delimiter characters (matching fzf)
     private static final String DELIMITER_CHARS = "/,:;|";
@@ -80,13 +91,38 @@ public final class CharClass {
      * Must be called before using the bonus matrix.
      *
      * @param scheme the scoring scheme to use
+     * @deprecated Global mutable state shared across schemes — a second
+     *             instance with another scheme silently overwrites it. Use
+     *             {@link #bonus(int, int, FuzzyScheme)} instead, which reads
+     *             the scheme's own precomputed matrix. Kept for compatibility;
+     *             production code no longer calls this.
      */
+    @Deprecated
     public static void init(FuzzyScheme scheme) {
         for (int i = 0; i < CLASS_COUNT; i++) {
             for (int j = 0; j < CLASS_COUNT; j++) {
                 BONUS_MATRIX[i][j] = bonusFor(i, j, scheme);
             }
         }
+    }
+
+    /**
+     * Return the precomputed matrix for a scheme, computing and caching it
+     * once. Entries are never mutated after publication.
+     */
+    private static short[][] matrixFor(FuzzyScheme scheme) {
+        short[][] matrix = MATRICES.get(scheme);
+        if (matrix == null) {
+            short[][] fresh = new short[CLASS_COUNT][CLASS_COUNT];
+            for (int i = 0; i < CLASS_COUNT; i++) {
+                for (int j = 0; j < CLASS_COUNT; j++) {
+                    fresh[i][j] = bonusFor(i, j, scheme);
+                }
+            }
+            short[][] raced = MATRICES.putIfAbsent(scheme, fresh);
+            matrix = raced != null ? raced : fresh;
+        }
+        return matrix;
     }
 
     /**
@@ -137,13 +173,33 @@ public final class CharClass {
     /**
      * Look up the bonus for a character at a given position based on the
      * previous and current character classes.
+     * <p>
+     * Reads shared global state last written by {@link #init(FuzzyScheme)} —
+     * a second instance with another scheme silently overwrites it. Kept
+     * for compatibility; new code must use
+     * {@link #bonus(int, int, FuzzyScheme)}.
      *
      * @param prevClass the class of the preceding character
      * @param curClass the class of the current character
      * @return the bonus score
      */
+    @Deprecated
     public static short bonus(int prevClass, int curClass) {
         return BONUS_MATRIX[prevClass][curClass];
+    }
+
+    /**
+     * Look up the bonus for a transition between character classes under a
+     * specific scheme, from that scheme's precomputed matrix. Safe to mix
+     * schemes across instances and threads.
+     *
+     * @param prevClass the class of the preceding character
+     * @param curClass the class of the current character
+     * @param scheme the scoring scheme to use
+     * @return the bonus score
+     */
+    public static short bonus(int prevClass, int curClass, FuzzyScheme scheme) {
+        return matrixFor(scheme)[prevClass][curClass];
     }
 
     /**
@@ -158,7 +214,7 @@ public final class CharClass {
         if (idx == 0) {
             return scheme.bonusBoundaryWhite;
         }
-        return BONUS_MATRIX[classOf(input[idx - 1])][classOf(input[idx])];
+        return matrixFor(scheme)[classOf(input[idx - 1])][classOf(input[idx])];
     }
 
     /**

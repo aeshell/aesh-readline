@@ -19,9 +19,10 @@
  */
 package org.aesh.readline.action.mappings;
 
-import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 
 import org.aesh.readline.InputProcessor;
@@ -269,8 +270,21 @@ public class FuzzySearchHistory implements ActionEvent {
         scrollOffset = 0;
     }
 
-    // Date formatter for timestamps (MM-dd HH:mm)
-    private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("MM-dd HH:mm");
+    // Date formatter for timestamps (MM-dd HH:mm). DateTimeFormatter is
+    // immutable and thread-safe, unlike the SimpleDateFormat it replaces
+    // (which corrupted output under concurrent multi-connection use).
+    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("MM-dd HH:mm");
+
+    /**
+     * Format an epoch-millis timestamp for display in the search UI.
+     * Package-private for testing.
+     *
+     * @param epochMillis the timestamp to format
+     * @return the formatted timestamp (MM-dd HH:mm, system zone)
+     */
+    static String formatTimestamp(long epochMillis) {
+        return Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault()).format(DATE_FORMAT);
+    }
 
     /**
      * Render the fuzzy search UI below the prompt.
@@ -317,7 +331,7 @@ public class FuzzySearchHistory implements ActionEvent {
             // Format timestamp if available
             String timeStr = "";
             if (results.get(i).timestamp > 0) {
-                timeStr = DATE_FORMAT.format(new Date(results.get(i).timestamp));
+                timeStr = formatTimestamp(results.get(i).timestamp);
             }
 
             if (i == selectedIndex) {

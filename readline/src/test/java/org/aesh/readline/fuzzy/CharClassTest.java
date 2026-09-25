@@ -137,4 +137,37 @@ public class CharClassTest {
         assertTrue("DEFAULT: white bonus should be > delimiter bonus",
                 whiteBonus > delimBonus);
     }
+
+    @Test
+    public void testSchemeMatricesAreIsolated() {
+        // The legacy global matrix follows the last init() call, but the
+        // scheme overload must answer per-scheme regardless: WHITE->LOWER
+        // is 10 under DEFAULT vs 8 under HISTORY/PATH, DELIMITER->LOWER is
+        // 9 under DEFAULT/PATH vs 8 under HISTORY.
+        CharClass.init(FuzzyScheme.HISTORY);
+        assertEquals(10, CharClass.bonus(CharClass.WHITE, CharClass.LOWER, FuzzyScheme.DEFAULT));
+        assertEquals(8, CharClass.bonus(CharClass.WHITE, CharClass.LOWER, FuzzyScheme.HISTORY));
+        assertEquals(8, CharClass.bonus(CharClass.WHITE, CharClass.LOWER, FuzzyScheme.PATH));
+        assertEquals(9, CharClass.bonus(CharClass.DELIMITER, CharClass.LOWER, FuzzyScheme.DEFAULT));
+        assertEquals(8, CharClass.bonus(CharClass.DELIMITER, CharClass.LOWER, FuzzyScheme.HISTORY));
+        CharClass.init(FuzzyScheme.DEFAULT);
+        assertEquals(8, CharClass.bonus(CharClass.WHITE, CharClass.LOWER, FuzzyScheme.HISTORY));
+        assertEquals(10, CharClass.bonus(CharClass.WHITE, CharClass.LOWER, FuzzyScheme.DEFAULT));
+    }
+
+    @Test
+    public void testInterleavedAlgoInstancesKeepTheirScheme() {
+        // End-to-end: two live instances with different schemes must each
+        // score by their own scheme (previously the later init won globally).
+        FuzzyAlgo history = new FuzzyAlgo(FuzzyScheme.HISTORY);
+        FuzzyAlgo deflt = new FuzzyAlgo(FuzzyScheme.DEFAULT);
+        int[] text = "foo bar".codePoints().toArray();
+        int[] pattern = "fb".codePoints().toArray();
+        int historyScore = history.match(true, text, pattern, false).score;
+        int defaultScore = deflt.match(true, text, pattern, false).score;
+        assertEquals(new FuzzyAlgo(FuzzyScheme.HISTORY).match(true, text, pattern, false).score,
+                historyScore);
+        assertEquals(new FuzzyAlgo(FuzzyScheme.DEFAULT).match(true, text, pattern, false).score,
+                defaultScore);
+    }
 }

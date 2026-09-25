@@ -52,7 +52,6 @@ public final class FuzzyAlgo {
      */
     public FuzzyAlgo(FuzzyScheme scheme) {
         this.scheme = scheme;
-        CharClass.init(scheme);
     }
 
     /**
@@ -217,7 +216,7 @@ public final class FuzzyAlgo {
                 T[off] = ch;
             }
 
-            short bonus = CharClass.bonus(prevClass, curClass);
+            short bonus = CharClass.bonus(prevClass, curClass, scheme);
             B[off] = bonus;
             prevClass = curClass;
 
@@ -408,7 +407,7 @@ public final class FuzzyAlgo {
 
             if (ch == pattern[pidx]) {
                 score += FuzzyScheme.SCORE_MATCH;
-                short bonus = CharClass.bonus(prevClass, curClass);
+                short bonus = CharClass.bonus(prevClass, curClass, scheme);
                 if (consecutive == 0) {
                     firstBonus = bonus;
                 } else {
