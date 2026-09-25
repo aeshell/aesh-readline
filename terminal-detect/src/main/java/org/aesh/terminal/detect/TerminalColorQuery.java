@@ -23,6 +23,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -30,7 +32,10 @@ import java.util.Map;
 
 /**
  * Direct terminal color queries via OSC escape sequences.
- * Uses /dev/tty and stty for raw terminal I/O without depending on terminal-api.
+ * I/O goes through a {@link TerminalProbeTransport}: the built-in
+ * {@code /dev/tty} + {@code stty} transport on POSIX, or a custom
+ * transport injected via {@link #setTransport} (e.g. Win32 Console API
+ * on native Windows). Response parsing is transport-agnostic.
  */
 final class TerminalColorQuery {
 
@@ -55,41 +60,49 @@ final class TerminalColorQuery {
     TerminalColorQuery() {
     }
 
+    /**
+     * Injected probe transport. Null selects the built-in /dev/tty
+     * transport. Volatile for safe publication across the background
+     * query thread started by {@code detectAsync()}.
+     */
+    private static volatile TerminalProbeTransport customTransport;
+
+    /**
+     * Inject a custom probe transport. Null restores the built-in
+     * {@code /dev/tty} transport. Public entry point is
+     * {@link TerminalCapabilities#setProbeTransport}.
+     *
+     * @param transport the transport to use, or null for the built-in one
+     */
+    static void setTransport(TerminalProbeTransport transport) {
+        customTransport = transport;
+    }
+
     static TerminalColorQuery query() {
-        if (!DEV_TTY.exists() || !DEV_TTY.canRead() || !DEV_TTY.canWrite()) {
+        TerminalProbeTransport custom = customTransport;
+        if (custom != null) {
+            // An injected transport replaces the built-in one exclusively:
+            // no silent fallback to /dev/tty, which could steal input from
+            // an embedder's own reader loop.
+            return query(custom);
+        }
+        if (!DevTtyProbeTransport.INSTANCE.isAvailable()) {
             return null;
         }
+        return query(DevTtyProbeTransport.INSTANCE);
+    }
 
-        String savedState = sttyGet();
-        if (savedState == null) {
+    static TerminalColorQuery query(TerminalProbeTransport transport) {
+        if (!transport.isAvailable()) {
             return null;
         }
-
-        try {
-            sttyRaw();
-
-            // Build batch: DECRQM probes + DA1 + OSC colors
-            // DECRQM responses arrive before DA1 (DA1 acts as fence)
-            StringBuilder queries = new StringBuilder();
-            queries.append("\033[?2026$p"); // DECRQM: Mode 2026 (synchronized output)
-            queries.append("\033[?2027$p"); // DECRQM: Mode 2027 (grapheme cluster)
-            queries.append("\033[c"); // DA1 query (fence)
-            queries.append("\033]10;?").append(BEL);
-            queries.append("\033]11;?").append(BEL);
-            for (int i = 0; i <= 15; i++) {
-                queries.append("\033]4;").append(i).append(";?").append(BEL);
-            }
-            queries.append("\033]4;255;?").append(BEL);
-
-            try (FileOutputStream ttyOut = new FileOutputStream(DEV_TTY)) {
-                ttyOut.write(queries.toString().getBytes());
-                ttyOut.flush();
-            }
+        try (TerminalProbeSession session = transport.open()) {
+            session.write(buildColorQuery());
 
             // 22 expected terminators: 2 DECRPM + 1 DA1 + 19 OSC responses
             // (terminals that don't support DECRQM won't send DECRPM, so
             // the DA1 fence ensures we don't wait for them)
-            String response = readResponse(22);
+            String response = readResponse(session.input(), 22);
             if (response == null || response.isEmpty()) {
                 return null;
             }
@@ -110,8 +123,101 @@ final class TerminalColorQuery {
             return result;
         } catch (IOException ignored) {
             return null;
-        } finally {
-            sttyRestore(savedState);
+        }
+    }
+
+    /**
+     * The batched color/mode query: DECRQM probes + DA1 fence + OSC colors.
+     * All ASCII, so US-ASCII encoding is exact.
+     *
+     * @return the query bytes to write to the terminal
+     */
+    static byte[] buildColorQuery() {
+        // Build batch: DECRQM probes + DA1 + OSC colors
+        // DECRQM responses arrive before DA1 (DA1 acts as fence)
+        StringBuilder queries = new StringBuilder();
+        queries.append("\033[?2026$p"); // DECRQM: Mode 2026 (synchronized output)
+        queries.append("\033[?2027$p"); // DECRQM: Mode 2027 (grapheme cluster)
+        queries.append("\033[c"); // DA1 query (fence)
+        queries.append("\033]10;?").append(BEL);
+        queries.append("\033]11;?").append(BEL);
+        for (int i = 0; i <= 15; i++) {
+            queries.append("\033]4;").append(i).append(";?").append(BEL);
+        }
+        queries.append("\033]4;255;?").append(BEL);
+        return queries.toString().getBytes(StandardCharsets.US_ASCII);
+    }
+
+    /**
+     * Built-in POSIX transport: /dev/tty with stty raw-mode handling.
+     */
+    private static final class DevTtyProbeTransport implements TerminalProbeTransport {
+        static final DevTtyProbeTransport INSTANCE = new DevTtyProbeTransport();
+
+        @Override
+        public boolean isAvailable() {
+            return DEV_TTY.exists() && DEV_TTY.canRead() && DEV_TTY.canWrite();
+        }
+
+        @Override
+        public TerminalProbeSession open() throws IOException {
+            String savedState = sttyGet();
+            if (savedState == null) {
+                throw new IOException("stty unavailable");
+            }
+            sttyRaw();
+            return new DevTtyProbeSession(savedState);
+        }
+    }
+
+    private static final class DevTtyProbeSession implements TerminalProbeSession {
+        private final String savedState;
+        private final FileOutputStream ttyOut;
+        private final FileInputStream ttyIn;
+
+        DevTtyProbeSession(String savedState) throws IOException {
+            this.savedState = savedState;
+            FileOutputStream out = null;
+            try {
+                out = new FileOutputStream(DEV_TTY);
+                FileInputStream in = new FileInputStream(DEV_TTY);
+                this.ttyOut = out;
+                this.ttyIn = in;
+            } catch (IOException e) {
+                if (out != null) {
+                    try {
+                        out.close();
+                    } catch (IOException ignored) {
+                    }
+                }
+                sttyRestore(savedState);
+                throw e;
+            }
+        }
+
+        @Override
+        public void write(byte[] data) throws IOException {
+            ttyOut.write(data);
+            ttyOut.flush();
+        }
+
+        @Override
+        public InputStream input() {
+            return ttyIn;
+        }
+
+        @Override
+        public void close() {
+            try {
+                ttyIn.close();
+            } catch (IOException ignored) {
+            }
+            try {
+                ttyOut.close();
+            } catch (IOException ignored) {
+            } finally {
+                sttyRestore(savedState);
+            }
         }
     }
 
@@ -170,19 +276,17 @@ final class TerminalColorQuery {
         }
     }
 
-    private static String readResponse(int expectedResponses) throws IOException {
-        try (FileInputStream ttyIn = new FileInputStream(DEV_TTY)) {
-            byte[] buf = new byte[4096];
-            StringBuilder sb = new StringBuilder();
-            int n;
-            while ((n = ttyIn.read(buf)) > 0) {
-                sb.append(new String(buf, 0, n));
-                if (countTerminators(sb) >= expectedResponses) {
-                    break;
-                }
+    private static String readResponse(InputStream in, int expectedResponses) throws IOException {
+        byte[] buf = new byte[4096];
+        StringBuilder sb = new StringBuilder();
+        int n;
+        while ((n = in.read(buf)) > 0) {
+            sb.append(new String(buf, 0, n));
+            if (countTerminators(sb) >= expectedResponses) {
+                break;
             }
-            return sb.toString();
         }
+        return sb.toString();
     }
 
     private static int countTerminators(StringBuilder sb) {
@@ -335,38 +439,28 @@ final class TerminalColorQuery {
      * @return true if native grapheme clustering is detected
      */
     static boolean probeGraphemeClustering() {
-        if (!DEV_TTY.exists() || !DEV_TTY.canRead() || !DEV_TTY.canWrite()) {
+        TerminalProbeTransport custom = customTransport;
+        if (custom != null) {
+            return probeGraphemeClustering(custom);
+        }
+        if (!DevTtyProbeTransport.INSTANCE.isAvailable()) {
             return false;
         }
+        return probeGraphemeClustering(DevTtyProbeTransport.INSTANCE);
+    }
 
-        String savedState = sttyGet();
-        if (savedState == null) {
+    static boolean probeGraphemeClustering(TerminalProbeTransport transport) {
+        if (!transport.isAvailable()) {
             return false;
         }
-
-        try {
-            sttyRaw();
-
-            // Save cursor, move to column 0, erase line, write flag emoji, query position
-            String probe = "\0337" // save cursor (DECSC)
-                    + "\r" // column 0
-                    + "\033[K" // erase line
-                    + "\uD83C\uDDEB\uD83C\uDDF7" // 🇫🇷 (two regional indicators)
-                    + "\033[6n"; // DSR: query cursor position
-
-            try (FileOutputStream ttyOut = new FileOutputStream(DEV_TTY)) {
-                ttyOut.write(probe.getBytes("UTF-8"));
-                ttyOut.flush();
-            }
+        try (TerminalProbeSession session = transport.open()) {
+            session.write(buildGraphemeProbe());
 
             // Read CPR response: ESC [ row ; col R
-            String response = readResponse(1); // expect 1 terminator (the 'R')
+            String response = readResponse(session.input(), 1); // expect 1 terminator (the 'R')
 
             // Restore cursor and erase the test emoji
-            try (FileOutputStream ttyOut = new FileOutputStream(DEV_TTY)) {
-                ttyOut.write(("\0338\033[K").getBytes()); // restore cursor + erase line
-                ttyOut.flush();
-            }
+            session.write(RESTORE_CURSOR_AND_ERASE);
 
             if (response == null || response.isEmpty()) {
                 return false;
@@ -393,9 +487,26 @@ final class TerminalColorQuery {
             return false;
         } catch (IOException ignored) {
             return false;
-        } finally {
-            sttyRestore(savedState);
         }
+    }
+
+    /** Restore cursor (DECSC) + erase line after the grapheme probe. ASCII. */
+    private static final byte[] RESTORE_CURSOR_AND_ERASE = "\0338\033[K".getBytes(StandardCharsets.US_ASCII);
+
+    /**
+     * Save cursor, move to column 0, erase line, write flag emoji, query
+     * position. Contains a non-ASCII emoji, so UTF-8 encoding is required.
+     *
+     * @return the probe bytes to write to the terminal
+     */
+    static byte[] buildGraphemeProbe() {
+        // Save cursor, move to column 0, erase line, write flag emoji, query position
+        String probe = "\0337" // save cursor (DECSC)
+                + "\r" // column 0
+                + "\033[K" // erase line
+                + "\uD83C\uDDEB\uD83C\uDDF7" // 🇫🇷 (two regional indicators)
+                + "\033[6n"; // DSR: query cursor position
+        return probe.getBytes(StandardCharsets.UTF_8);
     }
 
     // ==================== DECRPM Response Parsing ====================
@@ -464,35 +575,50 @@ final class TerminalColorQuery {
      * Parse a DA1 (Primary Device Attributes) response.
      * Format: ESC[?{class};{feat1};{feat2};...c
      * Feature code 4 = Sixel graphics support.
+     * <p>
+     * Skips other CSI responses sharing the {@code ESC[?} prefix — in a
+     * batched probe DECRPM responses ({@code ESC[?...$y}) arrive before
+     * DA1, and grabbing the first {@code ESC[?} would misparse DECRPM
+     * params as a device class (e.g. class 2026) and lose the feature
+     * list. Only a sequence terminated by {@code c} is DA1.
      */
     static void parseDA1Response(String response, TerminalColorQuery result) {
-        // Find ESC[? ... c
-        int start = response.indexOf("\033[?");
-        if (start < 0) {
-            return;
-        }
-        int end = response.indexOf('c', start + 3);
-        if (end < 0) {
-            return;
-        }
-
-        String params = response.substring(start + 3, end);
-        String[] parts = params.split(";");
-        if (parts.length == 0) {
-            return;
-        }
-
-        try {
-            result.da1DeviceClass = Integer.parseInt(parts[0].trim());
-            result.da1Features = new ArrayList<>();
-            for (int i = 1; i < parts.length; i++) {
-                int feature = Integer.parseInt(parts[i].trim());
-                result.da1Features.add(feature);
-                if (feature == DA1_FEATURE_SIXEL) {
-                    result.supportsSixel = true;
-                }
+        int pos = 0;
+        while (true) {
+            // Find ESC[? ...
+            int start = response.indexOf("\033[?", pos);
+            if (start < 0) {
+                return;
             }
-        } catch (NumberFormatException ignored) {
+            // ... scan params (digits, separators, DECRPM's '$' intermediate)
+            int end = start + 3;
+            while (end < response.length() && (Character.isDigit(response.charAt(end))
+                    || response.charAt(end) == ';' || response.charAt(end) == '?'
+                    || response.charAt(end) == '$')) {
+                end++;
+            }
+            if (end < response.length() && response.charAt(end) == 'c') {
+                String params = response.substring(start + 3, end);
+                String[] parts = params.split(";");
+                if (parts.length == 0) {
+                    return;
+                }
+                try {
+                    result.da1DeviceClass = Integer.parseInt(parts[0].trim());
+                    result.da1Features = new ArrayList<>();
+                    for (int i = 1; i < parts.length; i++) {
+                        int feature = Integer.parseInt(parts[i].trim());
+                        result.da1Features.add(feature);
+                        if (feature == DA1_FEATURE_SIXEL) {
+                            result.supportsSixel = true;
+                        }
+                    }
+                } catch (NumberFormatException ignored) {
+                }
+                return;
+            }
+            // Some other CSI response (e.g. DECRPM $y) — keep looking
+            pos = end + 1;
         }
     }
 }

@@ -119,6 +119,34 @@ public final class TerminalCapabilities {
     }
 
     /**
+     * Inject a custom transport for standalone terminal probing (OSC color
+     * queries, DA1, DECRQM mode probes, grapheme clustering).
+     * <p>
+     * The built-in transport talks to {@code /dev/tty} with {@code stty}
+     * raw-mode handling, which only works on POSIX systems. Inject a
+     * transport to probe from environments where {@code /dev/tty} is
+     * unavailable — for example a Win32 Console API transport on native
+     * Windows. Pass {@code null} to restore the built-in transport.
+     * <p>
+     * An injected transport replaces the built-in one exclusively while
+     * set: there is no silent fallback to {@code /dev/tty}, which could
+     * steal input from an embedder's own reader loop. When the injected
+     * transport reports {@link TerminalProbeTransport#isAvailable()
+     * unavailable}, probing is skipped gracefully (same as today on
+     * Windows, pipes, or containers).
+     * <p>
+     * Call {@link #invalidate()} after setting a transport if an instance
+     * was already detected, so the next {@code detectFull()} /
+     * {@code detectAsync()} call re-probes through the new transport.
+     *
+     * @param transport the transport to use, or null for the built-in one
+     * @since 3.18.3
+     */
+    public static void setProbeTransport(TerminalProbeTransport transport) {
+        TerminalColorQuery.setTransport(transport);
+    }
+
+    /**
      * Detect terminal capabilities from environment variables only.
      * Fast (~1-2ms), no subprocess calls on Linux/macOS.
      *
@@ -209,6 +237,8 @@ public final class TerminalCapabilities {
      * On platforms where terminal queries are not possible (Windows, pipes,
      * containers, tmux without passthrough), the background thread completes
      * immediately with no results and falls back to platform theme detection.
+     * To probe from such platforms anyway, inject a platform-native transport
+     * first via {@link #setProbeTransport(TerminalProbeTransport)}.
      *
      * @return the detected capabilities with background color query running
      */

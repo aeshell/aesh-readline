@@ -100,6 +100,17 @@ public class TerminalModeProbeTest {
     }
 
     @Test
+    public void testParseDA1Response_AfterDecrpm() {
+        // Batched probe order: DECRPM responses arrive before DA1.
+        // DA1 parsing must skip them, not misread mode 2026 as device class.
+        String response = "\033[?2026;1$y\033[?2027;0$y\033[?63;1;2;4c";
+        TerminalColorQuery result = new TerminalColorQuery();
+        TerminalColorQuery.parseDA1Response(response, result);
+        assertEquals(63, result.da1DeviceClass);
+        assertTrue(result.supportsSixel);
+    }
+
+    @Test
     public void testParseDECRPM_WithOSCResponses() {
         // DECRPM + DA1 + OSC responses mixed together
         String response = "\033[?2026;1$y\033[?2027;1$y\033[?64;1c"
