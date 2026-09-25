@@ -196,6 +196,31 @@ public final class MouseEvent {
     }
 
     /**
+     * Parses a URXVT mouse event from a CSI dispatch.
+     * <p>
+     * URXVT format: {@code CSI Pb ; Px ; Py M} — same parameters as SGR
+     * but without the {@code <} private marker. Button semantics are
+     * identical; releases arrive without button identification (button
+     * index 3), which {@link #decodeButton} maps to release.
+     *
+     * @param params the CSI parameters [Pb, Px, Py]
+     * @param paramCount the number of parameters (must be 3)
+     * @return the parsed mouse event, or null if the parameters are invalid
+     */
+    public static MouseEvent parseUrxvt(int[] params, int paramCount) {
+        if (paramCount != 3) {
+            return null;
+        }
+        int pb = params[0];
+        int px = params[1];
+        int py = params[2];
+        if (px < 1 || py < 1) {
+            return null;
+        }
+        return decodeButton(pb, px, py, false);
+    }
+
+    /**
      * Checks if a CSI dispatch represents an SGR mouse event.
      *
      * @param finalChar the CSI final character

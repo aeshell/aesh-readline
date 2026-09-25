@@ -541,6 +541,9 @@ public class EventDecoder implements Consumer<int[]> {
                 handleDsrTheme(params, paramCount);
             } else if (isMouseSgrEvent(finalChar, intermediates, intermediateCount)) {
                 handleMouseSgr(finalChar, params, paramCount);
+            } else if (isMouseUrxvtEvent(finalChar, params, paramCount,
+                    intermediates, intermediateCount)) {
+                handleMouseUrxvt(params, paramCount);
             } else if (isFocusEvent(finalChar, params, paramCount,
                     intermediates, intermediateCount)) {
                 handleFocus(finalChar);
@@ -617,6 +620,23 @@ public class EventDecoder implements Consumer<int[]> {
     }
 
     /**
+     * Checks if a CSI sequence is a URXVT mouse event:
+     * {@code CSI Pb ; Px ; Py M} (same parameters as SGR, no marker).
+     * <p>
+     * In VtParser terms: finalChar='M', no intermediates, exactly 3 params.
+     * Bare {@code CSI M} (e.g. Delete Lines) has fewer params and passes
+     * through untouched. Like the SGR branch, the sequence is consumed
+     * even without a mouse handler — enabling tracking implies mouse
+     * ownership of this shape.
+     */
+    private static boolean isMouseUrxvtEvent(int finalChar, int[] params, int paramCount,
+            int[] intermediates, int intermediateCount) {
+        return finalChar == 'M'
+                && intermediateCount == 0
+                && paramCount == 3;
+    }
+
+    /**
      * Checks if a CSI sequence is a focus event: {@code CSI I} or {@code CSI O}
      * <p>
      * In VtParser terms: finalChar='I'|'O', no intermediates, no real params
@@ -648,6 +668,16 @@ public class EventDecoder implements Consumer<int[]> {
     private void handleMouseSgr(int finalChar, int[] params, int paramCount) {
         if (paramCount >= 3 && mouseHandler != null) {
             MouseEvent event = MouseEvent.parseSgr(finalChar,
+                    new int[] { params[0], params[1], params[2] }, 3);
+            if (event != null) {
+                mouseHandler.accept(event);
+            }
+        }
+    }
+
+    private void handleMouseUrxvt(int[] params, int paramCount) {
+        if (paramCount == 3 && mouseHandler != null) {
+            MouseEvent event = MouseEvent.parseUrxvt(
                     new int[] { params[0], params[1], params[2] }, 3);
             if (event != null) {
                 mouseHandler.accept(event);

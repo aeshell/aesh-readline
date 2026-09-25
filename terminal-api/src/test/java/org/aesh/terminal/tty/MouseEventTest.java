@@ -152,6 +152,89 @@ public class MouseEventTest {
         assertEquals(300, e.y());
     }
 
+    // ==================== URXVT Parsing ====================
+
+    @Test
+    public void testUrxvtLeftPress() {
+        // CSI 0 ; 5 ; 3 M (no '<' marker) → left press at (5,3)
+        MouseEvent e = MouseEvent.parseUrxvt(new int[] { 0, 5, 3 }, 3);
+        assertNotNull(e);
+        assertEquals(MouseEvent.Type.PRESS, e.type());
+        assertEquals(MouseEvent.Button.LEFT, e.button());
+        assertEquals(5, e.x());
+        assertEquals(3, e.y());
+        assertFalse(e.shift());
+        assertFalse(e.alt());
+        assertFalse(e.ctrl());
+    }
+
+    @Test
+    public void testUrxvtReleaseWithoutButtonId() {
+        // CSI 3 ; 5 ; 3 M → release, button unknown
+        MouseEvent e = MouseEvent.parseUrxvt(new int[] { 3, 5, 3 }, 3);
+        assertNotNull(e);
+        assertEquals(MouseEvent.Type.RELEASE, e.type());
+        assertEquals(MouseEvent.Button.NONE, e.button());
+    }
+
+    @Test
+    public void testUrxvtModifiersAndScroll() {
+        // Pb=4+16+64: shift + ctrl + scroll, button index 0 → scroll up
+        MouseEvent e = MouseEvent.parseUrxvt(new int[] { 84, 10, 20 }, 3);
+        assertNotNull(e);
+        assertEquals(MouseEvent.Type.SCROLL, e.type());
+        assertEquals(MouseEvent.Button.SCROLL_UP, e.button());
+        assertTrue(e.shift());
+        assertFalse(e.alt());
+        assertTrue(e.ctrl());
+    }
+
+    @Test
+    public void testUrxvtInvalidParams() {
+        assertNull(MouseEvent.parseUrxvt(new int[] { 0, 5 }, 2)); // too few
+        assertNull(MouseEvent.parseUrxvt(new int[] { 0, 0, 3 }, 3)); // x=0 invalid
+        assertNull(MouseEvent.parseUrxvt(new int[] { 0, 5, 0 }, 3)); // y=0 invalid
+    }
+
+    @Test
+    public void testEventDecoderInterceptsUrxvtMouse() {
+        List<MouseEvent> mouseEvents = new ArrayList<>();
+        List<int[]> inputEvents = new ArrayList<>();
+
+        EventDecoder decoder = new EventDecoder();
+        decoder.setInputHandler(inputEvents::add);
+        decoder.setMouseHandler(mouseEvents::add);
+
+        // Feed URXVT mouse sequence: ESC [ 0 ; 5 ; 3 M (no '<')
+        int[] mouseSeq = { 27, 91, 48, 59, 53, 59, 51, 77 };
+        decoder.accept(mouseSeq);
+
+        assertEquals(1, mouseEvents.size());
+        assertEquals(MouseEvent.Type.PRESS, mouseEvents.get(0).type());
+        assertEquals(MouseEvent.Button.LEFT, mouseEvents.get(0).button());
+        assertEquals(5, mouseEvents.get(0).x());
+        assertEquals(3, mouseEvents.get(0).y());
+        assertTrue(inputEvents.isEmpty());
+    }
+
+    @Test
+    public void testEventDecoderDeleteLinesNotMouse() {
+        // CSI 3 M (Delete Lines, single param) must pass through as input,
+        // not be mistaken for a URXVT mouse report.
+        List<MouseEvent> mouseEvents = new ArrayList<>();
+        List<int[]> inputEvents = new ArrayList<>();
+
+        EventDecoder decoder = new EventDecoder();
+        decoder.setInputHandler(inputEvents::add);
+        decoder.setMouseHandler(mouseEvents::add);
+
+        int[] deleteLines = { 27, 91, 51, 77 };
+        decoder.accept(deleteLines);
+
+        assertTrue(mouseEvents.isEmpty());
+        assertFalse(inputEvents.isEmpty());
+    }
+
     // ==================== MouseEvent Object ====================
 
     @Test
