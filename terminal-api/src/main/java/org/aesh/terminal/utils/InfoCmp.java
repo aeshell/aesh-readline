@@ -54,7 +54,12 @@ public final class InfoCmp {
         if (caps == null) {
             // Try bundled .src files first — no subprocess, always available
             caps = getDefaultInfoCmp(terminal);
-            // Fall back to spawning infocmp if no bundled match
+            // Fall back to reading the terminfo database directly — no
+            // subprocess, works wherever the database files are present
+            if (caps == null || caps.isEmpty()) {
+                caps = TerminfoReader.readEntry(terminal);
+            }
+            // Last resort: spawn infocmp if no bundled match
             if (caps == null || caps.isEmpty()) {
                 try {
                     Process p = new ProcessBuilder(OSUtils.INFOCMP_COMMAND, terminal).start();
