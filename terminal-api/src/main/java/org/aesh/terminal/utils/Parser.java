@@ -803,11 +803,17 @@ public final class Parser {
 
     /**
      * Remove all ANSI escape codes from a string.
+     * <p>
+     * Fast path: every pattern alternative starts with ESC, so text without
+     * ESC cannot match and is returned as-is without Matcher allocation.
      *
      * @param text the text containing ANSI codes
      * @return the text with ANSI codes removed
      */
     public static String stripAwayAnsiCodes(String text) {
+        if (text.indexOf('\u001B') < 0) {
+            return text;
+        }
         return ansiPattern.matcher(text).replaceAll("");
     }
 

@@ -97,6 +97,9 @@ public class TtyConnectionBenchmark {
 
     // ANSI escape sequences
     private static final String ANSI_COLORED = "\u001B[31mRed\u001B[0m \u001B[32mGreen\u001B[0m \u001B[34mBlue\u001B[0m";
+    // Plain text without escapes: the common case for prompts/status lines,
+    // exercising the early-exit path of stripAwayAnsiCodes.
+    private static final String ANSI_PLAIN = "Just plain prompt text with no escape sequences at all";
     private static final String ANSI_COMPLEX = "\u001B[1;31;44mBold Red on Blue\u001B[0m\u001B[K";
     private static final String ANSI_FULL = "\u001B[1;4;31;42mBold Underline Red on Green\u001B[0m "
             + "\u001B[38;5;208mOrange 256-color\u001B[0m \u001B[38;2;255;100;50mTrue color\u001B[0m";
@@ -260,6 +263,12 @@ public class TtyConnectionBenchmark {
     @Benchmark
     public void ansiStripCodes(Blackhole bh) {
         String result = Parser.stripAwayAnsiCodes(ANSI_COLORED);
+        bh.consume(result);
+    }
+
+    @Benchmark
+    public void ansiStripPlain(Blackhole bh) {
+        String result = Parser.stripAwayAnsiCodes(ANSI_PLAIN);
         bh.consume(result);
     }
 

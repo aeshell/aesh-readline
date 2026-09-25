@@ -21,6 +21,7 @@ package org.aesh.parser;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
@@ -266,6 +267,22 @@ public class ParserTest {
         assertEquals("foo", Parser.stripAwayAnsiCodes(ANSI.ALTERNATE_BUFFER + "foo"));
         assertEquals("foo", Parser.stripAwayAnsiCodes(ANSI.CURSOR_ROW + "foo"));
         assertEquals("foo bar", Parser.stripAwayAnsiCodes("foo" + ANSI.RESET + " bar"));
+    }
+
+    @Test
+    public void testStripAwayAnsiEarlyExit() {
+        // No ESC byte: returned as-is without regex processing.
+        String plain = "plain prompt $ ";
+        assertSame("Fast path must return the identical instance", plain,
+                Parser.stripAwayAnsiCodes(plain));
+        assertEquals("", Parser.stripAwayAnsiCodes(""));
+        assertEquals("plain prompt $ ", Parser.stripAwayAnsiCodes("plain prompt $ "));
+        assertEquals("tabs\tand unicode é",
+                Parser.stripAwayAnsiCodes("tabs\tand unicode é"));
+        // Lone ESC with no valid sequence still goes through the regex path.
+        assertEquals("\u001B", Parser.stripAwayAnsiCodes("\u001B"));
+        // ESC + single letter IS stripped (Fe escape sequence alternative).
+        assertEquals("a", Parser.stripAwayAnsiCodes("a\u001Bb"));
     }
 
     @Test
