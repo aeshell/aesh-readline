@@ -712,6 +712,7 @@ public class TerminalColorCapability {
      *
      * @param caps the detected capabilities
      * @return a capability built from the detected values
+     * @since 3.18.3
      */
     public static TerminalColorCapability from(
             org.aesh.terminal.detect.TerminalCapabilities caps) {

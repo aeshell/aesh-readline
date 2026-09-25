@@ -111,6 +111,8 @@ public final class TerminalCapabilities {
      * via a theme-change event) instead of re-running full detection
      * manually — the next {@code detect()}, {@code detectFull()} or
      * {@code detectAsync()} call rebuilds from scratch.
+     *
+     * @since 3.18.3
      */
     public static void invalidate() {
         synchronized (TerminalCapabilities.class) {
