@@ -24,6 +24,7 @@ import java.lang.reflect.Method;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.aesh.terminal.tty.impl.WinConsoleNative;
 import org.aesh.terminal.utils.OSUtils;
 
 /**
@@ -165,26 +166,24 @@ public final class TtyDetect {
      * internal JLine terminal (JnaWinSysTerminal + WindowsStreamPump) that
      * competes for ReadConsoleInputW events (#276).
      * <p>
-     * WinConsoleNative's static init is side-effect-free (loads JNI DLL or
-     * creates FFM downcall handles — no threads, no pumps).
+     * Called directly (no reflection): the base-layer JNI declarations and
+     * the Java 22 FFM overlay share the same signatures, so the call
+     * resolves to whichever variant the runtime loads. WinConsoleNative's
+     * static init is side-effect-free (loads JNI DLL or creates FFM
+     * downcall handles — no threads, no pumps); any linkage failure
+     * surfaces as an Error caught below.
      *
      * @return TRUE if a valid console handle exists, FALSE if piped/redirected,
      *         null if the native library is not available
      */
     private static Boolean tryWindowsConsoleHandle() {
         try {
-            Class<?> winNative = Class.forName("org.aesh.terminal.tty.impl.WinConsoleNative");
-            // STD_INPUT_HANDLE = -10
-            Method getStdHandle = winNative.getMethod("getStdHandle", int.class);
-            long handle = (Long) getStdHandle.invoke(null, -10);
-            // INVALID_HANDLE = -1L
-            if (handle == -1L) {
+            long handle = WinConsoleNative.getStdHandle(WinConsoleNative.STD_INPUT_HANDLE);
+            if (handle == WinConsoleNative.INVALID_HANDLE) {
                 return Boolean.FALSE;
             }
-            Method getConsoleMode = winNative.getMethod("getConsoleMode", long.class);
-            int mode = (Integer) getConsoleMode.invoke(null, handle);
             // getConsoleMode returns -1 on failure (pipe/redirected)
-            return mode != -1;
+            return WinConsoleNative.getConsoleMode(handle) != -1;
         } catch (Throwable e) {
             LOGGER.log(Level.FINE, "WinConsoleNative not available for TTY detection", e);
             return null;
