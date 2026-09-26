@@ -56,7 +56,7 @@ public class TtyDetectTest {
 
     @Test
     public void testInvalidFdReturnsFalse() {
-        assumeFalse("FFM isatty() behaves differently in native-image", isNativeImage());
+        assumeFalse("Console.isTerminal() is fd-insensitive in native-image", isNativeImage());
         // Invalid file descriptor should return false, not throw
         assertFalse(TtyDetect.isTty(-1));
         assertFalse(TtyDetect.isTty(999));

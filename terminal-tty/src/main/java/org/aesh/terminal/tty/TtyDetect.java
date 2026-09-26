@@ -29,9 +29,9 @@ import org.aesh.terminal.utils.OSUtils;
 /**
  * Utility for detecting whether file descriptors are connected to a terminal.
  * <p>
- * On Java 22+, uses FFM to call POSIX {@code isatty()} for accurate per-fd
- * detection. On older Java versions, falls back to {@code System.console()}
- * and {@code Console.isTerminal()} (Java 22+) as heuristics.
+ * On Java 22+, uses {@code Console.isTerminal()} for detection without
+ * triggering FFM restricted method warnings. On older Java versions, falls
+ * back to the {@code System.console() != null} heuristic.
  * <p>
  * Typical usage:
  *
@@ -69,9 +69,10 @@ public final class TtyDetect {
     /**
      * Check if the given file descriptor is connected to a terminal.
      * <p>
-     * On Java 22+ with POSIX systems, this uses the native {@code isatty()} function
-     * via FFM for accurate detection. On older Java versions or unsupported platforms,
-     * falls back to heuristics based on {@code System.console()}.
+     * On Java 22+, this uses {@code Console.isTerminal()} which avoids
+     * loading FFM bindings and triggering restricted method warnings.
+     * On older Java versions, falls back to heuristics based on
+     * {@code System.console()}.
      *
      * @param fd the file descriptor (0=stdin, 1=stdout, 2=stderr)
      * @return true if the file descriptor is connected to a terminal
@@ -92,16 +93,9 @@ public final class TtyDetect {
             return false;
         }
         // Try Console.isTerminal() first (Java 22+, no FFM needed).
-        // This avoids loading LibC and triggering FFM restricted method
-        // warnings when --enable-native-access is not set.
         Boolean consoleResult = tryConsoleIsTerminal();
         if (consoleResult != null) {
             return consoleResult;
-        }
-        // Try FFM-based isatty for per-fd detection (Java 22+, POSIX)
-        Boolean result = tryNativeIsatty(fd);
-        if (result != null) {
-            return result;
         }
         // Fallback: System.console() != null heuristic (pre-Java 22)
         return System.console() != null;
@@ -109,8 +103,6 @@ public final class TtyDetect {
 
     /**
      * Try Console.isTerminal() (Java 22+). Returns null if not available.
-     * This is preferred over FFM isatty() because it doesn't trigger
-     * restricted method warnings.
      */
     private static Boolean tryConsoleIsTerminal() {
         Console console = System.console();
@@ -195,28 +187,6 @@ public final class TtyDetect {
             return mode != -1;
         } catch (Throwable e) {
             LOGGER.log(Level.FINE, "WinConsoleNative not available for TTY detection", e);
-            return null;
-        }
-    }
-
-    /**
-     * Try native isatty() via FFM (Java 22+).
-     * Returns null if FFM is not available.
-     */
-    private static Boolean tryNativeIsatty(int fd) {
-        if (OSUtils.IS_WINDOWS) {
-            // LibC is POSIX-only — don't attempt to load it on Windows
-            return null;
-        }
-        try {
-            // Use reflection to call LibC.isatty() which is only available
-            // in the java22 multi-release overlay
-            Class<?> libC = Class.forName("org.aesh.terminal.tty.impl.LibC");
-            Method isatty = libC.getDeclaredMethod("isatty", int.class);
-            isatty.setAccessible(true);
-            return (Boolean) isatty.invoke(null, fd);
-        } catch (Throwable e) {
-            LOGGER.log(Level.FINE, "FFM isatty not available, using fallback", e);
             return null;
         }
     }

@@ -29,21 +29,22 @@ import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 
 /**
- * Minimal FFM bindings to POSIX terminal syscalls for probe I/O.
+ * Shared FFM bindings to POSIX terminal syscalls.
  * <p>
  * Covers only what standalone probing needs: {@code open}, {@code close},
  * {@code read}, {@code write}, {@code tcgetattr}, {@code tcsetattr}.
- * Full PTY implementations (window size via {@code ioctl}, signals) stay
- * in terminal-tty; a future consolidation may move these shared handles
- * down so terminal-tty reuses them (issue #297).
+ * Full PTY implementations keep their own handles because cross-module
+ * MRJAR references do not resolve in Maven reactor builds (see #297).
  * <p>
  * Downcall handles live behind lazy initialization so merely loading this
  * class (e.g. an availability check) never pays the {@code Linker}
  * initialization cost and never fails without native access.
  * <p>
  * Requires Java 22+ and {@code --enable-native-access=ALL-UNNAMED}.
+ *
+ * @since 3.18.4
  */
-final class FfmPosix {
+public final class FfmPosix {
 
     static final boolean IS_MACOS;
     static {
@@ -136,11 +137,27 @@ final class FfmPosix {
                         ValueLayout.ADDRESS));
     }
 
-    static boolean isNativeAccessEnabled() {
+    /**
+     * Check whether native access is enabled for this module.
+     *
+     * @return true if FFM downcalls can be created
+     * @since 3.18.4
+     */
+    public static boolean isNativeAccessEnabled() {
         return FfmPosix.class.getModule().isNativeAccessEnabled();
     }
 
-    static int open(String pathname, int flags, Arena arena) throws IOException {
+    /**
+     * Opens a file and returns the file descriptor.
+     *
+     * @param pathname the file path to open
+     * @param flags the open flags (e.g. {@code O_RDWR = 0x0002})
+     * @param arena the arena for allocating the pathname string
+     * @return the file descriptor, or -1 on error
+     * @throws IOException if the FFM linkage fails
+     * @since 3.18.4
+     */
+    public static int open(String pathname, int flags, Arena arena) throws IOException {
         try {
             MemorySegment path = arena.allocateFrom(pathname);
             return (int) Handles.OPEN.invokeExact(path, flags);
@@ -151,7 +168,14 @@ final class FfmPosix {
         }
     }
 
-    static void close(int fd) throws IOException {
+    /**
+     * Closes a file descriptor.
+     *
+     * @param fd the file descriptor to close
+     * @throws IOException if closing fails
+     * @since 3.18.4
+     */
+    public static void close(int fd) throws IOException {
         try {
             int rc = (int) Handles.CLOSE.invokeExact(fd);
             if (rc != 0) {
@@ -164,7 +188,17 @@ final class FfmPosix {
         }
     }
 
-    static long read(int fd, MemorySegment buf, long count) throws IOException {
+    /**
+     * Reads from a file descriptor into a buffer.
+     *
+     * @param fd the file descriptor
+     * @param buf the buffer to read into
+     * @param count the maximum number of bytes to read
+     * @return the number of bytes read, 0 for EOF, or -1 on error
+     * @throws IOException if the FFM linkage fails
+     * @since 3.18.4
+     */
+    public static long read(int fd, MemorySegment buf, long count) throws IOException {
         try {
             return (long) Handles.READ.invokeExact(fd, buf, count);
         } catch (IOException e) {
@@ -174,7 +208,18 @@ final class FfmPosix {
         }
     }
 
-    static long write(int fd, MemorySegment buf, long count) throws IOException {
+    /**
+     * Writes a buffer to a file descriptor. Handles partial writes at the
+     * call site by retrying with the remaining slice.
+     *
+     * @param fd the file descriptor
+     * @param buf the buffer to write from
+     * @param count the maximum number of bytes to write
+     * @return the number of bytes written, or -1 on error
+     * @throws IOException if the FFM linkage fails
+     * @since 3.18.4
+     */
+    public static long write(int fd, MemorySegment buf, long count) throws IOException {
         try {
             return (long) Handles.WRITE.invokeExact(fd, buf, count);
         } catch (IOException e) {
@@ -184,7 +229,15 @@ final class FfmPosix {
         }
     }
 
-    static void tcgetattr(int fd, MemorySegment termios) throws IOException {
+    /**
+     * Gets the current terminal attributes.
+     *
+     * @param fd the terminal file descriptor
+     * @param termios the termios struct to fill
+     * @throws IOException if the call fails
+     * @since 3.18.4
+     */
+    public static void tcgetattr(int fd, MemorySegment termios) throws IOException {
         try {
             int rc = (int) Handles.TCGETATTR.invokeExact(fd, termios);
             if (rc != 0) {
@@ -197,7 +250,17 @@ final class FfmPosix {
         }
     }
 
-    static void tcsetattr(int fd, int action, MemorySegment termios) throws IOException {
+    /**
+     * Sets the terminal attributes.
+     *
+     * @param fd the terminal file descriptor
+     * @param action when to apply ({@code TCSANOW = 0}, {@code TCSADRAIN = 1},
+     *            {@code TCSAFLUSH = 2})
+     * @param termios the termios struct with the new attributes
+     * @throws IOException if the call fails
+     * @since 3.18.4
+     */
+    public static void tcsetattr(int fd, int action, MemorySegment termios) throws IOException {
         try {
             int rc = (int) Handles.TCSETATTR.invokeExact(fd, action, termios);
             if (rc != 0) {
@@ -210,14 +273,31 @@ final class FfmPosix {
         }
     }
 
-    static long getFlag(MemorySegment termios, long offset) {
+    /**
+     * Reads a tcflag_t from the termios struct, handling the different
+     * sizes on Linux (4 bytes) vs macOS (8 bytes).
+     *
+     * @param termios the termios struct
+     * @param offset the flag field offset
+     * @return the flag value
+     * @since 3.18.4
+     */
+    public static long getFlag(MemorySegment termios, long offset) {
         if (IS_MACOS) {
             return termios.get(ValueLayout.JAVA_LONG, offset);
         }
         return Integer.toUnsignedLong(termios.get(ValueLayout.JAVA_INT, offset));
     }
 
-    static void setFlag(MemorySegment termios, long offset, long value) {
+    /**
+     * Writes a tcflag_t into the termios struct.
+     *
+     * @param termios the termios struct
+     * @param offset the flag field offset
+     * @param value the flag value
+     * @since 3.18.4
+     */
+    public static void setFlag(MemorySegment termios, long offset, long value) {
         if (IS_MACOS) {
             termios.set(ValueLayout.JAVA_LONG, offset, value);
         } else {
@@ -232,8 +312,9 @@ final class FfmPosix {
      * path ({@code stty -echo -icanon -ixon min 0 time 5}).
      *
      * @param termios the termios struct to modify in place
+     * @since 3.18.4
      */
-    static void setRawQueryMode(MemorySegment termios) {
+    public static void setRawQueryMode(MemorySegment termios) {
         long lflag = getFlag(termios, TERMIOS_LFLAG_OFFSET);
         setFlag(termios, TERMIOS_LFLAG_OFFSET, lflag & ~(LFLAG_ECHO | LFLAG_ICANON));
         long iflag = getFlag(termios, TERMIOS_IFLAG_OFFSET);
