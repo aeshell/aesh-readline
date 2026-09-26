@@ -19,11 +19,15 @@
  */
 package org.aesh.terminal.tty.example;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.aesh.terminal.Device;
 import org.aesh.terminal.detect.TerminalCapabilities;
@@ -485,13 +489,55 @@ public class TerminalColorExample {
         String osName = System.getProperty("os.name", "Unknown");
         String osVersion = System.getProperty("os.version", "Unknown");
 
-        int build = org.aesh.terminal.tty.PlatformThemeDetector.getWindowsBuildNumber();
+        int build = getWindowsBuildNumber();
         if (build > 0) {
             String vtSupport = build >= 14931 ? " (VT sequences supported)" : " (VT sequences NOT supported)";
             return osName + " " + osVersion + " Build " + build + vtSupport;
         }
 
         return osName + " " + osVersion;
+    }
+
+    /**
+     * Reads the Windows build number from the registry.
+     * <p>
+     * Local to this example: it is only display trivia for the demo
+     * output, not terminal detection.
+     *
+     * @return the build number, or 0 if it cannot be determined
+     */
+    private static int getWindowsBuildNumber() {
+        try {
+            Process process = new ProcessBuilder("reg", "query",
+                    "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion",
+                    "/v", "CurrentBuildNumber").start();
+            StringBuilder output = new StringBuilder();
+            try (BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(process.getInputStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    output.append(line).append('\n');
+                }
+            }
+            process.waitFor();
+            Matcher matcher = Pattern.compile(
+                    "CurrentBuildNumber\\s+REG_SZ\\s+(\\d+)").matcher(output);
+            if (matcher.find()) {
+                return Integer.parseInt(matcher.group(1));
+            }
+        } catch (Exception ignored) {
+        }
+
+        // Fallback: try to parse from os.version
+        String[] parts = System.getProperty("os.version", "").split("\\.");
+        if (parts.length >= 3) {
+            try {
+                return Integer.parseInt(parts[2]);
+            } catch (NumberFormatException ignored) {
+            }
+        }
+
+        return 0;
     }
 
     /**
