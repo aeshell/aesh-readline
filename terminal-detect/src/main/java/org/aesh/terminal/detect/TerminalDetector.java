@@ -19,11 +19,17 @@
  */
 package org.aesh.terminal.detect;
 
+import java.util.Map;
+
 /**
  * All terminal detection logic in a single class.
  * Reads environment variables once and caches the results.
  */
 final class TerminalDetector {
+
+    // Environment variables (injected map for testability; production
+    // passes System.getenv(), tests pass fixture maps)
+    private final Map<String, String> env;
 
     // Environment variables
     private final String term;
@@ -50,20 +56,25 @@ final class TerminalDetector {
     final TerminalTheme theme;
 
     TerminalDetector() {
-        this.term = System.getenv("TERM");
-        this.termProgram = System.getenv("TERM_PROGRAM");
-        this.terminalEmulator = System.getenv("TERMINAL_EMULATOR");
-        this.colorterm = System.getenv("COLORTERM");
-        this.kittyWindowId = System.getenv("KITTY_WINDOW_ID");
-        this.ghosttyResourcesDir = System.getenv("GHOSTTY_RESOURCES_DIR");
-        this.weztermPane = System.getenv("WEZTERM_PANE");
-        this.itermSessionId = System.getenv("ITERM_SESSION_ID");
-        this.wtSession = System.getenv("WT_SESSION");
-        this.wtProfileId = System.getenv("WT_PROFILE_ID");
-        this.alacrittySocket = System.getenv("ALACRITTY_SOCKET");
-        this.colorFgBg = System.getenv("COLORFGBG");
-        this.appleInterfaceStyle = System.getenv("APPLE_INTERFACE_STYLE");
-        String tmux = System.getenv("TMUX");
+        this(System.getenv());
+    }
+
+    TerminalDetector(Map<String, String> env) {
+        this.env = env;
+        this.term = env.get("TERM");
+        this.termProgram = env.get("TERM_PROGRAM");
+        this.terminalEmulator = env.get("TERMINAL_EMULATOR");
+        this.colorterm = env.get("COLORTERM");
+        this.kittyWindowId = env.get("KITTY_WINDOW_ID");
+        this.ghosttyResourcesDir = env.get("GHOSTTY_RESOURCES_DIR");
+        this.weztermPane = env.get("WEZTERM_PANE");
+        this.itermSessionId = env.get("ITERM_SESSION_ID");
+        this.wtSession = env.get("WT_SESSION");
+        this.wtProfileId = env.get("WT_PROFILE_ID");
+        this.alacrittySocket = env.get("ALACRITTY_SOCKET");
+        this.colorFgBg = env.get("COLORFGBG");
+        this.appleInterfaceStyle = env.get("APPLE_INTERFACE_STYLE");
+        String tmux = env.get("TMUX");
         this.inTmux = tmux != null && !tmux.isEmpty();
         this.inScreen = term != null && term.toLowerCase().startsWith("screen");
 
@@ -307,8 +318,31 @@ final class TerminalDetector {
     /**
      * Detect theme using platform-specific checks (subprocess/file I/O).
      * Called by detectFull() when fast env-var detection returns UNKNOWN.
+     * <p>
+     * IDE settings files are consulted first (JetBrains, VSCode, Windows
+     * Terminal); the OS-level checks below apply when no IDE terminal
+     * is detected or its settings yield nothing.
      */
     static TerminalTheme detectPlatformTheme() {
+        return new TerminalDetector().detectIdeOrPlatformTheme();
+    }
+
+    /**
+     * Two-stage platform theme detection for a detector with known
+     * environment: IDE settings files first, OS-level checks second.
+     * Package-private for tests with fixture environments.
+     *
+     * @return the detected theme, or UNKNOWN if not determinable
+     */
+    TerminalTheme detectIdeOrPlatformTheme() {
+        TerminalTheme ide = IdeThemeDetector.detect(terminalName, env);
+        if (ide != TerminalTheme.UNKNOWN) {
+            return ide;
+        }
+        return detectOsPlatformTheme();
+    }
+
+    private static TerminalTheme detectOsPlatformTheme() {
         String osName = System.getProperty("os.name", "").toLowerCase();
         try {
             if (osName.contains("mac")) {

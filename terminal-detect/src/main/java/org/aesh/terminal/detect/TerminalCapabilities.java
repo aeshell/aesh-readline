@@ -162,7 +162,8 @@ public final class TerminalCapabilities {
      * Detect terminal capabilities with full platform theme probing.
      * <p>
      * Same as {@link #detect()} but when the theme cannot be determined
-     * from environment variables, also checks platform-specific sources:
+     * from environment variables, also checks IDE settings files
+     * (JetBrains, VSCode, Windows Terminal) and platform-specific sources:
      * <ul>
      * <li>macOS: {@code defaults read -g AppleInterfaceStyle}</li>
      * <li>Linux: {@code gsettings} (GNOME) or {@code kreadconfig5} (KDE)</li>
