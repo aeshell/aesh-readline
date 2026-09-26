@@ -21,6 +21,7 @@ package org.aesh.terminal.tty.provider;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -47,6 +48,38 @@ public class FfmTerminalProvider implements TerminalProvider {
 
     private static final Logger LOGGER = LoggerUtil.getLogger(FfmTerminalProvider.class.getName());
 
+    // Cached FfmPty reflection handles. Looked up once on first use —
+    // TerminalBuilder probes isSupported() on every provider and then
+    // calls createTerminal() on the winner, so uncached lookups would
+    // repeat Class.forName + getMethod on every terminal creation.
+    // A benign race may repeat the lookup; all threads compute the same values.
+    private static volatile Class<?> cachedFfmPty;
+    private static volatile Method cachedIsNativeAccessEnabled;
+    private static volatile Method cachedCurrent;
+
+    /**
+     * Resolve and cache the FfmPty reflection handles.
+     *
+     * @return true if FfmPty is available (Java 22+)
+     */
+    private static boolean resolveFfmPty() {
+        if (cachedFfmPty != null) {
+            return true;
+        }
+        try {
+            Class<?> clazz = Class.forName("org.aesh.terminal.tty.impl.FfmPty");
+            Method access = clazz.getMethod("isNativeAccessEnabled");
+            Method current = clazz.getMethod("current");
+            cachedIsNativeAccessEnabled = access;
+            cachedCurrent = current;
+            cachedFfmPty = clazz;
+            return true;
+        } catch (Exception e) {
+            // Pre-Java 22: FfmPty class doesn't exist
+            return false;
+        }
+    }
+
     @Override
     public String name() {
         return "ffm";
@@ -62,13 +95,14 @@ public class FfmTerminalProvider implements TerminalProvider {
         // downcall handles triggers a JVM warning (and will be blocked
         // in a future JDK release). Falls back silently to ExecPty.
         // The check is delegated to FfmPty.isNativeAccessEnabled() in
-        // the java22 MRJAR overlay via reflection — a single reflective
-        // call with no overhead from loading FFM/Linker classes.
+        // the java22 MRJAR overlay via reflection — cached on first use,
+        // with no overhead from loading FFM/Linker classes.
+        if (!resolveFfmPty()) {
+            return false;
+        }
         try {
-            Class<?> ffmPtyClass = Class.forName("org.aesh.terminal.tty.impl.FfmPty");
-            return (Boolean) ffmPtyClass.getMethod("isNativeAccessEnabled").invoke(null);
+            return (Boolean) cachedIsNativeAccessEnabled.invoke(null);
         } catch (Exception e) {
-            // Pre-Java 22: FfmPty class doesn't exist
             return false;
         }
     }
@@ -83,13 +117,13 @@ public class FfmTerminalProvider implements TerminalProvider {
         if (type == null) {
             type = System.getenv("TERM");
         }
+        if (!resolveFfmPty()) {
+            throw new IOException("FFM PTY not available (requires Java 22+)");
+        }
         try {
-            Class<?> ffmPtyClass = Class.forName("org.aesh.terminal.tty.impl.FfmPty");
-            Pty pty = (Pty) ffmPtyClass.getMethod("current").invoke(null);
+            Pty pty = (Pty) cachedCurrent.invoke(null);
             LOGGER.log(Level.FINE, "Using FFM-based PTY");
             return new PosixSysTerminal(name, type, pty, nativeSignals);
-        } catch (ClassNotFoundException e) {
-            throw new IOException("FFM PTY not available (requires Java 22+)", e);
         } catch (InvocationTargetException e) {
             Throwable cause = e.getCause();
             if (cause instanceof IOException) {

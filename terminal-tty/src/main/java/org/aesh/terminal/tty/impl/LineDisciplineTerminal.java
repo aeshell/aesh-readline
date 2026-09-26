@@ -125,18 +125,11 @@ public class LineDisciplineTerminal extends AbstractTerminal {
     @Override
     public void raise(Signal signal) {
         assert signal != null;
-        // Do not call clear() atm as this can cause
-        // deadlock between reading / writing threads
-        // TODO: any way to fix that ?
-        /*
-         * if (!attributes.getLocalFlag(LocalFlag.NOFLSH)) {
-         * try {
-         * slaveReader.clear();
-         * } catch (IOException e) {
-         * // Ignore
-         * }
-         * }
-         */
+        // Deliberately no reader clear() here: raise() may run on the
+        // signal thread while the read/write threads hold their locks,
+        // so clearing would risk deadlock between them. The signal is
+        // echoed to the slave instead, letting the reader observe it
+        // through the normal input path.
         echoSignal(signal);
         super.raise(signal);
     }
