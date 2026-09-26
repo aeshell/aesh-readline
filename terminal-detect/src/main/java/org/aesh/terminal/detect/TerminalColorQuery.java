@@ -19,9 +19,6 @@
  */
 package org.aesh.terminal.detect;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -32,15 +29,14 @@ import java.util.Map;
 
 /**
  * Direct terminal color queries via OSC escape sequences.
- * I/O goes through a {@link TerminalProbeTransport}: the built-in
- * POSIX transport ({@code /dev/tty} with FFM raw-mode handling on
- * Java 22+, {@code stty} subprocesses otherwise), or a custom transport
- * injected via {@link #setTransport} (e.g. Win32 Console API on native
- * Windows). Response parsing is transport-agnostic.
+ * I/O goes through a {@link TerminalProbeTransport}: FFM raw-mode I/O
+ * on Java 22+ POSIX, the Win32 Console API on native Windows, the
+ * {@code stty} subprocess fallback on older runtimes — or a custom
+ * transport injected via {@link #setTransport}. Response parsing is
+ * transport-agnostic.
  */
 final class TerminalColorQuery {
 
-    private static final File DEV_TTY = new File("/dev/tty");
     // OSC 10/11: foreground/background
     // OSC 4;N: palette color N
     // Query param is "?" terminated by BEL
@@ -104,10 +100,10 @@ final class TerminalColorQuery {
             }
             // Same safety net: an unresponsive console falls through.
         }
-        if (!DevTtyProbeTransport.INSTANCE.isAvailable()) {
+        if (!SttyProbeTransport.INSTANCE.isAvailable()) {
             return null;
         }
-        return query(DevTtyProbeTransport.INSTANCE);
+        return query(SttyProbeTransport.INSTANCE);
     }
 
     /**
@@ -202,134 +198,6 @@ final class TerminalColorQuery {
         }
         queries.append("\033]4;255;?").append(BEL);
         return queries.toString().getBytes(StandardCharsets.US_ASCII);
-    }
-
-    /**
-     * Built-in POSIX transport: /dev/tty with stty raw-mode handling.
-     */
-    private static final class DevTtyProbeTransport implements TerminalProbeTransport {
-        static final DevTtyProbeTransport INSTANCE = new DevTtyProbeTransport();
-
-        @Override
-        public boolean isAvailable() {
-            return DEV_TTY.exists() && DEV_TTY.canRead() && DEV_TTY.canWrite();
-        }
-
-        @Override
-        public TerminalProbeSession open() throws IOException {
-            String savedState = sttyGet();
-            if (savedState == null) {
-                throw new IOException("stty unavailable");
-            }
-            sttyRaw();
-            return new DevTtyProbeSession(savedState);
-        }
-    }
-
-    private static final class DevTtyProbeSession implements TerminalProbeSession {
-        private final String savedState;
-        private final FileOutputStream ttyOut;
-        private final FileInputStream ttyIn;
-
-        DevTtyProbeSession(String savedState) throws IOException {
-            this.savedState = savedState;
-            FileOutputStream out = null;
-            try {
-                out = new FileOutputStream(DEV_TTY);
-                FileInputStream in = new FileInputStream(DEV_TTY);
-                this.ttyOut = out;
-                this.ttyIn = in;
-            } catch (IOException e) {
-                if (out != null) {
-                    try {
-                        out.close();
-                    } catch (IOException ignored) {
-                    }
-                }
-                sttyRestore(savedState);
-                throw e;
-            }
-        }
-
-        @Override
-        public void write(byte[] data) throws IOException {
-            ttyOut.write(data);
-            ttyOut.flush();
-        }
-
-        @Override
-        public InputStream input() {
-            return ttyIn;
-        }
-
-        @Override
-        public void close() {
-            try {
-                ttyIn.close();
-            } catch (IOException ignored) {
-            }
-            try {
-                ttyOut.close();
-            } catch (IOException ignored) {
-            } finally {
-                sttyRestore(savedState);
-            }
-        }
-    }
-
-    private static String sttyGet() {
-        Process p = null;
-        try {
-            p = new ProcessBuilder("stty", "-g")
-                    .redirectInput(DEV_TTY)
-                    .redirectErrorStream(true)
-                    .start();
-            byte[] buf = new byte[256];
-            StringBuilder sb = new StringBuilder();
-            int n;
-            while ((n = p.getInputStream().read(buf)) != -1) {
-                sb.append(new String(buf, 0, n));
-            }
-            p.waitFor();
-            return p.exitValue() == 0 ? sb.toString().trim() : null;
-        } catch (Exception ignored) {
-            return null;
-        } finally {
-            if (p != null)
-                p.destroy();
-        }
-    }
-
-    private static void sttyRaw() {
-        Process p = null;
-        try {
-            p = new ProcessBuilder("stty", "-echo", "-icanon", "-ixon", "min", "0", "time", "5")
-                    .redirectInput(DEV_TTY)
-                    .redirectOutput(ProcessBuilder.Redirect.INHERIT)
-                    .redirectErrorStream(true)
-                    .start();
-            p.waitFor();
-        } catch (Exception ignored) {
-        } finally {
-            if (p != null)
-                p.destroy();
-        }
-    }
-
-    private static void sttyRestore(String savedState) {
-        Process p = null;
-        try {
-            p = new ProcessBuilder("stty", savedState)
-                    .redirectInput(DEV_TTY)
-                    .redirectOutput(ProcessBuilder.Redirect.INHERIT)
-                    .redirectErrorStream(true)
-                    .start();
-            p.waitFor();
-        } catch (Exception ignored) {
-        } finally {
-            if (p != null)
-                p.destroy();
-        }
     }
 
     private static String readResponse(InputStream in, int expectedResponses) throws IOException {
@@ -511,10 +379,10 @@ final class TerminalColorQuery {
         if (win32 != null) {
             return probeGraphemeClustering(win32);
         }
-        if (!DevTtyProbeTransport.INSTANCE.isAvailable()) {
+        if (!SttyProbeTransport.INSTANCE.isAvailable()) {
             return false;
         }
-        return probeGraphemeClustering(DevTtyProbeTransport.INSTANCE);
+        return probeGraphemeClustering(SttyProbeTransport.INSTANCE);
     }
 
     static boolean probeGraphemeClustering(TerminalProbeTransport transport) {
