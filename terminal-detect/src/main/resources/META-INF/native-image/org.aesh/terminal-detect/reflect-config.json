@@ -1,0 +1,35 @@
+[
+  {
+    "name": "org.aesh.terminal.detect.FfmProbeTransport",
+    "methods": [
+      { "name": "<init>", "parameterTypes": [] },
+      { "name": "isNativeAccessEnabled", "parameterTypes": [] },
+      { "name": "isAvailable", "parameterTypes": [] },
+      { "name": "open", "parameterTypes": [] }
+    ]
+  },
+  {
+    "name": "org.aesh.terminal.detect.FfmPosix",
+    "methods": [
+      { "name": "isNativeAccessEnabled", "parameterTypes": [] },
+      { "name": "open", "parameterTypes": ["java.lang.String", "int", "java.lang.foreign.Arena"] },
+      { "name": "close", "parameterTypes": ["int"] }
+    ]
+  },
+  {
+    "name": "org.aesh.terminal.detect.Win32ProbeTransport",
+    "methods": [
+      { "name": "<init>", "parameterTypes": [] },
+      { "name": "isNativeAccessEnabled", "parameterTypes": [] },
+      { "name": "isAvailable", "parameterTypes": [] },
+      { "name": "open", "parameterTypes": [] }
+    ]
+  },
+  {
+    "name": "org.aesh.terminal.detect.Win32Probe",
+    "methods": [
+      { "name": "getStdHandle", "parameterTypes": ["int"] },
+      { "name": "getConsoleMode", "parameterTypes": ["long"] }
+    ]
+  }
+]

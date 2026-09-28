@@ -140,6 +140,57 @@
                 </plugins>
             </build>
         </profile>
+        <!-- Native-image test run: executes the JUnit tests as a native
+             binary, proving FFM downcall registration end to end (#301).
+             Unlike terminal-tty, nothing is deleted here: the FFM classes
+             under test must be present for registration to be exercised. -->
+        <profile>
+            <id>native</id>
+            <activation>
+                <property>
+                    <name>env.GRAALVM_HOME</name>
+                </property>
+            </activation>
+            <dependencies>
+                <dependency>
+                    <!-- JUnit 5.x ONLY — 6.x is incompatible with native-maven-plugin 1.1.3 -->
+                    <groupId>org.junit.vintage</groupId>
+                    <artifactId>junit-vintage-engine</artifactId>
+                    <version>5.14.4</version>
+                    <scope>test</scope>
+                </dependency>
+                <dependency>
+                    <!-- JUnit 5.x ONLY — 6.x is incompatible with native-maven-plugin 1.1.3 -->
+                    <groupId>org.junit.platform</groupId>
+                    <artifactId>junit-platform-launcher</artifactId>
+                    <version>1.14.4</version>
+                    <scope>test</scope>
+                </dependency>
+            </dependencies>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.graalvm.buildtools</groupId>
+                        <!-- 1.1.6 is broken: missing org.apache.maven.shared.utils.logging.MessageUtils -->
+                        <artifactId>native-maven-plugin</artifactId>
+                        <version>1.1.13</version>
+                        <extensions>true</extensions>
+                        <executions>
+                            <execution>
+                                <id>test-native</id>
+                                <goals>
+                                    <goal>test</goal>
+                                </goals>
+                                <phase>test</phase>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <quickBuild>true</quickBuild>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
     </profiles>
 
 </project>
