@@ -189,4 +189,49 @@ public class TerminalCapabilitiesTest {
         field.setAccessible(true);
         field.set(caps, theme);
     }
+
+    @Test
+    public void testRgbReplyImpliesFullLadder() {
+        // A terminal answering OSC color queries supports 24-bit output,
+        // which includes the 256 palette and basic color by definition.
+        TerminalCapabilities caps = TerminalCapabilities.detect();
+
+        TerminalColorQuery measured = new TerminalColorQuery();
+        measured.foreground = new int[] { 255, 255, 255 };
+        caps.applyColorResult(measured);
+
+        assertTrue(caps.supportsTrueColor());
+        assertTrue(caps.supports256Colors());
+        assertTrue(caps.supportsColor());
+    }
+
+    @Test
+    public void testLadderHoldsAcrossThemeEvent() {
+        // Relations must hold in every state, independent of the real
+        // environment this test happens to run in.
+        TerminalCapabilities caps = TerminalCapabilities.detect();
+        assertLadder(caps);
+
+        TerminalColorQuery measured = new TerminalColorQuery();
+        measured.background = new int[] { 0, 0, 0 };
+        caps.applyColorResult(measured);
+        assertLadder(caps);
+
+        TerminalCapabilities.setInstance(caps);
+        try {
+            TerminalCapabilities.onThemeChanged(TerminalTheme.LIGHT);
+            assertLadder(caps);
+        } finally {
+            TerminalCapabilities.setInstance(null);
+        }
+    }
+
+    private static void assertLadder(TerminalCapabilities caps) {
+        if (caps.supportsTrueColor()) {
+            assertTrue("true color implies 256 colors", caps.supports256Colors());
+        }
+        if (caps.supports256Colors()) {
+            assertTrue("256 colors imply basic color", caps.supportsColor());
+        }
+    }
 }

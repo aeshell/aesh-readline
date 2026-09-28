@@ -52,6 +52,7 @@ final class TerminalDetector {
     final String terminalName;
     final boolean trueColor;
     final boolean colors256;
+    final boolean supportsColor;
     final ImageProtocol imageProtocol;
     final TerminalTheme theme;
 
@@ -81,6 +82,9 @@ final class TerminalDetector {
         this.terminalName = detectTerminalName();
         this.trueColor = detectTrueColor();
         this.colors256 = trueColor || detect256Colors();
+        // Every recognized terminal supports at least basic 8-color
+        // output; unknown ones fail safe to false.
+        this.supportsColor = colors256 || !"unknown".equals(terminalName);
         this.imageProtocol = detectImageProtocol();
         this.theme = detectTheme();
     }
@@ -121,6 +125,13 @@ final class TerminalDetector {
 
         if (term != null) {
             String lower = term.toLowerCase();
+            // Multiplexers only when no outer-terminal signal matched
+            // above: their TERM prefix is the honest identity, since live
+            // queries cannot see past them by design.
+            if (lower.startsWith("tmux"))
+                return "tmux";
+            if (lower.startsWith("screen"))
+                return "screen";
             if (lower.contains("kitty"))
                 return "kitty";
             if (lower.contains("ghostty"))

@@ -373,7 +373,8 @@ public final class TerminalCapabilities {
 
     /**
      * Check if the terminal supports at least 256 colors.
-     * Always true when {@link #supportsTrueColor()} is true.
+     * Always true when {@link #supportsTrueColor()} is true: a measured
+     * RGB reply implies 24-bit output, which includes the 256 palette.
      * <p>
      * When created via {@link #detectAsync()}, this may upgrade to
      * {@code true} after the color query confirms 256-color support.
@@ -381,16 +382,19 @@ public final class TerminalCapabilities {
      * @return true if 256 colors are supported
      */
     public boolean supports256Colors() {
-        return detector.colors256 || (queried256 != null && queried256);
+        return supportsTrueColor() || detector.colors256 || (queried256 != null && queried256);
     }
 
     /**
      * Check if the terminal supports any color output.
+     * <p>
+     * Every recognized terminal supports at least basic 8-color output;
+     * unrecognized ones fail safe to false unless a query proves color.
      *
      * @return true if color is supported
      */
     public boolean supportsColor() {
-        return detector.colors256 || detector.trueColor;
+        return supports256Colors() || detector.supportsColor;
     }
 
     /**
