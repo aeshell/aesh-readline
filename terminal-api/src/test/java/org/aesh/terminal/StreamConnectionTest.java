@@ -21,11 +21,15 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
@@ -115,24 +119,108 @@ public class StreamConnectionTest {
         writer.close();
     }
 
-    private static class FailingInputStream extends java.io.InputStream {
-        private volatile boolean broken;
+    @Test
+    public void testReadsStreamWithDefaultAvailable() throws Exception {
+        InputStream input = new InputStream() {
+            private int position;
+            private final byte[] data = "ready".getBytes(StandardCharsets.UTF_8);
 
-        @Override
-        public int available() throws java.io.IOException {
-            if (broken) {
-                throw new java.io.IOException("boom");
+            @Override
+            public int read() {
+                return position < data.length ? data[position++] & 0xff : -1;
             }
-            return 0;
+        };
+        StreamConnection conn = new StreamConnection(StandardCharsets.UTF_8, input,
+                new ByteArrayOutputStream());
+        List<int[]> received = new CopyOnWriteArrayList<>();
+        try {
+            conn.setStdinHandler(recorder(received));
+            conn.openNonBlocking();
+            awaitSize(received, 1);
+            assertArrayEquals("ready".codePoints().toArray(), received.get(0));
+        } finally {
+            conn.close();
         }
+    }
+
+    @Test
+    public void testCloseUnblocksOpenBlockingWithoutOwningInput() throws Exception {
+        final CountDownLatch enteredRead = new CountDownLatch(1);
+        final CountDownLatch releaseRead = new CountDownLatch(1);
+        final CountDownLatch closed = new CountDownLatch(1);
+        final boolean[] streamClosed = { false };
+        InputStream input = new InputStream() {
+            private boolean delivered;
+
+            @Override
+            public int read() {
+                enteredRead.countDown();
+                while (true) {
+                    try {
+                        releaseRead.await();
+                        if (delivered) {
+                            return -1;
+                        }
+                        delivered = true;
+                        return 'x';
+                    } catch (InterruptedException ignored) {
+                        // Simulates a caller-owned stream that cannot be cancelled.
+                    }
+                }
+            }
+
+            @Override
+            public void close() {
+                streamClosed[0] = true;
+            }
+        };
+        final StreamConnection conn = new StreamConnection(StandardCharsets.UTF_8, input,
+                new ByteArrayOutputStream());
+        List<int[]> received = new CopyOnWriteArrayList<>();
+        conn.setStdinHandler(recorder(received));
+        conn.setCloseHandler(ignored -> closed.countDown());
+        Thread waiter = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                conn.openBlocking();
+            }
+        });
+        try {
+            waiter.start();
+            assertTrue("Reader must enter read()", enteredRead.await(2, TimeUnit.SECONDS));
+            conn.close();
+            waiter.join(1000);
+            assertFalse("close must unblock openBlocking()", waiter.isAlive());
+            assertEquals(0, closed.getCount());
+            assertFalse("Input belongs to the caller", streamClosed[0]);
+        } finally {
+            conn.close();
+            releaseRead.countDown();
+            waiter.join(2000);
+        }
+        for (int i = 0; i < 100 && conn.reading(); i++) {
+            Thread.sleep(10);
+        }
+        assertFalse("Reader must exit after caller releases the stream", conn.reading());
+        assertTrue("No bytes may be dispatched after close", received.isEmpty());
+    }
+
+    private static class FailingInputStream extends java.io.InputStream {
+        private final CountDownLatch broken = new CountDownLatch(1);
 
         @Override
-        public int read() {
-            return -1;
+        public int read() throws java.io.IOException {
+            try {
+                broken.await();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new java.io.IOException("interrupted", e);
+            }
+            throw new java.io.IOException("boom");
         }
 
         void breakIt() {
-            broken = true;
+            broken.countDown();
         }
     }
 
@@ -159,9 +247,8 @@ public class StreamConnectionTest {
 
     @Test
     public void testWriterCloseDeliversPendingAndStaysSilent() throws Exception {
-        // Clean writer close: pending bytes are still delivered, the death
-        // hook stays silent (no failure occurred), and the reader survives
-        // until explicit close (poll loop cannot see EOF on an empty pipe).
+        // Clean writer close: pending bytes are delivered before EOF, and
+        // the death hook stays silent (no failure occurred).
         PipedOutputStream writer = new PipedOutputStream();
         PipedInputStream reader = new PipedInputStream(writer, 4096);
         StreamConnection conn = new StreamConnection(StandardCharsets.UTF_8, reader,
@@ -177,10 +264,11 @@ public class StreamConnectionTest {
             writer.close();
             awaitSize(received, 1);
             assertArrayEquals("go\n".codePoints().toArray(), received.get(0));
-            Thread.sleep(200);
+            for (int i = 0; i < 100 && conn.reading(); i++) {
+                Thread.sleep(10);
+            }
             assertNull("Clean writer close must not fire the death hook", death.get());
-            assertTrue("Reader must survive clean writer close until explicit close",
-                    conn.reading());
+            assertFalse("Reader must stop on EOF", conn.reading());
         } finally {
             conn.close();
         }

@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.Charset;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.logging.Level;
@@ -37,7 +38,7 @@ import org.aesh.terminal.utils.Parser;
  * A {@link Connection} backed by plain JDK streams, for embedders driving
  * an interactive session over pipes (test harnesses, protocol bridges).
  * <p>
- * Owns a named daemon reader thread that polls the input stream and feeds
+ * Owns a named daemon reader thread that reads the input stream and feeds
  * bytes through a {@link Decoder} into {@link EventDecoder#accept(int[])},
  * so multi-byte sequences split across reads decode correctly and input
  * arriving with no handler set is buffered instead of dropped (never wire
@@ -53,12 +54,13 @@ import org.aesh.terminal.utils.Parser;
  * <li>{@link #supportsAnsi()} returns {@code false}; the device reports
  * type {@code "dumb"} (no ANSI output is supported).</li>
  * <li>{@link #close()} interrupts the reader and fires the close handler
- * but never closes the caller-owned streams.</li>
+ * but never closes the caller-owned streams. A stream whose blocking read
+ * ignores interruption may keep the daemon reader waiting until the caller
+ * releases that stream; input delivered afterward is discarded.</li>
  * </ul>
  * <p>
- * Clean writer-close with no trailing bytes is not delivered as EOF (the
- * poll loop only reads when bytes are available); close the connection
- * explicitly to end the session.
+ * A clean writer-close is observed as EOF. Close the connection explicitly
+ * to invoke its close handler.
  *
  * @since 3.18.3
  */
@@ -66,11 +68,7 @@ public class StreamConnection extends AbstractConnection {
 
     private static final Logger LOGGER = Logger.getLogger(StreamConnection.class.getName());
 
-    /**
-     * Idle poll interval for the reader loop. Bounds input latency and the
-     * delay between close() and reader-thread exit without closing the
-     * caller-owned stream (which may be JVM-global state).
-     */
+    /** Delay when a nonconforming stream returns zero from read(byte[]). */
     private static final int PUMP_POLL_MS = 10;
 
     private final Charset inputCharset;
@@ -80,9 +78,10 @@ public class StreamConnection extends AbstractConnection {
     private final Decoder decoder;
     private final Device device = new BaseDevice("dumb");
     private final AtomicBoolean closed = new AtomicBoolean();
+    private final CountDownLatch stopped = new CountDownLatch(1);
     private volatile Consumer<Throwable> deathHook;
     private volatile Size size = new Size(120, 40);
-    private Thread readerThread;
+    private volatile Thread readerThread;
 
     /**
      * Writer side: encodes code points with the output charset. Failures
@@ -191,9 +190,7 @@ public class StreamConnection extends AbstractConnection {
     public void openBlocking() {
         startReader();
         try {
-            if (readerThread != null) {
-                readerThread.join();
-            }
+            stopped.await();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
@@ -211,13 +208,14 @@ public class StreamConnection extends AbstractConnection {
             if (readerThread != null) {
                 readerThread.interrupt();
             }
+            stopped.countDown();
             if (closeHandler != null) {
                 closeHandler.accept(null);
             }
         }
     }
 
-    private void startReader() {
+    private synchronized void startReader() {
         if (readerThread != null || closed.get()) {
             return;
         }
@@ -227,41 +225,31 @@ public class StreamConnection extends AbstractConnection {
         readerThread.start();
     }
 
-    /**
-     * Poll-based reader: never blocks indefinitely and never closes the
-     * caller-owned stream, so close() always stops the thread promptly.
-     */
+    /** Blocking reader over any InputStream, regardless of available(). */
     private final class ReaderLoop implements Runnable {
         @Override
         public void run() {
             byte[] buffer = new byte[1024];
             try {
                 while (!closed.get()) {
-                    int available;
+                    int n;
                     try {
-                        available = input.available();
+                        n = input.read(buffer);
                     } catch (IOException e) {
-                        readerDied(e);
+                        if (!closed.get()) {
+                            readerDied(e);
+                        }
                         break;
                     }
-                    if (available > 0) {
-                        int n;
-                        try {
-                            n = input.read(buffer);
-                        } catch (IOException e) {
-                            readerDied(e);
-                            break;
-                        }
-                        if (n > 0) {
-                            decoder.write(buffer, 0, n);
-                        } else if (n < 0) {
-                            break;
-                        }
+                    if (closed.get() || n < 0) {
+                        break;
+                    }
+                    if (n > 0) {
+                        decoder.write(buffer, 0, n);
                     } else {
                         try {
                             Thread.sleep(PUMP_POLL_MS);
                         } catch (InterruptedException e) {
-                            // close() interrupted the idle sleep — exit promptly
                             Thread.currentThread().interrupt();
                             break;
                         }
@@ -271,9 +259,12 @@ public class StreamConnection extends AbstractConnection {
                 if (t instanceof ThreadDeath) {
                     throw (ThreadDeath) t;
                 }
-                readerDied(t);
+                if (!closed.get()) {
+                    readerDied(t);
+                }
             } finally {
                 reading = false;
+                stopped.countDown();
             }
         }
     }
