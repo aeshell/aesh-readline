@@ -43,11 +43,15 @@ public class TerminalProbeTransportTest {
 
     /** Session serving one canned response, capturing writes, tracking close. */
     private static final class FakeProbeSession implements TerminalProbeSession {
-        private final byte[] response;
+        private final InputStream response;
         private final ByteArrayOutputStream written = new ByteArrayOutputStream();
         private boolean closed;
 
         FakeProbeSession(byte[] response) {
+            this(new ByteArrayInputStream(response));
+        }
+
+        FakeProbeSession(InputStream response) {
             this.response = response;
         }
 
@@ -58,7 +62,7 @@ public class TerminalProbeTransportTest {
 
         @Override
         public InputStream input() {
-            return new ByteArrayInputStream(response);
+            return response;
         }
 
         @Override
@@ -102,6 +106,52 @@ public class TerminalProbeTransportTest {
         @Override
         public TerminalProbeSession open() throws IOException {
             throw new IOException("no console");
+        }
+    }
+
+    /** A response stream delivered in small reads, with an optional timeout. */
+    private static final class ChunkedInputStream extends InputStream {
+        private final byte[] response;
+        private final boolean timeout;
+        private int offset;
+
+        ChunkedInputStream(byte[] response, boolean timeout) {
+            this.response = response;
+            this.timeout = timeout;
+        }
+
+        @Override
+        public int read() {
+            return offset < response.length ? response[offset++] & 0xff : -1;
+        }
+
+        @Override
+        public int read(byte[] b, int off, int len) {
+            if (offset == response.length) {
+                return timeout ? 0 : -1;
+            }
+            int count = Math.min(2, Math.min(len, response.length - offset));
+            System.arraycopy(response, offset, b, off, count);
+            offset += count;
+            return count;
+        }
+    }
+
+    private static final class StreamProbeTransport implements TerminalProbeTransport {
+        final FakeProbeSession session;
+
+        StreamProbeTransport(InputStream response) {
+            session = new FakeProbeSession(response);
+        }
+
+        @Override
+        public boolean isAvailable() {
+            return true;
+        }
+
+        @Override
+        public TerminalProbeSession open() {
+            return session;
         }
     }
 
@@ -189,6 +239,41 @@ public class TerminalProbeTransportTest {
     public void testGraphemeProbeEmptyReturnsFalse() {
         FakeProbeTransport transport = new FakeProbeTransport(true, new byte[0]);
         assertFalse(TerminalColorQuery.probeGraphemeClustering(transport));
+    }
+
+    @Test
+    public void testColorResponseSplitAcrossReads() {
+        StreamProbeTransport transport = new StreamProbeTransport(
+                new ChunkedInputStream(colorResponse(), false));
+
+        TerminalColorQuery result = TerminalColorQuery.query(transport);
+
+        assertNotNull(result);
+        assertArrayEquals(new int[] { 255, 255, 255 }, result.foreground);
+        assertArrayEquals(new int[] { 0, 0, 0 }, result.background);
+        assertEquals(ModeSupport.SUPPORTED, result.mode2026);
+        assertTrue(transport.session.closed);
+        assertArrayEquals(TerminalColorQuery.buildColorQuery(), transport.session.written.toByteArray());
+    }
+
+    @Test
+    public void testTimeoutEndsPartialColorResponseAndRestoresSession() {
+        StreamProbeTransport transport = new StreamProbeTransport(
+                new ChunkedInputStream(bytes("\033]11;rgb:ffff/ff"), true));
+
+        TerminalColorQuery result = TerminalColorQuery.query(transport);
+
+        assertNotNull(result);
+        assertNull("Incomplete OSC 11 must not report a color", result.background);
+        assertTrue("Raw-mode session must close after timeout", transport.session.closed);
+    }
+
+    @Test
+    public void testTimeoutWithoutBytesReturnsNoResult() {
+        StreamProbeTransport transport = new StreamProbeTransport(new ChunkedInputStream(new byte[0], true));
+
+        assertNull(TerminalColorQuery.query(transport));
+        assertTrue(transport.session.closed);
     }
 
     @Test
