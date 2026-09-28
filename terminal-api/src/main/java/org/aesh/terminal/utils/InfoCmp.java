@@ -52,36 +52,42 @@ public final class InfoCmp {
     public static String getInfoCmp(String terminal) throws IOException, InterruptedException {
         String caps = CAPS.get(terminal);
         if (caps == null) {
-            // Try bundled .src files first — no subprocess, always available
-            String bundledFile = bundledCapsFile(terminal);
-            caps = bundledFile != null ? readDefaultInfoCmp(bundledFile) : null;
-            // Fall back to reading the terminfo database directly — no
-            // subprocess, works wherever the database files are present
-            if (caps == null || caps.isEmpty()) {
-                caps = TerminfoReader.readEntry(terminal);
-            }
-            // Last resort: spawn infocmp if no bundled match
-            if (caps == null || caps.isEmpty()) {
-                try {
-                    Process p = new ProcessBuilder(OSUtils.INFOCMP_COMMAND, terminal).start();
-                    String output = ExecHelper.waitAndCapture(p);
-                    if (p.exitValue() == 0) {
-                        caps = output;
-                    }
-                } catch (IOException e) {
-                    // infocmp not available either — caps stays null
-                }
-            }
-            // Preserve the public API's generic ANSI fallback when neither
-            // a bundled entry nor a system terminfo entry exists.
-            if (caps == null || caps.isEmpty()) {
-                caps = readDefaultInfoCmp("ansi_caps.src");
-            }
+            caps = loadInfoCmp(terminal);
             if (caps != null) {
                 CAPS.put(terminal, caps);
             }
         }
         return caps;
+    }
+
+    private static String loadInfoCmp(String terminal) throws InterruptedException {
+        String bundledFile = bundledCapsFile(terminal);
+        if (bundledFile != null) {
+            String bundled = readDefaultInfoCmp(bundledFile);
+            if (bundled != null && !bundled.isEmpty()) {
+                return bundled;
+            }
+        }
+        String database = TerminfoReader.readEntry(terminal);
+        if (database != null && !database.isEmpty()) {
+            return database;
+        }
+        String command = runInfocmp(terminal);
+        if (command != null && !command.isEmpty()) {
+            return command;
+        }
+        // Preserve the public API's generic ANSI fallback when no entry exists.
+        return readDefaultInfoCmp("ansi_caps.src");
+    }
+
+    private static String runInfocmp(String terminal) throws InterruptedException {
+        try {
+            Process p = new ProcessBuilder(OSUtils.INFOCMP_COMMAND, terminal).start();
+            String output = ExecHelper.waitAndCapture(p);
+            return p.exitValue() == 0 ? output : null;
+        } catch (IOException e) {
+            return null;
+        }
     }
 
     /**
