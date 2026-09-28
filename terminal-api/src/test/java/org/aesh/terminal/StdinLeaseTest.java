@@ -13,6 +13,7 @@
  */
 package org.aesh.terminal;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -98,6 +99,24 @@ public class StdinLeaseTest {
                     leased, conn.stdinHandler());
         }
         assertSame("Previous handler instance must be restored",
+                steady, conn.stdinHandler());
+    }
+
+    @Test
+    public void testExceptionInsideLeaseRestoresPreviousHandler() {
+        FakeConnection conn = new FakeConnection();
+        Consumer<int[]> steady = new ArrayList<int[]>()::add;
+        conn.setStdinHandler(steady);
+
+        try {
+            try (StdinLease ignored = conn.captureStdin(new ArrayList<int[]>()::add)) {
+                throw new IllegalStateException("query failed");
+            }
+        } catch (IllegalStateException e) {
+            assertEquals("query failed", e.getMessage());
+        }
+
+        assertSame("Exception must not leave a temporary input handler installed",
                 steady, conn.stdinHandler());
     }
 
