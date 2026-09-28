@@ -296,6 +296,12 @@ public final class TerminalCapabilities {
                     TerminalColorQuery result = TerminalColorQuery.query();
                     if (result != null) {
                         caps.applyColorResult(result);
+                        // Cursor-position grapheme probe, same gating as
+                        // detectFull(): only when DA1 responded but Mode
+                        // 2027 is not supported.
+                        if (result.da1Received && result.mode2027 == ModeSupport.NOT_SUPPORTED) {
+                            caps.nativeGraphemeClustering = TerminalColorQuery.probeGraphemeClustering();
+                        }
                     }
                 }
                 if (caps.resolvedTheme == null && detector.theme == TerminalTheme.UNKNOWN) {
@@ -334,7 +340,9 @@ public final class TerminalCapabilities {
         queried256 = result.supports256;
         mode2026Support = result.mode2026;
         mode2027Support = result.mode2027;
-        nativeGraphemeClustering = result.nativeGraphemeClustering;
+        // Grapheme clustering is probed separately per mode (cursor
+        // position), never copied: an unprobed result must stay null,
+        // not become a fabricated negative.
         if (result.supportsSixel && detector.imageProtocol == ImageProtocol.NONE) {
             queriedImageProtocol = ImageProtocol.SIXEL;
         }
@@ -643,9 +651,10 @@ public final class TerminalCapabilities {
     /**
      * Whether the terminal natively clusters grapheme sequences even
      * without Mode 2027 support. Detected via cursor-position probe
-     * in {@link #detectFull()}.
+     * in {@link #detectFull()} and {@link #detectAsync()}.
      *
-     * @return true if native clustering detected, null if not probed
+     * @return true if native clustering detected, false if measured
+     *         absent, null if not probed
      */
     public Boolean nativeGraphemeClustering() {
         return nativeGraphemeClustering;

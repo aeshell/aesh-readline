@@ -203,6 +203,8 @@ public class TerminalCapabilitiesTest {
         assertTrue(caps.supportsTrueColor());
         assertTrue(caps.supports256Colors());
         assertTrue(caps.supportsColor());
+        assertNull("unprobed grapheme clustering must stay null, not false",
+                caps.nativeGraphemeClustering());
     }
 
     @Test

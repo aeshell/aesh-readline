@@ -79,7 +79,6 @@ final class TerminalColorQuery {
     boolean da1Received;
     ModeSupport mode2026 = ModeSupport.NO_RESPONSE;
     ModeSupport mode2027 = ModeSupport.NO_RESPONSE;
-    boolean nativeGraphemeClustering;
 
     TerminalColorQuery() {
     }

@@ -330,6 +330,46 @@ public class TerminalProbeTransportTest {
     }
 
     @Test
+    public void testAsyncProbesGraphemeClustering() throws Exception {
+        // Mode 2027 unsupported but terminal clusters flag emoji: the
+        // background async probe must measure TRUE, not leave null.
+        Assume.assumeFalse("live query skipped in multiplexer",
+                new TerminalDetector().isInMultiplexer());
+        TerminalCapabilities saved = TerminalCapabilities.getInstance();
+        try {
+            // First open serves the color query, second the grapheme probe
+            // (DA1 received + 2027 unsupported triggers it).
+            TerminalCapabilities.setProbeTransport(
+                    new FakeProbeTransport(true, colorResponse(), bytes("\033[1;3R")));
+            TerminalCapabilities.invalidate();
+            TerminalCapabilities async = TerminalCapabilities.detectAsync();
+            assertTrue(async.awaitColors(2, TimeUnit.SECONDS));
+            assertEquals(Boolean.TRUE, async.nativeGraphemeClustering());
+        } finally {
+            TerminalCapabilities.setProbeTransport(null);
+            TerminalCapabilities.setInstance(saved);
+        }
+    }
+
+    @Test
+    public void testAsyncWithoutReplyLeavesGraphemeUnknown() throws Exception {
+        // No reply means no probe ran: null, not a fabricated negative.
+        Assume.assumeFalse("live query skipped in multiplexer",
+                new TerminalDetector().isInMultiplexer());
+        TerminalCapabilities saved = TerminalCapabilities.getInstance();
+        try {
+            TerminalCapabilities.setProbeTransport(new FakeProbeTransport(true, new byte[0]));
+            TerminalCapabilities.invalidate();
+            TerminalCapabilities async = TerminalCapabilities.detectAsync();
+            assertTrue(async.awaitColors(2, TimeUnit.SECONDS));
+            assertNull(async.nativeGraphemeClustering());
+        } finally {
+            TerminalCapabilities.setProbeTransport(null);
+            TerminalCapabilities.setInstance(saved);
+        }
+    }
+
+    @Test
     public void testFullAndAsyncAgreeOnMeasuredTheme() throws Exception {
         // The same white-background reply through both entry points must
         // yield the same theme: measured RGB outranks earlier hints.
