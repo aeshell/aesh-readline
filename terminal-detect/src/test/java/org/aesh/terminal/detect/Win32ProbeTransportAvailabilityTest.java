@@ -26,9 +26,9 @@ import org.junit.Test;
  * All access is reflective so this test compiles and passes on pre-22
  * runtimes (where the transport class does not exist). Off-Windows the
  * transport must report unavailable without throwing and without loading
- * any FFM API classes. Live verification on a real Windows console
- * (conhost, Windows Terminal) requires field testing — CI runners have
- * no window station (see #290).
+ * any FFM API classes. {@link Win32ProbeLiveCheck} was run on conhost and
+ * Windows Terminal on 2026-09-28; CI runners still have no window station
+ * and cannot repeat the live check (see #290).
  */
 public class Win32ProbeTransportAvailabilityTest {
 
