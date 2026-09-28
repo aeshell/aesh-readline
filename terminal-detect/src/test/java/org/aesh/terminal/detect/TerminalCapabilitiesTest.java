@@ -2,6 +2,8 @@ package org.aesh.terminal.detect;
 
 import static org.junit.Assert.*;
 
+import java.util.Collections;
+
 import org.junit.Test;
 
 public class TerminalCapabilitiesTest {
@@ -106,6 +108,30 @@ public class TerminalCapabilitiesTest {
             TerminalCapabilities.invalidate();
             TerminalCapabilities b = TerminalCapabilities.detectFull();
             assertNotSame("Post-invalidate detectFull must re-probe", a, b);
+        } finally {
+            TerminalCapabilities.setInstance(saved);
+        }
+    }
+
+    @Test
+    public void testThemeEventWinsOverLateAsyncColorResponse() {
+        TerminalCapabilities saved = TerminalCapabilities.getInstance();
+        try {
+            TerminalCapabilities caps = TerminalCapabilities.detect();
+            TerminalCapabilities.setInstance(caps);
+            TerminalCapabilities.onThemeChanged(TerminalTheme.DARK);
+
+            TerminalColorQuery late = new TerminalColorQuery();
+            late.foreground = new int[] { 0, 0, 0 };
+            late.background = new int[] { 255, 255, 255 };
+            late.palette = Collections.singletonMap(0, new int[] { 20, 20, 20 });
+            caps.applyAsyncColorResult(late);
+
+            assertSame(caps, TerminalCapabilities.getInstance());
+            assertEquals(TerminalTheme.DARK, caps.theme());
+            assertNull("Old foreground must not reappear", caps.foregroundRGB());
+            assertNull("Old background must not reappear", caps.backgroundRGB());
+            assertEquals("Non-theme capabilities still update", 1, caps.paletteColors().size());
         } finally {
             TerminalCapabilities.setInstance(saved);
         }

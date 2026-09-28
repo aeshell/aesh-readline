@@ -21,9 +21,14 @@ package org.aesh.terminal;
 
 import static org.junit.Assert.*;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.lang.reflect.Field;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.aesh.terminal.detect.TerminalCapabilities;
 import org.aesh.terminal.detect.TerminalTheme;
 import org.junit.Before;
 import org.junit.Test;
@@ -72,6 +77,70 @@ public class EventDecoderThemeDsrTest {
         assertEquals(1, receivedThemes.size());
         assertEquals(TerminalTheme.LIGHT, receivedThemes.get(0));
         assertNoInput("DSR should be consumed");
+    }
+
+    @Test
+    public void testThemeDsrRefreshesCachedThemeAndRgb() throws Exception {
+        TerminalCapabilities saved = TerminalCapabilities.getInstance();
+        TerminalCapabilities caps = TerminalCapabilities.detect();
+        Field foreground = TerminalCapabilities.class.getDeclaredField("foregroundRGB");
+        Field background = TerminalCapabilities.class.getDeclaredField("backgroundRGB");
+        foreground.setAccessible(true);
+        background.setAccessible(true);
+        foreground.set(caps, new int[] { 240, 240, 240 });
+        background.set(caps, new int[] { 10, 10, 10 });
+        try {
+            TerminalCapabilities.setInstance(caps);
+            decoder.accept(DSR_LIGHT);
+
+            assertSame("Other capabilities must stay cached", caps, TerminalCapabilities.getInstance());
+            assertEquals(TerminalTheme.LIGHT, caps.theme());
+            assertNull("Old foreground must be discarded", caps.foregroundRGB());
+            assertNull("Old background must be discarded", caps.backgroundRGB());
+
+            decoder.accept(DSR_DARK);
+            assertEquals(TerminalTheme.DARK, caps.theme());
+            assertEquals(2, receivedThemes.size());
+        } finally {
+            TerminalCapabilities.setInstance(saved);
+        }
+    }
+
+    @Test
+    public void testEnableWithoutCallbackStillRefreshesCachedTheme() {
+        TerminalCapabilities saved = TerminalCapabilities.getInstance();
+        TerminalCapabilities caps = TerminalCapabilities.detect();
+        StreamConnection connection = new StreamConnection(StandardCharsets.UTF_8,
+                new ByteArrayInputStream(new byte[0]), new ByteArrayOutputStream()) {
+            private final Device themeDevice = new BaseDevice("xterm") {
+                @Override
+                public boolean supportsThemeQuery() {
+                    return true;
+                }
+            };
+
+            @Override
+            public Device device() {
+                return themeDevice;
+            }
+        };
+        try {
+            TerminalCapabilities.setInstance(caps);
+            TerminalFeatures features = connection.terminal();
+            features.enableThemeChangeNotification();
+            assertNotNull("Notifications must be intercepted even without a callback",
+                    connection.themeChangeHandler());
+
+            connection.eventDecoder.accept(DSR_LIGHT);
+            assertEquals(TerminalTheme.LIGHT, caps.theme());
+
+            features.disableThemeChangeNotification();
+            assertNull("Disable must remove the internal interception handler",
+                    connection.themeChangeHandler());
+        } finally {
+            connection.close();
+            TerminalCapabilities.setInstance(saved);
+        }
     }
 
     // ==================== DSR embedded in normal input ====================

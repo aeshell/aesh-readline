@@ -21,6 +21,7 @@ package org.aesh.terminal.detect;
 
 import java.util.Collections;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -68,6 +69,8 @@ public final class TerminalCapabilities {
      * against starting one thread per {@link #detectAsync()} caller.
      */
     private volatile boolean asyncStarted;
+    /** Guarded by this instance's monitor against a late async query. */
+    private boolean themeEventSeen;
 
     private TerminalCapabilities(TerminalDetector detector, CountDownLatch latch) {
         this.detector = detector;
@@ -107,16 +110,41 @@ public final class TerminalCapabilities {
 
     /**
      * Drop the shared instance so the next access re-detects. Call when the
-     * terminal environment changes mid-session (e.g. a theme toggle reported
-     * via a theme-change event) instead of re-running full detection
-     * manually — the next {@code detect()}, {@code detectFull()} or
-     * {@code detectAsync()} call rebuilds from scratch.
+     * terminal environment changes beyond a theme notification, or when
+     * fresh RGB values are needed after a theme change. Notifications
+     * update the cached theme and discard old RGB values without re-probing;
+     * the next {@code detect()}, {@code detectFull()} or
+     * {@code detectAsync()} call after invalidation rebuilds from scratch.
      *
      * @since 3.18.3
      */
     public static void invalidate() {
         synchronized (TerminalCapabilities.class) {
             instance = null;
+        }
+    }
+
+    /**
+     * Apply an unsolicited terminal theme notification to the shared
+     * capabilities. A theme change makes previously queried foreground
+     * and background RGB values stale; unrelated capabilities remain
+     * cached. Call {@link #invalidate()} to explicitly re-probe colors.
+     *
+     * @param theme the newly reported terminal theme
+     * @since 3.18.4
+     */
+    public static void onThemeChanged(TerminalTheme theme) {
+        Objects.requireNonNull(theme, "theme");
+        synchronized (TerminalCapabilities.class) {
+            TerminalCapabilities caps = instance;
+            if (caps != null) {
+                synchronized (caps) {
+                    caps.foregroundRGB = null;
+                    caps.backgroundRGB = null;
+                    caps.resolvedTheme = theme;
+                    caps.themeEventSeen = true;
+                }
+            }
         }
     }
 
@@ -272,23 +300,16 @@ public final class TerminalCapabilities {
                 if (!detector.isInMultiplexer()) {
                     TerminalColorQuery result = TerminalColorQuery.query();
                     if (result != null) {
-                        caps.foregroundRGB = result.foreground;
-                        caps.backgroundRGB = result.background;
-                        caps.paletteColors = result.palette;
-                        caps.queried256 = result.supports256;
-                        caps.mode2026Support = result.mode2026;
-                        caps.mode2027Support = result.mode2027;
-                        caps.nativeGraphemeClustering = result.nativeGraphemeClustering;
-                        if (result.supportsSixel && detector.imageProtocol == ImageProtocol.NONE) {
-                            caps.queriedImageProtocol = ImageProtocol.SIXEL;
-                        }
-                        if (result.background != null) {
-                            caps.resolvedTheme = themeFromRGB(result.background);
-                        }
+                        caps.applyAsyncColorResult(result);
                     }
                 }
                 if (caps.resolvedTheme == null && detector.theme == TerminalTheme.UNKNOWN) {
-                    caps.resolvedTheme = TerminalDetector.detectPlatformTheme();
+                    TerminalTheme platform = TerminalDetector.detectPlatformTheme();
+                    synchronized (caps) {
+                        if (!caps.themeEventSeen && caps.resolvedTheme == null) {
+                            caps.resolvedTheme = platform;
+                        }
+                    }
                 }
             } finally {
                 latch.countDown();
@@ -298,6 +319,25 @@ public final class TerminalCapabilities {
         queryThread.start();
 
         return caps;
+    }
+
+    /** Apply a completed async probe without reviving colors invalidated by an event. */
+    synchronized void applyAsyncColorResult(TerminalColorQuery result) {
+        if (!themeEventSeen) {
+            foregroundRGB = result.foreground;
+            backgroundRGB = result.background;
+            if (result.background != null) {
+                resolvedTheme = themeFromRGB(result.background);
+            }
+        }
+        paletteColors = result.palette;
+        queried256 = result.supports256;
+        mode2026Support = result.mode2026;
+        mode2027Support = result.mode2027;
+        nativeGraphemeClustering = result.nativeGraphemeClustering;
+        if (result.supportsSixel && detector.imageProtocol == ImageProtocol.NONE) {
+            queriedImageProtocol = ImageProtocol.SIXEL;
+        }
     }
 
     /**
@@ -370,7 +410,8 @@ public final class TerminalCapabilities {
      * <p>
      * When created via {@link #detectAsync()}, this may return a more
      * accurate result after the color query completes (derived from
-     * the actual background RGB).
+     * the actual background RGB). A later theme notification updates
+     * this value and discards previously queried foreground/background RGB.
      *
      * @return the theme (DARK, LIGHT, or UNKNOWN)
      */

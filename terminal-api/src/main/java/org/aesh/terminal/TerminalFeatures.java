@@ -63,6 +63,17 @@ public class TerminalFeatures {
 
     private static final Logger LOGGER = Logger.getLogger(TerminalFeatures.class.getName());
 
+    // EventDecoder updates the shared theme cache before invoking its handler.
+    // This marker enables interception when no application callback was supplied.
+    private static final Consumer<TerminalTheme> CACHE_ONLY_THEME_HANDLER = new CacheOnlyThemeHandler();
+
+    private static final class CacheOnlyThemeHandler implements Consumer<TerminalTheme> {
+        @Override
+        public void accept(TerminalTheme theme) {
+            // EventDecoder already applied this notification to the cache.
+        }
+    }
+
     /**
      * Default timeout in milliseconds for terminal queries (OSC, DA1, DA2, etc.).
      * Suitable for most query operations where the terminal is expected to respond.
@@ -860,10 +871,15 @@ public class TerminalFeatures {
     // ==================== Theme Change Notifications ====================
 
     /**
-     * Enable unsolicited theme change notifications.
+     * Enable unsolicited theme change notifications. The connection
+     * intercepts them even without an application callback, updating
+     * the shared theme cache and discarding stale RGB values.
      */
     public void enableThemeChangeNotification() {
         if (supportsThemeQuery()) {
+            if (connection.themeChangeHandler() == null) {
+                connection.setThemeChangeHandler(CACHE_ONLY_THEME_HANDLER);
+            }
             connection.write(ANSI.THEME_NOTIFY_ENABLE);
         }
     }
@@ -884,6 +900,9 @@ public class TerminalFeatures {
     public void disableThemeChangeNotification() {
         if (supportsThemeQuery()) {
             connection.write(ANSI.THEME_NOTIFY_DISABLE);
+        }
+        if (connection.themeChangeHandler() == CACHE_ONLY_THEME_HANDLER) {
+            connection.setThemeChangeHandler(null);
         }
     }
 

@@ -24,6 +24,7 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.Consumer;
 
+import org.aesh.terminal.detect.TerminalCapabilities;
 import org.aesh.terminal.detect.TerminalTheme;
 import org.aesh.terminal.parser.VtHandler;
 import org.aesh.terminal.parser.VtParser;
@@ -210,9 +211,9 @@ public class EventDecoder implements Consumer<int[]> {
     /**
      * Set the handler for theme change DSR notifications.
      * <p>
-     * When set, the decoder will intercept {@code CSI ? 997 ; Ps n} sequences
-     * from the input stream and invoke this handler instead of passing them
-     * through as regular input.
+     * When set, the decoder intercepts {@code CSI ? 997 ; Ps n} sequences,
+     * updates the shared theme cache, then invokes this handler instead of
+     * passing the sequence through as regular input.
      *
      * @param themeChangeHandler the handler, or null to disable interception
      */
@@ -661,6 +662,7 @@ public class EventDecoder implements Consumer<int[]> {
                 theme = TerminalTheme.LIGHT;
             }
             if (theme != null) {
+                TerminalCapabilities.onThemeChanged(theme);
                 themeChangeHandler.accept(theme);
             }
         }
