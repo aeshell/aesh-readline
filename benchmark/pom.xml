@@ -52,6 +52,11 @@
         </dependency>
         <dependency>
             <groupId>org.aesh</groupId>
+            <artifactId>terminal-detect</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.aesh</groupId>
             <artifactId>terminal-tty</artifactId>
             <version>${project.version}</version>
         </dependency>
@@ -101,6 +106,9 @@
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                                     <mainClass>org.openjdk.jmh.Main</mainClass>
+                                    <manifestEntries>
+                                        <Multi-Release>true</Multi-Release>
+                                    </manifestEntries>
                                 </transformer>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
                             </transformers>

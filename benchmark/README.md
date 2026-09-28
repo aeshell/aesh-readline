@@ -13,7 +13,7 @@ mvn package -Pbenchmark -DskipTests
 Or build just the benchmark module with its dependencies:
 
 ```bash
-mvn package -pl benchmark -am -DskipTests
+mvn package -Pbenchmark -pl benchmark -am -DskipTests
 ```
 
 This creates an executable uber-jar at `benchmark/target/benchmarks.jar`.
@@ -57,6 +57,48 @@ java -jar benchmark/target/benchmarks.jar ActionDecoderBenchmark.singleCharacter
 # Multiple benchmarks using regex
 java -jar benchmark/target/benchmarks.jar "ActionDecoderBenchmark.(singleCharacter|arrowKey)"
 ```
+
+### POSIX terminal probe transports (#297)
+
+`ProbeTransportWarmBenchmark` compares repeated stty and FFM raw-mode
+session open/close. `ProbeTransportColdBenchmark` times one first session
+per fresh JVM fork. Its FFM parameter initializes `Linker.nativeLinker()`
+in trial setup when `linkerInitialized=true`, leaving the probe's own
+downcall handles cold. Both require a controlling terminal; FFM also
+requires Java 22+ and native access. They do not measure OSC response
+latency or JVM/framework startup.
+
+```bash
+mvn clean package -Pbenchmark -pl benchmark -am -DskipTests
+
+# Linux: script provides a controlling PTY to JMH and its forked JVMs.
+script -qefc 'java -jar benchmark/target/benchmarks.jar ProbeTransportWarmBenchmark \
+  -jvmArgsAppend --enable-native-access=ALL-UNNAMED -prof gc \
+  -rf json -rff probe-warm.json' /dev/null
+script -qefc 'java -jar benchmark/target/benchmarks.jar ProbeTransportColdBenchmark \
+  -jvmArgsAppend --enable-native-access=ALL-UNNAMED -prof gc \
+  -rf json -rff probe-cold.json' /dev/null
+```
+
+For an existing interactive PTY, run the `java -jar` commands directly.
+The shaded benchmark JAR carries `Multi-Release: true` so the Java 22
+FFM transport loads from `META-INF/versions/22`.
+
+Measured on Linux x86_64, Temurin 25.0.4, JMH 1.37 under a `script`
+PTY, with `-prof gc` and the benchmark annotations' fork/warmup settings:
+
+| Session open/close | Mean ± JMH error (ms/op) |
+|--------------------|--------------------------|
+| stty, first use (10 forks) | 6.073 ± 0.395 |
+| FFM, first use (10 forks) | 35.085 ± 1.167 |
+| FFM, Linker initialized elsewhere (10 forks) | 30.214 ± 1.453 |
+| stty, warm (3 forks, 10 measured iterations) | 2.432 ± 0.012 |
+| FFM, warm (3 forks, 10 measured iterations) | 0.0050 ± 0.0001 |
+
+The Linker accounts for only part of the measured cold FFM cost here;
+the probe still creates its downcall handles on first use. Repeat these
+measurements on the deployment JVM rather than treating this machine's
+numbers as a startup budget for another process.
 
 ### Common Options
 
