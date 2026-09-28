@@ -47,6 +47,28 @@ final class TerminalColorQuery {
     // Query param is "?" terminated by BEL
     private static final char BEL = '\007';
 
+    /** Built-in priority order, loaded only as each probe needs a fallback. */
+    private enum BuiltInTransport {
+        FFM,
+        WIN32,
+        STTY;
+
+        TerminalProbeTransport available() {
+            switch (this) {
+                case FFM:
+                    return loadFfmTransport();
+                case WIN32:
+                    return loadWin32Transport();
+                case STTY:
+                    return SttyProbeTransport.INSTANCE.isAvailable() ? SttyProbeTransport.INSTANCE : null;
+                default:
+                    throw new AssertionError(this);
+            }
+        }
+    }
+
+    private static final BuiltInTransport[] BUILT_IN_ORDER = BuiltInTransport.values();
+
     int[] foreground;
     int[] background;
     Map<Integer, int[]> palette;
@@ -88,27 +110,19 @@ final class TerminalColorQuery {
             // an embedder's own reader loop.
             return query(custom);
         }
-        TerminalProbeTransport ffm = loadFfmTransport();
-        if (ffm != null) {
-            TerminalColorQuery result = query(ffm);
+        for (BuiltInTransport kind : BUILT_IN_ORDER) {
+            TerminalProbeTransport transport = kind.available();
+            if (transport == null) {
+                continue;
+            }
+            TerminalColorQuery result = query(transport);
             if (result != null) {
                 return result;
             }
-            // FFM attempted but yielded nothing (unresponsive terminal);
-            // fall through to the remaining built-ins as a safety net.
+            // A missing color response is not definitive: try the next
+            // built-in before giving up.
         }
-        TerminalProbeTransport win32 = loadWin32Transport();
-        if (win32 != null) {
-            TerminalColorQuery result = query(win32);
-            if (result != null) {
-                return result;
-            }
-            // Same safety net: an unresponsive console falls through.
-        }
-        if (!SttyProbeTransport.INSTANCE.isAvailable()) {
-            return null;
-        }
-        return query(SttyProbeTransport.INSTANCE);
+        return null;
     }
 
     /**
@@ -378,18 +392,13 @@ final class TerminalColorQuery {
         // authoritative (same device, same raw mode, same bytes as stty),
         // so no fallback — falling back on "false" would re-probe every
         // non-clustering terminal twice.
-        TerminalProbeTransport ffm = loadFfmTransport();
-        if (ffm != null) {
-            return probeGraphemeClustering(ffm);
+        for (BuiltInTransport kind : BUILT_IN_ORDER) {
+            TerminalProbeTransport transport = kind.available();
+            if (transport != null) {
+                return probeGraphemeClustering(transport);
+            }
         }
-        TerminalProbeTransport win32 = loadWin32Transport();
-        if (win32 != null) {
-            return probeGraphemeClustering(win32);
-        }
-        if (!SttyProbeTransport.INSTANCE.isAvailable()) {
-            return false;
-        }
-        return probeGraphemeClustering(SttyProbeTransport.INSTANCE);
+        return false;
     }
 
     static boolean probeGraphemeClustering(TerminalProbeTransport transport) {
