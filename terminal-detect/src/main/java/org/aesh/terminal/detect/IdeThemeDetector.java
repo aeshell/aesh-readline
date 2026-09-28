@@ -38,8 +38,10 @@ import java.util.regex.Pattern;
  * detection returns UNKNOWN, before the OS-level platform checks.
  * <p>
  * Only {@code java.base} APIs are used. Environment variables come from
- * the injected map (testable); {@code user.home} and {@code os.name}
- * are read from system properties.
+ * the injected map (testable); {@code user.home} is read from system
+ * properties. The OS name is an explicit parameter (production passes
+ * {@code os.name}, tests pass fixture values) so every platform layout
+ * is testable on any host.
  */
 final class IdeThemeDetector {
 
@@ -54,11 +56,27 @@ final class IdeThemeDetector {
      * @return the detected theme, or UNKNOWN if not determinable
      */
     static TerminalTheme detect(String terminalName, Map<String, String> env) {
+        return detect(terminalName, env, System.getProperty("os.name", ""));
+    }
+
+    /**
+     * Detect the theme from settings files for a known IDE terminal,
+     * using an explicit OS name for platform layout selection.
+     * Package-private so tests can cover every platform layout on
+     * any host; production passes the real {@code os.name}.
+     *
+     * @param terminalName the detected terminal name (e.g. "jetbrains")
+     * @param env the environment variables
+     * @param osName the operating system name (e.g. "Linux", "Windows 11")
+     * @return the detected theme, or UNKNOWN if not determinable
+     */
+    static TerminalTheme detect(String terminalName, Map<String, String> env, String osName) {
+        String os = osName == null ? "" : osName.toLowerCase();
         switch (terminalName) {
             case "jetbrains":
-                return detectJetBrainsTheme(env);
+                return detectJetBrainsTheme(env, os);
             case "vscode":
-                return detectVSCodeTheme(env);
+                return detectVSCodeTheme(env, os);
             case "windows-terminal":
                 return detectWindowsTerminalTheme(env);
             default:
@@ -130,13 +148,13 @@ final class IdeThemeDetector {
 
     // ==================== VSCode ====================
 
-    private static TerminalTheme detectVSCodeTheme(Map<String, String> env) {
+    private static TerminalTheme detectVSCodeTheme(Map<String, String> env, String os) {
         String userHome = System.getProperty("user.home");
         if (userHome == null) {
             return TerminalTheme.UNKNOWN;
         }
 
-        File settingsFile = getVSCodeSettingsFile(userHome, env);
+        File settingsFile = getVSCodeSettingsFile(userHome, env, os);
         if (settingsFile == null || !settingsFile.isFile()) {
             return TerminalTheme.UNKNOWN;
         }
@@ -148,8 +166,8 @@ final class IdeThemeDetector {
         }
     }
 
-    private static File getVSCodeSettingsFile(String userHome, Map<String, String> env) {
-        String osName = System.getProperty("os.name", "").toLowerCase();
+    private static File getVSCodeSettingsFile(String userHome, Map<String, String> env, String os) {
+        String osName = os;
         File settingsFile = null;
 
         if (osName.contains("mac") || osName.contains("darwin")) {
@@ -210,13 +228,13 @@ final class IdeThemeDetector {
 
     // ==================== JetBrains ====================
 
-    private static TerminalTheme detectJetBrainsTheme(Map<String, String> env) {
+    private static TerminalTheme detectJetBrainsTheme(Map<String, String> env, String os) {
         String userHome = System.getProperty("user.home");
         if (userHome == null) {
             return TerminalTheme.UNKNOWN;
         }
 
-        List<File> configDirs = getJetBrainsConfigDirectories(userHome, env);
+        List<File> configDirs = getJetBrainsConfigDirectories(userHome, env, os);
 
         for (File jetbrainsDir : configDirs) {
             if (!jetbrainsDir.isDirectory()) {
@@ -324,9 +342,10 @@ final class IdeThemeDetector {
         return false;
     }
 
-    private static List<File> getJetBrainsConfigDirectories(String userHome, Map<String, String> env) {
+    private static List<File> getJetBrainsConfigDirectories(String userHome, Map<String, String> env,
+            String os) {
         List<File> dirs = new ArrayList<>();
-        String osName = System.getProperty("os.name", "").toLowerCase();
+        String osName = os;
 
         if (osName.contains("mac") || osName.contains("darwin")) {
             dirs.add(new File(userHome, "Library/Application Support/JetBrains"));

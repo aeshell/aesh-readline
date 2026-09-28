@@ -36,12 +36,18 @@ import org.junit.rules.TemporaryFolder;
 /**
  * Tests for IDE settings-file theme detection.
  * <p>
- * Fixture config files live under a temporary {@code user.home};
- * environments are injected maps, so no real IDE installation or
- * environment variables are needed. Only the Linux config layouts
- * are covered — macOS/Windows layouts need those platforms.
+ * Fixture config files live under a temporary {@code user.home}
+ * (always overridden — a real IDE installation on the test machine
+ * must not leak into the results); environments are injected maps
+ * and the OS name is an explicit parameter, so the Linux, Windows
+ * and macOS layouts are all covered on any host with no real IDE
+ * installation or environment variables needed.
  */
 public class IdeThemeDetectorTest {
+
+    private static final String LINUX = "Linux";
+    private static final String WINDOWS = "Windows 11";
+    private static final String MAC = "Mac OS X";
 
     @Rule
     public TemporaryFolder tmp = new TemporaryFolder();
@@ -49,9 +55,9 @@ public class IdeThemeDetectorTest {
     @Test
     public void testUnknownTerminalReturnsUnknown() {
         assertEquals(TerminalTheme.UNKNOWN,
-                IdeThemeDetector.detect("xterm", new HashMap<String, String>()));
+                IdeThemeDetector.detect("xterm", new HashMap<String, String>(), LINUX));
         assertEquals(TerminalTheme.UNKNOWN,
-                IdeThemeDetector.detect("unknown", new HashMap<String, String>()));
+                IdeThemeDetector.detect("unknown", new HashMap<String, String>(), LINUX));
     }
 
     @Test
@@ -64,12 +70,10 @@ public class IdeThemeDetectorTest {
                         + "<laf themeId=\"Darcula\" />"
                         + "</component></application>");
 
-        Map<String, String> env = new HashMap<>();
-        env.put("TERMINAL_EMULATOR", "JetBrains-JediTerm");
         String previousHome = useHome(home);
         try {
             assertEquals(TerminalTheme.DARK,
-                    new TerminalDetector(env).detectIdeOrPlatformTheme());
+                    IdeThemeDetector.detect("jetbrains", new HashMap<String, String>(), LINUX));
         } finally {
             System.setProperty("user.home", previousHome);
         }
@@ -85,12 +89,50 @@ public class IdeThemeDetectorTest {
                         + "<global_color_scheme name=\"Monokai\" />"
                         + "</component></application>");
 
-        Map<String, String> env = new HashMap<>();
-        env.put("TERMINAL_EMULATOR", "JetBrains-JediTerm");
         String previousHome = useHome(home);
         try {
             assertEquals(TerminalTheme.DARK,
-                    new TerminalDetector(env).detectIdeOrPlatformTheme());
+                    IdeThemeDetector.detect("jetbrains", new HashMap<String, String>(), LINUX));
+        } finally {
+            System.setProperty("user.home", previousHome);
+        }
+    }
+
+    @Test
+    public void testJetBrainsWindowsLayout() throws Exception {
+        File appData = tmp.newFolder("appdata");
+        File options = new File(appData, "JetBrains/IntelliJIdea2024.1/options");
+        assertTrue(options.mkdirs());
+        write(new File(options, "laf.xml"),
+                "<application><component name=\"LafManager\">"
+                        + "<laf themeId=\"Darcula\" />"
+                        + "</component></application>");
+
+        Map<String, String> env = new HashMap<>();
+        env.put("APPDATA", appData.getAbsolutePath());
+        String previousHome = useHome(tmp.newFolder("home"));
+        try {
+            assertEquals(TerminalTheme.DARK,
+                    IdeThemeDetector.detect("jetbrains", env, WINDOWS));
+        } finally {
+            System.setProperty("user.home", previousHome);
+        }
+    }
+
+    @Test
+    public void testJetBrainsMacLayout() throws Exception {
+        File home = tmp.newFolder("home");
+        File options = new File(home, "Library/Application Support/JetBrains/IntelliJIdea2024.1/options");
+        assertTrue(options.mkdirs());
+        write(new File(options, "laf.xml"),
+                "<application><component name=\"LafManager\">"
+                        + "<laf themeId=\"Darcula\" />"
+                        + "</component></application>");
+
+        String previousHome = useHome(home);
+        try {
+            assertEquals(TerminalTheme.DARK,
+                    IdeThemeDetector.detect("jetbrains", new HashMap<String, String>(), MAC));
         } finally {
             System.setProperty("user.home", previousHome);
         }
@@ -98,15 +140,15 @@ public class IdeThemeDetectorTest {
 
     @Test
     public void testJetBrainsWithoutConfigFallsThrough() throws Exception {
-        // No config files anywhere: the IDE probe yields UNKNOWN without
-        // touching the platform fallback (asserted on the static entry,
-        // which has no OS fallback, for determinism on any machine).
+        // No config files anywhere: the IDE probe yields UNKNOWN.
         // user.home points at an empty dir so a real IDE installation
         // on the test machine cannot leak into the result.
         String previousHome = useHome(tmp.newFolder("empty-home"));
         try {
             Map<String, String> env = new HashMap<>();
-            assertEquals(TerminalTheme.UNKNOWN, IdeThemeDetector.detect("jetbrains", env));
+            assertEquals(TerminalTheme.UNKNOWN, IdeThemeDetector.detect("jetbrains", env, LINUX));
+            assertEquals(TerminalTheme.UNKNOWN, IdeThemeDetector.detect("jetbrains", env, WINDOWS));
+            assertEquals(TerminalTheme.UNKNOWN, IdeThemeDetector.detect("jetbrains", env, MAC));
         } finally {
             System.setProperty("user.home", previousHome);
         }
@@ -120,12 +162,10 @@ public class IdeThemeDetectorTest {
         write(new File(userDir, "settings.json"),
                 "{\"workbench.colorTheme\": \"Default Light+\"}");
 
-        Map<String, String> env = new HashMap<>();
-        env.put("TERM_PROGRAM", "vscode");
         String previousHome = useHome(home);
         try {
             assertEquals(TerminalTheme.LIGHT,
-                    new TerminalDetector(env).detectIdeOrPlatformTheme());
+                    IdeThemeDetector.detect("vscode", new HashMap<String, String>(), LINUX));
         } finally {
             System.setProperty("user.home", previousHome);
         }
@@ -139,12 +179,46 @@ public class IdeThemeDetectorTest {
         write(new File(userDir, "settings.json"),
                 "{\"workbench.colorTheme\": \"Some Obscure Theme\"}");
 
-        Map<String, String> env = new HashMap<>();
-        env.put("TERM_PROGRAM", "vscode");
         String previousHome = useHome(home);
         try {
             assertEquals(TerminalTheme.DARK,
-                    new TerminalDetector(env).detectIdeOrPlatformTheme());
+                    IdeThemeDetector.detect("vscode", new HashMap<String, String>(), LINUX));
+        } finally {
+            System.setProperty("user.home", previousHome);
+        }
+    }
+
+    @Test
+    public void testVSCodeWindowsLayout() throws Exception {
+        File appData = tmp.newFolder("appdata");
+        File userDir = new File(appData, "Code/User");
+        assertTrue(userDir.mkdirs());
+        write(new File(userDir, "settings.json"),
+                "{\"workbench.colorTheme\": \"Default Dark+\"}");
+
+        Map<String, String> env = new HashMap<>();
+        env.put("APPDATA", appData.getAbsolutePath());
+        String previousHome = useHome(tmp.newFolder("home"));
+        try {
+            assertEquals(TerminalTheme.DARK,
+                    IdeThemeDetector.detect("vscode", env, WINDOWS));
+        } finally {
+            System.setProperty("user.home", previousHome);
+        }
+    }
+
+    @Test
+    public void testVSCodeMacLayout() throws Exception {
+        File home = tmp.newFolder("home");
+        File userDir = new File(home, "Library/Application Support/Code/User");
+        assertTrue(userDir.mkdirs());
+        write(new File(userDir, "settings.json"),
+                "{\"workbench.colorTheme\": \"Default Light+\"}");
+
+        String previousHome = useHome(home);
+        try {
+            assertEquals(TerminalTheme.LIGHT,
+                    IdeThemeDetector.detect("vscode", new HashMap<String, String>(), MAC));
         } finally {
             System.setProperty("user.home", previousHome);
         }
@@ -155,7 +229,9 @@ public class IdeThemeDetectorTest {
         String previousHome = useHome(tmp.newFolder("empty-home"));
         try {
             Map<String, String> env = new HashMap<>();
-            assertEquals(TerminalTheme.UNKNOWN, IdeThemeDetector.detect("vscode", env));
+            assertEquals(TerminalTheme.UNKNOWN, IdeThemeDetector.detect("vscode", env, LINUX));
+            assertEquals(TerminalTheme.UNKNOWN, IdeThemeDetector.detect("vscode", env, WINDOWS));
+            assertEquals(TerminalTheme.UNKNOWN, IdeThemeDetector.detect("vscode", env, MAC));
         } finally {
             System.setProperty("user.home", previousHome);
         }
@@ -169,12 +245,11 @@ public class IdeThemeDetectorTest {
         write(new File(stateDir, "settings.json"), "{\"colorScheme\": \"Campbell\"}");
 
         Map<String, String> env = new HashMap<>();
-        env.put("WT_SESSION", "test-session");
         env.put("LOCALAPPDATA", localAppData.getAbsolutePath());
         String previousHome = useHome(tmp.newFolder("home"));
         try {
             assertEquals(TerminalTheme.DARK,
-                    new TerminalDetector(env).detectIdeOrPlatformTheme());
+                    IdeThemeDetector.detect("windows-terminal", env, LINUX));
         } finally {
             System.setProperty("user.home", previousHome);
         }
@@ -183,7 +258,7 @@ public class IdeThemeDetectorTest {
     @Test
     public void testWindowsTerminalWithoutSettingsFallsThrough() {
         Map<String, String> env = new HashMap<>();
-        assertEquals(TerminalTheme.UNKNOWN, IdeThemeDetector.detect("windows-terminal", env));
+        assertEquals(TerminalTheme.UNKNOWN, IdeThemeDetector.detect("windows-terminal", env, LINUX));
     }
 
     @Test
