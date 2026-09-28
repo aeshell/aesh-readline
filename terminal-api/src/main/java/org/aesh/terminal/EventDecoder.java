@@ -621,7 +621,7 @@ public class EventDecoder implements Consumer<int[]> {
 
     /**
      * Checks if a CSI sequence is a URXVT mouse event:
-     * {@code CSI Pb ; Px ; Py M} (same parameters as SGR, no marker).
+     * {@code CSI Pb ; Px ; Py M} (no marker, Pb includes +32).
      * <p>
      * In VtParser terms: finalChar='M', no intermediates, exactly 3 params.
      * Bare {@code CSI M} (e.g. Delete Lines) has fewer params and passes
@@ -633,7 +633,8 @@ public class EventDecoder implements Consumer<int[]> {
             int[] intermediates, int intermediateCount) {
         return finalChar == 'M'
                 && intermediateCount == 0
-                && paramCount == 3;
+                && paramCount == 3
+                && params[0] >= 32;
     }
 
     /**

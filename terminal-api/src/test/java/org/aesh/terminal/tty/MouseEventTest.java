@@ -156,8 +156,8 @@ public class MouseEventTest {
 
     @Test
     public void testUrxvtLeftPress() {
-        // CSI 0 ; 5 ; 3 M (no '<' marker) → left press at (5,3)
-        MouseEvent e = MouseEvent.parseUrxvt(new int[] { 0, 5, 3 }, 3);
+        // CSI 32 ; 5 ; 3 M (no '<' marker) → left press at (5,3)
+        MouseEvent e = MouseEvent.parseUrxvt(new int[] { 32, 5, 3 }, 3);
         assertNotNull(e);
         assertEquals(MouseEvent.Type.PRESS, e.type());
         assertEquals(MouseEvent.Button.LEFT, e.button());
@@ -170,8 +170,8 @@ public class MouseEventTest {
 
     @Test
     public void testUrxvtReleaseWithoutButtonId() {
-        // CSI 3 ; 5 ; 3 M → release, button unknown
-        MouseEvent e = MouseEvent.parseUrxvt(new int[] { 3, 5, 3 }, 3);
+        // CSI 35 ; 5 ; 3 M → release, button unknown
+        MouseEvent e = MouseEvent.parseUrxvt(new int[] { 35, 5, 3 }, 3);
         assertNotNull(e);
         assertEquals(MouseEvent.Type.RELEASE, e.type());
         assertEquals(MouseEvent.Button.NONE, e.button());
@@ -179,8 +179,8 @@ public class MouseEventTest {
 
     @Test
     public void testUrxvtModifiersAndScroll() {
-        // Pb=4+16+64: shift + ctrl + scroll, button index 0 → scroll up
-        MouseEvent e = MouseEvent.parseUrxvt(new int[] { 84, 10, 20 }, 3);
+        // Pb=32+4+16+64: shift + ctrl + scroll, button index 0 → scroll up
+        MouseEvent e = MouseEvent.parseUrxvt(new int[] { 116, 10, 20 }, 3);
         assertNotNull(e);
         assertEquals(MouseEvent.Type.SCROLL, e.type());
         assertEquals(MouseEvent.Button.SCROLL_UP, e.button());
@@ -192,8 +192,9 @@ public class MouseEventTest {
     @Test
     public void testUrxvtInvalidParams() {
         assertNull(MouseEvent.parseUrxvt(new int[] { 0, 5 }, 2)); // too few
-        assertNull(MouseEvent.parseUrxvt(new int[] { 0, 0, 3 }, 3)); // x=0 invalid
-        assertNull(MouseEvent.parseUrxvt(new int[] { 0, 5, 0 }, 3)); // y=0 invalid
+        assertNull(MouseEvent.parseUrxvt(new int[] { 0, 5, 3 }, 3)); // no +32 encoding
+        assertNull(MouseEvent.parseUrxvt(new int[] { 32, 0, 3 }, 3)); // x=0 invalid
+        assertNull(MouseEvent.parseUrxvt(new int[] { 32, 5, 0 }, 3)); // y=0 invalid
     }
 
     @Test
@@ -205,8 +206,8 @@ public class MouseEventTest {
         decoder.setInputHandler(inputEvents::add);
         decoder.setMouseHandler(mouseEvents::add);
 
-        // Feed URXVT mouse sequence: ESC [ 0 ; 5 ; 3 M (no '<')
-        int[] mouseSeq = { 27, 91, 48, 59, 53, 59, 51, 77 };
+        // Feed URXVT mouse sequence: ESC [ 32 ; 5 ; 3 M (no '<')
+        int[] mouseSeq = { 27, 91, 51, 50, 59, 53, 59, 51, 77 };
         decoder.accept(mouseSeq);
 
         assertEquals(1, mouseEvents.size());
@@ -233,6 +234,21 @@ public class MouseEventTest {
 
         assertTrue(mouseEvents.isEmpty());
         assertFalse(inputEvents.isEmpty());
+    }
+
+    @Test
+    public void testUnencodedThreeParamCsiIsNotUrxvtMouse() {
+        List<MouseEvent> mouseEvents = new ArrayList<>();
+        List<int[]> inputEvents = new ArrayList<>();
+
+        EventDecoder decoder = new EventDecoder();
+        decoder.setInputHandler(inputEvents::add);
+        decoder.setMouseHandler(mouseEvents::add);
+
+        decoder.accept(new int[] { 27, 91, 48, 59, 53, 59, 51, 77 });
+
+        assertTrue(mouseEvents.isEmpty());
+        assertFalse("An unencoded report must reach the ordinary input handler", inputEvents.isEmpty());
     }
 
     // ==================== MouseEvent Object ====================
