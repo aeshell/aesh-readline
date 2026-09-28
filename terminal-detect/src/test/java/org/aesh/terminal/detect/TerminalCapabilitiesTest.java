@@ -2,6 +2,7 @@ package org.aesh.terminal.detect;
 
 import static org.junit.Assert.*;
 
+import java.lang.reflect.Field;
 import java.util.Collections;
 
 import org.junit.Test;
@@ -125,7 +126,7 @@ public class TerminalCapabilitiesTest {
             late.foreground = new int[] { 0, 0, 0 };
             late.background = new int[] { 255, 255, 255 };
             late.palette = Collections.singletonMap(0, new int[] { 20, 20, 20 });
-            caps.applyAsyncColorResult(late);
+            caps.applyColorResult(late);
 
             assertSame(caps, TerminalCapabilities.getInstance());
             assertEquals(TerminalTheme.DARK, caps.theme());
@@ -135,5 +136,57 @@ public class TerminalCapabilitiesTest {
         } finally {
             TerminalCapabilities.setInstance(saved);
         }
+    }
+
+    @Test
+    public void testMeasuredWhiteOverridesDarkHint() throws Exception {
+        TerminalCapabilities caps = TerminalCapabilities.detect();
+        setResolvedTheme(caps, TerminalTheme.DARK);
+
+        TerminalColorQuery measured = new TerminalColorQuery();
+        measured.background = new int[] { 255, 255, 255 };
+        caps.applyColorResult(measured);
+
+        assertEquals(TerminalTheme.LIGHT, caps.theme());
+        assertArrayEquals(new int[] { 255, 255, 255 }, caps.backgroundRGB());
+    }
+
+    @Test
+    public void testMeasuredBlackOverridesLightHint() throws Exception {
+        TerminalCapabilities caps = TerminalCapabilities.detect();
+        setResolvedTheme(caps, TerminalTheme.LIGHT);
+
+        TerminalColorQuery measured = new TerminalColorQuery();
+        measured.background = new int[] { 0, 0, 0 };
+        caps.applyColorResult(measured);
+
+        assertEquals(TerminalTheme.DARK, caps.theme());
+        assertArrayEquals(new int[] { 0, 0, 0 }, caps.backgroundRGB());
+    }
+
+    @Test
+    public void testAbsentReplyKeepsEarlierHint() throws Exception {
+        TerminalCapabilities caps = TerminalCapabilities.detect();
+        setResolvedTheme(caps, TerminalTheme.DARK);
+
+        TerminalColorQuery partial = new TerminalColorQuery();
+        partial.foreground = new int[] { 255, 255, 255 };
+        caps.applyColorResult(partial);
+
+        assertEquals(TerminalTheme.DARK, caps.theme());
+        assertNull(caps.backgroundRGB());
+        assertArrayEquals(new int[] { 255, 255, 255 }, caps.foregroundRGB());
+    }
+
+    /**
+     * Preset a previously resolved theme, simulating an earlier
+     * environment/config hint. Reflection mirrors the existing
+     * theme-event test: the field has no other injectable seam.
+     */
+    private static void setResolvedTheme(TerminalCapabilities caps, TerminalTheme theme)
+            throws Exception {
+        Field field = TerminalCapabilities.class.getDeclaredField("resolvedTheme");
+        field.setAccessible(true);
+        field.set(caps, theme);
     }
 }

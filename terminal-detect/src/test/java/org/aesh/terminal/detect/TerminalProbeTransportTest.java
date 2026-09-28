@@ -177,6 +177,21 @@ public class TerminalProbeTransportTest {
         return bytes(sb.toString());
     }
 
+    /**
+     * Canned response with a white background: DA1 class 63, 2026
+     * supported, 2027 not recognized, white bg. Mirrors
+     * {@link #colorResponse()} except for OSC 11.
+     */
+    private static byte[] whiteBackgroundResponse() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("\033[?2026;1$y");
+        sb.append("\033[?2027;0$y");
+        sb.append("\033[?63;1;2;4c");
+        sb.append("\033]10;rgb:0000/0000/0000\007");
+        sb.append("\033]11;rgb:ffff/ffff/ffff\007");
+        return bytes(sb.toString());
+    }
+
     @Test
     public void testQueryParsesCannedResponse() {
         FakeProbeTransport transport = new FakeProbeTransport(true, colorResponse());
@@ -308,6 +323,62 @@ public class TerminalProbeTransportTest {
             assertEquals(ModeSupport.SUPPORTED, caps.synchronizedOutputSupport());
             assertEquals(ModeSupport.NOT_SUPPORTED, caps.graphemeClusterSupport());
             assertEquals(Boolean.TRUE, caps.nativeGraphemeClustering());
+        } finally {
+            TerminalCapabilities.setProbeTransport(null);
+            TerminalCapabilities.setInstance(saved);
+        }
+    }
+
+    @Test
+    public void testFullAndAsyncAgreeOnMeasuredTheme() throws Exception {
+        // The same white-background reply through both entry points must
+        // yield the same theme: measured RGB outranks earlier hints.
+        Assume.assumeFalse("live query skipped in multiplexer",
+                new TerminalDetector().isInMultiplexer());
+        TerminalCapabilities saved = TerminalCapabilities.getInstance();
+        try {
+            // First open serves the color query, second the grapheme probe
+            // (DA1 received + 2027 unsupported triggers it in detectFull).
+            TerminalCapabilities.setProbeTransport(
+                    new FakeProbeTransport(true, whiteBackgroundResponse(), bytes("\033[1;3R")));
+            TerminalCapabilities.invalidate();
+            TerminalCapabilities full = TerminalCapabilities.detectFull();
+            assertArrayEquals(new int[] { 255, 255, 255 }, full.backgroundRGB());
+            assertEquals(TerminalTheme.LIGHT, full.theme());
+
+            // Fresh transport: the fake serves one response per open and
+            // the full phase already consumed the color and grapheme
+            // replies above.
+            TerminalCapabilities.setProbeTransport(
+                    new FakeProbeTransport(true, whiteBackgroundResponse(), bytes("\033[1;3R")));
+            TerminalCapabilities.invalidate();
+            TerminalCapabilities async = TerminalCapabilities.detectAsync();
+            assertTrue(async.awaitColors(2, TimeUnit.SECONDS));
+            assertArrayEquals(new int[] { 255, 255, 255 }, async.backgroundRGB());
+            assertEquals(TerminalTheme.LIGHT, async.theme());
+        } finally {
+            TerminalCapabilities.setProbeTransport(null);
+            TerminalCapabilities.setInstance(saved);
+        }
+    }
+
+    @Test
+    public void testFullAndAsyncAgreeWithoutReply() throws Exception {
+        // No reply: both modes fall back to the same hints.
+        Assume.assumeFalse("live query skipped in multiplexer",
+                new TerminalDetector().isInMultiplexer());
+        TerminalCapabilities saved = TerminalCapabilities.getInstance();
+        try {
+            TerminalCapabilities.setProbeTransport(new FakeProbeTransport(true, new byte[0]));
+            TerminalCapabilities.invalidate();
+            TerminalCapabilities full = TerminalCapabilities.detectFull();
+
+            TerminalCapabilities.invalidate();
+            TerminalCapabilities async = TerminalCapabilities.detectAsync();
+            assertTrue(async.awaitColors(2, TimeUnit.SECONDS));
+
+            assertEquals(full.theme(), async.theme());
+            assertNull(async.backgroundRGB());
         } finally {
             TerminalCapabilities.setProbeTransport(null);
             TerminalCapabilities.setInstance(saved);

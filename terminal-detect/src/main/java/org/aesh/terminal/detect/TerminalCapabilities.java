@@ -199,6 +199,10 @@ public final class TerminalCapabilities {
      * </ul>
      * This may take 10-50ms due to subprocess calls.
      * <p>
+     * A measured terminal background always outranks those hints; when the
+     * terminal answers the color query, the theme is derived from the
+     * actual RGB. Hints apply only when no reply arrives.
+     * <p>
      * The result populates the shared instance: repeat calls return the
      * cached capabilities instead of re-probing. Call {@link #invalidate()}
      * first to force a fresh probe.
@@ -232,18 +236,9 @@ public final class TerminalCapabilities {
         if (!caps.detector.isInMultiplexer()) {
             TerminalColorQuery result = TerminalColorQuery.query();
             if (result != null) {
-                caps.foregroundRGB = result.foreground;
-                caps.backgroundRGB = result.background;
-                caps.paletteColors = result.palette;
-                caps.queried256 = result.supports256;
-                caps.mode2026Support = result.mode2026;
-                caps.mode2027Support = result.mode2027;
-                if (result.supportsSixel && caps.detector.imageProtocol == ImageProtocol.NONE) {
-                    caps.queriedImageProtocol = ImageProtocol.SIXEL;
-                }
-                if (result.background != null && caps.resolvedTheme == null) {
-                    caps.resolvedTheme = themeFromRGB(result.background);
-                }
+                // Shared rule with detectAsync(): measured RGB outranks
+                // earlier environment/config hints.
+                caps.applyColorResult(result);
 
                 // Cursor-position grapheme probe: only when DA1 responded
                 // but Mode 2027 is not supported
@@ -300,7 +295,7 @@ public final class TerminalCapabilities {
                 if (!detector.isInMultiplexer()) {
                     TerminalColorQuery result = TerminalColorQuery.query();
                     if (result != null) {
-                        caps.applyAsyncColorResult(result);
+                        caps.applyColorResult(result);
                     }
                 }
                 if (caps.resolvedTheme == null && detector.theme == TerminalTheme.UNKNOWN) {
@@ -321,8 +316,13 @@ public final class TerminalCapabilities {
         return caps;
     }
 
-    /** Apply a completed async probe without reviving colors invalidated by an event. */
-    synchronized void applyAsyncColorResult(TerminalColorQuery result) {
+    /**
+     * Apply a completed probe result under one precedence rule, shared by
+     * {@code detectFull()} and {@code detectAsync()}: a measured background
+     * overrides earlier environment/config hints, while an absent reply
+     * keeps them. Never revives colors invalidated by a theme event.
+     */
+    synchronized void applyColorResult(TerminalColorQuery result) {
         if (!themeEventSeen) {
             foregroundRGB = result.foreground;
             backgroundRGB = result.background;
