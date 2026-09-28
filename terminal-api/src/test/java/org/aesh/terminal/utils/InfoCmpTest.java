@@ -21,19 +21,27 @@ package org.aesh.terminal.utils;
 
 import static org.junit.Assert.*;
 
+import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
 import org.aesh.terminal.tty.Capability;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 /**
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public class InfoCmpTest {
+
+    @Rule
+    public TemporaryFolder tmp = new TemporaryFolder();
 
     @Test
     public void testANSI() {
@@ -196,6 +204,54 @@ public class InfoCmpTest {
         String caps = InfoCmp.getInfoCmp("xterm-256color");
         assertNotNull("getInfoCmp should return caps for xterm-256color", caps);
         assertFalse("caps should not be empty", caps.isEmpty());
+    }
+
+    @Test
+    public void testUnknownBundledNameReadsCompiledTerminfo() throws Exception {
+        String terminal = "review-terminfo-fixture";
+        File home = tmp.newFolder("terminfo-home");
+        File entry = new File(home, ".terminfo/r/" + terminal);
+        Files.createDirectories(entry.toPath().getParent());
+
+        // Minimal legacy terminfo entry: names followed by 14 numeric slots,
+        // with only slot 13 (colors) present. No platform database or tic needed.
+        byte[] names = (terminal + "|fixture\0").getBytes(StandardCharsets.ISO_8859_1);
+        int numbers = 12 + names.length + (names.length & 1);
+        byte[] data = new byte[numbers + 14 * 2];
+        data[0] = 0x1a;
+        data[1] = 0x01;
+        data[2] = (byte) names.length;
+        data[3] = (byte) (names.length >>> 8);
+        data[6] = 14;
+        System.arraycopy(names, 0, data, 12, names.length);
+        for (int i = 0; i < 13; i++) {
+            data[numbers + 2 * i] = (byte) 0xff;
+            data[numbers + 2 * i + 1] = (byte) 0xff;
+        }
+        data[numbers + 27] = 1; // colors = 256 (little-endian)
+        Files.write(entry.toPath(), data);
+
+        String oldHome = System.getProperty("user.home");
+        try {
+            System.setProperty("user.home", home.getAbsolutePath());
+            assertTrue("Fixture must be a readable compiled entry",
+                    TerminfoReader.readEntry(terminal).contains("colors#256"));
+            String caps = InfoCmp.getInfoCmp(terminal);
+            assertTrue("Must read the installed entry, not bundled ANSI", caps.startsWith(terminal + "|fixture"));
+            assertTrue(caps.contains("colors#256"));
+        } finally {
+            if (oldHome == null) {
+                System.clearProperty("user.home");
+            } else {
+                System.setProperty("user.home", oldHome);
+            }
+        }
+    }
+
+    @Test
+    public void testMissingSystemEntryFallsBackToAnsi() throws Exception {
+        String caps = InfoCmp.getInfoCmp("review-no-such-terminfo-entry-xyz");
+        assertTrue("An infocmp error must not replace the ANSI fallback", caps.startsWith("ansi|"));
     }
 
     @Test

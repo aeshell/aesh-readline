@@ -53,7 +53,8 @@ public final class InfoCmp {
         String caps = CAPS.get(terminal);
         if (caps == null) {
             // Try bundled .src files first — no subprocess, always available
-            caps = getDefaultInfoCmp(terminal);
+            String bundledFile = bundledCapsFile(terminal);
+            caps = bundledFile != null ? readDefaultInfoCmp(bundledFile) : null;
             // Fall back to reading the terminfo database directly — no
             // subprocess, works wherever the database files are present
             if (caps == null || caps.isEmpty()) {
@@ -63,10 +64,18 @@ public final class InfoCmp {
             if (caps == null || caps.isEmpty()) {
                 try {
                     Process p = new ProcessBuilder(OSUtils.INFOCMP_COMMAND, terminal).start();
-                    caps = ExecHelper.waitAndCapture(p);
+                    String output = ExecHelper.waitAndCapture(p);
+                    if (p.exitValue() == 0) {
+                        caps = output;
+                    }
                 } catch (IOException e) {
                     // infocmp not available either — caps stays null
                 }
+            }
+            // Preserve the public API's generic ANSI fallback when neither
+            // a bundled entry nor a system terminfo entry exists.
+            if (caps == null || caps.isEmpty()) {
+                caps = readDefaultInfoCmp("ansi_caps.src");
             }
             if (caps != null) {
                 CAPS.put(terminal, caps);
@@ -83,27 +92,32 @@ public final class InfoCmp {
      * @return the default capabilities string, or null if not found
      */
     public static String getDefaultInfoCmp(String terminal) {
+        String bundledFile = bundledCapsFile(terminal);
+        return readDefaultInfoCmp(bundledFile != null ? bundledFile : "ansi_caps.src");
+    }
+
+    private static String bundledCapsFile(String terminal) {
         String lower = terminal.toLowerCase();
         if (lower.contains("windows")) {
-            return readDefaultInfoCmp("windows_caps.src");
+            return "windows_caps.src";
         } else if (lower.contains("tmux-256color") || lower.contains("tmux_256color")) {
-            return readDefaultInfoCmp("tmux-256color_caps.src");
+            return "tmux-256color_caps.src";
         } else if (lower.contains("screen-256color") || lower.contains("screen_256color")) {
-            return readDefaultInfoCmp("screen-256color_caps.src");
+            return "screen-256color_caps.src";
         } else if (lower.contains("xterm-256color") || lower.contains("xterm_256color")) {
-            return readDefaultInfoCmp("xterm-256color_caps.src");
+            return "xterm-256color_caps.src";
         } else if (lower.contains("xterm-kitty")) {
-            return readDefaultInfoCmp("xterm-kitty_caps.src");
+            return "xterm-kitty_caps.src";
         } else if (lower.contains("alacritty")) {
-            return readDefaultInfoCmp("alacritty_caps.src");
+            return "alacritty_caps.src";
         } else if (lower.contains("xterm")) {
-            return readDefaultInfoCmp("xterm_caps.src");
+            return "xterm_caps.src";
         } else if (lower.equals("linux")) {
-            return readDefaultInfoCmp("linux_caps.src");
+            return "linux_caps.src";
         } else if (lower.contains("vt100")) {
-            return readDefaultInfoCmp("vt100_caps.src");
+            return "vt100_caps.src";
         } else {
-            return readDefaultInfoCmp("ansi_caps.src");
+            return null;
         }
     }
 
