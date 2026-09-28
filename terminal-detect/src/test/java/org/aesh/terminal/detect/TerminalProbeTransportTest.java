@@ -26,6 +26,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.Assume;
 import org.junit.Test;
@@ -221,6 +226,138 @@ public class TerminalProbeTransportTest {
         } finally {
             TerminalCapabilities.setProbeTransport(null);
             TerminalCapabilities.setInstance(saved);
+        }
+    }
+
+    @Test
+    public void testConcurrentColorQueriesDoNotOverlapRawSessions() throws Exception {
+        assertSerializedSessions(false);
+    }
+
+    @Test
+    public void testGraphemeProbeWaitsForColorSession() throws Exception {
+        assertSerializedSessions(true);
+    }
+
+    private static void assertSerializedSessions(boolean graphemeSecond) throws Exception {
+        ContendedProbeTransport transport = new ContendedProbeTransport();
+        AtomicReference<Throwable> failure = new AtomicReference<>();
+        Thread first = new Thread(new ProbeTask(transport, false, failure));
+        Thread second = new Thread(new ProbeTask(transport, graphemeSecond, failure));
+        first.setDaemon(true);
+        second.setDaemon(true);
+        try {
+            first.start();
+            assertTrue("First probe must enter its read", transport.firstRead.await(2, TimeUnit.SECONDS));
+            second.start();
+            assertTrue("Second probe must attempt to run", transport.secondReady.await(2, TimeUnit.SECONDS));
+            assertFalse("A second session must wait until raw mode is restored",
+                    transport.secondOpen.await(200, TimeUnit.MILLISECONDS));
+        } finally {
+            transport.releaseFirst.countDown();
+            first.join(3000);
+            second.join(3000);
+        }
+        assertFalse("Probe worker must finish", first.isAlive() || second.isAlive());
+        assertNull("Probe worker failed", failure.get());
+        assertFalse("Raw-mode sessions must never overlap", transport.overlapped.get());
+        assertEquals(2, transport.opens.get());
+        assertEquals(0, transport.active.get());
+    }
+
+    private static final class ProbeTask implements Runnable {
+        private final TerminalProbeTransport transport;
+        private final boolean grapheme;
+        private final AtomicReference<Throwable> failure;
+
+        ProbeTask(TerminalProbeTransport transport, boolean grapheme, AtomicReference<Throwable> failure) {
+            this.transport = transport;
+            this.grapheme = grapheme;
+            this.failure = failure;
+        }
+
+        @Override
+        public void run() {
+            try {
+                if (grapheme) {
+                    TerminalColorQuery.probeGraphemeClustering(transport);
+                } else {
+                    TerminalColorQuery.query(transport);
+                }
+            } catch (Throwable t) {
+                failure.set(t);
+            }
+        }
+    }
+
+    private static final class ContendedProbeTransport implements TerminalProbeTransport {
+        private final AtomicInteger checks = new AtomicInteger();
+        final AtomicInteger opens = new AtomicInteger();
+        final AtomicInteger active = new AtomicInteger();
+        final AtomicBoolean overlapped = new AtomicBoolean();
+        final CountDownLatch firstRead = new CountDownLatch(1);
+        final CountDownLatch secondReady = new CountDownLatch(1);
+        final CountDownLatch secondOpen = new CountDownLatch(1);
+        final CountDownLatch releaseFirst = new CountDownLatch(1);
+
+        @Override
+        public boolean isAvailable() {
+            if (checks.incrementAndGet() == 2) {
+                secondReady.countDown();
+            }
+            return true;
+        }
+
+        @Override
+        public TerminalProbeSession open() {
+            int opened = opens.incrementAndGet();
+            if (active.incrementAndGet() > 1) {
+                overlapped.set(true);
+            }
+            if (opened == 2) {
+                secondOpen.countDown();
+            }
+            return new ContendedProbeSession(this, opened == 1);
+        }
+    }
+
+    private static final class ContendedProbeSession implements TerminalProbeSession {
+        private final ContendedProbeTransport transport;
+        private final boolean first;
+
+        ContendedProbeSession(ContendedProbeTransport transport, boolean first) {
+            this.transport = transport;
+            this.first = first;
+        }
+
+        @Override
+        public void write(byte[] data) {
+        }
+
+        @Override
+        public InputStream input() {
+            return new InputStream() {
+                @Override
+                public int read() throws IOException {
+                    if (first) {
+                        transport.firstRead.countDown();
+                        try {
+                            if (!transport.releaseFirst.await(3, TimeUnit.SECONDS)) {
+                                throw new IOException("First probe was never released");
+                            }
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            throw new IOException("Interrupted while waiting for the first probe", e);
+                        }
+                    }
+                    return -1;
+                }
+            };
+        }
+
+        @Override
+        public void close() {
+            transport.active.decrementAndGet();
         }
     }
 }

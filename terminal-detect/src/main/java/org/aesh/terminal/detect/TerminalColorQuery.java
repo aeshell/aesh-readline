@@ -37,6 +37,11 @@ import java.util.Map;
  */
 final class TerminalColorQuery {
 
+    // All built-in probe sessions change process-wide tty/console mode.
+    // Serialize raw-mode capture and restore across synchronous, async,
+    // color, and grapheme probes so their saved states cannot overlap.
+    private static final Object PROBE_LOCK = new Object();
+
     // OSC 10/11: foreground/background
     // OSC 4;N: palette color N
     // Query param is "?" terminated by BEL
@@ -148,33 +153,35 @@ final class TerminalColorQuery {
         if (!transport.isAvailable()) {
             return null;
         }
-        try (TerminalProbeSession session = transport.open()) {
-            session.write(buildColorQuery());
+        synchronized (PROBE_LOCK) {
+            try (TerminalProbeSession session = transport.open()) {
+                session.write(buildColorQuery());
 
-            // 22 expected terminators: 2 DECRPM + 1 DA1 + 19 OSC responses
-            // (terminals that don't support DECRQM won't send DECRPM, so
-            // the DA1 fence ensures we don't wait for them)
-            String response = readResponse(session.input(), 22);
-            if (response == null || response.isEmpty()) {
+                // 22 expected terminators: 2 DECRPM + 1 DA1 + 19 OSC responses
+                // (terminals that don't support DECRQM won't send DECRPM, so
+                // the DA1 fence ensures we don't wait for them)
+                String response = readResponse(session.input(), 22);
+                if (response == null || response.isEmpty()) {
+                    return null;
+                }
+
+                TerminalColorQuery result = new TerminalColorQuery();
+                parseDA1Response(response, result);
+                parseDECRPMResponses(response, result);
+                result.foreground = parseOscColorResponse(response, 10, -1);
+                result.background = parseOscColorResponse(response, 11, -1);
+                result.palette = new LinkedHashMap<>();
+                for (int i = 0; i <= 15; i++) {
+                    int[] color = parseOscColorResponse(response, 4, i);
+                    if (color != null) {
+                        result.palette.put(i, color);
+                    }
+                }
+                result.supports256 = parseOscColorResponse(response, 4, 255) != null;
+                return result;
+            } catch (IOException ignored) {
                 return null;
             }
-
-            TerminalColorQuery result = new TerminalColorQuery();
-            parseDA1Response(response, result);
-            parseDECRPMResponses(response, result);
-            result.foreground = parseOscColorResponse(response, 10, -1);
-            result.background = parseOscColorResponse(response, 11, -1);
-            result.palette = new LinkedHashMap<>();
-            for (int i = 0; i <= 15; i++) {
-                int[] color = parseOscColorResponse(response, 4, i);
-                if (color != null) {
-                    result.palette.put(i, color);
-                }
-            }
-            result.supports256 = parseOscColorResponse(response, 4, 255) != null;
-            return result;
-        } catch (IOException ignored) {
-            return null;
         }
     }
 
@@ -389,40 +396,42 @@ final class TerminalColorQuery {
         if (!transport.isAvailable()) {
             return false;
         }
-        try (TerminalProbeSession session = transport.open()) {
-            session.write(buildGraphemeProbe());
+        synchronized (PROBE_LOCK) {
+            try (TerminalProbeSession session = transport.open()) {
+                session.write(buildGraphemeProbe());
 
-            // Read CPR response: ESC [ row ; col R
-            String response = readResponse(session.input(), 1); // expect 1 terminator (the 'R')
+                // Read CPR response: ESC [ row ; col R
+                String response = readResponse(session.input(), 1); // expect 1 terminator (the 'R')
 
-            // Restore cursor and erase the test emoji
-            session.write(RESTORE_CURSOR_AND_ERASE);
+                // Restore cursor and erase the test emoji
+                session.write(RESTORE_CURSOR_AND_ERASE);
 
-            if (response == null || response.isEmpty()) {
-                return false;
-            }
-
-            // Parse CPR: ESC [ row ; col R
-            int rIdx = response.indexOf('R');
-            if (rIdx < 0)
-                return false;
-            int escIdx = response.lastIndexOf('\033', rIdx);
-            if (escIdx < 0 || escIdx + 2 >= rIdx)
-                return false;
-            String params = response.substring(escIdx + 2, rIdx);
-            String[] parts = params.split(";");
-            if (parts.length >= 2) {
-                try {
-                    int col = Integer.parseInt(parts[1].trim());
-                    // Flag emoji: 2 columns if clustered, 4 if not
-                    return col <= 3;
-                } catch (NumberFormatException e) {
+                if (response == null || response.isEmpty()) {
                     return false;
                 }
+
+                // Parse CPR: ESC [ row ; col R
+                int rIdx = response.indexOf('R');
+                if (rIdx < 0)
+                    return false;
+                int escIdx = response.lastIndexOf('\033', rIdx);
+                if (escIdx < 0 || escIdx + 2 >= rIdx)
+                    return false;
+                String params = response.substring(escIdx + 2, rIdx);
+                String[] parts = params.split(";");
+                if (parts.length >= 2) {
+                    try {
+                        int col = Integer.parseInt(parts[1].trim());
+                        // Flag emoji: 2 columns if clustered, 4 if not
+                        return col <= 3;
+                    } catch (NumberFormatException e) {
+                        return false;
+                    }
+                }
+                return false;
+            } catch (IOException ignored) {
+                return false;
             }
-            return false;
-        } catch (IOException ignored) {
-            return false;
         }
     }
 
