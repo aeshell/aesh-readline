@@ -20,6 +20,7 @@
 package org.aesh.terminal.formatting;
 
 import java.io.PrintStream;
+import java.util.Objects;
 
 import org.aesh.terminal.utils.ANSI;
 import org.aesh.terminal.utils.CodePointUtils;
@@ -309,22 +310,27 @@ public class TerminalString implements Comparable<TerminalString> {
 
         TerminalString that = (TerminalString) o;
 
-        if (ignoreRendering) {
-            return characters.equals(that.characters);
-        }
-
-        if (!characters.equals(that.characters))
+        // Full value equality: every field that affects rendering (or its
+        // suppression) participates symmetrically, keeping equals and
+        // hashCode consistent for collections and deduplication.
+        if (ignoreRendering != that.ignoreRendering)
+            return false;
+        if (!Objects.equals(characters, that.characters))
             return false;
         if (!color.equals(that.color))
             return false;
-        return style == that.style;
+        if (!style.equals(that.style))
+            return false;
+        return Objects.equals(hyperlinkUrl, that.hyperlinkUrl);
     }
 
     @Override
     public int hashCode() {
-        int result = characters.hashCode();
+        int result = Objects.hashCode(characters);
         result = 31 * result + color.hashCode();
         result = 31 * result + style.hashCode();
+        result = 31 * result + (ignoreRendering ? 1 : 0);
+        result = 31 * result + Objects.hashCode(hyperlinkUrl);
         return result;
     }
 
