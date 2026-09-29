@@ -195,7 +195,11 @@ public class SttyProbeTransportTest {
             writer.write("done\n");
             writer.write("echo \"$@\" >> \"$LOG\"\n");
             if (rawSleep) {
-                writer.write("sleep 30\n");
+                // exec replaces the shell: the sleeper is the direct
+                // child, so destroy() reaps it instantly. A plain sleep
+                // would orphan on destroy and hold the surefire pipe
+                // open for the full duration (30s module hangs).
+                writer.write("exec sleep 30\n");
             }
             writer.write("exit " + rawExit + "\n");
         } finally {
