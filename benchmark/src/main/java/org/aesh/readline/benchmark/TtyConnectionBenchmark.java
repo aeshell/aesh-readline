@@ -19,6 +19,7 @@
  */
 package org.aesh.readline.benchmark;
 
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.TimeUnit;
 
@@ -121,6 +122,7 @@ public class TtyConnectionBenchmark {
 
     private Decoder decoder;
     private Encoder encoder;
+    private Encoder generalEncoder;
     private EventDecoder eventDecoder;
     private StringBuilder outputBuffer;
     private int[] receivedInput;
@@ -135,6 +137,17 @@ public class TtyConnectionBenchmark {
         eventDecoder.setInputHandler(input -> receivedInput = input);
 
         encoder = new Encoder(StandardCharsets.UTF_8, this::captureOutput);
+        generalEncoder = new Encoder(Charset.forName("windows-1252"), this::captureOutput);
+    }
+
+    private static int[] buildSupplementaryInput() {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < 32; i++) {
+            sb.append("Hello ");
+            sb.appendCodePoint(0x1F600);
+            sb.append(' ');
+        }
+        return sb.toString().codePoints().toArray();
     }
 
     @Setup(Level.Invocation)
@@ -586,6 +599,28 @@ public class TtyConnectionBenchmark {
     @Benchmark
     public void writeOverheadConvertVeryLong(Blackhole bh) {
         encoder.accept(Parser.toCodePoints(VERY_LONG_TEXT));
+        bh.consume(outputBuffer.length());
+    }
+
+    // ========== General (non-UTF-8) Path Benchmarks ==========
+    // Exercise codePointsToChars() sizing through an Encoder whose
+    // charset selects the general path. The char buffer is warm after
+    // warmup, so these legs measure steady-state per-call cost.
+    //
+    // Run with: java -jar benchmarks.jar "writeGeneral.*"
+
+    private static final int[] GENERAL_MIXED_CP = Parser.toCodePoints(MEDIUM_TEXT);
+    private static final int[] GENERAL_SUPPLEMENTARY_CP = buildSupplementaryInput();
+
+    @Benchmark
+    public void writeGeneralMixed(Blackhole bh) {
+        generalEncoder.accept(GENERAL_MIXED_CP);
+        bh.consume(outputBuffer.length());
+    }
+
+    @Benchmark
+    public void writeGeneralSupplementary(Blackhole bh) {
+        generalEncoder.accept(GENERAL_SUPPLEMENTARY_CP);
         bh.consume(outputBuffer.length());
     }
 }

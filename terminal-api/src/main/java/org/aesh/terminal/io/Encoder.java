@@ -279,15 +279,21 @@ public class Encoder implements Consumer<int[]> {
      * <p>
      * Sized by a counting pass first: each supplementary code point
      * needs two chars, so a trailing BMP code point can never write
-     * past a buffer filled exactly by surrogate pairs.
+     * past a buffer filled exactly by surrogate pairs. The counting
+     * pass runs only when the worst case may not fit; in the steady
+     * state the buffer already holds twice the input length and the
+     * fill loop runs bounds-check-free.
      */
     private int codePointsToChars(int[] input) {
-        int needed = 0;
-        for (int cp : input) {
-            needed += Character.isBmpCodePoint(cp) ? 1 : 2;
+        int len = input.length;
+        if (len > charBuf.length / 2) {
+            int needed = 0;
+            for (int cp : input) {
+                needed += Character.isBmpCodePoint(cp) ? 1 : 2;
+            }
+            if (charBuf.length < needed)
+                charBuf = new char[needed];
         }
-        if (charBuf.length < needed)
-            charBuf = new char[needed];
 
         int pos = 0;
         for (int cp : input) {
