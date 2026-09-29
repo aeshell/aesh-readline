@@ -49,27 +49,61 @@ final class SttyProbeTransport implements TerminalProbeTransport {
         return DEV_TTY.exists() && DEV_TTY.canRead() && DEV_TTY.canWrite();
     }
 
+    /**
+     * Open a probe session, capturing the current terminal state first.
+     * <p>
+     * Raw-mode setup must succeed: a session in canonical mode would
+     * block reads without the assumed VMIN/VTIME timeout.
+     *
+     * @return an open session with raw mode established
+     * @throws IOException if the terminal state cannot be saved, raw
+     *         mode cannot be established, or the streams cannot be opened
+     */
     @Override
     public TerminalProbeSession open() throws IOException {
-        String savedState = sttyGet();
+        return open("stty", DEV_TTY);
+    }
+
+    /**
+     * Open a probe session against an explicit command and tty device.
+     * Package visible so tests can substitute a fixture command without
+     * touching a real terminal.
+     *
+     * @param command the stty-compatible executable
+     * @param tty the terminal device file
+     * @return an open session with raw mode established
+     * @throws IOException if setup fails at any step; the saved state is
+     *         restored before propagating raw-mode and stream failures
+     */
+    static TerminalProbeSession open(String command, File tty) throws IOException {
+        String savedState = sttyGet(command, tty);
         if (savedState == null) {
             throw new IOException("stty unavailable");
         }
-        sttyRaw();
-        return new SttyProbeSession(savedState);
+        try {
+            sttyRaw(command, tty);
+        } catch (IOException | RuntimeException e) {
+            sttyRestore(command, tty, savedState);
+            throw e;
+        }
+        return new SttyProbeSession(command, tty, savedState);
     }
 
     private static final class SttyProbeSession implements TerminalProbeSession {
+        private final String command;
+        private final File tty;
         private final String savedState;
         private final FileOutputStream ttyOut;
         private final FileInputStream ttyIn;
 
-        SttyProbeSession(String savedState) throws IOException {
+        SttyProbeSession(String command, File tty, String savedState) throws IOException {
+            this.command = command;
+            this.tty = tty;
             this.savedState = savedState;
             FileOutputStream out = null;
             try {
-                out = new FileOutputStream(DEV_TTY);
-                FileInputStream in = new FileInputStream(DEV_TTY);
+                out = new FileOutputStream(tty);
+                FileInputStream in = new FileInputStream(tty);
                 this.ttyOut = out;
                 this.ttyIn = in;
             } catch (IOException e) {
@@ -79,7 +113,7 @@ final class SttyProbeTransport implements TerminalProbeTransport {
                     } catch (IOException ignored) {
                     }
                 }
-                sttyRestore(savedState);
+                sttyRestore(command, tty, savedState);
                 throw e;
             }
         }
@@ -105,16 +139,16 @@ final class SttyProbeTransport implements TerminalProbeTransport {
                 ttyOut.close();
             } catch (IOException ignored) {
             } finally {
-                sttyRestore(savedState);
+                sttyRestore(command, tty, savedState);
             }
         }
     }
 
-    private static String sttyGet() {
+    private static String sttyGet(String command, File tty) {
         Process p = null;
         try {
-            p = new ProcessBuilder("stty", "-g")
-                    .redirectInput(DEV_TTY)
+            p = new ProcessBuilder(command, "-g")
+                    .redirectInput(tty)
                     .redirectErrorStream(true)
                     .start();
             byte[] buf = new byte[256];
@@ -125,6 +159,9 @@ final class SttyProbeTransport implements TerminalProbeTransport {
             }
             p.waitFor();
             return p.exitValue() == 0 ? sb.toString().trim() : null;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return null;
         } catch (Exception ignored) {
             return null;
         } finally {
@@ -133,31 +170,40 @@ final class SttyProbeTransport implements TerminalProbeTransport {
         }
     }
 
-    private static void sttyRaw() {
+    private static void sttyRaw(String command, File tty) throws IOException {
         Process p = null;
         try {
-            p = new ProcessBuilder("stty", "-echo", "-icanon", "-ixon", "min", "0", "time", "5")
-                    .redirectInput(DEV_TTY)
+            p = new ProcessBuilder(command, "-echo", "-icanon", "-ixon", "min", "0", "time", "5")
+                    .redirectInput(tty)
                     .redirectOutput(ProcessBuilder.Redirect.INHERIT)
                     .redirectErrorStream(true)
                     .start();
             p.waitFor();
-        } catch (Exception ignored) {
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("interrupted while setting terminal raw mode", e);
         } finally {
             if (p != null)
                 p.destroy();
         }
+        if (p.exitValue() != 0) {
+            throw new IOException("stty raw mode failed with exit code " + p.exitValue());
+        }
     }
 
-    private static void sttyRestore(String savedState) {
+    private static void sttyRestore(String command, File tty, String savedState) {
         Process p = null;
         try {
-            p = new ProcessBuilder("stty", savedState)
-                    .redirectInput(DEV_TTY)
+            p = new ProcessBuilder(command, savedState)
+                    .redirectInput(tty)
                     .redirectOutput(ProcessBuilder.Redirect.INHERIT)
                     .redirectErrorStream(true)
                     .start();
             p.waitFor();
+        } catch (InterruptedException e) {
+            // Best-effort restore must not swallow the interrupt that
+            // caused the failure being cleaned up.
+            Thread.currentThread().interrupt();
         } catch (Exception ignored) {
         } finally {
             if (p != null)
