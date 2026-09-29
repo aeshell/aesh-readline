@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.function.Consumer;
 
 import org.aesh.terminal.tty.Capability;
+import org.aesh.terminal.tty.Point;
 import org.aesh.terminal.tty.Signal;
 import org.aesh.terminal.tty.Size;
 import org.junit.Test;
@@ -255,6 +256,139 @@ public class ConnectionOscQueryTest {
     /**
      * A mock connection for testing OSC queries.
      */
+    /**
+     * Test that an OSC reply split across reads at any point still
+     * matches (issue #316). Each transport chunks differently; the
+     * query must not depend on chunk boundaries.
+     */
+    @Test
+    public void testSplitOscResponseMatchesAtEverySplitPoint() throws Exception {
+        String response = "" + (char) 27 + "]10;rgb:FFFF/8080/0000" + (char) 7;
+        for (int split = 1; split < response.length(); split++) {
+            MockConnection connection = new MockConnection();
+            Consumer<int[]> originalHandler = connection.stdinHandler();
+            String first = response.substring(0, split);
+            String second = response.substring(split);
+
+            Thread responseThread = new Thread(() -> {
+                try {
+                    connection.awaitHandlerChange(originalHandler, 1000);
+                    connection.simulateInput(first);
+                    Thread.sleep(20);
+                    connection.simulateInput(second);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            });
+            responseThread.start();
+
+            int[] rgb = connection.terminal().queryForegroundColor(500);
+            responseThread.join(2000);
+
+            assertNotNull("split at " + split + " must still match", rgb);
+            assertArrayEquals(new int[] { 255, 128, 0 }, rgb);
+        }
+    }
+
+    /**
+     * Test that a cursor position reply split across reads still
+     * matches, at every split point.
+     */
+    @Test
+    public void testSplitCursorPositionResponse() throws Exception {
+        String response = "" + (char) 27 + "[24;80R";
+        for (int split = 1; split < response.length(); split++) {
+            MockConnection connection = new MockConnection();
+            Consumer<int[]> originalHandler = connection.stdinHandler();
+            String first = response.substring(0, split);
+            String second = response.substring(split);
+
+            Thread responseThread = new Thread(() -> {
+                try {
+                    connection.awaitHandlerChange(originalHandler, 1000);
+                    connection.simulateInput(first);
+                    Thread.sleep(20);
+                    connection.simulateInput(second);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            });
+            responseThread.start();
+
+            Point pos = connection.terminal().getCursorPosition();
+            responseThread.join(2000);
+
+            assertNotNull("split at " + split + " must still match", pos);
+            assertEquals(80, pos.x());
+            assertEquals(24, pos.y());
+        }
+    }
+
+    /**
+     * Test that multiple replies arriving in one read still parse.
+     */
+    @Test
+    public void testMultipleRepliesInOneRead() throws Exception {
+        MockConnection connection = new MockConnection();
+        Consumer<int[]> originalHandler = connection.stdinHandler();
+
+        Thread responseThread = new Thread(() -> {
+            try {
+                connection.awaitHandlerChange(originalHandler, 1000);
+                String reply = "" + (char) 27 + "]10;rgb:FFFF/8080/0000" + (char) 7;
+                connection.simulateInput(reply + reply);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        });
+        responseThread.start();
+
+        int[] rgb = connection.terminal().queryForegroundColor(500);
+        responseThread.join(1000);
+
+        assertNotNull(rgb);
+        assertArrayEquals(new int[] { 255, 128, 0 }, rgb);
+    }
+
+    /**
+     * Test that unrelated input arriving during a query survives its
+     * timeout: nothing matched, so every buffered byte is handed back
+     * to the restored handler instead of dropped.
+     */
+    @Test
+    public void testTimeoutForwardsUnrelatedInput() throws Exception {
+        MockConnection connection = new MockConnection();
+        List<String> originalHandlerReceived = new ArrayList<>();
+        Consumer<int[]> originalHandler = input -> {
+            StringBuilder sb = new StringBuilder();
+            for (int cp : input) {
+                sb.appendCodePoint(cp);
+            }
+            originalHandlerReceived.add(sb.toString());
+        };
+        connection.setStdinHandler(originalHandler);
+
+        Thread inputThread = new Thread(() -> {
+            try {
+                connection.awaitHandlerChange(originalHandler, 1000);
+                connection.simulateInput("hello");
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        });
+        inputThread.start();
+
+        int[] rgb = connection.terminal().queryForegroundColor(100);
+        inputThread.join(1000);
+
+        assertNull("no reply was sent", rgb);
+        assertEquals("unrelated input must survive the timeout",
+                1, originalHandlerReceived.size());
+        assertEquals("hello", originalHandlerReceived.get(0));
+        assertTrue("handler must be restored after timeout",
+                connection.stdinHandler() == originalHandler);
+    }
+
     private static class MockConnection implements Connection {
         private volatile Consumer<int[]> stdinHandler;
         private Consumer<Size> sizeHandler;

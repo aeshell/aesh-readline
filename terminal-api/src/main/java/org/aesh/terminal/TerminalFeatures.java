@@ -19,6 +19,7 @@
  */
 package org.aesh.terminal;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -115,6 +116,13 @@ public class TerminalFeatures {
      * and restores the original terminal attributes. It's useful for both
      * OSC queries and CSI queries (DA1/DA2, DECRQM, theme DSR, etc.).
      * <p>
+     * Response chunks accumulate: each arriving chunk extends a buffer that
+     * the parser re-examines whole, so replies split across reads match
+     * once their frame completes. On timeout nothing matched, so every
+     * buffered byte is unclaimed input — handed back to the restored input
+     * handler rather than dropped. On success the buffer holds the matched
+     * frame and is discarded.
+     * <p>
      * This method uses {@link Connection#setStdinHandler(Consumer)} to receive responses,
      * which requires the connection to be actively reading input (i.e.,
      * {@link Connection#reading()} returns true). If not reading, this method returns null.
@@ -138,13 +146,21 @@ public class TerminalFeatures {
 
         CountDownLatch latch = new CountDownLatch(1);
         final Object[] result = { null };
+        final IntAccumulator responses = new IntAccumulator();
         Attributes savedAttributes = connection.enterRawMode();
 
-        try (StdinLease ignored = connection.captureStdin(ints -> {
-            T parsed = responseParser.apply(ints);
-            if (parsed != null) {
-                result[0] = parsed;
-                latch.countDown();
+        try (StdinLease ignored = connection.captureStdin(new Consumer<int[]>() {
+            @Override
+            public void accept(int[] ints) {
+                if (result[0] != null) {
+                    return;
+                }
+                responses.append(ints);
+                T parsed = responseParser.apply(responses.snapshot());
+                if (parsed != null) {
+                    result[0] = parsed;
+                    latch.countDown();
+                }
             }
         })) {
             try {
@@ -159,7 +175,55 @@ public class TerminalFeatures {
 
         @SuppressWarnings("unchecked")
         T typedResult = (T) result[0];
+        if (typedResult == null) {
+            redeliverUnmatched(responses);
+        }
         return typedResult;
+    }
+
+    /**
+     * Hand bytes no parser claimed back to the live input handler.
+     * <p>
+     * Called after the query lease closes (handler restored) when the
+     * query found nothing: the buffered bytes are unrelated input worth
+     * keeping — keystrokes, signals, a partial reply — not response
+     * traffic. Success needs no redelivery: its buffer holds the matched
+     * frame, which must not be re-injected as input.
+     *
+     * @param responses the accumulated query input
+     */
+    private void redeliverUnmatched(IntAccumulator responses) {
+        int[] leftovers = responses.snapshot();
+        if (leftovers.length > 0) {
+            Consumer<int[]> restored = connection.stdinHandler();
+            if (restored != null) {
+                restored.accept(leftovers);
+            }
+        }
+    }
+
+    /**
+     * Growable code-point buffer for fragmented query responses.
+     * Transport chunking splits replies arbitrarily; parsers run on the
+     * cumulative snapshot per chunk until a complete frame matches.
+     */
+    private static final class IntAccumulator {
+        private int[] buf = new int[256];
+        private int len;
+
+        void append(int[] chunk) {
+            if (len + chunk.length > buf.length) {
+                int[] grown = new int[Math.max(len + chunk.length, buf.length * 2)];
+                System.arraycopy(buf, 0, grown, 0, len);
+                buf = grown;
+            }
+            System.arraycopy(chunk, 0, buf, len, chunk.length);
+            len += chunk.length;
+        }
+
+        int[] snapshot() {
+            return Arrays.copyOf(buf, len);
+        }
     }
 
     // No probe methods here — terminal mode detection is done in
@@ -173,14 +237,25 @@ public class TerminalFeatures {
     public Point getCursorPosition() {
         CountDownLatch latch = new CountDownLatch(1);
         final Point[] p = { null };
+        final IntAccumulator responses = new IntAccumulator();
         Attributes attributes = connection.enterRawMode();
         // try-with-resources restores the previous handler on every exit
         // path, including query timeout — the previous hand-rolled version
         // restored only inside the response callback, leaking the hijack
-        // (and raw mode) when no response arrived.
-        try (StdinLease ignored = connection.captureStdin(ints -> {
-            p[0] = ANSI.getActualCursor(ints);
-            latch.countDown();
+        // (and raw mode) when no response arrived. Chunks accumulate so a
+        // CPR split across reads still matches once complete.
+        try (StdinLease ignored = connection.captureStdin(new Consumer<int[]>() {
+            @Override
+            public void accept(int[] ints) {
+                if (p[0] != null) {
+                    return;
+                }
+                responses.append(ints);
+                p[0] = ANSI.getActualCursor(responses.snapshot());
+                if (p[0] != null) {
+                    latch.countDown();
+                }
+            }
         })) {
             connection.stdoutHandler().accept(ANSI.CURSOR_POSITION_QUERY);
             try {
@@ -190,6 +265,9 @@ public class TerminalFeatures {
             }
         } finally {
             connection.setAttributes(attributes);
+        }
+        if (p[0] == null) {
+            redeliverUnmatched(responses);
         }
         return p[0];
     }
@@ -349,17 +427,20 @@ public class TerminalFeatures {
         final StringBuilder responseBuffer = new StringBuilder();
         Attributes savedAttributes = connection.enterRawMode();
 
-        try (StdinLease ignored = connection.captureStdin(ints -> {
-            for (int c : ints) {
-                responseBuffer.appendCodePoint(c);
-            }
+        try (StdinLease ignored = connection.captureStdin(new Consumer<int[]>() {
+            @Override
+            public void accept(int[] ints) {
+                for (int c : ints) {
+                    responseBuffer.appendCodePoint(c);
+                }
 
-            Map<Integer, int[]> parsed = parser.apply(
-                    CodePointUtils.toCodePoints(responseBuffer.toString()));
-            results.putAll(parsed);
+                Map<Integer, int[]> parsed = parser.apply(
+                        CodePointUtils.toCodePoints(responseBuffer.toString()));
+                results.putAll(parsed);
 
-            if (results.size() >= expectedCount) {
-                latch.countDown();
+                if (results.size() >= expectedCount) {
+                    latch.countDown();
+                }
             }
         })) {
             try {

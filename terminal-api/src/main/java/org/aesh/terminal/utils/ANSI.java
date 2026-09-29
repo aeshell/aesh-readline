@@ -297,20 +297,26 @@ public class ANSI {
      * Parse cursor position response and return the actual cursor position.
      *
      * @param input the ANSI cursor position response sequence
-     * @return a Point containing the column and row of the cursor
+     * @return a Point containing the column and row of the cursor,
+     *         or null if the frame is incomplete (no terminating 'R' yet)
      */
     public static Point getActualCursor(int[] input) {
         boolean started = false;
         boolean gotSep = false;
+        boolean complete = false;
         int col = 0;
         int row = 0;
 
-        //read until we get a 'R'
-        for (int i = 0; i < input.length - 1; i++) {
+        //read until we get a 'R'; without it the frame is still
+        //arriving and must not parse (fragmented query responses
+        //are re-examined as more chunks arrive). The loop covers the
+        //last byte too — a frame ending exactly at 'R' is complete.
+        for (int i = 0; i < input.length; i++) {
             if (started) {
-                if (input[i] == 82)
+                if (input[i] == 82) {
+                    complete = true;
                     break;
-                else if (input[i] == 59) // we got a ';' which is the separator
+                } else if (input[i] == 59) // we got a ';' which is the separator
                     gotSep = true;
                 else {
                     if (gotSep) {
@@ -331,6 +337,9 @@ public class ANSI {
             }
         }
 
+        if (!complete) {
+            return null;
+        }
         return new Point(col, row);
     }
 
@@ -793,7 +802,7 @@ public class ANSI {
             end = response.indexOf("\u001B]", rgbStart);
         }
         if (end < 0) {
-            end = response.length();
+            return null;
         }
 
         String rgbPart = response.substring(rgbStart, end);
@@ -843,6 +852,7 @@ public class ANSI {
      * @param oscParam the expected parameter (e.g., palette index for OSC 4),
      *        or -1 to not require a specific parameter
      * @return RGB array [r, g, b] (0-255 each), or null if parsing failed
+     *         or the frame is incomplete (no BEL/ST terminator yet)
      */
     public static int[] parseOscColorResponse(int[] input, int oscCode, int oscParam) {
         if (input == null || input.length < 10) {
@@ -915,7 +925,7 @@ public class ANSI {
             end = stEnd;
         }
         if (end < 0) {
-            end = response.length();
+            return null;
         }
 
         String rgbPart = response.substring(rgbStart, end);
@@ -1024,7 +1034,7 @@ public class ANSI {
             end = stEnd;
         }
         if (end < 0) {
-            end = response.length();
+            return null;
         }
 
         return response.substring(rgbStart, end);
