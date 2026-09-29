@@ -24,6 +24,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -78,7 +79,7 @@ final class IdeThemeDetector {
             case "vscode":
                 return detectVSCodeTheme(env, os);
             case "windows-terminal":
-                return detectWindowsTerminalTheme(env);
+                return detectWindowsTerminalTheme(env, env.get("WT_PROFILE_ID"));
             default:
                 return TerminalTheme.UNKNOWN;
         }
@@ -86,7 +87,7 @@ final class IdeThemeDetector {
 
     // ==================== Windows Terminal ====================
 
-    private static TerminalTheme detectWindowsTerminalTheme(Map<String, String> env) {
+    private static TerminalTheme detectWindowsTerminalTheme(Map<String, String> env, String profileId) {
         String localAppData = env.get("LOCALAPPDATA");
         if (localAppData == null) {
             return TerminalTheme.UNKNOWN;
@@ -108,42 +109,123 @@ final class IdeThemeDetector {
             return TerminalTheme.UNKNOWN;
         }
 
+        String content = readFileContent(settingsFile);
+        if (content == null) {
+            return TerminalTheme.UNKNOWN;
+        }
         try {
-            return parseWindowsTerminalSettings(settingsFile);
+            return parseWindowsTerminalSettings(content, profileId);
         } catch (Exception e) {
             return TerminalTheme.UNKNOWN;
         }
     }
 
-    private static TerminalTheme parseWindowsTerminalSettings(File settingsFile) {
-        try (BufferedReader reader = new BufferedReader(new FileReader(settingsFile))) {
-            StringBuilder content = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                content.append(line);
-            }
-
-            String json = content.toString();
-
-            String colorScheme = extractJsonValue(json, "colorScheme");
-            if (colorScheme != null) {
-                TerminalTheme theme = ThemeNameClassifier.classify(colorScheme);
-                return theme != TerminalTheme.UNKNOWN ? theme : TerminalTheme.DARK;
-            }
-
-            String theme = extractJsonValue(json, "theme");
-            if (theme != null) {
-                if ("dark".equalsIgnoreCase(theme)) {
-                    return TerminalTheme.DARK;
-                }
-                if ("light".equalsIgnoreCase(theme)) {
-                    return TerminalTheme.LIGHT;
-                }
-            }
-        } catch (IOException e) {
+    /**
+     * Resolve the terminal theme from Windows Terminal settings content.
+     * <p>
+     * The active profile is resolved from {@code WT_PROFILE_ID} against
+     * {@code profiles.list[].guid}; an unmatched or missing id falls back
+     * to {@code profiles.defaults.colorScheme}, then to a top-level usage.
+     * Scheme <em>definitions</em> in {@code colorSchemes[]} never satisfy
+     * the lookup. A bare application-chrome {@code theme} says nothing
+     * about the terminal background. Package visible for headless tests
+     * with fixture JSON.
+     *
+     * @param json the settings file content (comments allowed)
+     * @param profileId the active profile id from WT_PROFILE_ID, or null
+     * @return the detected theme, or UNKNOWN if not determinable
+     */
+    static TerminalTheme parseWindowsTerminalSettings(String json, String profileId) {
+        if (json == null) {
             return TerminalTheme.UNKNOWN;
         }
-        return TerminalTheme.UNKNOWN;
+        String clean = stripJsonComments(json);
+
+        Map<String, int[]> backgrounds = new HashMap<>();
+        int[] schemesRegion = findKeyedRegion(clean, "colorSchemes", '[', ']');
+        if (schemesRegion != null) {
+            String schemesBody = clean.substring(schemesRegion[0] + 1, schemesRegion[1]);
+            for (String scheme : splitTopLevelObjects(schemesBody)) {
+                String name = extractJsonValue(scheme, "name");
+                String background = extractJsonValue(scheme, "background");
+                if (name != null && background != null) {
+                    int[] rgb = parseHexColor(background);
+                    if (rgb != null) {
+                        backgrounds.put(name.toLowerCase(), rgb);
+                    }
+                }
+            }
+        }
+
+        String schemeName = null;
+        int[] profilesRegion = findKeyedRegion(clean, "profiles", '{', '}');
+        if (profilesRegion != null) {
+            String profilesBody = clean.substring(profilesRegion[0] + 1, profilesRegion[1]);
+            String defaultsScheme = null;
+            int[] defaultsRegion = findKeyedRegion(profilesBody, "defaults", '{', '}');
+            if (defaultsRegion != null) {
+                defaultsScheme = extractJsonValue(
+                        profilesBody.substring(defaultsRegion[0] + 1, defaultsRegion[1]),
+                        "colorScheme");
+            }
+            boolean matched = false;
+            String matchedScheme = null;
+            int[] listRegion = findKeyedRegion(profilesBody, "list", '[', ']');
+            if (listRegion != null) {
+                String listBody = profilesBody.substring(listRegion[0] + 1, listRegion[1]);
+                for (String profile : splitTopLevelObjects(listBody)) {
+                    String guid = extractJsonValue(profile, "guid");
+                    if (profileId != null && guid != null && guid.equalsIgnoreCase(profileId)) {
+                        matched = true;
+                        matchedScheme = extractJsonValue(profile, "colorScheme");
+                        break;
+                    }
+                }
+            }
+            if (matched) {
+                schemeName = matchedScheme != null ? matchedScheme : defaultsScheme;
+            } else {
+                schemeName = defaultsScheme;
+            }
+        }
+        if (schemeName == null) {
+            schemeName = topLevelColorScheme(clean, profilesRegion, schemesRegion);
+        }
+        if (schemeName == null) {
+            return TerminalTheme.UNKNOWN;
+        }
+        int[] rgb = backgrounds.get(schemeName.toLowerCase());
+        if (rgb != null) {
+            return TerminalTheme.fromRGB(rgb[0], rgb[1], rgb[2]);
+        }
+        return ThemeNameClassifier.classify(schemeName);
+    }
+
+    /**
+     * Find a top-level {@code colorScheme} usage: the document with the
+     * profiles and colorSchemes regions blanked, so neither the active
+     * configuration nor a scheme definition can satisfy the lookup.
+     *
+     * @param clean comment-stripped settings content
+     * @param profilesRegion the profiles region, or null if absent
+     * @param schemesRegion the colorSchemes region, or null if absent
+     * @return the scheme name, or null if there is no top-level usage
+     */
+    private static String topLevelColorScheme(String clean, int[] profilesRegion,
+            int[] schemesRegion) {
+        StringBuilder usage = new StringBuilder(clean);
+        blankRegion(usage, profilesRegion);
+        blankRegion(usage, schemesRegion);
+        return extractJsonValue(usage.toString(), "colorScheme");
+    }
+
+    private static void blankRegion(StringBuilder sb, int[] region) {
+        if (region == null) {
+            return;
+        }
+        for (int i = region[0]; i <= region[1] && i < sb.length(); i++) {
+            sb.setCharAt(i, ' ');
+        }
     }
 
     // ==================== VSCode ====================
@@ -200,28 +282,45 @@ final class IdeThemeDetector {
     }
 
     private static TerminalTheme parseVSCodeSettings(File settingsFile) {
-        try (BufferedReader reader = new BufferedReader(new FileReader(settingsFile))) {
-            StringBuilder content = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                content.append(line);
-            }
-
-            String json = content.toString();
-
-            String colorTheme = extractJsonValue(json, "workbench.colorTheme");
-            if (colorTheme != null) {
-                TerminalTheme theme = ThemeNameClassifier.classify(colorTheme);
-                // Default to dark for unknown VSCode themes (most popular themes are dark)
-                return theme != TerminalTheme.UNKNOWN ? theme : TerminalTheme.DARK;
-            }
-
-            String terminalTheme = extractJsonValue(json, "workbench.preferredDarkColorTheme");
-            if (terminalTheme != null) {
-                return TerminalTheme.DARK;
-            }
-        } catch (IOException e) {
+        String content = readFileContent(settingsFile);
+        if (content == null) {
             return TerminalTheme.UNKNOWN;
+        }
+        try {
+            return parseVSCodeSettings(content);
+        } catch (Exception e) {
+            return TerminalTheme.UNKNOWN;
+        }
+    }
+
+    /**
+     * Resolve the terminal theme from VSCode settings content.
+     * <p>
+     * An explicit {@code terminal.background} wins over the theme name,
+     * mirroring the measured-beats-hint rule. The active
+     * {@code workbench.colorTheme} is classified as-is; unrecognized
+     * names stay UNKNOWN, and a {@code preferredDarkColorTheme} alone
+     * is not the active theme. Package visible for headless tests with
+     * fixture JSON.
+     *
+     * @param json the settings file content (comments allowed)
+     * @return the detected theme, or UNKNOWN if not determinable
+     */
+    static TerminalTheme parseVSCodeSettings(String json) {
+        if (json == null) {
+            return TerminalTheme.UNKNOWN;
+        }
+        String clean = stripJsonComments(json);
+        String background = extractJsonValue(clean, "terminal.background");
+        if (background != null) {
+            int[] rgb = parseHexColor(background);
+            if (rgb != null) {
+                return TerminalTheme.fromRGB(rgb[0], rgb[1], rgb[2]);
+            }
+        }
+        String colorTheme = extractJsonValue(clean, "workbench.colorTheme");
+        if (colorTheme != null) {
+            return ThemeNameClassifier.classify(colorTheme);
         }
         return TerminalTheme.UNKNOWN;
     }
@@ -270,23 +369,26 @@ final class IdeThemeDetector {
                 }
                 productDirs.remove(newest);
 
-                File lafFile = new File(newest, "options/laf.xml");
-                if (!lafFile.isFile()) {
-                    lafFile = new File(newest, "config/options/laf.xml");
-                }
-                if (lafFile.isFile()) {
-                    TerminalTheme theme = parseJetBrainsLafFile(lafFile);
-                    if (theme != TerminalTheme.UNKNOWN) {
-                        return theme;
-                    }
-                }
-
+                // The editor color scheme determines the terminal
+                // background; the look-and-feel is application chrome
+                // and is only a fallback.
                 File colorsFile = new File(newest, "options/colors.scheme.xml");
                 if (!colorsFile.isFile()) {
                     colorsFile = new File(newest, "config/options/colors.scheme.xml");
                 }
                 if (colorsFile.isFile()) {
                     TerminalTheme theme = parseJetBrainsColorScheme(colorsFile);
+                    if (theme != TerminalTheme.UNKNOWN) {
+                        return theme;
+                    }
+                }
+
+                File lafFile = new File(newest, "options/laf.xml");
+                if (!lafFile.isFile()) {
+                    lafFile = new File(newest, "config/options/laf.xml");
+                }
+                if (lafFile.isFile()) {
+                    TerminalTheme theme = parseJetBrainsLafFile(lafFile);
                     if (theme != TerminalTheme.UNKNOWN) {
                         return theme;
                     }
@@ -306,10 +408,6 @@ final class IdeThemeDetector {
                     TerminalTheme theme = ThemeNameClassifier.classify(lower);
                     if (theme != TerminalTheme.UNKNOWN) {
                         return theme;
-                    }
-                    // Also check for platform-specific LAF names
-                    if (lower.contains("windows") || lower.contains("gtk") || lower.contains("metal")) {
-                        return TerminalTheme.LIGHT;
                     }
                 }
             }
@@ -374,27 +472,208 @@ final class IdeThemeDetector {
             while ((line = reader.readLine()) != null) {
                 if (line.contains("global_color_scheme")) {
                     String lower = line.toLowerCase();
-                    // Extract the name attribute value for classification
+                    // A line can carry several name attributes (the
+                    // component name shadows the scheme name); classify
+                    // each and take the first recognizable one.
                     Pattern namePattern = Pattern.compile("name=\"([^\"]+)\"");
                     Matcher matcher = namePattern.matcher(lower);
-                    if (matcher.find()) {
-                        String schemeName = matcher.group(1);
-                        TerminalTheme theme = ThemeNameClassifier.classify(schemeName);
+                    while (matcher.find()) {
+                        TerminalTheme theme = ThemeNameClassifier.classify(matcher.group(1));
                         if (theme != TerminalTheme.UNKNOWN) {
                             return theme;
                         }
                     }
-                    // If we found the tag but couldn't determine the theme, assume dark
-                    return TerminalTheme.DARK;
                 }
             }
         } catch (IOException e) {
             return TerminalTheme.UNKNOWN;
         }
+        // A custom scheme name we cannot classify is ambiguous, not dark.
         return TerminalTheme.UNKNOWN;
     }
 
     // ==================== Shared Utilities ====================
+
+    /**
+     * Read a whole settings file, preserving line breaks so
+     * line-comment stripping sees the original line structure.
+     *
+     * @param file the file to read
+     * @return the content, or null if unreadable
+     */
+    private static String readFileContent(File file) {
+        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+            StringBuilder content = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                content.append(line).append('\n');
+            }
+            return content.toString();
+        } catch (IOException e) {
+            return null;
+        }
+    }
+
+    /**
+     * Strip {@code //} line comments and {@code /*} block comments
+     * from JSON-with-comments settings content. String literals are
+     * honored, so {@code //} inside a quoted value survives.
+     *
+     * @param json the raw file content, or null
+     * @return the content without comments, or null if the input is null
+     */
+    static String stripJsonComments(String json) {
+        if (json == null) {
+            return null;
+        }
+        StringBuilder out = new StringBuilder(json.length());
+        boolean inString = false;
+        boolean escaped = false;
+        int i = 0;
+        while (i < json.length()) {
+            char c = json.charAt(i);
+            if (inString) {
+                out.append(c);
+                if (escaped) {
+                    escaped = false;
+                } else if (c == '\\') {
+                    escaped = true;
+                } else if (c == '"') {
+                    inString = false;
+                }
+                i++;
+            } else if (c == '"') {
+                inString = true;
+                out.append(c);
+                i++;
+            } else if (c == '/' && i + 1 < json.length() && json.charAt(i + 1) == '/') {
+                i += 2;
+                while (i < json.length() && json.charAt(i) != '\n') {
+                    i++;
+                }
+            } else if (c == '/' && i + 1 < json.length() && json.charAt(i + 1) == '*') {
+                i += 2;
+                while (i + 1 < json.length()
+                        && !(json.charAt(i) == '*' && json.charAt(i + 1) == '/')) {
+                    i++;
+                }
+                i += 2;
+            } else {
+                out.append(c);
+                i++;
+            }
+        }
+        return out.toString();
+    }
+
+    /**
+     * Parse a CSS-style hex color ({@code #rrggbb} or short {@code #rgb}).
+     *
+     * @param value the color value, or null
+     * @return the RGB components, or null if malformed
+     */
+    static int[] parseHexColor(String value) {
+        if (value == null) {
+            return null;
+        }
+        String hex = value.trim();
+        if (hex.startsWith("#")) {
+            hex = hex.substring(1);
+        }
+        if (hex.length() == 3) {
+            char r = hex.charAt(0);
+            char g = hex.charAt(1);
+            char b = hex.charAt(2);
+            hex = "" + r + r + g + g + b + b;
+        }
+        if (hex.length() != 6) {
+            return null;
+        }
+        try {
+            return new int[] {
+                    Integer.parseInt(hex.substring(0, 2), 16),
+                    Integer.parseInt(hex.substring(2, 4), 16),
+                    Integer.parseInt(hex.substring(4, 6), 16) };
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    /**
+     * Locate the delimited value of a {@code "key": {...}} or
+     * {@code "key": [...]} pair. Delimiters inside string literals
+     * do not count.
+     *
+     * @param json the content to search
+     * @param key the key to find
+     * @param open the opening delimiter
+     * @param close the closing delimiter
+     * @return the open/close delimiter indices, or null if absent
+     */
+    private static int[] findKeyedRegion(String json, String key, char open, char close) {
+        Pattern keyPattern = Pattern.compile("\"" + Pattern.quote(key) + "\"\\s*:");
+        Matcher matcher = keyPattern.matcher(json);
+        while (matcher.find()) {
+            int i = matcher.end();
+            while (i < json.length() && Character.isWhitespace(json.charAt(i))) {
+                i++;
+            }
+            if (i < json.length() && json.charAt(i) == open) {
+                int end = matchDelimiter(json, i, open, close);
+                if (end >= 0) {
+                    return new int[] { i, end };
+                }
+                return null;
+            }
+        }
+        return null;
+    }
+
+    private static int matchDelimiter(String json, int openIdx, char open, char close) {
+        int depth = 0;
+        boolean inString = false;
+        boolean escaped = false;
+        for (int i = openIdx; i < json.length(); i++) {
+            char c = json.charAt(i);
+            if (inString) {
+                if (escaped) {
+                    escaped = false;
+                } else if (c == '\\') {
+                    escaped = true;
+                } else if (c == '"') {
+                    inString = false;
+                }
+            } else if (c == '"') {
+                inString = true;
+            } else if (c == open) {
+                depth++;
+            } else if (c == close) {
+                depth--;
+                if (depth == 0) {
+                    return i;
+                }
+            }
+        }
+        return -1;
+    }
+
+    private static List<String> splitTopLevelObjects(String arrayBody) {
+        List<String> objects = new ArrayList<>();
+        int i = 0;
+        while (i < arrayBody.length()) {
+            if (arrayBody.charAt(i) == '{') {
+                int end = matchDelimiter(arrayBody, i, '{', '}');
+                if (end < 0) {
+                    break;
+                }
+                objects.add(arrayBody.substring(i, end + 1));
+                i = end + 1;
+            } else {
+                i++;
+            }
+        }
+        return objects;
+    }
 
     /**
      * Extract a simple string value from JSON.
