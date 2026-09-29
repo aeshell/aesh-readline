@@ -30,6 +30,7 @@ import org.aesh.readline.editing.EditMode;
 import org.aesh.terminal.Key;
 import org.aesh.terminal.KeyAction;
 import org.aesh.terminal.Terminal;
+import org.aesh.terminal.io.InputPeeker;
 import org.aesh.terminal.parser.VtHandler;
 import org.aesh.terminal.parser.VtParser;
 import org.aesh.terminal.utils.LoggerUtil;
@@ -75,21 +76,6 @@ public class ActionDecoder {
 
     /** The escape sequence disambiguation timeout in milliseconds. */
     private long escapeTimeout = DEFAULT_ESCAPE_TIMEOUT;
-
-    /**
-     * Functional interface for peeking at terminal input without consuming it.
-     */
-    @FunctionalInterface
-    public interface InputPeeker {
-        /**
-         * Peek at the next byte without consuming it.
-         *
-         * @param timeoutMs timeout in milliseconds
-         * @return the byte peeked (0-255), -1 for EOF, or -2 for timeout
-         * @throws IOException if an I/O error occurs
-         */
-        int peek(long timeoutMs) throws IOException;
-    }
 
     /**
      * Creates a decoder with key mappings from the specified edit mode.

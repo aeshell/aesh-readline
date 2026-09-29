@@ -23,9 +23,12 @@ import java.util.Arrays;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.Consumer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.aesh.terminal.detect.TerminalCapabilities;
 import org.aesh.terminal.detect.TerminalTheme;
+import org.aesh.terminal.io.InputPeeker;
 import org.aesh.terminal.parser.VtHandler;
 import org.aesh.terminal.parser.VtParser;
 import org.aesh.terminal.tty.MouseEvent;
@@ -46,6 +49,16 @@ import org.aesh.terminal.utils.ANSI;
  */
 public class EventDecoder implements Consumer<int[]> {
 
+    private static final Logger LOGGER = Logger.getLogger(EventDecoder.class.getName());
+
+    /**
+     * Timeout (ms) for lone-ESC disambiguation. Mirrors
+     * {@code ActionDecoder} escape handling: long enough for the next
+     * chunk of an Alt combination or CSI sequence to arrive, short
+     * enough that a standalone Escape keypress still feels instant.
+     */
+    private static final long ESCAPE_TIMEOUT_MS = 50;
+
     private final int intr;
     private final int quit;
     private final int susp;
@@ -56,6 +69,8 @@ public class EventDecoder implements Consumer<int[]> {
     private Consumer<TerminalTheme> themeChangeHandler;
     private Consumer<MouseEvent> mouseHandler;
     private Consumer<Boolean> focusHandler;
+    private InputPeeker inputPeeker;
+    private long escapeTimeout = ESCAPE_TIMEOUT_MS;
 
     private final Queue<int[]> inputQueue = new ConcurrentLinkedQueue<>();
 
@@ -243,6 +258,36 @@ public class EventDecoder implements Consumer<int[]> {
      */
     public void setFocusHandler(Consumer<Boolean> focusHandler) {
         this.focusHandler = focusHandler;
+    }
+
+    /**
+     * Set the input peeker for lone-ESC timeout disambiguation.
+     * <p>
+     * While any sequence filter is active (mouse, focus, theme), a chunk
+     * ending right after ESC must be held: it may start an Alt combination
+     * or a CSI/OSC sequence. When set, the decoder peeks with
+     * {@link #setEscapeTimeout(long) the escape timeout} to check whether
+     * more input is imminent. If the peek times out (or the peeker fails),
+     * the ESC is delivered as a standalone keypress instead of stalling
+     * until an unrelated later keystroke completes it.
+     * <p>
+     * When unset, a trailing ESC is held indefinitely (prior behavior).
+     * Only a bare ESC pending at end of chunk is ever peeked; chunks ending
+     * mid-CSI or mid-OSC keep waiting for their completion bytes.
+     *
+     * @param inputPeeker the input peeker, or null to disable disambiguation
+     */
+    public void setInputPeeker(InputPeeker inputPeeker) {
+        this.inputPeeker = inputPeeker;
+    }
+
+    /**
+     * Set the lone-ESC disambiguation timeout.
+     *
+     * @param timeoutMs timeout in milliseconds (default: 50ms)
+     */
+    public void setEscapeTimeout(long timeoutMs) {
+        this.escapeTimeout = timeoutMs;
     }
 
     private void checkQueue() {
@@ -473,6 +518,17 @@ public class EventDecoder implements Consumer<int[]> {
             }
         }
 
+        // Lone-ESC disambiguation: the chunk ended right after ESC with the
+        // parser still waiting. Peek for imminent input; on timeout the ESC
+        // was standalone and is delivered instead of stalling.
+        if (sequenceBytesLen == 1 && sequenceBytes[0] == 27
+                && !filterParser.isGroundState() && peekLoneEscapeExpired()) {
+            filterParser.reset();
+            sequenceBytesLen = 0;
+            ensureFilterOutputCapacity(filterOutputLen + 1);
+            filterOutput[filterOutputLen++] = 27;
+        }
+
         // If nothing was filtered and no pending sequence, return original
         if (filterOutputLen == input.length && filterParser.isGroundState()) {
             return input;
@@ -486,6 +542,29 @@ public class EventDecoder implements Consumer<int[]> {
     private void ensureFilterOutputCapacity(int needed) {
         if (filterOutput.length < needed) {
             filterOutput = Arrays.copyOf(filterOutput, Math.max(needed, filterOutput.length * 2));
+        }
+    }
+
+    /**
+     * Ask whether a trailing bare ESC has no input following it.
+     * <p>
+     * Returns false (keep holding) when no peeker is set or more input is
+     * imminent. A timeout, EOF, or peeker failure means the ESC was a
+     * standalone keypress: like {@code ActionDecoder}, failures deliver
+     * rather than stall, since losing input is worse than splitting a
+     * vanishingly rare in-flight sequence.
+     *
+     * @return true if the held ESC should be delivered as input
+     */
+    private boolean peekLoneEscapeExpired() {
+        if (inputPeeker == null) {
+            return false;
+        }
+        try {
+            return inputPeeker.peek(escapeTimeout) < 0;
+        } catch (Exception e) {
+            LOGGER.log(Level.FINE, "peek() failed during lone-ESC disambiguation", e);
+            return true;
         }
     }
 

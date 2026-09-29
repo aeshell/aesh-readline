@@ -41,6 +41,7 @@ import org.aesh.terminal.EventDecoder;
 import org.aesh.terminal.Terminal;
 import org.aesh.terminal.io.Decoder;
 import org.aesh.terminal.io.Encoder;
+import org.aesh.terminal.io.InputPeeker;
 import org.aesh.terminal.tty.impl.ExternalTerminal;
 import org.aesh.terminal.tty.impl.PosixSysTerminal;
 import org.aesh.terminal.tty.impl.WinSysTerminal;
@@ -185,6 +186,16 @@ public class TerminalConnection extends AbstractConnection {
         });
 
         eventDecoder = new EventDecoder(attributes);
+        // Lone-ESC disambiguation while sequence filters are active: peek
+        // for imminent input, otherwise a standalone Escape stalls until
+        // an unrelated later keystroke. Peek failures deliver rather
+        // than stall (see EventDecoder.setInputPeeker).
+        eventDecoder.setInputPeeker(new InputPeeker() {
+            @Override
+            public int peek(long timeoutMs) throws IOException {
+                return TerminalConnection.this.peek(timeoutMs);
+            }
+        });
         decoder = new Decoder(512, inputEncoding(), eventDecoder);
 
         if (terminal.getCodePointConsumer() == null) {
