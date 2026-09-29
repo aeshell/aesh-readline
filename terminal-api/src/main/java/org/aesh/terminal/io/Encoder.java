@@ -36,6 +36,14 @@ import org.aesh.terminal.utils.CodePointUtils;
  * Uses a reusable internal byte buffer ({@code byteBuf}) for all encoding paths to avoid
  * per-call allocations. The output is passed to a {@link ByteWriter} as a buffer slice
  * (offset + length), enabling zero-copy writes for consumers that process data synchronously.
+ * <p>
+ * The encode methods are synchronized: the reusable buffers and the cached
+ * {@code CharsetEncoder} are shared mutable state, and the {@link ByteWriter}
+ * contract guarantees only a synchronous slice lifetime. Holding the monitor
+ * across the downstream write keeps encode-and-consume atomic, so a writer
+ * calling from any thread (e.g. {@code printAbove}) cannot have its slice
+ * overwritten by a concurrent encode. The monitor also makes {@link #setCharset}
+ * mutually exclusive with encoding.
  *
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
@@ -68,11 +76,13 @@ public class Encoder implements Consumer<int[]> {
     }
 
     /**
-     * Set the charset to use for encoding.
+     * Set the charset to use for encoding. Mutually exclusive with
+     * encoding: a charset switch never interleaves with an in-flight
+     * encode on another thread.
      *
      * @param charset the charset to use, ignored if null
      */
-    public void setCharset(Charset charset) {
+    public synchronized void setCharset(Charset charset) {
         if (charset != null) {
             this.charset = charset;
             this.isUtf8 = isUtf8Charset(charset);
@@ -105,11 +115,14 @@ public class Encoder implements Consumer<int[]> {
 
     /**
      * Encode an array of Unicode code points and send the resulting bytes to the output writer.
+     * <p>
+     * Synchronized so the reusable buffers stay valid until the
+     * downstream writer has consumed the slice.
      *
      * @param input the code points to encode
      */
     @Override
-    public void accept(int[] input) {
+    public synchronized void accept(int[] input) {
         if (isUtf8) {
             acceptUtf8(input);
         } else {
@@ -121,10 +134,13 @@ public class Encoder implements Consumer<int[]> {
      * Encode a String directly to bytes, bypassing the int[] intermediary.
      * For UTF-8 with ASCII-only strings (the common case for ANSI sequences),
      * this encodes directly into the reusable byte buffer with zero allocation.
+     * <p>
+     * Synchronized so the reusable buffers stay valid until the
+     * downstream writer has consumed the slice.
      *
      * @param s the string to encode
      */
-    public void accept(String s) {
+    public synchronized void accept(String s) {
         if (s.isEmpty())
             return;
 
