@@ -128,6 +128,7 @@ public class SixelImage implements TerminalImage {
      */
     public SixelImage maxWidth(int pixels) {
         this.maxWidth = pixels;
+        encodedData = null;
         return this;
     }
 
@@ -139,6 +140,7 @@ public class SixelImage implements TerminalImage {
      */
     public SixelImage maxHeight(int pixels) {
         this.maxHeight = pixels;
+        encodedData = null;
         return this;
     }
 
@@ -151,6 +153,7 @@ public class SixelImage implements TerminalImage {
      */
     public SixelImage maxColors(int colors) {
         this.maxColors = Math.max(2, Math.min(MAX_COLORS, colors));
+        encodedData = null;
         return this;
     }
 
@@ -162,6 +165,7 @@ public class SixelImage implements TerminalImage {
      */
     public SixelImage useRle(boolean useRle) {
         this.useRle = useRle;
+        encodedData = null;
         return this;
     }
 

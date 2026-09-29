@@ -92,6 +92,64 @@ public class SixelImageTest {
     }
 
     @Test
+    public void testChangingMaxWidthInvalidatesCache() {
+        byte[] data = createTestPng(100, 50, Color.GREEN);
+        SixelImage image = new SixelImage(data);
+
+        assertTrue(image.encode().contains("\"1;1;100;50"));
+
+        image.maxWidth(50);
+        String reencoded = image.encode();
+        assertTrue("new width must apply, not the cached raster",
+                reencoded.contains("\"1;1;50;25"));
+    }
+
+    @Test
+    public void testChangingMaxHeightInvalidatesCache() {
+        byte[] data = createTestPng(50, 100, Color.GREEN);
+        SixelImage image = new SixelImage(data);
+
+        assertTrue(image.encode().contains("\"1;1;50;100"));
+
+        image.maxHeight(50);
+        String reencoded = image.encode();
+        assertTrue("new height must apply, not the cached raster",
+                reencoded.contains("\"1;1;25;50"));
+    }
+
+    @Test
+    public void testChangingMaxColorsInvalidatesCache() {
+        byte[] data = createSixteenColorPng();
+        SixelImage image = new SixelImage(data);
+
+        assertEquals(16, paletteDefinitions(image.encode()).size());
+
+        image.maxColors(2);
+        assertEquals("new palette limit must apply, not the cached one",
+                2, paletteDefinitions(image.encode()).size());
+    }
+
+    @Test
+    public void testChangingUseRleInvalidatesCache() {
+        byte[] data = createSolidColorPng(100, 12, Color.MAGENTA);
+        SixelImage image = new SixelImage(data);
+
+        assertTrue(image.encode().contains("!"));
+
+        image.useRle(false);
+        assertTrue("disabling RLE must apply, not the cached encoding",
+                !image.encode().contains("!"));
+    }
+
+    @Test
+    public void testUnchangedOptionsRetainCache() {
+        byte[] data = createTestPng(10, 10, Color.RED);
+        SixelImage image = new SixelImage(data);
+
+        assertSame(image.encode(), image.encode());
+    }
+
+    @Test
     public void testSmallPalettesEncode() {
         byte[] data = createSixteenColorPng();
         int[] limits = { 2, 3, 7, 8, 256 };
