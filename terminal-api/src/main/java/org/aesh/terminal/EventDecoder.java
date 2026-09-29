@@ -64,13 +64,16 @@ public class EventDecoder implements Consumer<int[]> {
     private final int susp;
     private final int eof;
 
-    private Consumer<Signal> signalHandler;
+    // Handler slots are written by application threads and read by the
+    // input pump thread: all are volatile so (un)subscriptions are
+    // observed promptly instead of stalling on a stale read.
+    private volatile Consumer<Signal> signalHandler;
     private volatile Consumer<int[]> inputHandler;
-    private Consumer<TerminalTheme> themeChangeHandler;
-    private Consumer<MouseEvent> mouseHandler;
-    private Consumer<Boolean> focusHandler;
-    private InputPeeker inputPeeker;
-    private long escapeTimeout = ESCAPE_TIMEOUT_MS;
+    private volatile Consumer<TerminalTheme> themeChangeHandler;
+    private volatile Consumer<MouseEvent> mouseHandler;
+    private volatile Consumer<Boolean> focusHandler;
+    private volatile InputPeeker inputPeeker;
+    private volatile long escapeTimeout = ESCAPE_TIMEOUT_MS;
 
     private final Queue<int[]> inputQueue = new ConcurrentLinkedQueue<>();
 
