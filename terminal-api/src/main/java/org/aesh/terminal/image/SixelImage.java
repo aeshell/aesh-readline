@@ -276,29 +276,52 @@ public class SixelImage implements TerminalImage {
     private BufferedImage scaleImage(BufferedImage image) {
         int origWidth = image.getWidth();
         int origHeight = image.getHeight();
+        int[] scaled = scaledDimensions(origWidth, origHeight, maxWidth, maxHeight);
+        int newWidth = scaled[0];
+        int newHeight = scaled[1];
+
+        if (newWidth == origWidth && newHeight == origHeight) {
+            return image;
+        }
+
+        Image scaledImage = image.getScaledInstance(newWidth, newHeight, Image.SCALE_SMOOTH);
+        BufferedImage result = new BufferedImage(newWidth, newHeight, BufferedImage.TYPE_INT_RGB);
+        Graphics2D g = result.createGraphics();
+        g.drawImage(scaledImage, 0, 0, null);
+        g.dispose();
+        return result;
+    }
+
+    /**
+     * Shrink dimensions to fit the given limits, preserving aspect ratio.
+     * <p>
+     * The shrunken dimension uses long arithmetic (int products past two
+     * billion overflow) and clamps to at least one pixel: a one-pixel-wide
+     * image stays one wide no matter how short it gets, and likewise for
+     * height. Non-positive limits mean unlimited. Package-visible so the
+     * overflow and rounding cases are unit-testable without gigapixel
+     * images.
+     *
+     * @param origWidth the original width in pixels
+     * @param origHeight the original height in pixels
+     * @param maxWidth the width limit, or non-positive for unlimited
+     * @param maxHeight the height limit, or non-positive for unlimited
+     * @return the scaled {@code {width, height}}, each at least one
+     */
+    static int[] scaledDimensions(int origWidth, int origHeight, int maxWidth, int maxHeight) {
         int newWidth = origWidth;
         int newHeight = origHeight;
 
         // Scale down if larger than max dimensions
         if (maxWidth > 0 && origWidth > maxWidth) {
             newWidth = maxWidth;
-            newHeight = (origHeight * maxWidth) / origWidth;
+            newHeight = (int) Math.max(1, ((long) origHeight * maxWidth) / origWidth);
         }
         if (maxHeight > 0 && newHeight > maxHeight) {
             newHeight = maxHeight;
-            newWidth = (origWidth * maxHeight) / origHeight;
+            newWidth = (int) Math.max(1, ((long) origWidth * maxHeight) / origHeight);
         }
-
-        if (newWidth == origWidth && newHeight == origHeight) {
-            return image;
-        }
-
-        Image scaled = image.getScaledInstance(newWidth, newHeight, Image.SCALE_SMOOTH);
-        BufferedImage result = new BufferedImage(newWidth, newHeight, BufferedImage.TYPE_INT_RGB);
-        Graphics2D g = result.createGraphics();
-        g.drawImage(scaled, 0, 0, null);
-        g.dispose();
-        return result;
+        return new int[] { newWidth, newHeight };
     }
 
     private boolean isEmptyRow(String row) {

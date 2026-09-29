@@ -146,6 +146,67 @@ public class SixelImageTest {
     }
 
     @Test
+    public void testTallNarrowImageKeepsPositiveWidth() {
+        byte[] data = createTestPng(1, 100, Color.RED);
+        String encoded = new SixelImage(data).maxHeight(10).encode();
+
+        assertNotNull(encoded);
+        assertTrue("raster must stay 1x10, never 0-wide",
+                encoded.contains("\"1;1;1;10"));
+    }
+
+    @Test
+    public void testWideShortImageKeepsPositiveHeight() {
+        byte[] data = createTestPng(100, 1, Color.RED);
+        String encoded = new SixelImage(data).maxWidth(10).encode();
+
+        assertNotNull(encoded);
+        assertTrue("raster must stay 10x1, never 0-high",
+                encoded.contains("\"1;1;10;1"));
+    }
+
+    @Test
+    public void testBothLimitsTogether() {
+        byte[] data = createTestPng(100, 100, Color.RED);
+        String encoded = new SixelImage(data).maxWidth(10).maxHeight(5).encode();
+
+        assertNotNull(encoded);
+        assertTrue(encoded.contains("\"1;1;5;5"));
+    }
+
+    @Test
+    public void testNoResizeKeepsDimensions() {
+        byte[] data = createTestPng(10, 10, Color.RED);
+        String encoded = new SixelImage(data).maxWidth(100).maxHeight(100).encode();
+
+        assertNotNull(encoded);
+        assertTrue(encoded.contains("\"1;1;10;10"));
+    }
+
+    @Test
+    public void testScaledDimensions() {
+        assertArrayEquals(new int[] { 10, 5 },
+                SixelImage.scaledDimensions(100, 50, 10, -1));
+        assertArrayEquals(new int[] { 5, 5 },
+                SixelImage.scaledDimensions(100, 100, 10, 5));
+        assertArrayEquals(new int[] { 10, 10 },
+                SixelImage.scaledDimensions(10, 10, 100, 100));
+        assertArrayEquals(new int[] { 1, 10 },
+                SixelImage.scaledDimensions(1, 100, -1, 10));
+        assertArrayEquals(new int[] { 10, 1 },
+                SixelImage.scaledDimensions(100, 1, 10, -1));
+    }
+
+    @Test
+    public void testScaledDimensionsOverflow() {
+        // Intermediates reach 4e9 and 8e9: int math overflows, long holds.
+        assertArrayEquals(new int[] { 40000, 40000 },
+                SixelImage.scaledDimensions(100000, 100000, 40000, -1));
+        assertArrayEquals(new int[] { 80000, 40000 },
+                SixelImage.scaledDimensions(200000, 100000, -1, 40000));
+    }
+
+    @Test
     public void testRleEncoding() {
         // Create an image with runs of same color (good for RLE)
         byte[] data = createSolidColorPng(100, 12, Color.MAGENTA);
