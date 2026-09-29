@@ -5,6 +5,8 @@ import static org.junit.Assert.assertEquals;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.aesh.terminal.detect.TerminalTheme;
+import org.aesh.terminal.tty.MouseEvent;
 import org.aesh.terminal.tty.Signal;
 import org.junit.Before;
 import org.junit.Test;
@@ -136,5 +138,83 @@ public class EventDecoderSignalTest {
         assertEquals(0, signals.size());
         assertEquals(1, receivedInput.size());
         assertEquals(5, receivedInput.get(0).length);
+    }
+
+    @Test
+    public void testThemeDsrBeforeSignalIsFiltered() {
+        List<TerminalTheme> themeEvents = new ArrayList<>();
+        decoder.setThemeChangeHandler(themeEvents::add);
+
+        // CSI ? 997 ; 1 n (dark) followed by Ctrl+C in one chunk
+        decoder.accept(new int[] { 27, '[', '?', '9', '9', '7', ';', '1', 'n', 3 });
+
+        assertEquals(1, themeEvents.size());
+        assertEquals(TerminalTheme.DARK, themeEvents.get(0));
+        assertEquals(1, signals.size());
+        assertEquals(Signal.INT, signals.get(0));
+        assertEquals("the DSR must be consumed, not delivered raw",
+                0, receivedInput.size());
+    }
+
+    @Test
+    public void testFocusBeforeSignalIsFiltered() {
+        List<Boolean> focusEvents = new ArrayList<>();
+        decoder.setFocusHandler(focusEvents::add);
+
+        decoder.accept(new int[] { 27, '[', 'I', 3 });
+
+        assertEquals(1, focusEvents.size());
+        assertEquals(true, focusEvents.get(0));
+        assertEquals(1, signals.size());
+        assertEquals(Signal.INT, signals.get(0));
+        assertEquals(0, receivedInput.size());
+    }
+
+    @Test
+    public void testMouseBeforeSignalIsFiltered() {
+        List<MouseEvent> mouseEvents = new ArrayList<>();
+        decoder.setMouseHandler(mouseEvents::add);
+
+        // SGR press at (10,20) followed by Ctrl+C in one chunk
+        decoder.accept(new int[] {
+                27, '[', '<', '0', ';', '1', '0', ';', '2', '0', 'M', 3 });
+
+        assertEquals(1, mouseEvents.size());
+        assertEquals(1, signals.size());
+        assertEquals(Signal.INT, signals.get(0));
+        assertEquals(0, receivedInput.size());
+    }
+
+    @Test
+    public void testTextAroundMultipleSignalsKeepsOrder() {
+        decoder.accept(new int[] { 'a', 3, 'b', 26, 'c' });
+
+        assertEquals(2, signals.size());
+        assertEquals(Signal.INT, signals.get(0));
+        assertEquals(Signal.SUSP, signals.get(1));
+        assertEquals(3, receivedInput.size());
+        assertEquals('a', receivedInput.get(0)[0]);
+        assertEquals('b', receivedInput.get(1)[0]);
+        assertEquals('c', receivedInput.get(2)[0]);
+    }
+
+    @Test
+    public void testPreSignalSegmentQueuedWhenHandlerAbsent() {
+        EventDecoder unhandled = new EventDecoder();
+        List<Signal> unhandledSignals = new ArrayList<>();
+        unhandled.setSignalHandler(unhandledSignals::add);
+
+        unhandled.accept(new int[] { 'x', 3, 'y' });
+
+        assertEquals(1, unhandledSignals.size());
+        assertEquals(Signal.INT, unhandledSignals.get(0));
+
+        List<int[]> drained = new ArrayList<>();
+        unhandled.setInputHandler(drained::add);
+
+        assertEquals("both sides of the signal must have queued",
+                2, drained.size());
+        assertEquals('x', drained.get(0)[0]);
+        assertEquals('y', drained.get(1)[0]);
     }
 }

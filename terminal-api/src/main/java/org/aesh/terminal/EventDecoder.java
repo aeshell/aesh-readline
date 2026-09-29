@@ -301,7 +301,9 @@ public class EventDecoder implements Consumer<int[]> {
      * Signal characters are extracted and sent to the signal handler.
      * When a theme change handler is registered, {@code CSI ? 997 ; Ps n}
      * sequences are intercepted and routed to the theme change handler.
-     * Remaining input is sent to the input handler.
+     * Remaining input is sent to the input handler. Input preceding a
+     * signal travels the same filter/buffer path as trailing input,
+     * preserving dispatch order on both sides of the signal.
      *
      * @param input the input code points to process
      */
@@ -325,11 +327,15 @@ public class EventDecoder implements Consumer<int[]> {
                     event = Signal.EOF;
                 }
                 if (event != null) {
-                    // Send any input before this signal to the input handler
-                    if (i > segmentStart && inputHandler != null) {
+                    // Dispatch any input before this signal through the
+                    // normal filter/buffer path, preserving order: a
+                    // filtered reply ahead of the signal must reach its
+                    // handler first, and handler-absent input must queue
+                    // rather than drop.
+                    if (i > segmentStart) {
                         int[] segment = new int[i - segmentStart];
                         System.arraycopy(input, segmentStart, segment, 0, segment.length);
-                        inputHandler.accept(segment);
+                        dispatchFiltered(segment);
                     }
                     signalHandler.accept(event);
                     segmentStart = i + 1;
@@ -347,6 +353,19 @@ public class EventDecoder implements Consumer<int[]> {
             }
         }
         // Filter sequences (DSR theme, mouse SGR, focus) using VtParser
+        dispatchFiltered(input);
+    }
+
+    /**
+     * Send ordinary input through sequence filtering, then to the input
+     * handler — or queue it when no handler is installed. Every segment
+     * takes this one path, whether it precedes a signal or trails the
+     * last one, so filtering and handler-absent buffering behave
+     * identically on both sides of a signal.
+     *
+     * @param input the ordinary input code points to dispatch
+     */
+    private void dispatchFiltered(int[] input) {
         if (input.length > 0) {
             input = filterSequences(input);
         }
