@@ -166,10 +166,11 @@ public class Encoder implements Consumer<int[]> {
             } else if (c < 0x800) {
                 byteBuf[pos++] = (byte) (0xC0 | (c >> 6));
                 byteBuf[pos++] = (byte) (0x80 | (c & 0x3F));
-            } else if (Character.isHighSurrogate(c) && i + 1 < len) {
-                char low = s.charAt(++i);
+            } else if (Character.isHighSurrogate(c)) {
+                char low = i + 1 < len ? s.charAt(i + 1) : 0;
                 if (Character.isLowSurrogate(low)) {
                     int cp = Character.toCodePoint(c, low);
+                    i++;
                     // Ensure capacity for 4 bytes (surrogate pair)
                     if (pos + 4 > byteBuf.length) {
                         ensureByteBufCapacity(pos + (len - i) * 3 + 4);
@@ -179,12 +180,13 @@ public class Encoder implements Consumer<int[]> {
                     byteBuf[pos++] = (byte) (0x80 | ((cp >> 6) & 0x3F));
                     byteBuf[pos++] = (byte) (0x80 | (cp & 0x3F));
                 } else {
-                    // Unpaired high surrogate — encode as replacement
-                    byteBuf[pos++] = (byte) (0xE0 | (c >> 12));
-                    byteBuf[pos++] = (byte) (0x80 | ((c >> 6) & 0x3F));
-                    byteBuf[pos++] = (byte) (0x80 | (c & 0x3F));
-                    i--; // re-process low char
+                    // Unpaired high surrogates are not legal UTF-8:
+                    // emit the replacement character.
+                    byteBuf[pos++] = (byte) '?';
                 }
+            } else if (Character.isLowSurrogate(c)) {
+                // Lone low surrogates are not legal UTF-8 either.
+                byteBuf[pos++] = (byte) '?';
             } else {
                 byteBuf[pos++] = (byte) (0xE0 | (c >> 12));
                 byteBuf[pos++] = (byte) (0x80 | ((c >> 6) & 0x3F));
@@ -204,7 +206,7 @@ public class Encoder implements Consumer<int[]> {
         ensureByteBufCapacity(len);
         for (int i = 0; i < len; i++) {
             int cp = input[i];
-            if (cp >= 0x80) {
+            if (cp < 0 || cp >= 0x80) {
                 acceptUtf8MultiByte(input);
                 return;
             }
@@ -216,24 +218,22 @@ public class Encoder implements Consumer<int[]> {
     /**
      * UTF-8 encoding for inputs containing non-ASCII code points.
      * Two-pass: count exact byte size, then encode into the reusable byteBuf.
+     * Non-encodable values (surrogates, negatives, beyond U+10FFFF) count
+     * and encode as the single-byte replacement character, matching the
+     * general path's REPLACE policy.
      */
     private void acceptUtf8MultiByte(int[] input) {
         int byteCount = 0;
         for (int cp : input) {
-            if (cp < 0x80)
-                byteCount++;
-            else if (cp < 0x800)
-                byteCount += 2;
-            else if (cp < 0x10000)
-                byteCount += 3;
-            else
-                byteCount += 4;
+            byteCount += utf8ByteSize(cp);
         }
 
         ensureByteBufCapacity(byteCount);
         int pos = 0;
         for (int cp : input) {
-            if (cp < 0x80) {
+            if (!isValidCodePoint(cp)) {
+                byteBuf[pos++] = (byte) '?';
+            } else if (cp < 0x80) {
                 byteBuf[pos++] = (byte) cp;
             } else if (cp < 0x800) {
                 byteBuf[pos++] = (byte) (0xC0 | (cp >> 6));
@@ -250,6 +250,37 @@ public class Encoder implements Consumer<int[]> {
             }
         }
         out.write(byteBuf, 0, pos);
+    }
+
+    /**
+     * Whether an int is an encodable Unicode code point: in range and
+     * outside the surrogate range reserved for UTF-16 pairs.
+     *
+     * @param cp the value to check
+     * @return true if the value encodes to valid UTF-8
+     */
+    private static boolean isValidCodePoint(int cp) {
+        return cp >= 0 && cp <= 0x10FFFF && (cp < 0xD800 || cp > 0xDFFF);
+    }
+
+    /**
+     * Byte size of one code point in UTF-8, counting non-encodable
+     * values as the single-byte replacement character. Shared by the
+     * counting and fill passes so sizing stays exact.
+     *
+     * @param cp the code point to size
+     * @return the number of bytes its encoding occupies
+     */
+    private static int utf8ByteSize(int cp) {
+        if (!isValidCodePoint(cp))
+            return 1; // replacement character
+        if (cp < 0x80)
+            return 1;
+        if (cp < 0x800)
+            return 2;
+        if (cp < 0x10000)
+            return 3;
+        return 4;
     }
 
     /**

@@ -24,7 +24,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
+import java.nio.charset.CharsetDecoder;
+import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -318,5 +321,139 @@ public class EncoderTest {
             pos += part.length;
         }
         assertArrayEquals(new String(input, 0, input.length).getBytes(charset), actual);
+    }
+
+    private static final char LONE_HIGH = (char) 0xD800;
+    private static final char LONE_LOW = (char) 0xDC00;
+    private static final String EMOJI = new String(new int[] { 0x1F600 }, 0, 1);
+
+    @Test
+    public void testUnpairedSurrogatesEmitReplacement() throws Exception {
+        assertUtf8StringEncodes("A" + LONE_HIGH + "X", "A?X");
+        assertUtf8StringEncodes("A" + LONE_HIGH, "A?");
+        assertUtf8StringEncodes(LONE_LOW + "A", "?A");
+        assertUtf8StringEncodes("A" + LONE_LOW, "A?");
+        assertUtf8StringEncodes("" + LONE_HIGH + LONE_HIGH, "??");
+        assertUtf8StringEncodes("" + LONE_LOW + LONE_LOW, "??");
+    }
+
+    @Test
+    public void testValidPairBesideMalformedUnits() throws Exception {
+        assertUtf8StringEncodes("A" + LONE_HIGH + EMOJI + LONE_LOW + "B",
+                "A?" + EMOJI + "?B");
+    }
+
+    @Test
+    public void testInvalidCodePointsEmitReplacement() throws Exception {
+        assertUtf8CodePointsEncode(new int[] { 0xD800 }, new int[] { '?' });
+        assertUtf8CodePointsEncode(new int[] { 0xDFFF }, new int[] { '?' });
+        assertUtf8CodePointsEncode(new int[] { -1 }, new int[] { '?' });
+        assertUtf8CodePointsEncode(new int[] { 0x110000 }, new int[] { '?' });
+        assertUtf8CodePointsEncode(new int[] { 'A', 0xD800, 0x1F600, -5, 'B' },
+                new int[] { 'A', '?', 0x1F600, '?', 'B' });
+    }
+
+    @Test
+    public void testGeneralPathReplacesSurrogatesLikeJdk() throws Exception {
+        assertEncodesLikeJdk(Charset.forName("windows-1252"), new int[] { 'A', 0xD800, 'B' });
+        assertEncodesLikeJdk(Charset.forName("windows-1252"), new int[] { 'A', 0xDC00, 'B' });
+        assertEncodesLikeJdk(Charset.forName("UTF-16LE"), new int[] { 'A', 0xD800, 'B' });
+    }
+
+    /**
+     * Encode a string through the UTF-8 path and require byte equality
+     * with the JDK's conversion plus strict decodability: the output
+     * must be valid UTF-8, not just the expected bytes.
+     *
+     * @param input the string to encode, possibly with lone surrogates
+     * @param expected the string the output must strictly decode to
+     */
+    private static void assertUtf8StringEncodes(String input, String expected) throws Exception {
+        byte[] actual = encodeUtf8(input, false);
+        assertArrayEquals(expected.getBytes(StandardCharsets.UTF_8), actual);
+        assertStrictDecodesTo(expected, actual);
+        // The int[] path must agree with the String path on the same shapes.
+        byte[] viaCodePoints = encodeUtf8(input, true);
+        assertArrayEquals("String and int[] paths disagree for " + readable(input),
+                actual, viaCodePoints);
+    }
+
+    /**
+     * Encode raw code points through the UTF-8 path, covering values
+     * no String can hold (negatives, beyond U+10FFFF).
+     *
+     * @param input the code points to encode
+     * @param expectedCodePoints the code points the output must strictly decode to
+     */
+    private static void assertUtf8CodePointsEncode(int[] input, int[] expectedCodePoints)
+            throws Exception {
+        byte[] actual = encodeUtf8CodePoints(input);
+        String expected = new String(expectedCodePoints, 0, expectedCodePoints.length);
+        assertArrayEquals(expected.getBytes(StandardCharsets.UTF_8), actual);
+        assertStrictDecodesTo(expected, actual);
+    }
+
+    private static void assertStrictDecodesTo(String expected, byte[] actual) throws Exception {
+        CharsetDecoder decoder = StandardCharsets.UTF_8.newDecoder()
+                .onMalformedInput(CodingErrorAction.REPORT)
+                .onUnmappableCharacter(CodingErrorAction.REPORT);
+        assertEquals(expected, decoder.decode(ByteBuffer.wrap(actual)).toString());
+    }
+
+    private static byte[] encodeUtf8(String text, boolean asCodePoints) {
+        if (asCodePoints) {
+            return encodeUtf8CodePoints(text.codePoints().toArray());
+        }
+        final List<byte[]> captured = new ArrayList<>();
+        Encoder encoder = new Encoder(StandardCharsets.UTF_8, new ByteWriter() {
+            @Override
+            public void write(byte[] buf, int off, int len) {
+                byte[] copy = new byte[len];
+                System.arraycopy(buf, off, copy, 0, len);
+                captured.add(copy);
+            }
+        });
+        encoder.accept(text);
+        return flatten(captured);
+    }
+
+    private static byte[] encodeUtf8CodePoints(int[] input) {
+        final List<byte[]> captured = new ArrayList<>();
+        Encoder encoder = new Encoder(StandardCharsets.UTF_8, new ByteWriter() {
+            @Override
+            public void write(byte[] buf, int off, int len) {
+                byte[] copy = new byte[len];
+                System.arraycopy(buf, off, copy, 0, len);
+                captured.add(copy);
+            }
+        });
+        encoder.accept(input);
+        return flatten(captured);
+    }
+
+    private static byte[] flatten(List<byte[]> parts) {
+        int total = 0;
+        for (byte[] part : parts) {
+            total += part.length;
+        }
+        byte[] out = new byte[total];
+        int pos = 0;
+        for (byte[] part : parts) {
+            System.arraycopy(part, 0, out, pos, part.length);
+            pos += part.length;
+        }
+        return out;
+    }
+
+    private static String readable(String text) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < text.length(); i++) {
+            if (i > 0) {
+                sb.append(' ');
+            }
+            sb.append("U+");
+            sb.append(Integer.toHexString(text.charAt(i)).toUpperCase());
+        }
+        return sb.toString();
     }
 }
