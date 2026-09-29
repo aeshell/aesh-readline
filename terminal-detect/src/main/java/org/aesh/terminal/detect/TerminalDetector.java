@@ -381,13 +381,25 @@ final class TerminalDetector {
     }
 
     private static TerminalTheme detectWindowsTheme() {
-        String value = regQuery(
+        Integer value = regQueryDword(
                 "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
                 "AppsUseLightTheme");
-        if (value != null) {
-            return "0".equals(value.trim()) ? TerminalTheme.DARK : TerminalTheme.LIGHT;
+        return themeFromDword(value);
+    }
+
+    /**
+     * Map a registry DWORD theme value to a theme. {@code AppsUseLightTheme}
+     * reports {@code 0} for dark mode and nonzero for light mode; a missing
+     * or malformed value resolves to UNKNOWN rather than a guessed theme.
+     *
+     * @param value the parsed DWORD value, or null if unavailable
+     * @return the theme, or UNKNOWN if the value is missing
+     */
+    static TerminalTheme themeFromDword(Integer value) {
+        if (value == null) {
+            return TerminalTheme.UNKNOWN;
         }
-        return TerminalTheme.UNKNOWN;
+        return value == 0 ? TerminalTheme.DARK : TerminalTheme.LIGHT;
     }
 
     private static TerminalTheme detectLinuxDesktopTheme() {
@@ -415,6 +427,21 @@ final class TerminalDetector {
     }
 
     private static String execCommand(String... cmd) {
+        return runCommand(cmd);
+    }
+
+    /**
+     * Run a command, capturing merged stdout/stderr output.
+     * <p>
+     * Shared by the platform probes so subprocess lifecycle handling
+     * (drain, wait, exit check, destroy) lives in one place. Text is
+     * decoded with the platform default charset, matching the previous
+     * per-call behavior.
+     *
+     * @param cmd the command and arguments
+     * @return the captured output, or null on failure or nonzero exit
+     */
+    private static String runCommand(String... cmd) {
         Process process = null;
         try {
             process = new ProcessBuilder(cmd)
@@ -466,30 +493,61 @@ final class TerminalDetector {
     }
 
     private static String regQuery(String key, String valueName) {
-        Process process = null;
-        try {
-            process = new ProcessBuilder("reg", "query", key, "/v", valueName)
-                    .redirectErrorStream(true).start();
-            byte[] buf = new byte[1024];
-            StringBuilder sb = new StringBuilder();
-            int n;
-            while ((n = process.getInputStream().read(buf)) != -1) {
-                sb.append(new String(buf, 0, n));
-            }
-            process.waitFor();
-            if (process.exitValue() != 0)
-                return null;
-            for (String line : sb.toString().split("\\r?\\n")) {
-                int idx = line.indexOf("REG_SZ");
-                if (idx >= 0)
-                    return line.substring(idx + 6).trim();
-            }
+        String output = runCommand("reg", "query", key, "/v", valueName);
+        if (output == null) {
             return null;
-        } catch (Exception ignored) {
-            return null;
-        } finally {
-            if (process != null)
-                process.destroy();
         }
+        for (String line : output.split("\\r?\\n")) {
+            int idx = line.indexOf("REG_SZ");
+            if (idx >= 0)
+                return line.substring(idx + 6).trim();
+        }
+        return null;
+    }
+
+    /**
+     * Query a REG_DWORD registry value.
+     *
+     * @param key the registry key
+     * @param valueName the value name
+     * @return the parsed value, or null if missing or malformed
+     */
+    private static Integer regQueryDword(String key, String valueName) {
+        String output = runCommand("reg", "query", key, "/v", valueName);
+        return parseRegDword(output, valueName);
+    }
+
+    /**
+     * Parse a REG_DWORD value from {@code reg query} output. Only DWORD
+     * lines match; string values for the same name are ignored. Package
+     * visible for headless tests with fixture output.
+     *
+     * @param output the command output, or null if the command failed
+     * @param valueName the value name to find
+     * @return the parsed value, or null if missing or malformed
+     */
+    static Integer parseRegDword(String output, String valueName) {
+        if (output == null || valueName == null) {
+            return null;
+        }
+        for (String line : output.split("\\r?\\n")) {
+            if (!line.contains(valueName)) {
+                continue;
+            }
+            int idx = line.indexOf("REG_DWORD");
+            if (idx < 0) {
+                continue;
+            }
+            String[] tokens = line.substring(idx + 9).trim().split("\\s+");
+            if (tokens.length == 0 || tokens[0].isEmpty()) {
+                return null;
+            }
+            try {
+                return Integer.decode(tokens[0]);
+            } catch (NumberFormatException e) {
+                return null;
+            }
+        }
+        return null;
     }
 }

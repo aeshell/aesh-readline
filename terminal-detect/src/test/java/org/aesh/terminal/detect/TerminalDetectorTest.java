@@ -15,6 +15,7 @@ package org.aesh.terminal.detect;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.HashMap;
@@ -108,5 +109,52 @@ public class TerminalDetectorTest {
     public void testOuterIdentitySurvivesTmuxTerm() {
         TerminalDetector detector = detector("TERM_PROGRAM", "iTerm.app", "TERM", "tmux-256color");
         assertEquals("iterm2", detector.terminalName);
+    }
+
+    @Test
+    public void testParseRegDwordHexValues() {
+        String output = "\nHKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion"
+                + "\\Themes\\Personalize\n"
+                + "    AppsUseLightTheme    REG_DWORD    0x0\n";
+        assertEquals(Integer.valueOf(0), TerminalDetector.parseRegDword(output, "AppsUseLightTheme"));
+
+        String light = output.replace("0x0", "0x1");
+        assertEquals(Integer.valueOf(1), TerminalDetector.parseRegDword(light, "AppsUseLightTheme"));
+    }
+
+    @Test
+    public void testParseRegDwordDecimalAndWhitespace() {
+        String output = "HKEY_CURRENT_USER\\Software\\X\n"
+                + "\tAppsUseLightTheme\tREG_DWORD\t1\n";
+        assertEquals(Integer.valueOf(1), TerminalDetector.parseRegDword(output, "AppsUseLightTheme"));
+    }
+
+    @Test
+    public void testParseRegDwordIgnoresOtherTypesAndNames() {
+        String output = "HKEY_CURRENT_USER\\Software\\X\n"
+                + "    AppsUseLightTheme    REG_SZ    0x0\n"
+                + "    OtherValue    REG_DWORD    0x1\n";
+        assertNull("string-typed values must not parse as DWORD",
+                TerminalDetector.parseRegDword(output, "AppsUseLightTheme"));
+        assertNull("other value names must not match",
+                TerminalDetector.parseRegDword(output, "MissingValue"));
+    }
+
+    @Test
+    public void testParseRegDwordMalformed() {
+        assertNull(TerminalDetector.parseRegDword(null, "AppsUseLightTheme"));
+        assertNull(TerminalDetector.parseRegDword("", "AppsUseLightTheme"));
+        assertNull(TerminalDetector.parseRegDword(
+                "    AppsUseLightTheme    REG_DWORD\n", "AppsUseLightTheme"));
+        assertNull(TerminalDetector.parseRegDword(
+                "    AppsUseLightTheme    REG_DWORD    0xZZ\n", "AppsUseLightTheme"));
+    }
+
+    @Test
+    public void testThemeFromDword() {
+        assertEquals(TerminalTheme.DARK, TerminalDetector.themeFromDword(0));
+        assertEquals(TerminalTheme.LIGHT, TerminalDetector.themeFromDword(1));
+        assertEquals(TerminalTheme.LIGHT, TerminalDetector.themeFromDword(0x1));
+        assertEquals(TerminalTheme.UNKNOWN, TerminalDetector.themeFromDword(null));
     }
 }
