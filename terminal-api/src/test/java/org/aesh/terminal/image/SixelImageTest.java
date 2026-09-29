@@ -25,6 +25,10 @@ import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.imageio.ImageIO;
 
@@ -85,6 +89,60 @@ public class SixelImageTest {
         String encoded = image.encode();
         assertNotNull(encoded);
         // Should have color definitions but limited to 16
+    }
+
+    @Test
+    public void testSmallPalettesEncode() {
+        byte[] data = createSixteenColorPng();
+        int[] limits = { 2, 3, 7, 8, 256 };
+        int[] expectedCounts = { 2, 3, 7, 8, 16 };
+        for (int i = 0; i < limits.length; i++) {
+            String encoded = new SixelImage(data).maxColors(limits[i]).encode();
+            assertNotNull("limit " + limits[i], encoded);
+            assertEquals("limit " + limits[i] + " definition count",
+                    expectedCounts[i], paletteDefinitions(encoded).size());
+        }
+    }
+
+    @Test
+    public void testTwoColorPaletteSemantics() {
+        // Classic cube corners in enumeration order: black, blue, ...
+        byte[] data = createSixteenColorPng();
+        Map<Integer, String> defs = paletteDefinitions(
+                new SixelImage(data).maxColors(2).encode());
+        assertEquals("0;0;0", defs.get(0));
+        assertEquals("0;0;100", defs.get(1));
+    }
+
+    @Test
+    public void testSevenColorPaletteSemantics() {
+        byte[] data = createSixteenColorPng();
+        Map<Integer, String> defs = paletteDefinitions(
+                new SixelImage(data).maxColors(7).encode());
+        assertEquals(7, defs.size());
+        assertEquals("100;100;0", defs.get(6));
+        assertTrue("white must be capped away", !defs.containsKey(7));
+    }
+
+    @Test
+    public void testEightColorPaletteIsFullCube() {
+        byte[] data = createSixteenColorPng();
+        Map<Integer, String> defs = paletteDefinitions(
+                new SixelImage(data).maxColors(8).encode());
+        assertEquals(8, defs.size());
+        assertEquals("100;100;100", defs.get(7));
+    }
+
+    @Test
+    public void testClosestMappingOnTinyPalette() {
+        // 30x6: vertical red/green/blue thirds, exactly one sixel band.
+        // At maxColors(2) the palette is black+blue: red and green thirds
+        // map to index 0, the blue third to index 1.
+        byte[] data = createThreeColorPng();
+        String encoded = new SixelImage(data).maxColors(2).useRle(false).encode();
+
+        assertEquals("~~~~~~~~~~~~~~~~~~~~??????????", dataRow(encoded, 0));
+        assertEquals("????????????????????~~~~~~~~~~", dataRow(encoded, 1));
     }
 
     @Test
@@ -200,5 +258,66 @@ public class SixelImageTest {
         } catch (Exception e) {
             throw new RuntimeException("Failed to create test JPEG", e);
         }
+    }
+
+    private byte[] createThreeColorPng() {
+        try {
+            BufferedImage img = new BufferedImage(30, 6, BufferedImage.TYPE_INT_RGB);
+            Graphics2D g = img.createGraphics();
+            g.setColor(Color.RED);
+            g.fillRect(0, 0, 10, 6);
+            g.setColor(Color.GREEN);
+            g.fillRect(10, 0, 10, 6);
+            g.setColor(Color.BLUE);
+            g.fillRect(20, 0, 10, 6);
+            g.dispose();
+
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            ImageIO.write(img, "PNG", baos);
+            return baos.toByteArray();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to create three-color PNG", e);
+        }
+    }
+
+    private byte[] createSixteenColorPng() {
+        Color[] colors = { Color.BLACK, Color.WHITE, Color.RED, Color.GREEN,
+                Color.BLUE, Color.CYAN, Color.MAGENTA, Color.YELLOW,
+                Color.GRAY, Color.ORANGE, Color.PINK, new Color(1, 2, 3),
+                new Color(200, 100, 50), new Color(10, 200, 30),
+                new Color(90, 90, 200), new Color(30, 30, 30) };
+        try {
+            BufferedImage img = new BufferedImage(16, 1, BufferedImage.TYPE_INT_RGB);
+            Graphics2D g = img.createGraphics();
+            for (int x = 0; x < colors.length; x++) {
+                g.setColor(colors[x]);
+                g.fillRect(x, 0, 1, 1);
+            }
+            g.dispose();
+
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            ImageIO.write(img, "PNG", baos);
+            return baos.toByteArray();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to create sixteen-color PNG", e);
+        }
+    }
+
+    private static Map<Integer, String> paletteDefinitions(String encoded) {
+        Map<Integer, String> defs = new HashMap<>();
+        Matcher m = Pattern.compile("#(\\d+);2;(\\d+);(\\d+);(\\d+)").matcher(encoded);
+        while (m.find()) {
+            defs.put(Integer.parseInt(m.group(1)),
+                    m.group(2) + ";" + m.group(3) + ";" + m.group(4));
+        }
+        return defs;
+    }
+
+    private static String dataRow(String encoded, int color) {
+        Matcher m = Pattern.compile("#" + color + "([?-~]+)").matcher(encoded);
+        if (m.find()) {
+            return m.group(1);
+        }
+        return "";
     }
 }

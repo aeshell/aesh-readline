@@ -368,9 +368,11 @@ public class SixelImage implements TerminalImage {
             return new ColorPalette(colors);
         }
 
-        // Simple quantization: divide color space into buckets
+        // Simple quantization: divide color space into buckets. At least
+        // two buckets per channel: a single-bucket "cube" is one point
+        // that spans nothing, and its (buckets - 1) divisor is zero.
         List<int[]> palette = new ArrayList<>();
-        int buckets = (int) Math.cbrt(maxColors);
+        int buckets = Math.max(2, (int) Math.cbrt(maxColors));
 
         for (int r = 0; r < buckets; r++) {
             for (int g = 0; g < buckets; g++) {
