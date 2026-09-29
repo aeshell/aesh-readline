@@ -565,7 +565,16 @@ public class ConnectionOscQueryTest {
         return new MockConnection() {
             @Override
             public Device device() {
-                return new BaseDevice("kitty");
+                // Override the capability directly: BaseDevice would
+                // otherwise sniff the ambient test-machine environment
+                // (TerminalEnvironment singleton), making the suite
+                // pass or fail with the runner's TERM setting.
+                return new BaseDevice("kitty") {
+                    @Override
+                    public boolean supportsThemeQuery() {
+                        return true;
+                    }
+                };
             }
 
             @Override
