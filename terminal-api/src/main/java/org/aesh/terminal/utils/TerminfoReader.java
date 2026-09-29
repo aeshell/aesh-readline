@@ -51,6 +51,10 @@ final class TerminfoReader {
 
     private static final int ABSENT_16 = 0xFFFF;
     private static final long ABSENT_32 = 0xFFFFFFFFL;
+    // Cancelled capabilities (-2) are explicitly disabled, e.g. by tic
+    // compiling "cap@": omitted from output exactly like absent ones.
+    private static final int CANCELLED_16 = 0xFFFE;
+    private static final long CANCELLED_32 = 0xFFFFFFFEL;
 
     private static final String[] DEFAULT_DIRS = {
             "/etc/terminfo", "/usr/share/terminfo", "/usr/lib/terminfo"
@@ -390,6 +394,7 @@ final class TerminfoReader {
     }
 
     private static void collectBools(List<String> caps, boolean[] bools) {
+        // Cancelled booleans compile to 0, so only true bytes emit.
         int limit = Math.min(bools.length, BOOL_NAMES.length);
         for (int i = 0; i < limit; i++) {
             if (bools[i]) {
@@ -402,7 +407,11 @@ final class TerminfoReader {
         int limit = Math.min(nums.length, NUM_NAMES.length);
         for (int i = 0; i < limit; i++) {
             long value = nums[i];
-            if (value == ABSENT_16 || (extended && value == ABSENT_32)) {
+            // Absent (-1) and cancelled (-2) never advertise. The 16-bit
+            // absent value is a legitimate 32-bit value (65535), so each
+            // width recognizes only its own sentinels.
+            if (extended ? (value == ABSENT_32 || value == CANCELLED_32)
+                    : (value == ABSENT_16 || value == CANCELLED_16)) {
                 continue;
             }
             caps.add(NUM_NAMES[i] + "#" + value);
@@ -414,7 +423,10 @@ final class TerminfoReader {
         int limit = Math.min(offsets.length, STR_NAMES.length);
         for (int i = 0; i < limit; i++) {
             int offset = offsets[i];
-            if (offset == ABSENT_16) {
+            // Absent (-1) and cancelled (-2) never advertise. The
+            // cancelled check is explicit rather than relying on the
+            // bounds check below, which a near-full string table defeats.
+            if (offset == ABSENT_16 || offset == CANCELLED_16) {
                 continue;
             }
             if (offset < 0 || offset >= strSize) {

@@ -196,7 +196,8 @@ public class TerminfoReaderTest {
     private static void writeEntry(File root, String subdir, String name, byte[] data)
             throws Exception {
         File dir = new File(root, subdir);
-        assertTrue(dir.mkdirs());
+        dir.mkdirs();
+        assertTrue(dir.isDirectory());
         Files.write(new File(dir, name).toPath(), data);
     }
 
@@ -323,5 +324,173 @@ public class TerminfoReaderTest {
         assertNull(TerminfoReader.readEntry("nope",
                 env("TERMINFO", db.getAbsolutePath()),
                 fixtureDirs.newFolder("home").getAbsolutePath()));
+    }
+
+    // ==================== Compiled sentinels ====================
+
+    /**
+     * Build a legacy entry with 14 numeric slots, cols and colors set
+     * to the given values, everything else absent.
+     */
+    private static byte[] legacyNumsEntry(int colsValue, int colorsValue) {
+        byte[] names = "t|Test term\0".getBytes(StandardCharsets.ISO_8859_1);
+        ByteBuffer buf = ByteBuffer.allocate(12 + names.length + 14 * 2)
+                .order(ByteOrder.LITTLE_ENDIAN);
+        buf.putShort((short) 0x011A);
+        buf.putShort((short) names.length);
+        buf.putShort((short) 0);
+        buf.putShort((short) 14);
+        buf.putShort((short) 0);
+        buf.putShort((short) 0);
+        buf.put(names);
+        for (int i = 0; i < 14; i++) {
+            int value = ABSENT_SENTINEL;
+            if (i == 0) {
+                value = colsValue;
+            } else if (i == 13) {
+                value = colorsValue;
+            }
+            buf.putShort((short) value);
+        }
+        return buf.array();
+    }
+
+    private static final int ABSENT_SENTINEL = 0xFFFF;
+
+    /**
+     * Build an extended (32-bit) entry with 14 numeric slots, colors
+     * and wnum set to the given values, everything else absent.
+     */
+    private static byte[] extendedNumsEntry(long colorsValue, long wnumValue) {
+        byte[] names = "t|Test term\0".getBytes(StandardCharsets.ISO_8859_1);
+        ByteBuffer buf = ByteBuffer.allocate(12 + names.length + 14 * 4)
+                .order(ByteOrder.LITTLE_ENDIAN);
+        buf.putShort((short) 0x021E);
+        buf.putShort((short) names.length);
+        buf.putShort((short) 0);
+        buf.putShort((short) 14);
+        buf.putShort((short) 0);
+        buf.putShort((short) 0);
+        buf.put(names);
+        for (int i = 0; i < 14; i++) {
+            long value = 0xFFFFFFFFL;
+            if (i == 12) {
+                value = wnumValue;
+            } else if (i == 13) {
+                value = colorsValue;
+            }
+            buf.putInt((int) value);
+        }
+        return buf.array();
+    }
+
+    @Test
+    public void testCancelledNumericsOmitted() throws Exception {
+        File db = fixtureDirs.newFolder("canceldb");
+        writeEntry(db, "t", "testcancel", legacyNumsEntry(80, 0xFFFE));
+
+        String text = TerminfoReader.readEntry("testcancel",
+                env("TERMINFO", db.getAbsolutePath()),
+                fixtureDirs.newFolder("home").getAbsolutePath());
+
+        assertNotNull(text);
+        assertTrue(text.contains("cols#80"));
+        assertTrue("cancelled colors must not advertise as 65534",
+                !text.contains("colors"));
+    }
+
+    @Test
+    public void testExtended32BitSentinels() throws Exception {
+        File db = fixtureDirs.newFolder("extdb");
+        writeEntry(db, "t", "testvalid", extendedNumsEntry(65535, 0xFFFFFFFFL));
+        writeEntry(db, "t", "testcancelled", extendedNumsEntry(0xFFFFFFFEL, 0xFFFFFFFFL));
+        String home = fixtureDirs.newFolder("home").getAbsolutePath();
+
+        String valid = TerminfoReader.readEntry("testvalid",
+                env("TERMINFO", db.getAbsolutePath()), home);
+        assertNotNull(valid);
+        assertTrue("65535 is a real 32-bit value", valid.contains("colors#65535"));
+        assertTrue(!valid.contains("wnum"));
+
+        String cancelled = TerminfoReader.readEntry("testcancelled",
+                env("TERMINFO", db.getAbsolutePath()), home);
+        assertNotNull(cancelled);
+        assertTrue("cancelled colors must not advertise", !cancelled.contains("colors"));
+    }
+
+    @Test
+    public void testCancelledStringOmitted() throws Exception {
+        // A near-full string table defeats the bounds check that used to
+        // stand in for an explicit cancelled-offset check: only the
+        // explicit check omits the entry instead of emitting emptiness.
+        int strSize = 65535;
+        byte[] names = "t|Test term\0".getBytes(StandardCharsets.ISO_8859_1);
+        ByteBuffer buf = ByteBuffer.allocate(12 + names.length + 2 + strSize)
+                .order(ByteOrder.LITTLE_ENDIAN);
+        buf.putShort((short) 0x011A);
+        buf.putShort((short) names.length);
+        buf.putShort((short) 0);
+        buf.putShort((short) 0);
+        buf.putShort((short) 1);
+        buf.putShort((short) strSize);
+        buf.put(names);
+        buf.putShort((short) 0xFFFE);
+        for (int i = 0; i < strSize; i++) {
+            buf.put((byte) 0);
+        }
+        File db = fixtureDirs.newFolder("strdb");
+        writeEntry(db, "t", "testcancel", buf.array());
+
+        String text = TerminfoReader.readEntry("testcancel",
+                env("TERMINFO", db.getAbsolutePath()),
+                fixtureDirs.newFolder("home").getAbsolutePath());
+
+        assertNotNull(text);
+        assertTrue("cancelled string must not emit emptiness", !text.contains("cbt"));
+    }
+
+    private static boolean hasTic() {
+        for (String dir : new String[] { "/usr/bin", "/bin", "/usr/local/bin" }) {
+            if (new File(dir, "tic").isFile()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Test
+    public void testTicCancelledEntryMatchesInfocmp() throws Exception {
+        Assume.assumeTrue("tic not available", hasTic());
+        Assume.assumeTrue("infocmp not available", hasInfocmp());
+        File work = fixtureDirs.newFolder("ticdb");
+        File src = new File(work, "cancel.src");
+        Files.write(src.toPath(),
+                "testcancel|test cancel,\n\tcolors@,\n\tcols#80,\n"
+                        .getBytes(StandardCharsets.ISO_8859_1));
+        File db = new File(work, "db");
+        assertTrue(db.mkdir());
+        Process tic = new ProcessBuilder("tic", "-o", db.getAbsolutePath(),
+                src.getAbsolutePath()).redirectErrorStream(true).start();
+        Assume.assumeTrue("tic failed", tic.waitFor() == 0);
+
+        String direct = TerminfoReader.readEntry("testcancel",
+                env("TERMINFO", db.getAbsolutePath()), work.getAbsolutePath());
+        assertNotNull(direct);
+
+        ProcessBuilder infocmp = new ProcessBuilder("infocmp", "testcancel");
+        infocmp.environment().put("TERMINFO", db.getAbsolutePath());
+        Process response = infocmp.redirectErrorStream(true).start();
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        InputStream in = response.getInputStream();
+        byte[] chunk = new byte[4096];
+        int n;
+        while ((n = in.read(chunk)) > 0) {
+            buffer.write(chunk, 0, n);
+        }
+        Assume.assumeTrue("infocmp failed", response.waitFor() == 0);
+        Parsed expected = parse(new String(buffer.toByteArray(), "ISO-8859-1"));
+        Parsed actual = parse(direct);
+        assertEquals(expected.ints, actual.ints);
+        assertEquals(expected.bools, actual.bools);
     }
 }
