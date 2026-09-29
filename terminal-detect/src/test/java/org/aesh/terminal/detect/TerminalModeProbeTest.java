@@ -124,4 +124,42 @@ public class TerminalModeProbeTest {
         assertEquals(ModeSupport.SUPPORTED, result.mode2027);
         assertTrue(result.da1Received);
     }
+
+    @Test
+    public void testParseDECRPM_DA1First() {
+        // DA1 arriving before the mode reports must not consume them:
+        // each CSI is framed independently (#307).
+        String response = "\033[?62;4c\033[?2026;1$y\033[?2027;1$y";
+        TerminalColorQuery result = new TerminalColorQuery();
+        TerminalColorQuery.parseDA1Response(response, result);
+        TerminalColorQuery.parseDECRPMResponses(response, result);
+
+        assertTrue(result.da1Received);
+        assertEquals(ModeSupport.SUPPORTED, result.mode2026);
+        assertEquals(ModeSupport.SUPPORTED, result.mode2027);
+    }
+
+    @Test
+    public void testParseDECRPM_DA1Between() {
+        String response = "\033[?2026;1$y\033[?62;4c\033[?2027;0$y";
+        TerminalColorQuery result = new TerminalColorQuery();
+        TerminalColorQuery.parseDA1Response(response, result);
+        TerminalColorQuery.parseDECRPMResponses(response, result);
+
+        assertTrue(result.da1Received);
+        assertEquals(ModeSupport.SUPPORTED, result.mode2026);
+        assertEquals(ModeSupport.NOT_SUPPORTED, result.mode2027);
+    }
+
+    @Test
+    public void testParseDECRPM_DA1After() {
+        String response = "\033[?2026;1$y\033[?2027;1$y\033[?62;4c";
+        TerminalColorQuery result = new TerminalColorQuery();
+        TerminalColorQuery.parseDA1Response(response, result);
+        TerminalColorQuery.parseDECRPMResponses(response, result);
+
+        assertTrue(result.da1Received);
+        assertEquals(ModeSupport.SUPPORTED, result.mode2026);
+        assertEquals(ModeSupport.SUPPORTED, result.mode2027);
+    }
 }

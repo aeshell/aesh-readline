@@ -472,6 +472,11 @@ final class TerminalColorQuery {
      * Parse DECRPM (DEC Private Mode Report) responses for Mode 2026 and 2027.
      * Format: ESC [ ? {mode} ; {Ps} $ y
      * Ps: 0=not recognized, 1=set, 2=reset(recognized), 3=permanently set, 4=permanently reset
+     * <p>
+     * Each CSI is framed independently, mirroring {@link #parseDA1Response}:
+     * only a sequence terminated by {@code $y} is a mode report. Other
+     * CSI responses sharing the {@code ESC[?} prefix (e.g. DA1's
+     * {@code ...c}) are skipped without consuming the next DECRPM.
      */
     static void parseDECRPMResponses(String response, TerminalColorQuery result) {
         // If DA1 was received, default unresponded modes to NOT_SUPPORTED
@@ -482,46 +487,54 @@ final class TerminalColorQuery {
         }
 
         int pos = 0;
-        while (pos < response.length()) {
-            // Find ESC [ ?
+        while (true) {
+            // Find ESC[? ...
             int start = response.indexOf("\033[?", pos);
             if (start < 0)
                 break;
-
-            // Find $ y (DECRPM terminator)
-            int dollarY = response.indexOf("$y", start + 3);
-            if (dollarY < 0) {
-                // Try to find 'c' (DA1) or other terminator to advance past this CSI
-                int cPos = response.indexOf('c', start + 3);
-                if (cPos >= 0) {
-                    pos = cPos + 1;
-                    continue;
-                }
-                break;
+            // ... scan to this CSI's own final byte (0x40-0x7E).
+            int end = start + 3;
+            while (end < response.length() && !isCsiFinal(response.charAt(end))) {
+                end++;
             }
+            if (end < response.length() && response.charAt(end) == 'y'
+                    && end > start + 3 && response.charAt(end - 1) == '$') {
+                // Parse the params between ESC[? and $y
+                String params = response.substring(start + 3, end - 1);
+                String[] parts = params.split(";");
+                if (parts.length >= 2) {
+                    try {
+                        int mode = Integer.parseInt(parts[0].trim());
+                        int ps = Integer.parseInt(parts[1].trim());
+                        // Ps: 1=set, 2=reset(recognized), 3=permanently set → SUPPORTED
+                        //     0=not recognized, 4=permanently reset → NOT_SUPPORTED
+                        ModeSupport support = (ps >= 1 && ps <= 3)
+                                ? ModeSupport.SUPPORTED
+                                : ModeSupport.NOT_SUPPORTED;
 
-            // Parse the params between ESC[? and $y
-            String params = response.substring(start + 3, dollarY);
-            String[] parts = params.split(";");
-            if (parts.length >= 2) {
-                try {
-                    int mode = Integer.parseInt(parts[0].trim());
-                    int ps = Integer.parseInt(parts[1].trim());
-                    // Ps: 1=set, 2=reset(recognized), 3=permanently set → SUPPORTED
-                    //     0=not recognized, 4=permanently reset → NOT_SUPPORTED
-                    ModeSupport support = (ps >= 1 && ps <= 3)
-                            ? ModeSupport.SUPPORTED
-                            : ModeSupport.NOT_SUPPORTED;
-
-                    if (mode == 2026)
-                        result.mode2026 = support;
-                    else if (mode == 2027)
-                        result.mode2027 = support;
-                } catch (NumberFormatException ignored) {
+                        if (mode == 2026)
+                            result.mode2026 = support;
+                        else if (mode == 2027)
+                            result.mode2027 = support;
+                    } catch (NumberFormatException ignored) {
+                    }
                 }
             }
-            pos = dollarY + 2;
+            // Always advance past this one CSI (or past the end); the next
+            // iteration finds the following response, if any.
+            pos = end + 1;
         }
+    }
+
+    /**
+     * Check for a CSI final byte (0x40-0x7E): parameters, intermediates,
+     * and private markers all fall below this range.
+     *
+     * @param c the character to test
+     * @return true if it terminates a CSI sequence
+     */
+    private static boolean isCsiFinal(char c) {
+        return c >= '@' && c <= '~';
     }
 
     // ==================== DA1 Response Parsing ====================

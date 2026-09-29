@@ -272,6 +272,29 @@ public class TerminalProbeTransportTest {
     }
 
     @Test
+    public void testDa1FirstResponseSplitAcrossReads() {
+        // DA1 arriving before the mode reports, delivered two bytes at
+        // a time: each CSI is framed independently, so the device class
+        // must not consume the following DECRPM replies (#307).
+        StringBuilder sb = new StringBuilder();
+        sb.append("\033[?62;4c");
+        sb.append("\033[?2026;1$y");
+        sb.append("\033[?2027;1$y");
+        sb.append("\033]11;rgb:0000/0000/0000\007");
+        StreamProbeTransport transport = new StreamProbeTransport(
+                new ChunkedInputStream(bytes(sb.toString()), false));
+
+        TerminalColorQuery result = TerminalColorQuery.query(transport);
+
+        assertNotNull(result);
+        assertTrue(result.da1Received);
+        assertEquals(ModeSupport.SUPPORTED, result.mode2026);
+        assertEquals(ModeSupport.SUPPORTED, result.mode2027);
+        assertArrayEquals(new int[] { 0, 0, 0 }, result.background);
+        assertTrue(transport.session.closed);
+    }
+
+    @Test
     public void testMixedTerminatorsSplitAcrossReads() {
         // ST-terminated foreground followed by BEL-terminated
         // background, delivered two bytes at a time: framing happens
