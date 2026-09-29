@@ -598,6 +598,109 @@ public class ConnectionOscQueryTest {
         }
     }
 
+    /**
+     * Test that malformed CPR frames do not complete the query: the
+     * wait continues until a well-formed reply arrives.
+     */
+    @Test
+    public void testMalformedCprKeepsWaiting() throws Exception {
+        MockConnection connection = new MockConnection();
+        Consumer<int[]> originalHandler = connection.stdinHandler();
+
+        Thread replyThread = new Thread(() -> {
+            try {
+                connection.awaitHandlerChange(originalHandler, 1000);
+                connection.simulateInput("" + (char) 27 + "[?25R");
+                Thread.sleep(20);
+                connection.simulateInput("" + (char) 27 + "[R");
+                Thread.sleep(20);
+                connection.simulateInput("" + (char) 27 + "[24;80R");
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        });
+        replyThread.start();
+
+        Point pos = connection.terminal().getCursorPosition();
+        replyThread.join(2000);
+
+        assertNotNull("well-formed reply must still match", pos);
+        assertEquals(80, pos.x());
+        assertEquals(24, pos.y());
+    }
+
+    /**
+     * Test that unrelated input ahead of the CPR reply neither matches
+     * nor blocks the real reply.
+     */
+    @Test
+    public void testUnrelatedInputBeforeCprReply() throws Exception {
+        MockConnection connection = new MockConnection();
+        Consumer<int[]> originalHandler = connection.stdinHandler();
+
+        Thread replyThread = new Thread(() -> {
+            try {
+                connection.awaitHandlerChange(originalHandler, 1000);
+                connection.simulateInput("x");
+                Thread.sleep(20);
+                connection.simulateInput("" + (char) 27 + "[24;80R");
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        });
+        replyThread.start();
+
+        Point pos = connection.terminal().getCursorPosition();
+        replyThread.join(2000);
+
+        assertNotNull(pos);
+        assertEquals(80, pos.x());
+        assertEquals(24, pos.y());
+    }
+
+    /**
+     * Test that a CPR timeout returns null and hands unrelated input
+     * back to the restored handler.
+     */
+    @Test
+    public void testCprTimeoutRedelivers() throws Exception {
+        MockConnection connection = new MockConnection();
+        List<String> originalHandlerReceived = new ArrayList<>();
+        Consumer<int[]> originalHandler = input -> {
+            StringBuilder sb = new StringBuilder();
+            for (int cp : input) {
+                sb.appendCodePoint(cp);
+            }
+            originalHandlerReceived.add(sb.toString());
+        };
+        connection.setStdinHandler(originalHandler);
+
+        Thread inputThread = new Thread(() -> {
+            try {
+                connection.awaitHandlerChange(originalHandler, 1000);
+                connection.simulateInput("hello");
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        });
+        inputThread.start();
+
+        // Short timeout via a direct TerminalFeatures call is not
+        // available; the default deadline applies. No reply is sent,
+        // so the query must time out on its own.
+        long start = System.currentTimeMillis();
+        Point pos = connection.terminal().getCursorPosition();
+        long elapsed = System.currentTimeMillis() - start;
+        inputThread.join(2000);
+
+        assertNull("no reply was sent", pos);
+        assertTrue("must wait out the deadline", elapsed >= 400);
+        assertEquals(1, originalHandlerReceived.size());
+        assertEquals("hello", originalHandlerReceived.get(0));
+        assertTrue("handler must be restored",
+                connection.stdinHandler() == originalHandler);
+    }
+
     private static class MockConnection implements Connection {
         private volatile Consumer<int[]> stdinHandler;
         private Consumer<Size> sizeHandler;

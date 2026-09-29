@@ -298,12 +298,15 @@ public class ANSI {
      *
      * @param input the ANSI cursor position response sequence
      * @return a Point containing the column and row of the cursor,
-     *         or null if the frame is incomplete (no terminating 'R' yet)
+     *         or null if the frame is incomplete (no terminating 'R'
+     *         yet) or malformed (non-digit, empty, or overflowing
+     *         coordinates)
      */
     public static Point getActualCursor(int[] input) {
         boolean started = false;
         boolean gotSep = false;
         boolean complete = false;
+        int fieldDigits = 0;
         int col = 0;
         int row = 0;
 
@@ -311,29 +314,57 @@ public class ANSI {
         //arriving and must not parse (fragmented query responses
         //are re-examined as more chunks arrive). The loop covers the
         //last byte too — a frame ending exactly at 'R' is complete.
+        //Only digits form coordinates: any other byte abandons the
+        //frame and scanning resyncs at the next ESC [, so a garbage
+        //prefix can never latch invented coordinates nor poison a
+        //later well-formed frame in the same buffer.
         for (int i = 0; i < input.length; i++) {
-            if (started) {
-                if (input[i] == 82) {
-                    complete = true;
-                    break;
-                } else if (input[i] == 59) // we got a ';' which is the separator
-                    gotSep = true;
-                else {
-                    if (gotSep) {
-                        char c = (char) input[i];
-                        col *= 10;
-                        col += ((int) c & 0xF);
-                    } else {
-                        char c = (char) input[i];
-                        row *= 10;
-                        row += ((int) c & 0xF);
-                    }
-                }
-            }
-            //search for the beginning which starts with esc,[
-            else if (input[i] == 27 && i < input.length - 1 && input[i + 1] == 91) {
+            if (input[i] == 27 && i + 1 < input.length && input[i + 1] == 91) {
+                //search for the beginning which starts with esc,[
+                //a fresh frame supersedes any partial one
                 started = true;
+                gotSep = false;
+                fieldDigits = 0;
+                col = 0;
+                row = 0;
                 i++;
+            } else if (started) {
+                if (input[i] == 82) {
+                    // A well-formed frame has digits in both fields
+                    if (gotSep && fieldDigits > 0) {
+                        complete = true;
+                        break;
+                    }
+                    started = false;
+                } else if (input[i] == 59) {
+                    // we got a ';' which is the separator: exactly one,
+                    // and never with an empty row field
+                    if (gotSep || fieldDigits == 0) {
+                        started = false;
+                    } else {
+                        gotSep = true;
+                        fieldDigits = 0;
+                    }
+                } else if (input[i] >= '0' && input[i] <= '9') {
+                    int digit = input[i] - '0';
+                    if (gotSep) {
+                        if (col > (Integer.MAX_VALUE - digit) / 10) {
+                            started = false;
+                        } else {
+                            col = col * 10 + digit;
+                            fieldDigits++;
+                        }
+                    } else {
+                        if (row > (Integer.MAX_VALUE - digit) / 10) {
+                            started = false;
+                        } else {
+                            row = row * 10 + digit;
+                            fieldDigits++;
+                        }
+                    }
+                } else {
+                    started = false;
+                }
             }
         }
 
