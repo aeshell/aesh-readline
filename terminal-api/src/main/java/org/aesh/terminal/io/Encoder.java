@@ -276,19 +276,24 @@ public class Encoder implements Consumer<int[]> {
     /**
      * Convert code points to chars in the reusable charBuf.
      * Used by the general (non-UTF-8) encoding path.
+     * <p>
+     * Sized by a counting pass first: each supplementary code point
+     * needs two chars, so a trailing BMP code point can never write
+     * past a buffer filled exactly by surrogate pairs.
      */
     private int codePointsToChars(int[] input) {
-        int len = input.length;
-        if (charBuf.length < len)
-            charBuf = new char[len + (len >> 1)];
+        int needed = 0;
+        for (int cp : input) {
+            needed += Character.isBmpCodePoint(cp) ? 1 : 2;
+        }
+        if (charBuf.length < needed)
+            charBuf = new char[needed];
 
         int pos = 0;
         for (int cp : input) {
             if (Character.isBmpCodePoint(cp)) {
                 charBuf[pos++] = (char) cp;
             } else {
-                if (pos + 1 >= charBuf.length)
-                    charBuf = java.util.Arrays.copyOf(charBuf, charBuf.length + (charBuf.length >> 1));
                 charBuf[pos++] = Character.highSurrogate(cp);
                 charBuf[pos++] = Character.lowSurrogate(cp);
             }

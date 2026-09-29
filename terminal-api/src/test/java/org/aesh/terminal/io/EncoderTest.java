@@ -229,4 +229,94 @@ public class EncoderTest {
         }
         return text.getBytes(charset);
     }
+
+    @Test
+    public void testSupplementaryThenBmpAtInitialBoundary() throws Exception {
+        // 128 emoji fill the initial 256-char buffer exactly; the
+        // trailing ASCII then wrote past its end.
+        int[] input = new int[256];
+        for (int i = 0; i < 128; i++) {
+            input[i] = 0x1F600;
+        }
+        for (int i = 128; i < 256; i++) {
+            input[i] = 'A';
+        }
+        assertEncodesLikeJdk(Charset.forName("UTF-16LE"), input);
+    }
+
+    @Test
+    public void testSupplementaryThenBmpAtGrownBoundary() throws Exception {
+        // 225 emoji fill the grown 450-char buffer exactly (300
+        // code points grow 256 to 300 + 150); the trailing ASCII
+        // then wrote past its end without tripping the pair-only
+        // growth check.
+        int[] input = new int[300];
+        for (int i = 0; i < 225; i++) {
+            input[i] = 0x1F600;
+        }
+        for (int i = 225; i < 300; i++) {
+            input[i] = 'A';
+        }
+        assertEncodesLikeJdk(Charset.forName("UTF-16LE"), input);
+    }
+
+    @Test
+    public void testPureShapesAtBoundaries() throws Exception {
+        int[] pairs = new int[128];
+        for (int i = 0; i < pairs.length; i++) {
+            pairs[i] = 0x1F600;
+        }
+        assertEncodesLikeJdk(Charset.forName("UTF-16LE"), pairs);
+
+        int[] bmp = new int[256];
+        for (int i = 0; i < bmp.length; i++) {
+            bmp[i] = 'A';
+        }
+        assertEncodesLikeJdk(Charset.forName("UTF-16LE"), bmp);
+    }
+
+    @Test
+    public void testGeneralPathMatchesJdkAcrossCharsets() throws Exception {
+        int[] mixed = "A\u00E9\u4E2D\u00BB".codePoints().toArray();
+        Charset[] charsets = {
+                Charset.forName("windows-1252"),
+                Charset.forName("UTF-16LE"),
+                Charset.forName("Shift_JIS") };
+        for (Charset charset : charsets) {
+            assertEncodesLikeJdk(charset, mixed);
+        }
+    }
+
+    /**
+     * Encode code points through the general (non-UTF-8) path and
+     * require byte equality with the JDK's own conversion of the
+     * same input. Both sides replace unmappable characters.
+     *
+     * @param charset a non-UTF-8 charset selecting the general path
+     * @param input valid code points to encode
+     */
+    private static void assertEncodesLikeJdk(Charset charset, int[] input) {
+        final List<byte[]> captured = new ArrayList<>();
+        Encoder encoder = new Encoder(charset, new ByteWriter() {
+            @Override
+            public void write(byte[] buf, int off, int len) {
+                byte[] copy = new byte[len];
+                System.arraycopy(buf, off, copy, 0, len);
+                captured.add(copy);
+            }
+        });
+        encoder.accept(input);
+
+        int total = 0;
+        for (byte[] part : captured) {
+            total += part.length;
+        }
+        byte[] actual = new byte[total];
+        int pos = 0;
+        for (byte[] part : captured) {
+            System.arraycopy(part, 0, actual, pos, part.length);
+            pos += part.length;
+        }
+        assertArrayEquals(new String(input, 0, input.length).getBytes(charset), actual);
+    }
 }
