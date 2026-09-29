@@ -291,8 +291,14 @@ public class EventDecoder implements Consumer<int[]> {
     }
 
     private void checkQueue() {
-        while (inputHandler != null && !inputQueue.isEmpty())
-            inputHandler.accept(inputQueue.poll());
+        // Peek before delivering: a throwing handler leaves the head
+        // queued, so a failed install (see Connection.captureStdin)
+        // loses nothing and the rollback drain redelivers it.
+        while (inputHandler != null && !inputQueue.isEmpty()) {
+            int[] head = inputQueue.peek();
+            inputHandler.accept(head);
+            inputQueue.poll();
+        }
     }
 
     /**

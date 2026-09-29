@@ -17,6 +17,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -216,6 +217,145 @@ public class StdinLeaseTest {
                     leased.size() == 1);
         } finally {
             lease.close();
+        }
+    }
+
+    @Test
+    public void testFailedAcquisitionRestoresSavedHandlerAndRetainsInput() {
+        FakeConnection conn = new FakeConnection();
+        List<int[]> steady = new ArrayList<>();
+        conn.eventDecoder.accept(codePoints("ab"));
+
+        RuntimeException failure = new RuntimeException("lease handler blew up");
+        try {
+            conn.captureStdin(new Consumer<int[]>() {
+                @Override
+                public void accept(int[] input) {
+                    throw failure;
+                }
+            });
+            fail("acquisition must propagate the drain failure");
+        } catch (RuntimeException e) {
+            assertSame(failure, e);
+            assertTrue("no rollback failure expected", e.getSuppressed().length == 0);
+        }
+
+        assertNull("saved (null) handler must be restored", conn.stdinHandler());
+        assertTrue("steady handler must never see the failed drain", steady.isEmpty());
+
+        conn.setStdinHandler(recorder(steady));
+        assertEquals("the retained item must redeliver to the next handler",
+                1, steady.size());
+        assertEquals("ab", new String(steady.get(0), 0, steady.get(0).length));
+    }
+
+    @Test
+    public void testFailedInstallRollsBackWithSuppression() {
+        RefusingConnection conn = new RefusingConnection(false);
+        List<int[]> steady = new ArrayList<>();
+        Consumer<int[]> steadyHandler = recorder(steady);
+        conn.eventDecoder.setInputHandler(steadyHandler);
+
+        try {
+            conn.captureStdin(recorder(new ArrayList<>()));
+            fail("acquisition must propagate the install failure");
+        } catch (RuntimeException e) {
+            assertTrue(e.getMessage().contains("install refused"));
+            assertEquals("rollback failure must suppress into the original",
+                    1, e.getSuppressed().length);
+            assertTrue(e.getSuppressed()[0].getMessage().contains("rollback refused"));
+        }
+        assertSame("steady handler must be untouched", steadyHandler, conn.stdinHandler());
+        assertTrue(steady.isEmpty());
+    }
+
+    @Test
+    public void testSharedFailureInstanceCannotSuppressItself() {
+        RefusingConnection conn = new RefusingConnection(false);
+        List<int[]> steady = new ArrayList<>();
+        Consumer<int[]> steadyHandler = recorder(steady);
+        conn.eventDecoder.setInputHandler(steadyHandler);
+        conn.sharedFailure = true;
+
+        try {
+            conn.captureStdin(recorder(new ArrayList<>()));
+            fail("acquisition must propagate the install failure");
+        } catch (RuntimeException e) {
+            assertSame(RefusingConnection.FAILURE, e);
+            assertTrue("self-suppression must be skipped, not crash",
+                    e.getSuppressed().length == 0);
+        }
+        assertSame("steady handler must be untouched", steadyHandler, conn.stdinHandler());
+    }
+
+    @Test
+    public void testNestedLeaseSurvivesInnerAcquisitionFailure() {
+        RefusingConnection conn = new RefusingConnection(true);
+        List<int[]> steady = new ArrayList<>();
+        List<int[]> outer = new ArrayList<>();
+        Consumer<int[]> steadyHandler = recorder(steady);
+        Consumer<int[]> outerHandler = recorder(outer);
+        conn.setStdinHandler(steadyHandler);
+        StdinLease outerLease = conn.captureStdin(outerHandler);
+        try {
+            conn.eventDecoder.accept(codePoints("ab"));
+            assertEquals(1, outer.size());
+
+            conn.armRefusal();
+            try {
+                conn.captureStdin(recorder(new ArrayList<>()));
+                fail("inner acquisition must fail");
+            } catch (RuntimeException e) {
+                assertTrue(e.getMessage().contains("install refused"));
+                assertTrue("rollback must succeed here",
+                        e.getSuppressed().length == 0);
+            }
+            assertSame("outer handler must be restored after inner failure",
+                    outerHandler, conn.stdinHandler());
+        } finally {
+            outerLease.close();
+        }
+        assertSame("outer close must restore steady", steadyHandler, conn.stdinHandler());
+    }
+
+    /**
+     * Connection whose install step can refuse, simulating a
+     * transport-level failure. In always-refuse mode the field is never
+     * touched, so rollback attempts throw too and must suppress into the
+     * original failure. In armable mode a single refusal fires on demand,
+     * with rollback delegating normally.
+     */
+    private static class RefusingConnection extends FakeConnection {
+        private static final RuntimeException FAILURE = new RuntimeException("transport closed");
+
+        private final boolean once;
+        private boolean armed;
+        private boolean sharedFailure;
+        private int refusedCalls;
+
+        RefusingConnection(boolean once) {
+            this.once = once;
+        }
+
+        void armRefusal() {
+            armed = true;
+        }
+
+        @Override
+        public void setStdinHandler(Consumer<int[]> handler) {
+            if (sharedFailure) {
+                throw FAILURE;
+            }
+            if (armed || !once) {
+                armed = false;
+                // Within one captureStdin the install precedes its
+                // rollback, so odd refusals are installs.
+                refusedCalls++;
+                throw new RuntimeException(refusedCalls % 2 == 1
+                        ? "install refused"
+                        : "rollback refused");
+            }
+            super.setStdinHandler(handler);
         }
     }
 }

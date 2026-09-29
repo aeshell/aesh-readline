@@ -93,6 +93,12 @@ public interface Connection extends Appendable, AutoCloseable {
      * <p>
      * Restoring re-arms queue delivery: input queued while the lease was
      * held is delivered to the restored handler.
+     * <p>
+     * Acquisition is rolled back: if installing the handler throws (e.g.
+     * queued input fails in the new handler during the synchronous drain),
+     * the saved handler is restored before the original failure
+     * propagates, so no lease-less throwing handler is left installed. A
+     * rollback failure is suppressed into the original failure.
      *
      * @param handler the temporary handler to process input as code point arrays
      * @return a lease restoring the previous handler on close
@@ -100,7 +106,20 @@ public interface Connection extends Appendable, AutoCloseable {
      */
     default StdinLease captureStdin(Consumer<int[]> handler) {
         Consumer<int[]> saved = stdinHandler();
-        setStdinHandler(handler);
+        try {
+            setStdinHandler(handler);
+        } catch (RuntimeException | Error e) {
+            try {
+                setStdinHandler(saved);
+            } catch (RuntimeException | Error rollbackFailure) {
+                // A shared failure instance cannot suppress itself; the
+                // propagating original already carries that failure.
+                if (rollbackFailure != e) {
+                    e.addSuppressed(rollbackFailure);
+                }
+            }
+            throw e;
+        }
         return new StdinLeaseImpl(this, saved, handler);
     }
 
