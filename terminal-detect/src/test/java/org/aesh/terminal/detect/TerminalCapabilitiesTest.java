@@ -4,6 +4,8 @@ import static org.junit.Assert.*;
 
 import java.lang.reflect.Field;
 import java.util.Collections;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.Test;
 
@@ -234,6 +236,56 @@ public class TerminalCapabilitiesTest {
         }
         if (caps.supports256Colors()) {
             assertTrue("256 colors imply basic color", caps.supportsColor());
+        }
+    }
+
+    @Test
+    public void testGetInstanceNeverReturnsNullDuringInvalidation() throws Exception {
+        // Readers race an invalidator: the returned reference is captured
+        // once, so clearing the shared field mid-call cannot null it.
+        TerminalCapabilities saved = TerminalCapabilities.getInstance();
+        try {
+            AtomicReference<Throwable> failure = new AtomicReference<>();
+            AtomicBoolean stop = new AtomicBoolean();
+            Thread[] readers = new Thread[4];
+            for (int i = 0; i < readers.length; i++) {
+                readers[i] = new Reader(stop, failure);
+                readers[i].start();
+            }
+            for (int i = 0; i < 200000 && failure.get() == null; i++) {
+                TerminalCapabilities.invalidate();
+            }
+            stop.set(true);
+            for (Thread reader : readers) {
+                reader.join(10000);
+            }
+            assertNull("getInstance() returned null under invalidation",
+                    failure.getAndSet(null));
+        } finally {
+            TerminalCapabilities.setInstance(saved);
+        }
+    }
+
+    private static final class Reader extends Thread {
+        private final AtomicBoolean stop;
+        private final AtomicReference<Throwable> failure;
+
+        Reader(AtomicBoolean stop, AtomicReference<Throwable> failure) {
+            this.stop = stop;
+            this.failure = failure;
+        }
+
+        @Override
+        public void run() {
+            try {
+                while (!stop.get() && failure.get() == null) {
+                    if (TerminalCapabilities.getInstance() == null) {
+                        throw new AssertionError("getInstance() returned null");
+                    }
+                }
+            } catch (Throwable t) {
+                failure.compareAndSet(null, t);
+            }
         }
     }
 }

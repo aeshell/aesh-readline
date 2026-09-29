@@ -84,23 +84,32 @@ public final class TerminalCapabilities {
      * instance from early startup (e.g., Quarkus bootstrap). For example,
      * call {@code setInstance(detectAsync())} to enable background color
      * queries before other modules initialize.
+     * <p>
+     * Never returns null: the reference is captured once, so a concurrent
+     * {@link #invalidate()} cannot clear it between the check and the
+     * return. A returned instance stays usable even if later replaced;
+     * replacement only affects subsequent lookups.
      *
      * @return the shared capabilities instance
      */
     public static TerminalCapabilities getInstance() {
-        if (instance == null) {
+        TerminalCapabilities current = instance;
+        if (current == null) {
             synchronized (TerminalCapabilities.class) {
-                if (instance == null) {
-                    instance = detect();
+                current = instance;
+                if (current == null) {
+                    current = detect();
+                    instance = current;
                 }
             }
         }
-        return instance;
+        return current;
     }
 
     /**
      * Set the shared instance. Call this early in application startup
      * to make pre-detected capabilities available to all later consumers.
+     * Passing null clears the instance, equivalent to {@link #invalidate()}.
      *
      * @param caps the pre-detected capabilities
      */
@@ -115,6 +124,7 @@ public final class TerminalCapabilities {
      * update the cached theme and discard old RGB values without re-probing;
      * the next {@code detect()}, {@code detectFull()} or
      * {@code detectAsync()} call after invalidation rebuilds from scratch.
+     * Previously returned instances remain usable.
      *
      * @since 3.18.3
      */
