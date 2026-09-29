@@ -321,9 +321,13 @@ final class TerminalColorQuery {
 
             rgbStart += 4;
 
+            // Stop at this response's own terminator: the earliest of
+            // BEL and ST. A later reply's terminator must not extend
+            // this response's color content.
             int end = response.indexOf(BEL, rgbStart);
-            if (end < 0) {
-                end = response.indexOf("\033\\", rgbStart);
+            int stEnd = response.indexOf("\033\\", rgbStart);
+            if (end < 0 || (stEnd >= 0 && stEnd < end)) {
+                end = stEnd;
             }
             if (end < 0) {
                 end = response.length();

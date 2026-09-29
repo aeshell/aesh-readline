@@ -781,10 +781,12 @@ public class ANSI {
 
         rgbStart += 4; // skip "rgb:"
 
-        // Find the terminator (BEL or ESC \)
+        // Find the terminator (BEL or ESC \) — earliest of the two, so a
+        // later reply's terminator cannot extend this response's content.
         int end = response.indexOf('\u0007', rgbStart);
-        if (end < 0) {
-            end = response.indexOf("\u001B\\", rgbStart);
+        int stEnd = response.indexOf("\u001B\\", rgbStart);
+        if (end < 0 || (stEnd >= 0 && stEnd < end)) {
+            end = stEnd;
         }
         if (end < 0) {
             // Look for next OSC start as terminator
@@ -905,10 +907,12 @@ public class ANSI {
 
         rgbStart += 4; // skip "rgb:"
 
-        // Find the terminator (BEL or ESC \)
+        // Find the terminator (BEL or ESC \) — earliest of the two, so a
+        // later reply's terminator cannot extend this response's content.
         int end = response.indexOf('\u0007', rgbStart);
-        if (end < 0) {
-            end = response.indexOf("\u001B\\", rgbStart);
+        int stEnd = response.indexOf("\u001B\\", rgbStart);
+        if (end < 0 || (stEnd >= 0 && stEnd < end)) {
+            end = stEnd;
         }
         if (end < 0) {
             end = response.length();
@@ -1013,8 +1017,11 @@ public class ANSI {
         rgbStart += 4;
 
         int end = response.indexOf('', rgbStart);
-        if (end < 0) {
-            end = response.indexOf("\\", rgbStart);
+        int stEnd = response.indexOf("\\", rgbStart);
+        // Stop at this response's own terminator: the earliest of BEL
+        // and ST, so a later reply cannot extend this response's content.
+        if (end < 0 || (stEnd >= 0 && stEnd < end)) {
+            end = stEnd;
         }
         if (end < 0) {
             end = response.length();

@@ -59,6 +59,47 @@ public class TerminalColorQueryTest {
     }
 
     @Test
+    public void testParseOscColorResponse_MixedTerminatorsStThenBel() {
+        // ST-terminated foreground followed by BEL-terminated
+        // background: each reply stops at its own terminator (#306).
+        String response = "\033]10;rgb:ffff/ffff/ffff\033\\"
+                + "\033]11;rgb:0000/0000/0000\007";
+        int[] fg = TerminalColorQuery.parseOscColorResponse(response, 10, -1);
+        assertNotNull(fg);
+        assertEquals(255, fg[0]);
+        assertEquals(255, fg[1]);
+        assertEquals(255, fg[2]);
+        int[] bg = TerminalColorQuery.parseOscColorResponse(response, 11, -1);
+        assertNotNull(bg);
+        assertEquals(0, bg[0]);
+        assertEquals(0, bg[1]);
+        assertEquals(0, bg[2]);
+    }
+
+    @Test
+    public void testParseOscColorResponse_MixedTerminatorsBelThenSt() {
+        String response = "\033]10;rgb:ffff/ffff/ffff\007"
+                + "\033]11;rgb:0000/0000/0000\033\\";
+        int[] fg = TerminalColorQuery.parseOscColorResponse(response, 10, -1);
+        assertNotNull(fg);
+        assertEquals(255, fg[0]);
+        int[] bg = TerminalColorQuery.parseOscColorResponse(response, 11, -1);
+        assertNotNull(bg);
+        assertEquals(0, bg[0]);
+    }
+
+    @Test
+    public void testParseOscColorResponse_IndexedPaletteStTerminated() {
+        String response = "\033]4;7;rgb:1111/2222/3333\033\\"
+                + "\033]11;rgb:0000/0000/0000\007";
+        int[] rgb = TerminalColorQuery.parseOscColorResponse(response, 4, 7);
+        assertNotNull(rgb);
+        assertEquals(0x11, rgb[0]);
+        assertEquals(0x22, rgb[1]);
+        assertEquals(0x33, rgb[2]);
+    }
+
+    @Test
     public void testParseOscColorResponse_MultipleResponses() {
         String response = "\033]10;rgb:cdcd/d6d6/f4f4\007\033]11;rgb:1e1e/2e2e/4e4e\007";
         int[] fg = TerminalColorQuery.parseOscColorResponse(response, 10, -1);

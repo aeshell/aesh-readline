@@ -821,7 +821,7 @@ public class ANSIOscTest {
     @Test
     public void testParseOscColorResponse16_4DigitHex() {
         // 4-digit hex should be preserved as-is
-        int[] input = toCodePoints("]11;rgb:1c1c/2d2d/3e3e");
+        int[] input = toCodePoints("\u001B]11;rgb:1c1c/2d2d/3e3e\u0007");
         int[] rgb = ANSI.parseOscColorResponse16(input, 11);
         assertNotNull(rgb);
         assertEquals(0x1c1c, rgb[0]);
@@ -832,7 +832,7 @@ public class ANSIOscTest {
     @Test
     public void testParseOscColorResponse16_2DigitHex() {
         // 2-digit hex FF should scale to FFFF (FF * 0x101 = 0xFF01... actually 0xFFFF)
-        int[] input = toCodePoints("]10;rgb:ff/80/00");
+        int[] input = toCodePoints("\u001B]10;rgb:ff/80/00\u0007");
         int[] rgb = ANSI.parseOscColorResponse16(input, 10);
         assertNotNull(rgb);
         assertEquals(0xffff, rgb[0]); // FF * 0x101
@@ -843,7 +843,7 @@ public class ANSIOscTest {
     @Test
     public void testParseOscColorResponse16_1DigitHex() {
         // 1-digit hex F should scale to FFFF (F * 0x1111)
-        int[] input = toCodePoints("]10;rgb:F/8/0");
+        int[] input = toCodePoints("\u001B]10;rgb:F/8/0\u0007");
         int[] rgb = ANSI.parseOscColorResponse16(input, 10);
         assertNotNull(rgb);
         assertEquals(0xFFFF, rgb[0]); // F * 0x1111
@@ -854,7 +854,7 @@ public class ANSIOscTest {
     @Test
     public void testParseOscColorResponse16_VsStandard() {
         // Verify 16-bit preserves precision that 8-bit loses
-        int[] input = toCodePoints("]11;rgb:1c1c/2d2d/3e3e");
+        int[] input = toCodePoints("\u001B]11;rgb:1c1c/2d2d/3e3e\u0007");
         int[] rgb8 = ANSI.parseOscColorResponse(input, 11);
         int[] rgb16 = ANSI.parseOscColorResponse16(input, 11);
         assertNotNull(rgb8);
@@ -867,7 +867,7 @@ public class ANSIOscTest {
 
     @Test
     public void testParseOscColorResponse16_WithParam() {
-        int[] input = toCodePoints("]4;1;rgb:cc00/0000/0000");
+        int[] input = toCodePoints("\u001B]4;1;rgb:cc00/0000/0000\u0007");
         int[] rgb = ANSI.parseOscColorResponse16(input, 4, 1);
         assertNotNull(rgb);
         assertEquals(0xcc00, rgb[0]);
@@ -888,5 +888,49 @@ public class ANSIOscTest {
 
     private static int[] toCodePoints(String s) {
         return s.codePoints().toArray();
+    }
+
+    @Test
+    public void testParseOscColorResponse_MixedTerminatorsStThenBel() {
+        // ST-terminated foreground followed by BEL-terminated
+        // background: each reply stops at its own terminator (#306).
+        String response = "\u001B]10;rgb:ffff/ffff/ffff\u001B\\"
+                + "\u001B]11;rgb:0000/0000/0000\u0007";
+        int[] fg = ANSI.parseOscColorResponse(toCodePoints(response), 10);
+        assertNotNull(fg);
+        assertArrayEquals(new int[] { 255, 255, 255 }, fg);
+        int[] bg = ANSI.parseOscColorResponse(toCodePoints(response), 11);
+        assertNotNull(bg);
+        assertArrayEquals(new int[] { 0, 0, 0 }, bg);
+    }
+
+    @Test
+    public void testParseOscColorResponse_MixedTerminatorsBelThenSt() {
+        String response = "\u001B]10;rgb:ffff/ffff/ffff\u0007"
+                + "\u001B]11;rgb:0000/0000/0000\u001B\\";
+        int[] fg = ANSI.parseOscColorResponse(toCodePoints(response), 10);
+        assertNotNull(fg);
+        assertArrayEquals(new int[] { 255, 255, 255 }, fg);
+        int[] bg = ANSI.parseOscColorResponse(toCodePoints(response), 11);
+        assertNotNull(bg);
+        assertArrayEquals(new int[] { 0, 0, 0 }, bg);
+    }
+
+    @Test
+    public void testParseOscColorResponse_IndexedPaletteStTerminated() {
+        String response = "\u001B]4;7;rgb:1111/2222/3333\u001B\\"
+                + "\u001B]11;rgb:0000/0000/0000\u0007";
+        int[] rgb = ANSI.parseOscColorResponse(toCodePoints(response), 4, 7);
+        assertNotNull(rgb);
+        assertArrayEquals(new int[] { 0x11, 0x22, 0x33 }, rgb);
+    }
+
+    @Test
+    public void testParseOscColorResponse16_MixedTerminators() {
+        String response = "\u001B]10;rgb:ffff/ffff/ffff\u001B\\"
+                + "\u001B]11;rgb:0000/0000/0000\u0007";
+        int[] fg = ANSI.parseOscColorResponse16(toCodePoints(response), 10);
+        assertNotNull(fg);
+        assertArrayEquals(new int[] { 0xFFFF, 0xFFFF, 0xFFFF }, fg);
     }
 }

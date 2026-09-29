@@ -272,6 +272,28 @@ public class TerminalProbeTransportTest {
     }
 
     @Test
+    public void testMixedTerminatorsSplitAcrossReads() {
+        // ST-terminated foreground followed by BEL-terminated
+        // background, delivered two bytes at a time: framing happens
+        // after reassembly, so the split cannot join the replies (#306).
+        StringBuilder sb = new StringBuilder();
+        sb.append("\033[?2026;1$y");
+        sb.append("\033[?2027;0$y");
+        sb.append("\033[?63;1;2;4c");
+        sb.append("\033]10;rgb:ffff/ffff/ffff\033\\");
+        sb.append("\033]11;rgb:0000/0000/0000\007");
+        StreamProbeTransport transport = new StreamProbeTransport(
+                new ChunkedInputStream(bytes(sb.toString()), false));
+
+        TerminalColorQuery result = TerminalColorQuery.query(transport);
+
+        assertNotNull(result);
+        assertArrayEquals(new int[] { 255, 255, 255 }, result.foreground);
+        assertArrayEquals(new int[] { 0, 0, 0 }, result.background);
+        assertTrue(transport.session.closed);
+    }
+
+    @Test
     public void testTimeoutEndsPartialColorResponseAndRestoresSession() {
         StreamProbeTransport transport = new StreamProbeTransport(
                 new ChunkedInputStream(bytes("\033]11;rgb:ffff/ff"), true));
