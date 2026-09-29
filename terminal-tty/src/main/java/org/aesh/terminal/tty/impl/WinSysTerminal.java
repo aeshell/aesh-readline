@@ -106,11 +106,33 @@ public class WinSysTerminal extends AbstractWindowsTerminal {
     /**
      * Whether console output goes through WriteConsoleW (UTF-16,
      * codepage-independent) rather than the Encoder byte stream.
+     * <p>
+     * Microsoft documents that WriteConsole fails on redirected handles,
+     * so a valid file or pipe handle is not enough: the handle must
+     * answer GetConsoleMode. Deliberately not System.console(), which
+     * would start the JDK's competing input pump (see #276).
      *
      * @return true when the output handle is a real console
      */
     protected boolean isOutputConsoleValid() {
-        return Handles.OUTPUT != WinConsoleNative.INVALID_HANDLE;
+        if (Handles.OUTPUT == WinConsoleNative.INVALID_HANDLE) {
+            return false;
+        }
+        return isConsoleModeValid(WinConsoleNative.getConsoleMode(Handles.OUTPUT));
+    }
+
+    /**
+     * Whether a GetConsoleMode result identifies a real console.
+     * Both native bridges report -1 for anything that is not a console
+     * (file, pipe, dead handle, missing downcall); a bitmask of zero
+     * still means a console with all flags off. Package-visible so the
+     * decision is unit-testable without native code.
+     *
+     * @param mode the GetConsoleMode result, or -1 on failure
+     * @return true for any real console mode
+     */
+    static boolean isConsoleModeValid(int mode) {
+        return mode != -1;
     }
 
     protected int getConsoleOutputCP() {

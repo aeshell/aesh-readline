@@ -15,6 +15,7 @@ package org.aesh.terminal.tty.impl;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -331,6 +332,38 @@ public class WinSysTerminalTest {
                     term.getCodePointConsumer());
         } finally {
             TestableWinSysTerminal.vtEnableResult = true;
+            term.close();
+        }
+    }
+
+    @Test
+    public void testFailedConsoleModeMeansRedirect() {
+        assertFalse("GetConsoleMode failure (-1) means file, pipe, or dead handle",
+                WinSysTerminal.isConsoleModeValid(-1));
+    }
+
+    @Test
+    public void testZeroModeStillMeansConsole() {
+        assertTrue("mode 0 is a console with all flags off, not a redirect",
+                WinSysTerminal.isConsoleModeValid(0));
+    }
+
+    @Test
+    public void testTypicalModeMeansConsole() {
+        assertTrue(WinSysTerminal.isConsoleModeValid(0x0007));
+    }
+
+    @Test
+    public void testRedirectedOutputSelectsBytePath() throws java.io.IOException {
+        // A pipe handle answers GetConsoleMode with -1: the stub reports
+        // the redirect verdict the same way production now derives it.
+        TestableWinSysTerminal.consoleValid = WinSysTerminal.isConsoleModeValid(-1);
+        TestableWinSysTerminal term = new TestableWinSysTerminal();
+        try {
+            assertNull("redirected stdout must use the Encoder byte stream",
+                    term.getCodePointConsumer());
+        } finally {
+            TestableWinSysTerminal.consoleValid = true;
             term.close();
         }
     }
