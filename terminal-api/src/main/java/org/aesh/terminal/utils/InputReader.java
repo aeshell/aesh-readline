@@ -69,6 +69,12 @@ public class InputReader extends Reader {
     private final LinkedBlockingQueue<Character> queue;
     private volatile boolean closed = false;
     private long dropped;
+    /**
+     * Retained lookahead: a char consumed past a high surrogate that did
+     * not complete a pair. Served before the queue by every read method,
+     * so at most one is ever held.
+     */
+    private Character pushback;
 
     /**
      * Create an InputReader with the default queue capacity (4096).
@@ -201,6 +207,13 @@ public class InputReader extends Reader {
      */
     public int read(int timeout) throws IOException {
         ensureOpen();
+        Character stashed = takePushback();
+        if (stashed != null) {
+            if (closed) {
+                return EOF;
+            }
+            return stashed;
+        }
         try {
             Character event = queue.poll(timeout, TimeUnit.MILLISECONDS);
             if (event == null) {
@@ -219,6 +232,13 @@ public class InputReader extends Reader {
     /**
      * Read a single code point with a timeout. If the first char is a high
      * surrogate, the next char is also consumed to form the complete code point.
+     * <p>
+     * Both polls share one deadline: the lookahead poll receives only the
+     * remaining budget, so a dribbled-in high surrogate cannot cost nearly
+     * twice the timeout. A lookahead char that does not complete a pair is
+     * retained for the next read instead of discarded. A close racing the
+     * lookahead resolves like a timeout: the already-consumed high
+     * surrogate is returned as-is.
      *
      * @param timeout the maximum time to wait
      * @param unit the time unit
@@ -227,8 +247,12 @@ public class InputReader extends Reader {
      */
     public OptionalInt readCodePoint(long timeout, TimeUnit unit) throws IOException {
         ensureOpen();
+        long deadline = System.nanoTime() + saturatedToNanos(timeout, unit);
         try {
-            Character ch = queue.poll(timeout, unit);
+            Character ch = takePushback();
+            if (ch == null) {
+                ch = queue.poll(timeout, unit);
+            }
             if (ch == null) {
                 return OptionalInt.empty();
             }
@@ -236,11 +260,16 @@ public class InputReader extends Reader {
                 return OptionalInt.empty();
             }
             if (Character.isHighSurrogate(ch)) {
-                Character low = queue.poll(timeout, unit);
+                long remaining = deadline - System.nanoTime();
+                Character low = queue.poll(Math.max(remaining, 0), TimeUnit.NANOSECONDS);
                 if (low != null && Character.isLowSurrogate(low)) {
                     return OptionalInt.of(Character.toCodePoint(ch, low));
                 }
-                // Unpaired high surrogate — return as-is
+                if (low != null) {
+                    // Not a pair: keep the lookahead for the next read.
+                    pushback = low;
+                }
+                // Unpaired high surrogate (or no follow-up in budget) — return as-is
                 return OptionalInt.of((int) ch);
             }
             return OptionalInt.of((int) ch);
@@ -250,16 +279,44 @@ public class InputReader extends Reader {
         }
     }
 
+    /**
+     * Convert a timeout to nanos, saturating instead of overflowing for
+     * absurd values so deadline arithmetic stays a simple subtraction.
+     *
+     * @param timeout the timeout value
+     * @param unit the timeout unit
+     * @return the timeout in nanos, saturated at {@link Long#MAX_VALUE}
+     */
+    private static long saturatedToNanos(long timeout, TimeUnit unit) {
+        long nanos = unit.toNanos(timeout);
+        if (nanos < 0 && timeout > 0) {
+            return Long.MAX_VALUE;
+        }
+        return nanos;
+    }
+
+    /**
+     * Take the retained lookahead char, if any.
+     *
+     * @return the stashed char, or null when empty
+     */
+    private Character takePushback() {
+        Character ch = pushback;
+        pushback = null;
+        return ch;
+    }
+
     @Override
     /** Method. */
     public boolean ready() throws IOException {
         ensureOpen();
-        return !queue.isEmpty();
+        return pushback != null || !queue.isEmpty();
     }
 
     /**
      * Reads chars into a portion of a char array. Blocks on the first
-     * char, then drains remaining available chars without blocking.
+     * char, then drains remaining available chars without blocking. A
+     * retained lookahead is served first.
      */
     @Override
     /** Method. */
@@ -272,7 +329,15 @@ public class InputReader extends Reader {
         try {
             int count = 0;
             while (count < len) {
-                Character event = (count == 0) ? queue.take() : queue.poll();
+                Character event;
+                if (count == 0) {
+                    event = takePushback();
+                    if (event == null) {
+                        event = queue.take();
+                    }
+                } else {
+                    event = queue.poll();
+                }
                 if (event == null) {
                     break;
                 }
@@ -297,6 +362,7 @@ public class InputReader extends Reader {
         }
         closed = true;
         queue.clear();
+        pushback = null;
         // Offer a dummy char to unblock any thread waiting on take()
         queue.offer('\0');
     }

@@ -329,6 +329,102 @@ public class InputReaderTest {
     }
 
     @Test
+    public void testHighSurrogateFollowedByOrdinaryKeepsLookahead() throws Exception {
+        InputReader reader = new InputReader();
+        reader.push(0xD800);
+        reader.push('X');
+
+        OptionalInt first = reader.readCodePoint(100, TimeUnit.MILLISECONDS);
+        assertTrue(first.isPresent());
+        assertEquals(0xD800, first.getAsInt());
+
+        OptionalInt second = reader.readCodePoint(100, TimeUnit.MILLISECONDS);
+        assertTrue("the lookahead X must survive", second.isPresent());
+        assertEquals('X', second.getAsInt());
+
+        reader.close();
+    }
+
+    @Test
+    public void testHighSurrogateFollowedByHighSurrogate() throws Exception {
+        InputReader reader = new InputReader();
+        reader.push(0xD83D);
+        reader.push(0xD800);
+
+        assertEquals(0xD83D, reader.readCodePoint(100, TimeUnit.MILLISECONDS).getAsInt());
+        assertEquals("second high must survive", 0xD800,
+                reader.readCodePoint(100, TimeUnit.MILLISECONDS).getAsInt());
+
+        reader.close();
+    }
+
+    @Test
+    public void testLookaheadVisibleToCharReads() throws Exception {
+        InputReader reader = new InputReader();
+        reader.push(0xD800);
+        reader.push('X');
+
+        assertEquals(0xD800, reader.readCodePoint(100, TimeUnit.MILLISECONDS).getAsInt());
+        assertTrue("stashed lookahead must show in ready()", reader.ready());
+        assertEquals('X', reader.read(100));
+
+        reader.close();
+    }
+
+    @Test
+    public void testLookaheadSharesOneDeadline() throws Exception {
+        InputReader reader = new InputReader();
+        Thread producer = new Thread(() -> {
+            try {
+                Thread.sleep(800);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+            reader.push(0xD800);
+        });
+        producer.start();
+
+        // Budget 1000ms: ~800 for the high, ~200 left for the lookahead.
+        // Two full budgets would take ~1800ms instead.
+        long start = System.nanoTime();
+        OptionalInt cp = reader.readCodePoint(1000, TimeUnit.MILLISECONDS);
+        long elapsedMs = (System.nanoTime() - start) / 1_000_000;
+        producer.join(3000);
+
+        assertTrue(cp.isPresent());
+        assertEquals(0xD800, cp.getAsInt());
+        assertTrue("must share one deadline, not two full budgets", elapsedMs < 1600);
+
+        reader.close();
+    }
+
+    @Test
+    public void testCloseRacingLookaheadReturnsHigh() throws Exception {
+        InputReader reader = new InputReader();
+        reader.push(0xD800);
+
+        AtomicInteger result = new AtomicInteger(-99);
+        CountDownLatch entered = new CountDownLatch(1);
+        Thread readThread = new Thread(() -> {
+            try {
+                entered.countDown();
+                OptionalInt cp = reader.readCodePoint(5000, TimeUnit.MILLISECONDS);
+                result.set(cp.isPresent() ? cp.getAsInt() : -1);
+            } catch (IOException e) {
+                result.set(-2);
+            }
+        });
+        readThread.start();
+        assertTrue(entered.await(1, TimeUnit.SECONDS));
+        Thread.sleep(50);
+        reader.close();
+        readThread.join(2000);
+
+        assertEquals("consumed high resolves like a timeout", 0xD800, result.get());
+    }
+
+    @Test
     public void testReady() throws Exception {
         InputReader reader = new InputReader();
         assertFalse(reader.ready());
