@@ -339,6 +339,30 @@ public class EventDecoderThemeDsrTest {
     }
 
     @Test
+    public void testDsrPassesThroughWithMouseHandlerActive() {
+        decoder.setThemeChangeHandler(null);
+        decoder.setMouseHandler(event -> {
+        });
+        decoder.accept(DSR_DARK);
+
+        assertEquals(0, receivedThemes.size());
+        assertInputEquals("unhandled DSR must reach input when only mouse is subscribed",
+                DSR_DARK);
+    }
+
+    @Test
+    public void testDsrPassesThroughWithFocusHandlerActive() {
+        decoder.setThemeChangeHandler(null);
+        decoder.setFocusHandler(focused -> {
+        });
+        decoder.accept(DSR_LIGHT);
+
+        assertEquals(0, receivedThemes.size());
+        assertInputEquals("unhandled DSR must reach input when only focus is subscribed",
+                DSR_LIGHT);
+    }
+
+    @Test
     public void testNormalInputPassesThroughWithHandler() {
         // Normal text should pass through unmodified
         int[] input = { 72, 101, 108, 108, 111 }; // "Hello"

@@ -634,9 +634,15 @@ public class EventDecoder implements Consumer<int[]> {
         @Override
         public void csiDispatch(int finalChar, int[] params, int paramCount,
                 int[] intermediates, int intermediateCount, boolean hasSubParams) {
-            // Classify the CSI sequence
+            // Classify the CSI sequence. A recognized frame is consumed
+            // only by its own subscriber: a theme DSR with nobody
+            // subscribed falls through to re-emit, so a waiting query (or
+            // plain input) still sees it. Mouse shapes stay consumed
+            // handlerless — tracking ownership implies they are noise to
+            // anyone else.
             if (isDsrThemeResponse(finalChar, params, paramCount,
-                    intermediates, intermediateCount)) {
+                    intermediates, intermediateCount)
+                    && themeChangeHandler != null) {
                 handleDsrTheme(params, paramCount);
             } else if (isMouseSgrEvent(finalChar, intermediates, intermediateCount)) {
                 handleMouseSgr(finalChar, params, paramCount);

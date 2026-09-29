@@ -359,6 +359,16 @@ public class TerminalFeatures {
 
     /**
      * Query the terminal for its current theme mode using the CSI ? 996 n protocol.
+     * <p>
+     * Coordinates with theme notification handling instead of racing it:
+     * {@code EventDecoder} intercepts the reply whenever a theme
+     * subscription is active, so this method subscribes a recording
+     * wrapper around the current handler for the wait. The wrapper
+     * forwards each reply to the saved subscriber and reports the first
+     * theme to the query; the saved subscription is restored verbatim
+     * afterwards, including null. There is no double delivery (one
+     * invocation path) and fragmented replies reassemble in the decoder
+     * before dispatch.
      *
      * @param timeoutMs timeout in milliseconds to wait for response
      * @return {@link TerminalTheme#DARK} or {@link TerminalTheme#LIGHT},
@@ -371,7 +381,33 @@ public class TerminalFeatures {
         if (connection.device() != null && !connection.device().supportsThemeQuery()) {
             return null;
         }
-        return queryTerminal(ANSI.THEME_MODE_QUERY, timeoutMs, ANSI::parseThemeDsrResponse);
+        if (!connection.reading()) {
+            return null;
+        }
+        CountDownLatch latch = new CountDownLatch(1);
+        final TerminalTheme[] result = { null };
+        final Consumer<TerminalTheme> saved = connection.themeChangeHandler();
+        connection.setThemeChangeHandler(new Consumer<TerminalTheme>() {
+            @Override
+            public void accept(TerminalTheme theme) {
+                if (saved != null) {
+                    saved.accept(theme);
+                }
+                if (result[0] == null) {
+                    result[0] = theme;
+                    latch.countDown();
+                }
+            }
+        });
+        try {
+            connection.write(ANSI.THEME_MODE_QUERY);
+            latch.await(timeoutMs, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } finally {
+            connection.setThemeChangeHandler(saved);
+        }
+        return result[0];
     }
 
     /**

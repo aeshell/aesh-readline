@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
+import org.aesh.terminal.detect.TerminalTheme;
 import org.aesh.terminal.tty.Capability;
 import org.aesh.terminal.tty.Point;
 import org.aesh.terminal.tty.Signal;
@@ -387,6 +388,214 @@ public class ConnectionOscQueryTest {
         assertEquals("hello", originalHandlerReceived.get(0));
         assertTrue("handler must be restored after timeout",
                 connection.stdinHandler() == originalHandler);
+    }
+
+    /**
+     * Test that queryThemeMode resolves while a user theme callback is
+     * subscribed: the decoder consumes the reply for the callback and
+     * the query observes it through its wrapper — no timeout, exactly
+     * one callback, subscription intact.
+     */
+    @Test
+    public void testQueryThemeModeWithUserCallback() throws Exception {
+        EventDecoder decoder = new EventDecoder();
+        List<int[]> originalReceived = new ArrayList<>();
+        decoder.setInputHandler(input -> originalReceived.add(input));
+        List<TerminalTheme> callbacks = new ArrayList<>();
+        Consumer<TerminalTheme> userCallback = theme -> callbacks.add(theme);
+        decoder.setThemeChangeHandler(userCallback);
+        MockConnection connection = themeConnection(decoder);
+        connection.setStdinHandler(decoder);
+
+        String reply = "" + (char) 27 + "[?997;2n";
+        Thread replyThread = new Thread(() -> {
+            try {
+                awaitThemeHandlerInstalled(connection, userCallback, 1000);
+                connection.simulateInput(reply);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        });
+        replyThread.start();
+
+        TerminalTheme theme = connection.terminal().queryThemeMode(500);
+        replyThread.join(1000);
+
+        assertEquals(TerminalTheme.LIGHT, theme);
+        assertEquals("callback must fire exactly once", 1, callbacks.size());
+        assertEquals(TerminalTheme.LIGHT, callbacks.get(0));
+        assertTrue("subscription must be intact",
+                connection.themeChangeHandler() == userCallback);
+        assertTrue(originalReceived.isEmpty());
+    }
+
+    /**
+     * Test that queryThemeMode resolves with a cache-only (no-op)
+     * subscription: the reply still reaches the query wrapper.
+     */
+    @Test
+    public void testQueryThemeModeWithCacheOnlySubscription() throws Exception {
+        EventDecoder decoder = new EventDecoder();
+        decoder.setInputHandler(input -> {
+        });
+        Consumer<TerminalTheme> cacheOnly = theme -> {
+        };
+        decoder.setThemeChangeHandler(cacheOnly);
+        MockConnection connection = themeConnection(decoder);
+        connection.setStdinHandler(decoder);
+
+        String reply = "" + (char) 27 + "[?997;1n";
+        Thread replyThread = new Thread(() -> {
+            try {
+                awaitThemeHandlerInstalled(connection, cacheOnly, 1000);
+                connection.simulateInput(reply);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        });
+        replyThread.start();
+
+        TerminalTheme theme = connection.terminal().queryThemeMode(500);
+        replyThread.join(1000);
+
+        assertEquals(TerminalTheme.DARK, theme);
+        assertTrue("subscription must be intact",
+                connection.themeChangeHandler() == cacheOnly);
+    }
+
+    /**
+     * Test that queryThemeMode resolves with no prior subscription and
+     * leaves the slot empty afterwards.
+     */
+    @Test
+    public void testQueryThemeModeWithoutSubscription() throws Exception {
+        EventDecoder decoder = new EventDecoder();
+        decoder.setInputHandler(input -> {
+        });
+        MockConnection connection = themeConnection(decoder);
+        connection.setStdinHandler(decoder);
+
+        String reply = "" + (char) 27 + "[?997;2n";
+        Thread replyThread = new Thread(() -> {
+            try {
+                awaitThemeHandlerInstalled(connection, null, 1000);
+                connection.simulateInput(reply);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        });
+        replyThread.start();
+
+        TerminalTheme theme = connection.terminal().queryThemeMode(500);
+        replyThread.join(1000);
+
+        assertEquals(TerminalTheme.LIGHT, theme);
+        assertNull("slot must be empty afterwards",
+                connection.themeChangeHandler());
+    }
+
+    /**
+     * Test that queryThemeMode resolves with an unrelated (mouse) filter
+     * active alongside the user callback.
+     */
+    @Test
+    public void testQueryThemeModeWithUnrelatedFilter() throws Exception {
+        EventDecoder decoder = new EventDecoder();
+        decoder.setInputHandler(input -> {
+        });
+        decoder.setMouseHandler(event -> {
+        });
+        List<TerminalTheme> callbacks = new ArrayList<>();
+        Consumer<TerminalTheme> userCallback = theme -> callbacks.add(theme);
+        decoder.setThemeChangeHandler(userCallback);
+        MockConnection connection = themeConnection(decoder);
+        connection.setStdinHandler(decoder);
+
+        String reply = "" + (char) 27 + "[?997;1n";
+        Thread replyThread = new Thread(() -> {
+            try {
+                awaitThemeHandlerInstalled(connection, userCallback, 1000);
+                connection.simulateInput(reply);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        });
+        replyThread.start();
+
+        TerminalTheme theme = connection.terminal().queryThemeMode(500);
+        replyThread.join(1000);
+
+        assertEquals(TerminalTheme.DARK, theme);
+        assertEquals(1, callbacks.size());
+    }
+
+    /**
+     * Test that queryThemeMode times out cleanly with no reply and
+     * restores the prior subscription.
+     */
+    @Test
+    public void testQueryThemeModeTimeoutRestoresSubscription() throws Exception {
+        EventDecoder decoder = new EventDecoder();
+        decoder.setInputHandler(input -> {
+        });
+        List<TerminalTheme> callbacks = new ArrayList<>();
+        Consumer<TerminalTheme> userCallback = theme -> callbacks.add(theme);
+        decoder.setThemeChangeHandler(userCallback);
+        MockConnection connection = themeConnection(decoder);
+        connection.setStdinHandler(decoder);
+
+        TerminalTheme theme = connection.terminal().queryThemeMode(100);
+
+        assertNull("no reply was sent", theme);
+        assertTrue(callbacks.isEmpty());
+        assertTrue("subscription must be intact",
+                connection.themeChangeHandler() == userCallback);
+    }
+
+    /**
+     * Build a connection routing stdin through a real EventDecoder and
+     * the theme slot to that decoder, so query/notification
+     * coordination is exercised end to end. The kitty device reports
+     * theme-query support.
+     *
+     * @param decoder the decoder owning the input path
+     * @return the wired connection
+     */
+    private static MockConnection themeConnection(EventDecoder decoder) {
+        return new MockConnection() {
+            @Override
+            public Device device() {
+                return new BaseDevice("kitty");
+            }
+
+            @Override
+            public void setThemeChangeHandler(Consumer<TerminalTheme> handler) {
+                decoder.setThemeChangeHandler(handler);
+            }
+
+            @Override
+            public Consumer<TerminalTheme> themeChangeHandler() {
+                return decoder.getThemeChangeHandler();
+            }
+        };
+    }
+
+    /**
+     * Wait until queryThemeMode installs its wrapper (the slot differs
+     * from the pre-query handler), so the simulated reply cannot arrive
+     * before the query is listening.
+     *
+     * @param connection the queried connection
+     * @param previous the pre-query handler, possibly null
+     * @param timeoutMs the maximum time to wait
+     */
+    private static void awaitThemeHandlerInstalled(MockConnection connection,
+            Consumer<TerminalTheme> previous, long timeoutMs) throws InterruptedException {
+        long deadline = System.currentTimeMillis() + timeoutMs;
+        while (connection.themeChangeHandler() == previous
+                && System.currentTimeMillis() < deadline) {
+            Thread.sleep(1);
+        }
     }
 
     private static class MockConnection implements Connection {
