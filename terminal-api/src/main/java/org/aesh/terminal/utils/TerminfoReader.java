@@ -25,6 +25,7 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Reads compiled terminfo database entries directly, without spawning an
@@ -141,6 +142,20 @@ final class TerminfoReader {
      * @return the capabilities text, or null if not found or malformed
      */
     static String readEntry(String terminal) {
+        return readEntry(terminal, System.getenv(), System.getProperty("user.home"));
+    }
+
+    /**
+     * Read a compiled terminfo entry with explicit environment.
+     * Package-visible so tests can use fixture databases without
+     * touching process environment or the real home directory.
+     *
+     * @param terminal the terminal name (e.g. "xterm-256color")
+     * @param env the environment variables (TERMINFO, TERMINFO_DIRS)
+     * @param userHome the home directory for the user database, or null
+     * @return the capabilities text, or null if not found or malformed
+     */
+    static String readEntry(String terminal, Map<String, String> env, String userHome) {
         if (terminal == null || terminal.isEmpty()) {
             return null;
         }
@@ -148,36 +163,61 @@ final class TerminfoReader {
         if (!Character.isLetterOrDigit(first)) {
             return null;
         }
-        String relative = first + File.separator + terminal;
-        for (String dir : candidateDirs()) {
-            String text = readFile(new File(dir, relative));
-            if (text != null) {
-                return text;
+        // Character layout (Linux: x/xterm) first, then the hashed
+        // hexadecimal layout (macOS: 78/xterm, low byte of the first
+        // character as two lowercase hex digits).
+        String[] relatives = {
+                first + File.separator + terminal,
+                String.format("%02x", (int) first & 0xFF) + File.separator + terminal,
+        };
+        for (String dir : candidateDirs(env, userHome)) {
+            for (String relative : relatives) {
+                String text = readFile(new File(dir, relative));
+                if (text != null) {
+                    return text;
+                }
             }
         }
         return null;
     }
 
-    private static List<String> candidateDirs() {
+    /**
+     * Search directories in terminfo(5) precedence: an explicit TERMINFO
+     * selects one database exclusively; otherwise TERMINFO_DIRS is a
+     * colon list whose empty entries expand to the system locations;
+     * otherwise the user database precedes the system locations.
+     * Package-visible to pin the order hermetically.
+     *
+     * @param env the environment variables (TERMINFO, TERMINFO_DIRS)
+     * @param userHome the home directory for the user database, or null
+     * @return the directories in search order
+     */
+    static List<String> candidateDirs(Map<String, String> env, String userHome) {
         List<String> dirs = new ArrayList<>();
-        String home = System.getProperty("user.home");
-        if (home != null) {
-            dirs.add(home + File.separator + ".terminfo");
-        }
-        String terminfo = System.getenv("TERMINFO");
+        String terminfo = env.get("TERMINFO");
         if (terminfo != null && !terminfo.isEmpty()) {
             dirs.add(terminfo);
+            return dirs;
         }
-        String terminfoDirs = System.getenv("TERMINFO_DIRS");
+        if (userHome != null) {
+            dirs.add(userHome + File.separator + ".terminfo");
+        }
+        String terminfoDirs = env.get("TERMINFO_DIRS");
         if (terminfoDirs != null && !terminfoDirs.isEmpty()) {
-            for (String dir : terminfoDirs.split(":")) {
-                if (!dir.isEmpty()) {
+            // Limit -1 keeps trailing empty entries, which also expand.
+            for (String dir : terminfoDirs.split(":", -1)) {
+                if (dir.isEmpty()) {
+                    for (String systemDir : DEFAULT_DIRS) {
+                        dirs.add(systemDir);
+                    }
+                } else {
                     dirs.add(dir);
                 }
             }
-        }
-        for (String dir : DEFAULT_DIRS) {
-            dirs.add(dir);
+        } else {
+            for (String dir : DEFAULT_DIRS) {
+                dirs.add(dir);
+            }
         }
         return dirs;
     }

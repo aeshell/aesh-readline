@@ -31,6 +31,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.aesh.terminal.tty.Capability;
+import org.junit.Assume;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -234,8 +235,17 @@ public class InfoCmpTest {
         String oldHome = System.getProperty("user.home");
         try {
             System.setProperty("user.home", home.getAbsolutePath());
+            // Direct read with an injected environment: hermetic regardless
+            // of the ambient setup.
+            Map<String, String> env = new HashMap<>();
             assertTrue("Fixture must be a readable compiled entry",
-                    TerminfoReader.readEntry(terminal).contains("colors#256"));
+                    TerminfoReader.readEntry(terminal, env, home.getAbsolutePath())
+                            .contains("colors#256"));
+            // End-to-end through production lookup only when no ambient
+            // TERMINFO selects another database: an explicit TERMINFO is
+            // exclusive per terminfo(5) and rightly skips the home entry.
+            Assume.assumeTrue("ambient TERMINFO selects another database",
+                    System.getenv("TERMINFO") == null || System.getenv("TERMINFO").isEmpty());
             String caps = InfoCmp.getInfoCmp(terminal);
             assertTrue("Must read the installed entry, not bundled ANSI", caps.startsWith(terminal + "|fixture"));
             assertTrue(caps.contains("colors#256"));

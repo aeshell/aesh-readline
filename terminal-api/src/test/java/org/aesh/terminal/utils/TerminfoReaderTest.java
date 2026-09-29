@@ -21,6 +21,10 @@ import static org.junit.Assert.assertTrue;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -30,7 +34,9 @@ import java.util.Set;
 
 import org.aesh.terminal.tty.Capability;
 import org.junit.Assume;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 /**
  * Differential tests for {@link TerminfoReader}: database-direct reads must
@@ -151,5 +157,171 @@ public class TerminfoReaderTest {
         assertNull(TerminfoReader.readEntry(null));
         assertNull(TerminfoReader.readEntry(""));
         assertNull(TerminfoReader.readEntry("/etc/passwd"));
+    }
+
+    // ==================== Layout and precedence fixtures ====================
+    //
+    // Hand-built minimal terminfo binaries in fixture databases: no
+    // dependence on the machine's own database, so every platform layout
+    // and precedence rule is testable on any host.
+
+    @Rule
+    public TemporaryFolder fixtureDirs = new TemporaryFolder();
+
+    /**
+     * Build a minimal valid terminfo entry: one alias pair, cols set to
+     * the given value, one trivial string capability.
+     *
+     * @param cols the cols value to record
+     * @return the entry bytes in legacy (16-bit) format
+     */
+    private static byte[] minimalEntry(int cols) {
+        byte[] names = "t|Test term\0".getBytes(StandardCharsets.ISO_8859_1);
+        byte[] table = new byte[] { 'x', 0 };
+        ByteBuffer buf = ByteBuffer.allocate(12 + names.length + 2 + 2 + table.length)
+                .order(ByteOrder.LITTLE_ENDIAN);
+        buf.putShort((short) 0x011A);
+        buf.putShort((short) names.length);
+        buf.putShort((short) 0);
+        buf.putShort((short) 1);
+        buf.putShort((short) 1);
+        buf.putShort((short) table.length);
+        buf.put(names);
+        buf.putShort((short) cols);
+        buf.putShort((short) 0);
+        buf.put(table);
+        return buf.array();
+    }
+
+    private static void writeEntry(File root, String subdir, String name, byte[] data)
+            throws Exception {
+        File dir = new File(root, subdir);
+        assertTrue(dir.mkdirs());
+        Files.write(new File(dir, name).toPath(), data);
+    }
+
+    private static Map<String, String> env(String... pairs) {
+        Map<String, String> env = new HashMap<>();
+        for (int i = 0; i + 1 < pairs.length; i += 2) {
+            env.put(pairs[i], pairs[i + 1]);
+        }
+        return env;
+    }
+
+    @Test
+    public void testHexLayoutResolves() throws Exception {
+        File db = fixtureDirs.newFolder("hexdb");
+        writeEntry(db, "78", "xtest", minimalEntry(80));
+
+        String text = TerminfoReader.readEntry("xtest",
+                env("TERMINFO", db.getAbsolutePath()),
+                fixtureDirs.newFolder("home").getAbsolutePath());
+
+        assertNotNull(text);
+        assertTrue(text.contains("cols#80"));
+    }
+
+    @Test
+    public void testCharLayoutRetained() throws Exception {
+        File db = fixtureDirs.newFolder("chardb");
+        writeEntry(db, "x", "xtest", minimalEntry(80));
+
+        String text = TerminfoReader.readEntry("xtest",
+                env("TERMINFO", db.getAbsolutePath()),
+                fixtureDirs.newFolder("home").getAbsolutePath());
+
+        assertNotNull(text);
+        assertTrue(text.contains("cols#80"));
+    }
+
+    @Test
+    public void testTerminfoIsExclusive() throws Exception {
+        File home = fixtureDirs.newFolder("home");
+        writeEntry(new File(home, ".terminfo"), "t", "testhome", minimalEntry(80));
+        File other = fixtureDirs.newFolder("otherdb");
+
+        assertNull("an explicit TERMINFO must not fall through to home",
+                TerminfoReader.readEntry("testhome",
+                        env("TERMINFO", other.getAbsolutePath()),
+                        home.getAbsolutePath()));
+    }
+
+    @Test
+    public void testTerminfoBeatsHome() throws Exception {
+        File home = fixtureDirs.newFolder("home");
+        writeEntry(new File(home, ".terminfo"), "t", "testconf", minimalEntry(80));
+        File selected = fixtureDirs.newFolder("selected");
+        writeEntry(selected, "t", "testconf", minimalEntry(132));
+
+        String text = TerminfoReader.readEntry("testconf",
+                env("TERMINFO", selected.getAbsolutePath()),
+                home.getAbsolutePath());
+
+        assertNotNull(text);
+        assertTrue("the selected database must win",
+                text.contains("cols#132"));
+    }
+
+    @Test
+    public void testTerminfoDirsOrder() throws Exception {
+        File dirA = fixtureDirs.newFolder("dirA");
+        File dirB = fixtureDirs.newFolder("dirB");
+        writeEntry(dirA, "t", "testconf", minimalEntry(80));
+        writeEntry(dirB, "t", "testconf", minimalEntry(132));
+
+        String text = TerminfoReader.readEntry("testconf",
+                env("TERMINFO_DIRS", dirA.getAbsolutePath() + ":" + dirB.getAbsolutePath()),
+                fixtureDirs.newFolder("home").getAbsolutePath());
+
+        assertNotNull(text);
+        assertTrue("first TERMINFO_DIRS entry must win", text.contains("cols#80"));
+    }
+
+    @Test
+    public void testTerminfoDirsEmptyEntriesExpand() {
+        String home = new File(fixtureDirs.getRoot(), "home").getAbsolutePath();
+        List<String> dirs = TerminfoReader.candidateDirs(
+                env("TERMINFO_DIRS", "dirA::dirB"), home);
+        List<String> expected = new ArrayList<>();
+        expected.add(home + File.separator + ".terminfo");
+        expected.add("dirA");
+        expected.add("/etc/terminfo");
+        expected.add("/usr/share/terminfo");
+        expected.add("/usr/lib/terminfo");
+        expected.add("dirB");
+        assertEquals(expected, dirs);
+
+        List<String> trailing = TerminfoReader.candidateDirs(
+                env("TERMINFO_DIRS", "dirA:"), home);
+        List<String> expectedTrailing = new ArrayList<>(expected.subList(0, 2));
+        expectedTrailing.addAll(expected.subList(2, 5));
+        assertEquals("trailing empty entries must expand too",
+                expectedTrailing, trailing);
+    }
+
+    @Test
+    public void testMalformedEntryFallsThrough() throws Exception {
+        File db = fixtureDirs.newFolder("mixeddb");
+        byte[] malformed = minimalEntry(80);
+        malformed[0] = 0;
+        malformed[1] = 0;
+        writeEntry(db, "t", "testconf", malformed);
+        writeEntry(db, "74", "testconf", minimalEntry(132));
+
+        String text = TerminfoReader.readEntry("testconf",
+                env("TERMINFO", db.getAbsolutePath()),
+                fixtureDirs.newFolder("home").getAbsolutePath());
+
+        assertNotNull(text);
+        assertTrue(text.contains("cols#132"));
+    }
+
+    @Test
+    public void testUnknownStillNullWithExplicitDb() throws Exception {
+        File db = fixtureDirs.newFolder("emptydb");
+
+        assertNull(TerminfoReader.readEntry("nope",
+                env("TERMINFO", db.getAbsolutePath()),
+                fixtureDirs.newFolder("home").getAbsolutePath()));
     }
 }
