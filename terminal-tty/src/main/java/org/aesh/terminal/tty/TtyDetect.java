@@ -30,9 +30,15 @@ import org.aesh.terminal.utils.OSUtils;
 /**
  * Utility for detecting whether file descriptors are connected to a terminal.
  * <p>
- * On Java 22+, uses {@code Console.isTerminal()} for detection without
- * triggering FFM restricted method warnings. On older Java versions, falls
- * back to the {@code System.console() != null} heuristic.
+ * Each descriptor is examined independently: Windows probes the matching
+ * standard handle with {@code GetConsoleMode}, POSIX runs {@code test -t}
+ * for the descriptor. Both answer per-fd, so mixed redirection (e.g. tty
+ * stdout with piped stdin) reports each stream truthfully.
+ * <p>
+ * No native access is needed on POSIX at any Java version. Where the
+ * platform cannot answer per-fd (no {@code sh} available), detection falls
+ * back to the whole-console {@code Console.isTerminal()} approximation and
+ * finally the {@code System.console()} heuristic, in that order.
  * <p>
  * Typical usage:
  *
@@ -70,10 +76,12 @@ public final class TtyDetect {
     /**
      * Check if the given file descriptor is connected to a terminal.
      * <p>
-     * On Java 22+, this uses {@code Console.isTerminal()} which avoids
-     * loading FFM bindings and triggering restricted method warnings.
-     * On older Java versions, falls back to heuristics based on
-     * {@code System.console()}.
+     * Each descriptor is examined on its own: Windows probes the matching
+     * standard handle, POSIX runs {@code test -t} for the descriptor, so
+     * mixed redirection reports each stream truthfully. Descriptors other
+     * than 0-2, and negative values, always report false without spawning
+     * anything. Where POSIX cannot run {@code sh}, the whole-console
+     * {@code Console.isTerminal()} approximation applies instead.
      *
      * @param fd the file descriptor (0=stdin, 1=stdout, 2=stderr)
      * @return true if the file descriptor is connected to a terminal
@@ -84,7 +92,7 @@ public final class TtyDetect {
         // which starts a WindowsStreamPump thread that competes with our
         // own pump for ReadConsoleInputW events, causing lost keystrokes (#276).
         if (OSUtils.IS_WINDOWS) {
-            Boolean winResult = tryWindowsConsoleHandle();
+            Boolean winResult = tryWindowsConsoleHandle(fd);
             if (winResult != null) {
                 return winResult;
             }
@@ -93,6 +101,15 @@ public final class TtyDetect {
             // and claiming a console we can't drive is dangerous.
             return false;
         }
+        if (fd < 0) {
+            return false;
+        }
+        // Exact per-fd answer wherever sh exists (all POSIX, all Java
+        // versions, no native access needed).
+        Boolean exact = tryTestT(fd);
+        if (exact != null) {
+            return exact;
+        }
         // Try Console.isTerminal() first (Java 22+, no FFM needed).
         Boolean consoleResult = tryConsoleIsTerminal();
         if (consoleResult != null) {
@@ -100,6 +117,61 @@ public final class TtyDetect {
         }
         // Fallback: System.console() != null heuristic (pre-Java 22)
         return System.console() != null;
+    }
+
+    /**
+     * Probe one descriptor with {@code test -t}, i.e. isatty(fd).
+     * <p>
+     * The tested descriptor must be inherited: the child answers for its
+     * own fds, so the child descriptor under test is bound to the
+     * parent's (INHERIT) while the other two stay piped and drained.
+     * Default-PIPE stdio would make stdout/stderr probes test the pipe
+     * instead of the terminal — always false, including for consoles.
+     *
+     * @param fd the file descriptor (non-negative)
+     * @return TRUE/FALSE from the exit status, or null when sh is unavailable
+     */
+    private static Boolean tryTestT(int fd) {
+        Process process = null;
+        try {
+            ProcessBuilder builder = new ProcessBuilder("sh", "-c", "test -t " + fd);
+            if (fd == FD_STDIN) {
+                builder.redirectInput(ProcessBuilder.Redirect.INHERIT);
+            }
+            if (fd == FD_STDOUT) {
+                builder.redirectOutput(ProcessBuilder.Redirect.INHERIT);
+            }
+            if (fd == FD_STDERR) {
+                builder.redirectError(ProcessBuilder.Redirect.INHERIT);
+            }
+            process = builder.start();
+            // Drain piped streams (error text for bogus fds is tiny;
+            // inherited ones read EOF instantly). Never merged: stray
+            // text must not leak into an inherited user stream.
+            drainQuietly(process.getInputStream());
+            drainQuietly(process.getErrorStream());
+            process.waitFor();
+            return process.exitValue() == 0;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return null;
+        } catch (Exception e) {
+            return null;
+        } finally {
+            if (process != null) {
+                process.destroy();
+            }
+        }
+    }
+
+    private static void drainQuietly(java.io.InputStream in) {
+        try {
+            byte[] buf = new byte[64];
+            while (in.read(buf) != -1) {
+                // Discard; tiny.
+            }
+        } catch (Exception ignored) {
+        }
     }
 
     /**
@@ -162,7 +234,9 @@ public final class TtyDetect {
 
     /**
      * Try to detect a Windows console via WinConsoleNative.getStdHandle() +
-     * getConsoleMode(). This avoids System.console() which triggers the JDK's
+     * getConsoleMode() for the standard input handle. Kept for the
+     * stdin-specific probe; per-fd callers use {@link #tryWindowsConsoleHandle(int)}.
+     * This avoids System.console() which triggers the JDK's
      * internal JLine terminal (JnaWinSysTerminal + WindowsStreamPump) that
      * competes for ReadConsoleInputW events (#276).
      * <p>
@@ -177,8 +251,32 @@ public final class TtyDetect {
      *         null if the native library is not available
      */
     private static Boolean tryWindowsConsoleHandle() {
+        return tryWindowsConsoleHandle(FD_STDIN);
+    }
+
+    /**
+     * Try to detect a Windows console for one standard descriptor.
+     * Descriptors other than stdin/stdout/stderr report false without
+     * touching native code: GetStdHandle knows no other handles, and a
+     * bogus fd must never report true.
+     *
+     * @param fd the file descriptor (0=stdin, 1=stdout, 2=stderr)
+     * @return TRUE for a console handle, FALSE for pipes, redirects, and
+     *         other descriptors, null if the native library is unavailable
+     */
+    private static Boolean tryWindowsConsoleHandle(int fd) {
+        int stdHandle;
+        if (fd == FD_STDIN) {
+            stdHandle = WinConsoleNative.STD_INPUT_HANDLE;
+        } else if (fd == FD_STDOUT) {
+            stdHandle = WinConsoleNative.STD_OUTPUT_HANDLE;
+        } else if (fd == FD_STDERR) {
+            stdHandle = WinConsoleNative.STD_ERROR_HANDLE;
+        } else {
+            return Boolean.FALSE;
+        }
         try {
-            long handle = WinConsoleNative.getStdHandle(WinConsoleNative.STD_INPUT_HANDLE);
+            long handle = WinConsoleNative.getStdHandle(stdHandle);
             if (handle == WinConsoleNative.INVALID_HANDLE) {
                 return Boolean.FALSE;
             }
