@@ -24,6 +24,7 @@ import java.io.Reader;
 import java.util.OptionalInt;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 import org.aesh.terminal.Connection;
 
@@ -43,6 +44,17 @@ import org.aesh.terminal.Connection;
  * // now use reader.read(...) or reader.readCodePoint(...)
  * }</pre>
  *
+ * <p>
+ * Overflow policy: the queue is bounded and pushing never blocks, so a
+ * producer (typically the single input event thread) can never deadlock
+ * against a slow consumer. Chars beyond capacity are dropped newest-first
+ * and counted — never silently: {@link #droppedCount()} reports the
+ * total, {@link #clearDroppedCount()} resets it. Each {@code push} call
+ * is atomic per code point (a supplementary pair is stored whole or not
+ * at all), and calls are mutually exclusive, so concurrent producers
+ * cannot interleave half pairs either. Pushing after {@link #close()}
+ * is ignored.
+ *
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public class InputReader extends Reader {
@@ -56,6 +68,7 @@ public class InputReader extends Reader {
 
     private final LinkedBlockingQueue<Character> queue;
     private volatile boolean closed = false;
+    private long dropped;
 
     /**
      * Create an InputReader with the default queue capacity (4096).
@@ -93,38 +106,52 @@ public class InputReader extends Reader {
      */
     public static InputReader asReader(Connection connection, int capacity) {
         InputReader reader = new InputReader(capacity);
-        connection.setStdinHandler(cps -> {
-            for (int cp : cps) {
-                reader.push(cp);
+        connection.setStdinHandler(new Consumer<int[]>() {
+            @Override
+            public void accept(int[] cps) {
+                for (int cp : cps) {
+                    reader.push(cp);
+                }
             }
         });
         return reader;
     }
 
     /**
-     * Push a single char into the reader.
+     * Push a single char into the reader. Never blocks: when the queue
+     * is full the char is dropped and counted (see the class policy).
      *
      * @param ch the character to push
      */
-    public void push(char ch) {
-        if (!closed) {
-            queue.offer(ch);
+    public synchronized void push(char ch) {
+        if (closed) {
+            return;
+        }
+        if (!queue.offer(ch)) {
+            dropped++;
         }
     }
 
     /**
      * Push a code point into the reader. Supplementary code points
-     * (above U+FFFF) are split into surrogate pairs.
+     * (above U+FFFF) are split into surrogate pairs. The pair is
+     * stored whole or not at all: when fewer than two slots remain
+     * the code point is dropped and counted, never stranded half
+     * queued. Never blocks.
      *
      * @param codePoint the Unicode code point to push
      */
-    public void push(int codePoint) {
+    public synchronized void push(int codePoint) {
         if (closed) {
             return;
         }
         if (Character.isBmpCodePoint(codePoint)) {
             push((char) codePoint);
         } else {
+            if (queue.remainingCapacity() < 2) {
+                dropped += 2;
+                return;
+            }
             char[] chars = Character.toChars(codePoint);
             for (char c : chars) {
                 push(c);
@@ -133,14 +160,36 @@ public class InputReader extends Reader {
     }
 
     /**
-     * Push a character sequence into the reader.
+     * Push a character sequence into the reader, code point by code
+     * point so supplementary pairs keep the per-call atomicity above.
+     * Never blocks; excess is dropped and counted.
      *
      * @param csq the character sequence to push
      */
-    public void push(CharSequence csq) {
-        for (int i = 0; i < csq.length(); i++) {
-            push(csq.charAt(i));
+    public synchronized void push(CharSequence csq) {
+        for (int i = 0; i < csq.length();) {
+            int cp = Character.codePointAt(csq, i);
+            push(cp);
+            i += Character.charCount(cp);
         }
+    }
+
+    /**
+     * Report how many pushed chars were dropped for lack of capacity.
+     * A supplementary code point dropped whole counts its two chars.
+     * Monotonic until {@link #clearDroppedCount()}.
+     *
+     * @return the total dropped char count
+     */
+    public synchronized long droppedCount() {
+        return dropped;
+    }
+
+    /**
+     * Reset the dropped-char count, e.g. for per-paste accounting.
+     */
+    public synchronized void clearDroppedCount() {
+        dropped = 0;
     }
 
     /**

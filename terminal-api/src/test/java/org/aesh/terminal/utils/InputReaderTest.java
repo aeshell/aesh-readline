@@ -257,6 +257,73 @@ public class InputReaderTest {
         // Only first 4 should have been accepted
         assertEquals(4, n);
         assertEquals("ABCD", new String(buf, 0, n));
+        // The 4 excess chars are counted, never silent
+        assertEquals(4, reader.droppedCount());
+
+        reader.close();
+    }
+
+    @Test
+    public void testSupplementaryPairDropsWholeNearCapacity() throws Exception {
+        InputReader reader = new InputReader(2);
+        reader.push('a');
+
+        // One slot left: the pair needs two, so both chars drop
+        reader.push(0x1F600);
+
+        assertEquals('a', reader.read(100));
+        assertEquals(InputReader.TIMEOUT, reader.read(100));
+        assertEquals("no half pair may strand", 2, reader.droppedCount());
+
+        reader.close();
+    }
+
+    @Test
+    public void testSupplementaryPairFitsExactly() throws Exception {
+        InputReader reader = new InputReader(2);
+        reader.push(0x1F600);
+
+        OptionalInt cp = reader.readCodePoint(100, TimeUnit.MILLISECONDS);
+        assertTrue(cp.isPresent());
+        assertEquals(0x1F600, cp.getAsInt());
+        assertEquals(0, reader.droppedCount());
+
+        reader.close();
+    }
+
+    @Test
+    public void testDroppedCountAndReset() throws Exception {
+        InputReader reader = new InputReader(2);
+        assertEquals(0, reader.droppedCount());
+
+        reader.push("abcdef");
+        assertEquals(4, reader.droppedCount());
+
+        reader.clearDroppedCount();
+        assertEquals(0, reader.droppedCount());
+
+        reader.push('x');
+        reader.push('y');
+        reader.push('z');
+        assertEquals("queue still holds a,b: all three drop", 3, reader.droppedCount());
+
+        reader.close();
+    }
+
+    @Test
+    public void testPushNeverBlocksWhenFull() throws Exception {
+        InputReader reader = new InputReader(2);
+        reader.push('a');
+        reader.push('b');
+
+        long start = System.nanoTime();
+        for (int i = 0; i < 1000; i++) {
+            reader.push('x');
+        }
+        long elapsedMs = (System.nanoTime() - start) / 1_000_000;
+
+        assertTrue("push must return promptly on a full queue", elapsedMs < 1000);
+        assertEquals(1000, reader.droppedCount());
 
         reader.close();
     }
