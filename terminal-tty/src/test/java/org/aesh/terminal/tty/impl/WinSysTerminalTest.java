@@ -20,9 +20,12 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.function.Function;
 
 import org.aesh.terminal.tty.Capability;
+import org.aesh.terminal.tty.TerminalConnection;
 import org.junit.Test;
 
 /**
@@ -82,14 +85,16 @@ public class WinSysTerminalTest {
     @Test
     public void testKeyDownProducesCharacter() {
         int[] event = keyEvent(true, 1, 0x41, 'a', 0); // VK_A
-        byte[] result = WinSysTerminal.processKeyEvent(event, NO_ESCAPE, NO_CAPABILITY);
+        byte[] result = WinSysTerminal.processKeyEvent(event, NO_ESCAPE, NO_CAPABILITY, StandardCharsets.UTF_8,
+                new WinSysTerminal.PendingSurrogate());
         assertArrayEquals("Key-down should produce 'a'", new byte[] { 'a' }, result);
     }
 
     @Test
     public void testKeyUpFiltered() {
         int[] event = keyEvent(false, 1, 0x41, 'a', 0);
-        byte[] result = WinSysTerminal.processKeyEvent(event, NO_ESCAPE, NO_CAPABILITY);
+        byte[] result = WinSysTerminal.processKeyEvent(event, NO_ESCAPE, NO_CAPABILITY, StandardCharsets.UTF_8,
+                new WinSysTerminal.PendingSurrogate());
         assertEquals("Key-up should be filtered", 0, result.length);
     }
 
@@ -99,8 +104,10 @@ public class WinSysTerminalTest {
         int[] down = keyEvent(true, 1, 0x41, 'a', 0);
         int[] up = keyEvent(false, 1, 0x41, 'a', 0);
 
-        byte[] r1 = WinSysTerminal.processKeyEvent(down, NO_ESCAPE, NO_CAPABILITY);
-        byte[] r2 = WinSysTerminal.processKeyEvent(up, NO_ESCAPE, NO_CAPABILITY);
+        byte[] r1 = WinSysTerminal.processKeyEvent(down, NO_ESCAPE, NO_CAPABILITY, StandardCharsets.UTF_8,
+                new WinSysTerminal.PendingSurrogate());
+        byte[] r2 = WinSysTerminal.processKeyEvent(up, NO_ESCAPE, NO_CAPABILITY, StandardCharsets.UTF_8,
+                new WinSysTerminal.PendingSurrogate());
 
         assertArrayEquals("Key-down should produce 'a'", new byte[] { 'a' }, r1);
         assertEquals("Key-up should be filtered", 0, r2.length);
@@ -111,7 +118,8 @@ public class WinSysTerminalTest {
     @Test
     public void testArrowKeyProducesEscapeSequence() {
         int[] event = keyEvent(true, 1, 0x25, '\0', 0); // VK_LEFT
-        byte[] result = WinSysTerminal.processKeyEvent(event, ARROW_ESCAPE, NO_CAPABILITY);
+        byte[] result = WinSysTerminal.processKeyEvent(event, ARROW_ESCAPE, NO_CAPABILITY, StandardCharsets.UTF_8,
+                new WinSysTerminal.PendingSurrogate());
         assertArrayEquals("Left arrow should produce ESC[D",
                 "\033[D".getBytes(), result);
     }
@@ -119,7 +127,8 @@ public class WinSysTerminalTest {
     @Test
     public void testVirtualKeyRepeatCount() {
         int[] event = keyEvent(true, 3, 0x27, '\0', 0); // VK_RIGHT x3
-        byte[] result = WinSysTerminal.processKeyEvent(event, ARROW_ESCAPE, NO_CAPABILITY);
+        byte[] result = WinSysTerminal.processKeyEvent(event, ARROW_ESCAPE, NO_CAPABILITY, StandardCharsets.UTF_8,
+                new WinSysTerminal.PendingSurrogate());
         assertArrayEquals("Right arrow x3 should produce ESC[C three times",
                 "\033[C\033[C\033[C".getBytes(), result);
     }
@@ -131,7 +140,8 @@ public class WinSysTerminalTest {
     @Test
     public void testPrintableRepeatCount() {
         int[] event = keyEvent(true, 3, 0x41, 'A', 0); // A x3, coalesced hold
-        byte[] result = WinSysTerminal.processKeyEvent(event, NO_ESCAPE, NO_CAPABILITY);
+        byte[] result = WinSysTerminal.processKeyEvent(event, NO_ESCAPE, NO_CAPABILITY, StandardCharsets.UTF_8,
+                new WinSysTerminal.PendingSurrogate());
         assertArrayEquals("Held A x3 should produce AAA",
                 new byte[] { 'A', 'A', 'A' }, result);
     }
@@ -139,14 +149,16 @@ public class WinSysTerminalTest {
     @Test
     public void testPrintableSinglePressUnchanged() {
         int[] event = keyEvent(true, 1, 0x41, 'A', 0);
-        byte[] result = WinSysTerminal.processKeyEvent(event, NO_ESCAPE, NO_CAPABILITY);
+        byte[] result = WinSysTerminal.processKeyEvent(event, NO_ESCAPE, NO_CAPABILITY, StandardCharsets.UTF_8,
+                new WinSysTerminal.PendingSurrogate());
         assertArrayEquals(new byte[] { 'A' }, result);
     }
 
     @Test
     public void testAltPrintableRepeatCount() {
         int[] event = keyEvent(true, 2, 0x41, 'A', LEFT_ALT_PRESSED);
-        byte[] result = WinSysTerminal.processKeyEvent(event, NO_ESCAPE, NO_CAPABILITY);
+        byte[] result = WinSysTerminal.processKeyEvent(event, NO_ESCAPE, NO_CAPABILITY, StandardCharsets.UTF_8,
+                new WinSysTerminal.PendingSurrogate());
         assertArrayEquals("Alt-A x2 should repeat the ESC-prefixed unit",
                 "\033A\033A".getBytes(), result);
     }
@@ -154,21 +166,24 @@ public class WinSysTerminalTest {
     @Test
     public void testControlPrintableRepeatCount() {
         int[] event = keyEvent(true, 2, 0x41, (char) 0x01, LEFT_CTRL_PRESSED); // Ctrl+A x2
-        byte[] result = WinSysTerminal.processKeyEvent(event, NO_ESCAPE, NO_CAPABILITY);
+        byte[] result = WinSysTerminal.processKeyEvent(event, NO_ESCAPE, NO_CAPABILITY, StandardCharsets.UTF_8,
+                new WinSysTerminal.PendingSurrogate());
         assertArrayEquals(new byte[] { 0x01, 0x01 }, result);
     }
 
     @Test
     public void testShiftTabRepeatCount() {
         int[] event = keyEvent(true, 2, 0x09, '\t', SHIFT_PRESSED);
-        byte[] result = WinSysTerminal.processKeyEvent(event, NO_ESCAPE, BTAB_CAPABILITY);
+        byte[] result = WinSysTerminal.processKeyEvent(event, NO_ESCAPE, BTAB_CAPABILITY, StandardCharsets.UTF_8,
+                new WinSysTerminal.PendingSurrogate());
         assertArrayEquals("\033[Z\033[Z".getBytes(), result);
     }
 
     @Test
     public void testShiftTabWithoutCapabilityProducesNothing() {
         int[] event = keyEvent(true, 2, 0x09, '\t', SHIFT_PRESSED);
-        byte[] result = WinSysTerminal.processKeyEvent(event, NO_ESCAPE, NO_CAPABILITY);
+        byte[] result = WinSysTerminal.processKeyEvent(event, NO_ESCAPE, NO_CAPABILITY, StandardCharsets.UTF_8,
+                new WinSysTerminal.PendingSurrogate());
         assertEquals(0, result.length);
     }
 
@@ -176,21 +191,129 @@ public class WinSysTerminalTest {
     public void testAltNumpadKeyUpEmitsOnce() {
         // ALT+NumPad input method: character delivered on Alt key-up.
         int[] event = keyEvent(false, 1, 0x12, 'A', 0);
-        byte[] result = WinSysTerminal.processKeyEvent(event, NO_ESCAPE, NO_CAPABILITY);
+        byte[] result = WinSysTerminal.processKeyEvent(event, NO_ESCAPE, NO_CAPABILITY, StandardCharsets.UTF_8,
+                new WinSysTerminal.PendingSurrogate());
         assertArrayEquals(new byte[] { 'A' }, result);
     }
 
     @Test
     public void testPlainKeyUpFiltered() {
         int[] event = keyEvent(false, 1, 0x41, 'A', 0);
-        byte[] result = WinSysTerminal.processKeyEvent(event, NO_ESCAPE, NO_CAPABILITY);
+        byte[] result = WinSysTerminal.processKeyEvent(event, NO_ESCAPE, NO_CAPABILITY, StandardCharsets.UTF_8,
+                new WinSysTerminal.PendingSurrogate());
         assertEquals(0, result.length);
+    }
+
+    // ==================== Surrogate pairing across records ====================
+
+    /**
+     * Feed records through one shared pairing state, concatenating output.
+     */
+    private static byte[] processSequence(int[][] events, Charset charset) {
+        return processSequence(events, NO_ESCAPE, charset);
+    }
+
+    private static byte[] processSequence(int[][] events,
+            Function<Short, String> escapeLookup, Charset charset) {
+        WinSysTerminal.PendingSurrogate pending = new WinSysTerminal.PendingSurrogate();
+        java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+        for (int[] event : events) {
+            byte[] bytes = WinSysTerminal.processKeyEvent(
+                    event, escapeLookup, NO_CAPABILITY, charset, pending);
+            out.write(bytes, 0, bytes.length);
+        }
+        return out.toByteArray();
+    }
+
+    private static int[] keyDown(int vKeyCode, char unicodeChar, int controlKeyState) {
+        return keyEvent(true, 1, vKeyCode, unicodeChar, controlKeyState);
+    }
+
+    @Test
+    public void testSurrogatePairAcrossRecords() {
+        byte[] result = processSequence(new int[][] {
+                keyEvent(true, 1, 0, (char) 0xD83D, 0),
+                keyEvent(true, 1, 0, (char) 0xDE00, 0),
+        }, StandardCharsets.UTF_8);
+        assertArrayEquals(new String(new int[] { 0x1F600 }, 0, 1)
+                .getBytes(StandardCharsets.UTF_8), result);
+    }
+
+    @Test
+    public void testHighThenOrdinaryKeepsBoth() {
+        byte[] result = processSequence(new int[][] {
+                keyEvent(true, 1, 0, (char) 0xD83D, 0),
+                keyDown(0, 'X', 0),
+        }, StandardCharsets.UTF_8);
+        assertArrayEquals(new byte[] { '?', 'X' }, result);
+    }
+
+    @Test
+    public void testLoneLowSurrogate() {
+        byte[] result = processSequence(new int[][] {
+                keyDown(0, (char) 0xDC00, 0),
+        }, StandardCharsets.UTF_8);
+        assertArrayEquals(new byte[] { '?' }, result);
+    }
+
+    @Test
+    public void testFlushedHighBeforeVirtualKey() {
+        byte[] result = processSequence(new int[][] {
+                keyEvent(true, 1, 0, (char) 0xD83D, 0),
+                keyEvent(true, 1, 0x25, '\0', 0),
+        }, ARROW_ESCAPE, StandardCharsets.UTF_8);
+        assertArrayEquals(("?" + (char) 27 + "[D").getBytes(), result);
+    }
+
+    @Test
+    public void testPairRepeatCount() {
+        byte[] result = processSequence(new int[][] {
+                keyEvent(true, 1, 0, (char) 0xD83D, 0),
+                keyEvent(true, 3, 0, (char) 0xDE00, 0),
+        }, StandardCharsets.UTF_8);
+        byte[] pair = new String(new int[] { 0x1F600 }, 0, 1).getBytes(StandardCharsets.UTF_8);
+        assertEquals(3 * pair.length, result.length);
+        for (int i = 0; i < 3; i++) {
+            for (int j = 0; j < pair.length; j++) {
+                assertEquals(pair[j], result[i * pair.length + j]);
+            }
+        }
+    }
+
+    @Test
+    public void testBmpCharsetHonored() {
+        int[][] events = { keyDown(0, (char) 0xE9, 0) };
+        assertArrayEquals(new byte[] { (byte) 0xC3, (byte) 0xA9 },
+                processSequence(events, StandardCharsets.UTF_8));
+        assertArrayEquals(new byte[] { (byte) 0xE9 },
+                processSequence(events, Charset.forName("windows-1252")));
+    }
+
+    @Test
+    public void testAltNumpadWithPendingFlushes() {
+        byte[] result = processSequence(new int[][] {
+                keyEvent(true, 1, 0, (char) 0xD83D, 0),
+                keyEvent(false, 1, 0x12, 'A', 0),
+        }, StandardCharsets.UTF_8);
+        assertArrayEquals(new byte[] { '?', 'A' }, result);
+    }
+
+    @Test
+    public void testConnectionPushesInputCharset() throws java.io.IOException {
+        TestableWinSysTerminal term = new TestableWinSysTerminal();
+        TerminalConnection conn = new TerminalConnection(term);
+        try {
+            assertEquals(conn.inputEncoding(), term.getInputCharset());
+        } finally {
+            conn.close();
+        }
     }
 
     @Test
     public void testUnmappedVirtualKeyProducesNothing() {
         int[] event = keyEvent(true, 1, 0xFF, '\0', 0); // unmapped vk
-        byte[] result = WinSysTerminal.processKeyEvent(event, NO_ESCAPE, NO_CAPABILITY);
+        byte[] result = WinSysTerminal.processKeyEvent(event, NO_ESCAPE, NO_CAPABILITY, StandardCharsets.UTF_8,
+                new WinSysTerminal.PendingSurrogate());
         assertEquals("Unmapped virtual key should produce nothing", 0, result.length);
     }
 
@@ -199,7 +322,8 @@ public class WinSysTerminalTest {
     @Test
     public void testAltKeyProducesEscPrefix() {
         int[] event = keyEvent(true, 1, 0x46, 'f', LEFT_ALT_PRESSED); // Alt+F
-        byte[] result = WinSysTerminal.processKeyEvent(event, NO_ESCAPE, NO_CAPABILITY);
+        byte[] result = WinSysTerminal.processKeyEvent(event, NO_ESCAPE, NO_CAPABILITY, StandardCharsets.UTF_8,
+                new WinSysTerminal.PendingSurrogate());
         assertArrayEquals("Alt+F should produce ESC f", new byte[] { 0x1b, 'f' }, result);
     }
 
@@ -207,7 +331,8 @@ public class WinSysTerminalTest {
     public void testAltGrNotTreatedAsAlt() {
         // AltGr = Alt+Ctrl — should NOT produce ESC prefix (needed for non-US keyboards)
         int[] event = keyEvent(true, 1, 0x32, '@', LEFT_ALT_PRESSED | LEFT_CTRL_PRESSED);
-        byte[] result = WinSysTerminal.processKeyEvent(event, NO_ESCAPE, NO_CAPABILITY);
+        byte[] result = WinSysTerminal.processKeyEvent(event, NO_ESCAPE, NO_CAPABILITY, StandardCharsets.UTF_8,
+                new WinSysTerminal.PendingSurrogate());
         assertArrayEquals("AltGr+@ should produce @ without ESC prefix",
                 new byte[] { '@' }, result);
     }
@@ -215,7 +340,8 @@ public class WinSysTerminalTest {
     @Test
     public void testAltWithVirtualKey() {
         int[] event = keyEvent(true, 1, 0x25, '\0', LEFT_ALT_PRESSED); // Alt+Left
-        byte[] result = WinSysTerminal.processKeyEvent(event, ARROW_ESCAPE, NO_CAPABILITY);
+        byte[] result = WinSysTerminal.processKeyEvent(event, ARROW_ESCAPE, NO_CAPABILITY, StandardCharsets.UTF_8,
+                new WinSysTerminal.PendingSurrogate());
         assertArrayEquals("Alt+Left should produce ESC + ESC[D",
                 "\033\033[D".getBytes(), result);
     }
@@ -226,7 +352,8 @@ public class WinSysTerminalTest {
     public void testCtrlDProducesEof() {
         // Ctrl+D: vk=0x44, unicodeChar=0x04 (EOT)
         int[] event = keyEvent(true, 1, 0x44, '\u0004', LEFT_CTRL_PRESSED);
-        byte[] result = WinSysTerminal.processKeyEvent(event, NO_ESCAPE, NO_CAPABILITY);
+        byte[] result = WinSysTerminal.processKeyEvent(event, NO_ESCAPE, NO_CAPABILITY, StandardCharsets.UTF_8,
+                new WinSysTerminal.PendingSurrogate());
         assertArrayEquals("Ctrl+D should produce 0x04", new byte[] { 0x04 }, result);
     }
 
@@ -234,7 +361,8 @@ public class WinSysTerminalTest {
     public void testCtrlCProducesInterrupt() {
         // Ctrl+C: vk=0x43, unicodeChar=0x03 (ETX)
         int[] event = keyEvent(true, 1, 0x43, '\u0003', LEFT_CTRL_PRESSED);
-        byte[] result = WinSysTerminal.processKeyEvent(event, NO_ESCAPE, NO_CAPABILITY);
+        byte[] result = WinSysTerminal.processKeyEvent(event, NO_ESCAPE, NO_CAPABILITY, StandardCharsets.UTF_8,
+                new WinSysTerminal.PendingSurrogate());
         assertArrayEquals("Ctrl+C should produce 0x03", new byte[] { 0x03 }, result);
     }
 
@@ -244,7 +372,8 @@ public class WinSysTerminalTest {
     public void testAltNumPadOnKeyUp() {
         // ALT+NumPad: character is produced on ALT key-UP (vk=0x12, VK_MENU)
         int[] event = keyEvent(false, 1, 0x12, '\u00e9', 0); // key-up of ALT, char='é'
-        byte[] result = WinSysTerminal.processKeyEvent(event, NO_ESCAPE, NO_CAPABILITY);
+        byte[] result = WinSysTerminal.processKeyEvent(event, NO_ESCAPE, NO_CAPABILITY, StandardCharsets.UTF_8,
+                new WinSysTerminal.PendingSurrogate());
         assertEquals("ALT+NumPad should produce the character on key-up",
                 "\u00e9", new String(result));
     }
@@ -252,7 +381,8 @@ public class WinSysTerminalTest {
     @Test
     public void testNonAltKeyUpProducesNothing() {
         int[] event = keyEvent(false, 1, 0x41, 'a', 0); // key-up of 'A'
-        byte[] result = WinSysTerminal.processKeyEvent(event, NO_ESCAPE, NO_CAPABILITY);
+        byte[] result = WinSysTerminal.processKeyEvent(event, NO_ESCAPE, NO_CAPABILITY, StandardCharsets.UTF_8,
+                new WinSysTerminal.PendingSurrogate());
         assertEquals("Non-ALT key-up should produce nothing", 0, result.length);
     }
 
@@ -263,7 +393,8 @@ public class WinSysTerminalTest {
         Function<Capability, String> btabLookup = cap -> cap == Capability.key_btab ? "\033[Z" : null;
 
         int[] event = keyEvent(true, 1, 0x09, '\t', SHIFT_PRESSED); // Shift+Tab
-        byte[] result = WinSysTerminal.processKeyEvent(event, NO_ESCAPE, btabLookup);
+        byte[] result = WinSysTerminal.processKeyEvent(event, NO_ESCAPE, btabLookup, StandardCharsets.UTF_8,
+                new WinSysTerminal.PendingSurrogate());
         assertArrayEquals("Shift+Tab should produce key_btab sequence",
                 "\033[Z".getBytes(), result);
     }
@@ -271,7 +402,8 @@ public class WinSysTerminalTest {
     @Test
     public void testTabWithoutShift() {
         int[] event = keyEvent(true, 1, 0x09, '\t', 0); // Tab (no shift)
-        byte[] result = WinSysTerminal.processKeyEvent(event, NO_ESCAPE, NO_CAPABILITY);
+        byte[] result = WinSysTerminal.processKeyEvent(event, NO_ESCAPE, NO_CAPABILITY, StandardCharsets.UTF_8,
+                new WinSysTerminal.PendingSurrogate());
         assertArrayEquals("Tab should produce tab character",
                 new byte[] { '\t' }, result);
     }
@@ -284,7 +416,8 @@ public class WinSysTerminalTest {
         char[] specials = { '@', '#', '$', '%', '!', '&' };
         for (char c : specials) {
             int[] event = keyEvent(true, 1, 0x32, c, SHIFT_PRESSED); // vk varies, but unicodeChar is set
-            byte[] result = WinSysTerminal.processKeyEvent(event, NO_ESCAPE, NO_CAPABILITY);
+            byte[] result = WinSysTerminal.processKeyEvent(event, NO_ESCAPE, NO_CAPABILITY, StandardCharsets.UTF_8,
+                    new WinSysTerminal.PendingSurrogate());
             assertEquals("Shift+key for '" + c + "' should produce the character",
                     String.valueOf(c), new String(result));
         }

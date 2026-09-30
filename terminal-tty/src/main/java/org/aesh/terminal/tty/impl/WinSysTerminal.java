@@ -20,6 +20,8 @@
 package org.aesh.terminal.tty.impl;
 
 import java.io.IOException;
+import java.nio.charset.Charset;
+import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 
@@ -61,6 +63,16 @@ public class WinSysTerminal extends AbstractWindowsTerminal {
 
     private volatile Consumer<MouseEvent> mouseHandler;
     private int lastButtonState;
+
+    /**
+     * Charset for encoding translated input characters. Written once by
+     * the owning connection (its resolved input charset) and read by the
+     * input pump thread, hence volatile. Defaults to the JVM default,
+     * preserving the previous implicit behavior until pushed.
+     */
+    private volatile Charset inputCharset = Charset.defaultCharset();
+    /** High-surrogate state across KEY_EVENT records for this terminal. */
+    private final PendingSurrogate pendingSurrogate = new PendingSurrogate();
 
     /**
      * Create a new Windows system terminal with the specified name.
@@ -212,7 +224,8 @@ public class WinSysTerminal extends AbstractWindowsTerminal {
             return new byte[0];
         }
 
-        return processKeyEvent(event, this::getEscapeSequence, this::getSequence);
+        return processKeyEvent(event, this::getEscapeSequence, this::getSequence,
+                inputCharset, pendingSurrogate);
     }
 
     /**
@@ -229,15 +242,26 @@ public class WinSysTerminal extends AbstractWindowsTerminal {
      * ANSI escape sequences manually via {@code escapeSequenceLookup}.
      * Mouse events are handled separately via ENABLE_MOUSE_INPUT and
      * native MOUSE_EVENT records.
+     * <p>
+     * Each KEY_EVENT carries one UTF-16 code unit, so a supplementary
+     * character arrives as separate high/low records. Pairing state
+     * travels in {@code pending}: a high stashes, the following low
+     * completes the pair, and any other record flushes a stale high as
+     * {@code ?} (never dropped silently). Repeat counts ride the record
+     * that completes the unit. Bytes use {@code charset} explicitly so
+     * both sides of the terminal boundary agree (see #280).
      *
      * @param event the KEY_EVENT record: {1, keyDown, repeatCount, vKeyCode, unicodeChar, controlKeyState}
      * @param escapeSequenceLookup maps virtual key codes to escape sequences (e.g., arrow keys)
      * @param capabilityLookup maps terminal capabilities to sequences (e.g., key_btab)
+     * @param charset the charset for encoding produced characters
+     * @param pending high-surrogate state carried across records
      * @return the bytes to feed to the terminal input pipe, or empty array for filtered events
      */
     static byte[] processKeyEvent(int[] event,
             java.util.function.Function<Short, String> escapeSequenceLookup,
-            java.util.function.Function<Capability, String> capabilityLookup) {
+            java.util.function.Function<Capability, String> capabilityLookup,
+            java.nio.charset.Charset charset, PendingSurrogate pending) {
         boolean keyDown = event[1] != 0;
         int repeatCount = event[2];
         short vKeyCode = (short) event[3];
@@ -257,25 +281,43 @@ public class WinSysTerminal extends AbstractWindowsTerminal {
 
         if (keyDown) {
             if (unicodeChar > 0) {
-                boolean shiftPressed = (controlKeyState & SHIFT_PRESSED) != 0;
-                if (unicodeChar == '\t' && shiftPressed) {
-                    String btab = capabilityLookup.apply(Capability.key_btab);
-                    if (btab != null) {
+                if (Character.isHighSurrogate(unicodeChar)) {
+                    flushPending(sb, pending);
+                    pending.high = unicodeChar;
+                    pending.repeatCount = repeatCount;
+                } else if (Character.isLowSurrogate(unicodeChar)) {
+                    if (pending.high != -1) {
+                        int codePoint = Character.toCodePoint((char) pending.high, unicodeChar);
+                        pending.high = -1;
                         for (int k = 0; k < repeatCount; k++) {
-                            sb.append(btab);
+                            sb.appendCodePoint(codePoint);
                         }
+                    } else {
+                        sb.append('?');
                     }
                 } else {
-                    // Windows coalesces held-key repeats into one record:
-                    // repeat the whole unit, mirroring the virtual-key branch.
-                    for (int k = 0; k < repeatCount; k++) {
-                        if (isAlt) {
-                            sb.append('\033');
+                    flushPending(sb, pending);
+                    boolean shiftPressed = (controlKeyState & SHIFT_PRESSED) != 0;
+                    if (unicodeChar == '\t' && shiftPressed) {
+                        String btab = capabilityLookup.apply(Capability.key_btab);
+                        if (btab != null) {
+                            for (int k = 0; k < repeatCount; k++) {
+                                sb.append(btab);
+                            }
                         }
-                        sb.append(unicodeChar);
+                    } else {
+                        // Windows coalesces held-key repeats into one record:
+                        // repeat the whole unit, mirroring the virtual-key branch.
+                        for (int k = 0; k < repeatCount; k++) {
+                            if (isAlt) {
+                                sb.append('\033');
+                            }
+                            sb.append(unicodeChar);
+                        }
                     }
                 }
             } else {
+                flushPending(sb, pending);
                 // virtual keycodes: http://msdn.microsoft.com/en-us/library/windows/desktop/dd375731(v=vs.85).aspx
                 String escapeSequence = escapeSequenceLookup.apply(vKeyCode);
                 if (escapeSequence != null) {
@@ -291,10 +333,60 @@ public class WinSysTerminal extends AbstractWindowsTerminal {
             // key up event
             // support ALT+NumPad input method
             if (vKeyCode == 0x12/* VK_MENU ALT key */ && unicodeChar > 0) {
+                flushPending(sb, pending);
                 sb.append(unicodeChar);
             }
         }
-        return sb.toString().getBytes();
+        return sb.toString().getBytes(charset);
+    }
+
+    /**
+     * Emit a stale pending high surrogate as replacements and clear it.
+     * A high left over by an unrelated record is orphaned input, not part
+     * of a pair, so it resolves exactly like #313 lone surrogates.
+     *
+     * @param sb the output being built
+     * @param pending the pairing state, cleared by this call
+     */
+    private static void flushPending(StringBuilder sb, PendingSurrogate pending) {
+        if (pending.high != -1) {
+            for (int k = 0; k < pending.repeatCount; k++) {
+                sb.append('?');
+            }
+            pending.high = -1;
+        }
+    }
+
+    /**
+     * High-surrogate state carried across KEY_EVENT records so a
+     * supplementary character split into high/low records reassembles.
+     * Owned by one terminal instance and touched only by its input path.
+     */
+    static final class PendingSurrogate {
+        /** Pending high surrogate, or -1 when empty. */
+        int high = -1;
+        /** Repeat count of the record that stashed it. */
+        int repeatCount;
+    }
+
+    /**
+     * Set the charset for encoding translated input characters, so both
+     * sides of the terminal boundary agree with the connection's resolved
+     * input charset instead of the ambient JVM default.
+     *
+     * @param charset the input charset, never null
+     */
+    public void setInputCharset(Charset charset) {
+        this.inputCharset = Objects.requireNonNull(charset, "inputCharset");
+    }
+
+    /**
+     * The active input charset. Package-visible for headless tests.
+     *
+     * @return the input charset
+     */
+    Charset getInputCharset() {
+        return inputCharset;
     }
 
     /**

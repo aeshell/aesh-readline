@@ -200,6 +200,11 @@ public class TerminalConnection extends AbstractConnection {
         } else {
             stdout = terminal.getCodePointConsumer();
         }
+        // WinSysTerminal translates UTF-16 console records itself: push the
+        // resolved input charset so both sides of the boundary agree.
+        if (terminal instanceof WinSysTerminal) {
+            ((WinSysTerminal) terminal).setInputCharset(inputCharset);
+        }
         if (terminal instanceof ExternalTerminal)
             ansi = false;
         // Suppress ANSI output when stdout is not a TTY (redirected to file/pipe).
