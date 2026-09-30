@@ -53,6 +53,7 @@ final class PosixConstants {
     static final short POLLIN  = 0x0001;
     static final short POLLHUP = 0x0010;
     static final short POLLERR = 0x0008;
+    static final short POLLNVAL = 0x0020;
 
     // struct pollfd layout: { int fd; short events; short revents; } = 8 bytes
     static final long POLLFD_SIZE = 8;

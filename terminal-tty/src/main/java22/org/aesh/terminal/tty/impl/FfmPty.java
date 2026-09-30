@@ -80,6 +80,28 @@ public class FfmPty implements Pty {
     /** Whether this PTY has been closed. */
     private final java.util.concurrent.atomic.AtomicBoolean closed = new java.util.concurrent.atomic.AtomicBoolean(false);
 
+    /**
+     * In-flight native read sections touching arena memory. Incremented
+     * before the closed-flag recheck and decremented in a finally, so
+     * close() can quiesce readers before freeing anything: a thread that
+     * incremented pre-close is always counted, and a thread incrementing
+     * post-quiesce observes the closed flag before touching memory.
+     */
+    private final java.util.concurrent.atomic.AtomicInteger inFlight = new java.util.concurrent.atomic.AtomicInteger(0);
+
+    /**
+     * Slice length (ms) for unbounded waits. Matches the single-byte
+     * read path and the connection poll loop: prompt close response
+     * without spin.
+     */
+    private static final int CLOSE_POLL_SLICE_MS = 100;
+
+    /**
+     * Cap (ms) for waiting out in-flight readers on close. Bounded so a
+     * self-close from a reader (EOF path) can never deadlock on itself.
+     */
+    private static final int QUIESCE_TIMEOUT_MS = 2000;
+
     /** Pre-allocated pollfd struct for non-blocking read/peek operations. */
     private final MemorySegment nbPollfd;
 
@@ -281,6 +303,8 @@ public class FfmPty implements Pty {
             }
         } finally {
             try {
+                // Quiesce in-flight reads before freeing anything they touch.
+                quiesceReads();
                 // Close stream arenas to free pollfd/readBuf native memory
                 // and unblock any in-flight poll() calls
                 if (slaveInput instanceof FfmInputStream) {
@@ -296,10 +320,8 @@ public class FfmPty implements Pty {
                         LibC.close(ttyFd);
                     }
                 } finally {
-                    // Free all native memory.
-                    // The poll-based read loop may still have an active poll() call
-                    // using nbPollfd/nbReadBuf from this arena. Wait briefly for it
-                    // to notice the closed flag and return.
+                    // Free all native memory. In-flight reads are quiesced
+                    // above, so the retry loop below is a backstop only.
                     for (int i = 0; i < 5; i++) {
                         try {
                             arena.close();
@@ -316,6 +338,24 @@ public class FfmPty implements Pty {
                         }
                     }
                 }
+            }
+        }
+    }
+
+    /**
+     * Wait (bounded) until no thread is inside a native read section.
+     * Increment-first accounting in the slice methods makes this sound:
+     * a thread counted before close() finishes its slice, and a thread
+     * arriving after observes the closed flag before touching memory.
+     */
+    private void quiesceReads() {
+        long deadline = System.currentTimeMillis() + QUIESCE_TIMEOUT_MS;
+        while (inFlight.get() > 0 && System.currentTimeMillis() < deadline) {
+            try {
+                Thread.sleep(20);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
             }
         }
     }
@@ -380,6 +420,9 @@ public class FfmPty implements Pty {
      * Reads up to {@code len} bytes from the tty fd into {@code b[off..off+len)}.
      * Blocks on {@code poll()} with the given timeout waiting for data, then reads
      * as many bytes as the kernel provides in a single {@code read()} syscall.
+     * <p>
+     * Negative (infinite) timeouts loop over bounded slices so close() can
+     * always unblock the wait; timed calls keep one single poll().
      *
      * @param pollfdSeg  the pre-allocated pollfd struct to use
      * @param readBufSeg the pre-allocated native read buffer (at least READ_BUF_SIZE bytes)
@@ -391,89 +434,150 @@ public class FfmPty implements Pty {
      */
     private int bulkPollAndRead(MemorySegment pollfdSeg, MemorySegment readBufSeg,
                                 byte[] b, int off, int len, long timeoutMs) throws IOException {
-        int pollTimeout = timeoutMs < 0 ? -1 : (int) Math.min(timeoutMs, Integer.MAX_VALUE);
-
-        // Reset revents
-        pollfdSeg.set(ValueLayout.JAVA_SHORT, PosixConstants.POLLFD_REVENTS_OFFSET, (short) 0);
-
-        int result = LibC.poll(pollfdSeg, 1, pollTimeout);
-
-        if (result < 0) {
-            if (closed.get()) return -1;
-            return -2; // EINTR — treat as timeout
-        }
-        if (result == 0) {
-            return -2; // Timeout
-        }
-
-        short revents = pollfdSeg.get(ValueLayout.JAVA_SHORT, PosixConstants.POLLFD_REVENTS_OFFSET);
-        if ((revents & (PosixConstants.POLLHUP | PosixConstants.POLLERR)) != 0) {
-            return -1; // EOF or error
-        }
-
-        if ((revents & PosixConstants.POLLIN) != 0) {
-            // Read as many bytes as the kernel provides in one syscall
-            int toRead = Math.min(len, READ_BUF_SIZE);
-            long bytesRead = LibC.read(ttyFd, readBufSeg, toRead);
-            if (bytesRead <= 0) {
-                if (bytesRead < 0 && !closed.get()) {
-                    return -2; // EINTR between poll and read
+        if (timeoutMs < 0) {
+            while (true) {
+                if (closed.get()) {
+                    return -1;
                 }
-                return -1; // EOF
+                int result = bulkPollAndReadSlice(pollfdSeg, readBufSeg, b, off, len,
+                        CLOSE_POLL_SLICE_MS);
+                if (result != -2) {
+                    return result;
+                }
             }
-            // Copy from native buffer to Java byte[]
-            MemorySegment.copy(readBufSeg, ValueLayout.JAVA_BYTE, 0,
-                    b, off, (int) bytesRead);
-            return (int) bytesRead;
         }
+        return bulkPollAndReadSlice(pollfdSeg, readBufSeg, b, off, len, timeoutMs);
+    }
 
-        return -2; // No data available
+    /**
+     * One poll()+read() section with accounting for close() quiescing.
+     * Increment-first: a thread counted before close() finishes its
+     * section, and a thread arriving after observes the closed flag
+     * before touching arena memory.
+     */
+    private int bulkPollAndReadSlice(MemorySegment pollfdSeg, MemorySegment readBufSeg,
+                                     byte[] b, int off, int len, long timeoutMs) throws IOException {
+        inFlight.incrementAndGet();
+        try {
+            if (closed.get()) {
+                return -1;
+            }
+            int pollTimeout = (int) Math.min(timeoutMs, Integer.MAX_VALUE);
+
+            // Reset revents
+            pollfdSeg.set(ValueLayout.JAVA_SHORT, PosixConstants.POLLFD_REVENTS_OFFSET, (short) 0);
+
+            int result = LibC.poll(pollfdSeg, 1, pollTimeout);
+
+            if (result < 0) {
+                if (closed.get()) return -1;
+                return -2; // EINTR — treat as timeout
+            }
+            if (result == 0) {
+                return -2; // Timeout
+            }
+
+            short revents = pollfdSeg.get(ValueLayout.JAVA_SHORT, PosixConstants.POLLFD_REVENTS_OFFSET);
+            if ((revents & (PosixConstants.POLLHUP | PosixConstants.POLLERR | PosixConstants.POLLNVAL)) != 0) {
+                return -1; // EOF, error, or a fd closed under us
+            }
+
+            if ((revents & PosixConstants.POLLIN) != 0) {
+                // Read as many bytes as the kernel provides in one syscall
+                int toRead = Math.min(len, READ_BUF_SIZE);
+                long bytesRead = LibC.read(ttyFd, readBufSeg, toRead);
+                if (bytesRead <= 0) {
+                    if (bytesRead < 0 && !closed.get()) {
+                        return -2; // EINTR between poll and read
+                    }
+                    return -1; // EOF
+                }
+                // Copy from native buffer to Java byte[]
+                MemorySegment.copy(readBufSeg, ValueLayout.JAVA_BYTE, 0,
+                        b, off, (int) bytesRead);
+                return (int) bytesRead;
+            }
+
+            return -2; // No data available
+        } finally {
+            inFlight.decrementAndGet();
+        }
     }
 
     /**
      * Performs a poll() + read() on the tty fd with the specified timeout.
+     * <p>
+     * Negative (infinite) timeouts loop over bounded slices so close() can
+     * always unblock the wait; timed calls keep one single poll().
      *
      * @param timeoutMs timeout in milliseconds; 0 for non-blocking, negative for infinite
      * @return the byte read (0-255), -1 for EOF, or READ_EXPIRED (-2) for timeout
      */
     private int pollAndRead(long timeoutMs) throws IOException {
-        // Clamp timeout for poll(): negative -> -1 (infinite), otherwise use as-is
-        int pollTimeout = timeoutMs < 0 ? -1 : (int) Math.min(timeoutMs, Integer.MAX_VALUE);
-
-        // Reset revents
-        nbPollfd.set(ValueLayout.JAVA_SHORT, PosixConstants.POLLFD_REVENTS_OFFSET, (short) 0);
-
-        int result = LibC.poll(nbPollfd, 1, pollTimeout);
-
-        if (result < 0) {
-            // EINTR (signal interrupted poll) — treat as timeout
-            // The caller can retry if desired
-            if (closed.get()) return -1;
-            return -2;
-        }
-
-        if (result == 0) {
-            return -2; // Timeout
-        }
-
-        short revents = nbPollfd.get(ValueLayout.JAVA_SHORT, PosixConstants.POLLFD_REVENTS_OFFSET);
-        if ((revents & (PosixConstants.POLLHUP | PosixConstants.POLLERR)) != 0) {
-            return -1; // EOF or error
-        }
-
-        if ((revents & PosixConstants.POLLIN) != 0) {
-            long bytesRead = LibC.read(ttyFd, nbReadBuf, 1);
-            if (bytesRead <= 0) {
-                if (bytesRead < 0 && !closed.get()) {
-                    // Likely EINTR between poll and read — treat as timeout
-                    return -2;
+        if (timeoutMs < 0) {
+            while (true) {
+                if (closed.get()) {
+                    return -1;
                 }
-                return -1; // EOF
+                int result = pollAndReadSlice(CLOSE_POLL_SLICE_MS);
+                if (result != -2) {
+                    return result;
+                }
             }
-            return Byte.toUnsignedInt(nbReadBuf.get(ValueLayout.JAVA_BYTE, 0));
         }
+        return pollAndReadSlice(timeoutMs);
+    }
 
-        return -2; // No data available
+    /**
+     * One poll()+read() section with accounting for close() quiescing;
+     * see {@link #bulkPollAndReadSlice} for the protocol.
+     */
+    private int pollAndReadSlice(long timeoutMs) throws IOException {
+        inFlight.incrementAndGet();
+        try {
+            if (closed.get()) {
+                return -1;
+            }
+            // Clamp timeout for poll(): negative -> -1 (infinite), otherwise use as-is
+            int pollTimeout = (int) Math.min(timeoutMs, Integer.MAX_VALUE);
+
+            // Reset revents
+            nbPollfd.set(ValueLayout.JAVA_SHORT, PosixConstants.POLLFD_REVENTS_OFFSET, (short) 0);
+
+            int result = LibC.poll(nbPollfd, 1, pollTimeout);
+
+            if (result < 0) {
+                // EINTR (signal interrupted poll) — treat as timeout
+                // The caller can retry if desired
+                if (closed.get()) return -1;
+                return -2;
+            }
+
+            if (result == 0) {
+                return -2; // Timeout
+            }
+
+            short revents = nbPollfd.get(ValueLayout.JAVA_SHORT, PosixConstants.POLLFD_REVENTS_OFFSET);
+            if ((revents & (PosixConstants.POLLHUP | PosixConstants.POLLERR | PosixConstants.POLLNVAL)) != 0) {
+                return -1; // EOF, error, or a fd closed under us
+            }
+
+            if ((revents & PosixConstants.POLLIN) != 0) {
+                long bytesRead = LibC.read(ttyFd, nbReadBuf, 1);
+                if (bytesRead <= 0) {
+                    if (bytesRead < 0 && !closed.get()) {
+                        // Likely EINTR between poll and read — treat as timeout
+                        return -2;
+                    }
+                    return -1; // EOF
+                }
+                return Byte.toUnsignedInt(nbReadBuf.get(ValueLayout.JAVA_BYTE, 0));
+            }
+
+            return -2; // No data available
+        } finally {
+            inFlight.decrementAndGet();
+        }
     }
 
     // =========================================================================
@@ -751,6 +855,9 @@ public class FfmPty implements Pty {
 
         @Override
         public void close() {
+            // Quiesce first: a concurrent stream read may still hold this
+            // arena inside a downcall section.
+            quiesceReads();
             streamArena.close();
         }
     }
