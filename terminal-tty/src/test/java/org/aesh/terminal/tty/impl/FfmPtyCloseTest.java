@@ -54,9 +54,35 @@ public class FfmPtyCloseTest {
         }
     }
 
+    /**
+     * Whether the loaded {@code FfmPty} is the MRJAR overlay, not the base
+     * stub (#342). The script child inherits {@code java.class.path}
+     * verbatim, so whatever wins here wins there too: if the base stub
+     * shadows the overlay copy (exploded {@code target/classes} before
+     * {@code target/test-classes}, or no overlay copy at all), the probe
+     * would fail on the stub's decline instead of exercising the real
+     * PTY — skip instead.
+     */
+    private static boolean isOverlayActive() {
+        try {
+            Class<?> clazz = Class.forName("org.aesh.terminal.tty.impl.FfmPty");
+            java.security.CodeSource source = clazz.getProtectionDomain().getCodeSource();
+            if (source == null || source.getLocation() == null) {
+                return false;
+            }
+            String location = source.getLocation().toString();
+            if (location.endsWith(".jar")) {
+                return true;
+            }
+            return location.contains("test-classes");
+        } catch (ClassNotFoundException | LinkageError e) {
+            return false;
+        }
+    }
+
     private static boolean canRunScriptMatrix() {
         if (!OSUtils.IS_LINUX || isNativeImage() || !isJava22OrLater()
-                || !OSUtils.IS_FFM_POSIX_SUPPORTED) {
+                || !OSUtils.IS_FFM_POSIX_SUPPORTED || !isOverlayActive()) {
             return false;
         }
         try {
