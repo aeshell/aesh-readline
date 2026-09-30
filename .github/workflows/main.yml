@@ -74,6 +74,15 @@ jobs:
         cache: maven
     - name: Build and verify artifact
       run: script -qefc 'mvn clean verify -pl terminal-tty -am -Dformat.skip=true' /dev/null
+    # Guard against MRJAR API drift (#342): jar exits 1 on any finding,
+    # so silence is the assertion. An in-repo unit test cannot do this —
+    # one JVM sees only one variant of each versioned class.
+    - name: Validate multi-release JARs
+      run: |
+        tty_jar=$(ls terminal-tty/target/terminal-tty-*.jar | grep -v -e javadoc -e sources -e tests | head -1)
+        detect_jar=$(ls terminal-detect/target/terminal-detect-*.jar | grep -v -e javadoc -e sources | head -1)
+        jar --validate --file "$tty_jar"
+        jar --validate --file "$detect_jar"
 
   # Guard against native-image regressions (#209, #218):
   # Build the released JAR with JDK 25, then build a native-image from it

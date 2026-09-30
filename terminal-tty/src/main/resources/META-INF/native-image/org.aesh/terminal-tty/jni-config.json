@@ -1,6 +1,6 @@
 [
   {
-    "name": "org.aesh.terminal.tty.impl.WinConsoleNative",
+    "name": "org.aesh.terminal.tty.impl.WinConsoleNativeJni",
     "methods": [
       { "name": "getStdHandle", "parameterTypes": ["int"] },
       { "name": "getConsoleMode", "parameterTypes": ["long"] },

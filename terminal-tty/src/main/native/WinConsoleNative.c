@@ -32,7 +32,7 @@ static int isValidHandle(jlong handle) {
  * Class:     org_aesh_terminal_tty_impl_WinConsoleNative
  * Method:    getStdHandle
  */
-JNIEXPORT jlong JNICALL Java_org_aesh_terminal_tty_impl_WinConsoleNative_getStdHandle
+JNIEXPORT jlong JNICALL Java_org_aesh_terminal_tty_impl_WinConsoleNativeJni_getStdHandle
   (JNIEnv *env, jclass cls, jint nStdHandle)
 {
 #ifdef _WIN32
@@ -50,7 +50,7 @@ JNIEXPORT jlong JNICALL Java_org_aesh_terminal_tty_impl_WinConsoleNative_getStdH
  * Method:    getConsoleMode
  * Returns:   the console mode flags, or -1 on error/invalid handle
  */
-JNIEXPORT jint JNICALL Java_org_aesh_terminal_tty_impl_WinConsoleNative_getConsoleMode
+JNIEXPORT jint JNICALL Java_org_aesh_terminal_tty_impl_WinConsoleNativeJni_getConsoleMode
   (JNIEnv *env, jclass cls, jlong handle)
 {
 #ifdef _WIN32
@@ -70,7 +70,7 @@ JNIEXPORT jint JNICALL Java_org_aesh_terminal_tty_impl_WinConsoleNative_getConso
  * Method:    setConsoleMode
  * Returns:   true if successful, false on error/invalid handle
  */
-JNIEXPORT jboolean JNICALL Java_org_aesh_terminal_tty_impl_WinConsoleNative_setConsoleMode
+JNIEXPORT jboolean JNICALL Java_org_aesh_terminal_tty_impl_WinConsoleNativeJni_setConsoleMode
   (JNIEnv *env, jclass cls, jlong handle, jint mode)
 {
 #ifdef _WIN32
@@ -87,7 +87,7 @@ JNIEXPORT jboolean JNICALL Java_org_aesh_terminal_tty_impl_WinConsoleNative_setC
  * Method:    getConsoleOutputCP
  * Returns:   the output code page, or -1 on non-Windows
  */
-JNIEXPORT jint JNICALL Java_org_aesh_terminal_tty_impl_WinConsoleNative_getConsoleOutputCP
+JNIEXPORT jint JNICALL Java_org_aesh_terminal_tty_impl_WinConsoleNativeJni_getConsoleOutputCP
   (JNIEnv *env, jclass cls)
 {
 #ifdef _WIN32
@@ -103,7 +103,7 @@ JNIEXPORT jint JNICALL Java_org_aesh_terminal_tty_impl_WinConsoleNative_getConso
  * Method:    getConsoleSize
  * Returns:   int[]{width, height} or NULL on error/invalid handle
  */
-JNIEXPORT jintArray JNICALL Java_org_aesh_terminal_tty_impl_WinConsoleNative_getConsoleSize
+JNIEXPORT jintArray JNICALL Java_org_aesh_terminal_tty_impl_WinConsoleNativeJni_getConsoleSize
   (JNIEnv *env, jclass cls, jlong handle)
 {
 #ifdef _WIN32
@@ -133,7 +133,7 @@ JNIEXPORT jintArray JNICALL Java_org_aesh_terminal_tty_impl_WinConsoleNative_get
  *            WINDOW_BUFFER_SIZE_EVENT (4): {4, width, height}
  *            Returns NULL for other event types (focus, menu) or on error/invalid handle.
  */
-JNIEXPORT jintArray JNICALL Java_org_aesh_terminal_tty_impl_WinConsoleNative_readConsoleInputEvent
+JNIEXPORT jintArray JNICALL Java_org_aesh_terminal_tty_impl_WinConsoleNativeJni_readConsoleInputEvent
   (JNIEnv *env, jclass cls, jlong handle)
 {
 #ifdef _WIN32
@@ -200,7 +200,7 @@ JNIEXPORT jintArray JNICALL Java_org_aesh_terminal_tty_impl_WinConsoleNative_rea
  * Method:    writeConsole
  * Returns:   true if all characters were written, false on error/partial write/invalid args
  */
-JNIEXPORT jboolean JNICALL Java_org_aesh_terminal_tty_impl_WinConsoleNative_writeConsole
+JNIEXPORT jboolean JNICALL Java_org_aesh_terminal_tty_impl_WinConsoleNativeJni_writeConsole
   (JNIEnv *env, jclass cls, jlong handle, jcharArray buffer, jint length)
 {
 #ifdef _WIN32
@@ -227,7 +227,7 @@ JNIEXPORT jboolean JNICALL Java_org_aesh_terminal_tty_impl_WinConsoleNative_writ
  * Method:    waitForSingleObject
  * Returns:   WAIT_OBJECT_0 (0), WAIT_TIMEOUT (0x102), or WAIT_FAILED (0xFFFFFFFF)
  */
-JNIEXPORT jint JNICALL Java_org_aesh_terminal_tty_impl_WinConsoleNative_waitForSingleObject
+JNIEXPORT jint JNICALL Java_org_aesh_terminal_tty_impl_WinConsoleNativeJni_waitForSingleObject
   (JNIEnv *env, jclass cls, jlong handle, jint timeoutMs)
 {
 #ifdef _WIN32
@@ -244,7 +244,7 @@ JNIEXPORT jint JNICALL Java_org_aesh_terminal_tty_impl_WinConsoleNative_waitForS
  * Method:    getNumberOfConsoleInputEvents
  * Returns:   the number of pending events, or -1 on error/invalid handle
  */
-JNIEXPORT jint JNICALL Java_org_aesh_terminal_tty_impl_WinConsoleNative_getNumberOfConsoleInputEvents
+JNIEXPORT jint JNICALL Java_org_aesh_terminal_tty_impl_WinConsoleNativeJni_getNumberOfConsoleInputEvents
   (JNIEnv *env, jclass cls, jlong handle)
 {
 #ifdef _WIN32
@@ -266,7 +266,7 @@ JNIEXPORT jint JNICALL Java_org_aesh_terminal_tty_impl_WinConsoleNative_getNumbe
  *            process already has one. Test-only surface for live-console
  *            CI tests (#290).
  */
-JNIEXPORT jboolean JNICALL Java_org_aesh_terminal_tty_impl_WinConsoleNative_allocConsole
+JNIEXPORT jboolean JNICALL Java_org_aesh_terminal_tty_impl_WinConsoleNativeJni_allocConsole
   (JNIEnv *env, jclass cls)
 {
 #ifdef _WIN32
@@ -283,7 +283,7 @@ JNIEXPORT jboolean JNICALL Java_org_aesh_terminal_tty_impl_WinConsoleNative_allo
  *            allocated by allocConsole; detaching an interactive console
  *            discards its output.
  */
-JNIEXPORT jboolean JNICALL Java_org_aesh_terminal_tty_impl_WinConsoleNative_freeConsole
+JNIEXPORT jboolean JNICALL Java_org_aesh_terminal_tty_impl_WinConsoleNativeJni_freeConsole
   (JNIEnv *env, jclass cls)
 {
 #ifdef _WIN32

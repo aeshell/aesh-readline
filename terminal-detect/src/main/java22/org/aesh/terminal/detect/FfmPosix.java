@@ -40,11 +40,17 @@ import java.lang.invoke.MethodHandle;
  * class (e.g. an availability check) never pays the {@code Linker}
  * initialization cost and never fails without native access.
  * <p>
+ * Package-private by design: the versioned overlay must not add public
+ * classes beyond the base API (MRJAR validation), and the signatures here
+ * expose {@code java.lang.foreign} types that no release-8 base stub could
+ * declare. The sole production user ({@code FfmProbeTransport}) lives in
+ * this package; everyone else goes through reflection-only access.
+ * <p>
  * Requires Java 22+ and {@code --enable-native-access=ALL-UNNAMED}.
  *
  * @since 3.18.4
  */
-public final class FfmPosix {
+final class FfmPosix {
 
     static final boolean IS_MACOS;
     static {

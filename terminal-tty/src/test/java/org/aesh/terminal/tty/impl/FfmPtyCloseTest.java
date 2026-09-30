@@ -36,8 +36,26 @@ public class FfmPtyCloseTest {
         return System.getProperty("org.graalvm.nativeimage.imagecode") != null;
     }
 
+    /**
+     * Whether the runtime is Java 22 or later (release-8-safe: no
+     * {@code Runtime.version()} which needs Java 9+). Since #342 the base
+     * layer ships an {@code FfmPty} stub, so mere class presence no longer
+     * implies the overlay is active.
+     */
+    private static boolean isJava22OrLater() {
+        String spec = System.getProperty("java.specification.version", "8");
+        try {
+            if (spec.startsWith("1.")) {
+                return false;
+            }
+            return Integer.parseInt(spec) >= 22;
+        } catch (NumberFormatException e) {
+            return false;
+        }
+    }
+
     private static boolean canRunScriptMatrix() {
-        if (!OSUtils.IS_LINUX || isNativeImage()) {
+        if (!OSUtils.IS_LINUX || isNativeImage() || !isJava22OrLater()) {
             return false;
         }
         try {

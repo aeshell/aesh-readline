@@ -19,18 +19,16 @@
  */
 package org.aesh.terminal.tty.impl;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-
 /**
- * JNI bridge to Windows console API (Kernel32).
+ * Facade for Windows console API (Kernel32) access.
  * Replaces JNA for GraalVM native-image compatibility.
  * <p>
- * This class provides low-level access to Windows console functions
- * via JNI. The native library ({@code aesh-console.dll}) is loaded
- * from the system library path or extracted from the JAR at runtime.
+ * The public member set must stay identical to the Java 22 MRJAR overlay:
+ * validation rejects versioned classes that change modifiers (including
+ * {@code native}), so neither variant declares native methods here. The
+ * JNI bindings live in package-private {@code WinConsoleNativeJni} (used
+ * on runtimes without the overlay); the overlay implements the same
+ * methods with FFM downcalls.
  */
 public final class WinConsoleNative {
 
@@ -49,7 +47,9 @@ public final class WinConsoleNative {
      * @param nStdHandle the standard device identifier
      * @return the device handle
      */
-    public static native long getStdHandle(int nStdHandle);
+    public static long getStdHandle(int nStdHandle) {
+        return WinConsoleNativeJni.getStdHandle(nStdHandle);
+    }
 
     /**
      * Returns the current console mode for the given handle.
@@ -57,7 +57,9 @@ public final class WinConsoleNative {
      * @param handle the console handle
      * @return the console mode flags
      */
-    public static native int getConsoleMode(long handle);
+    public static int getConsoleMode(long handle) {
+        return WinConsoleNativeJni.getConsoleMode(handle);
+    }
 
     /**
      * Sets the console mode for the given handle.
@@ -66,14 +68,18 @@ public final class WinConsoleNative {
      * @param mode the console mode flags
      * @return true if successful
      */
-    public static native boolean setConsoleMode(long handle, int mode);
+    public static boolean setConsoleMode(long handle, int mode) {
+        return WinConsoleNativeJni.setConsoleMode(handle, mode);
+    }
 
     /**
      * Returns the console output code page.
      *
      * @return the output code page identifier, or -1 on error/non-Windows
      */
-    public static native int getConsoleOutputCP();
+    public static int getConsoleOutputCP() {
+        return WinConsoleNativeJni.getConsoleOutputCP();
+    }
 
     /**
      * Returns the console size as {columns, rows}.
@@ -81,7 +87,9 @@ public final class WinConsoleNative {
      * @param handle the console handle
      * @return array of {columns, rows}
      */
-    public static native int[] getConsoleSize(long handle);
+    public static int[] getConsoleSize(long handle) {
+        return WinConsoleNativeJni.getConsoleSize(handle);
+    }
 
     /** Event type constants matching Windows INPUT_RECORD.EventType. */
     public static final int KEY_EVENT = 1;
@@ -104,7 +112,9 @@ public final class WinConsoleNative {
      * @param handle the console input handle
      * @return the event data array, or null
      */
-    public static native int[] readConsoleInputEvent(long handle);
+    public static int[] readConsoleInputEvent(long handle) {
+        return WinConsoleNativeJni.readConsoleInputEvent(handle);
+    }
 
     /**
      * Writes characters to the console.
@@ -114,7 +124,9 @@ public final class WinConsoleNative {
      * @param length the number of characters to write (must be &lt;= buffer.length)
      * @return true if all characters were written successfully
      */
-    public static native boolean writeConsole(long handle, char[] buffer, int length);
+    public static boolean writeConsole(long handle, char[] buffer, int length) {
+        return WinConsoleNativeJni.writeConsole(handle, buffer, length);
+    }
 
     /** WaitForSingleObject return: the object was signaled. */
     public static final int WAIT_OBJECT_0 = 0x00000000;
@@ -131,7 +143,9 @@ public final class WinConsoleNative {
      * @return {@link #WAIT_OBJECT_0} if signaled, {@link #WAIT_TIMEOUT} if timed out,
      *         or {@link #WAIT_FAILED} on error
      */
-    public static native int waitForSingleObject(long handle, int timeoutMs);
+    public static int waitForSingleObject(long handle, int timeoutMs) {
+        return WinConsoleNativeJni.waitForSingleObject(handle, timeoutMs);
+    }
 
     /**
      * Returns the number of unread console input events.
@@ -139,7 +153,9 @@ public final class WinConsoleNative {
      * @param handle the console input handle
      * @return the number of pending events, or -1 on error
      */
-    public static native int getNumberOfConsoleInputEvents(long handle);
+    public static int getNumberOfConsoleInputEvents(long handle) {
+        return WinConsoleNativeJni.getNumberOfConsoleInputEvents(handle);
+    }
 
     /**
      * Allocates a new console for the calling process.
@@ -152,7 +168,9 @@ public final class WinConsoleNative {
      *
      * @return true if a console was allocated, false otherwise
      */
-    public static native boolean allocConsole();
+    public static boolean allocConsole() {
+        return WinConsoleNativeJni.allocConsole();
+    }
 
     /**
      * Detaches the calling process from its console.
@@ -163,44 +181,8 @@ public final class WinConsoleNative {
      *
      * @return true if detached, false otherwise
      */
-    public static native boolean freeConsole();
-
-    static {
-        if (System.getProperty("os.name", "").toLowerCase().contains("win")) {
-            loadLibrary();
-        }
-    }
-
-    private static void loadLibrary() {
-        try {
-            System.loadLibrary("aesh-console");
-            return;
-        } catch (UnsatisfiedLinkError ignore) {
-            // Not on system path, try extracting from JAR
-        }
-
-        String arch = System.getProperty("os.arch");
-        if ("amd64".equals(arch) || "x86_64".equals(arch)) {
-            arch = "x86_64";
-        }
-        String resourcePath = "/native/windows-" + arch + "/aesh-console.dll";
-        try (InputStream in = WinConsoleNative.class.getResourceAsStream(resourcePath)) {
-            if (in == null) {
-                throw new UnsatisfiedLinkError("Native library not found in JAR: " + resourcePath);
-            }
-            File tempFile = File.createTempFile("aesh-console", ".dll");
-            tempFile.deleteOnExit();
-            try (FileOutputStream out = new FileOutputStream(tempFile)) {
-                byte[] buf = new byte[4096];
-                int n;
-                while ((n = in.read(buf)) > 0) {
-                    out.write(buf, 0, n);
-                }
-            }
-            System.load(tempFile.getAbsolutePath());
-        } catch (IOException e) {
-            throw new UnsatisfiedLinkError("Failed to extract native library: " + e.getMessage());
-        }
+    public static boolean freeConsole() {
+        return WinConsoleNativeJni.freeConsole();
     }
 
     /** Constructor. */
