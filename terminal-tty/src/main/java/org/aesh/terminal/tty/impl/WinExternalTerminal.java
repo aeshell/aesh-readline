@@ -43,7 +43,26 @@ public class WinExternalTerminal extends ExternalTerminal {
      */
     public WinExternalTerminal(String name, String type, InputStream masterInput, OutputStream masterOutput)
             throws IOException {
-        super(name, type, masterInput, masterOutput);
+        this(name, type, masterInput, masterOutput, false);
+    }
+
+    /**
+     * Create a new Windows external terminal.
+     *
+     * @param name the terminal name
+     * @param type the terminal type
+     * @param masterInput the master input stream
+     * @param masterOutput the master output stream
+     * @param inputOwned true if this terminal owns the master input stream:
+     *        it is read with blocking {@code read()} calls and closed by
+     *        {@link #close()}. Only pass true for streams whose lifecycle
+     *        this terminal controls — never for {@code System.in} or
+     *        another owner's stream.
+     * @throws IOException if an I/O error occurs
+     */
+    public WinExternalTerminal(String name, String type, InputStream masterInput, OutputStream masterOutput,
+            boolean inputOwned) throws IOException {
+        super(name, type, masterInput, masterOutput, inputOwned);
         Attributes attributes = new Attributes();
         attributes.setInputFlag(Attributes.InputFlag.ICRNL, true);
         setAttributes(attributes);

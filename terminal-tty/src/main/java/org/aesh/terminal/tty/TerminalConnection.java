@@ -393,6 +393,12 @@ public class TerminalConnection extends AbstractConnection {
      * such as {@code System.in}, and on some platforms (macOS) closing a tty
      * fd while another thread reads from it blocks the closer indefinitely.
      * While suspended, bytes are left in the kernel buffer until awake().
+     * <p>
+     * Readiness contract (see {@link Terminal#input()}): this loop reads a
+     * stream only when {@code available()} reports bytes, and observes EOF
+     * only through a gated {@code read()}. Streams with the default
+     * zero-returning {@code available()} are never read here — they need a
+     * terminal with non-blocking read support instead.
      */
     private void openBlockingLegacy(String buffer) {
         try {

@@ -76,6 +76,14 @@ public interface Terminal extends Closeable {
 
     /**
      * Get the terminal input stream.
+     * <p>
+     * Readiness contract: readers on the legacy blocking path observe input
+     * only when {@link InputStream#available()} reports it, so streams
+     * returned here should report readiness through {@code available()}.
+     * Streams with the default zero-returning {@code available()} need a
+     * terminal that reads without consulting it (a terminal with
+     * non-blocking read support, or an owned-input
+     * {@code ExternalTerminal}).
      *
      * @return the input stream
      */

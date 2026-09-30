@@ -55,7 +55,23 @@ public class ExternalTerminal extends LineDisciplineTerminal {
     protected final InputStream masterInput;
 
     /**
+     * Whether this terminal owns {@link #masterInput}. Owned inputs are read
+     * with blocking {@code read()} calls and closed by {@link #close()}, so
+     * streams whose {@code available()} always returns zero are fully
+     * supported. Borrowed inputs (the default) are polled via
+     * {@code available()} and never closed: parking a thread in a blocking
+     * read on a borrowed stream cannot be cancelled portably (#269), and
+     * closing it may wedge the owner (#288).
+     */
+    private final boolean inputOwned;
+
+    /**
      * Constructs an ExternalTerminal with the specified parameters.
+     * <p>
+     * The master input stream is borrowed: it is polled via
+     * {@code available()} and never closed. Borrowed streams must report
+     * readiness through {@code available()} — streams with the default
+     * zero-returning {@code available()} are never read on this path.
      *
      * @param name the terminal name
      * @param type the terminal type
@@ -65,8 +81,30 @@ public class ExternalTerminal extends LineDisciplineTerminal {
      */
     public ExternalTerminal(String name, String type,
             InputStream masterInput, OutputStream masterOutput) throws IOException {
+        this(name, type, masterInput, masterOutput, false);
+    }
+
+    /**
+     * Constructs an ExternalTerminal with the specified parameters.
+     *
+     * @param name the terminal name
+     * @param type the terminal type
+     * @param masterInput the master input stream for reading external data
+     * @param masterOutput the master output stream for writing data
+     * @param inputOwned true if this terminal owns the master input stream:
+     *        it is read with blocking {@code read()} calls (supporting
+     *        streams whose {@code available()} always returns zero, with
+     *        EOF observed promptly) and closed by {@link #close()}, which
+     *        also cancels a blocked read. Only pass true for streams whose
+     *        lifecycle this terminal controls — never for {@code System.in}
+     *        or another owner's stream.
+     * @throws IOException if an I/O error occurs during initialization
+     */
+    public ExternalTerminal(String name, String type,
+            InputStream masterInput, OutputStream masterOutput, boolean inputOwned) throws IOException {
         super(name, type, masterOutput);
         this.masterInput = masterInput;
+        this.inputOwned = inputOwned;
         this.pumpThread = new Thread(this::pump, this + " input pump thread");
         this.pumpThread.setDaemon(true);
         this.pumpThread.start();
@@ -80,7 +118,17 @@ public class ExternalTerminal extends LineDisciplineTerminal {
     public void close() throws IOException {
         if (closed.compareAndSet(false, true)) {
             pumpThread.interrupt();
-            super.close();
+            if (inputOwned) {
+                // Cancel a read blocked in pumpBlocking(): the stream is
+                // owned, so closing it out from under the reader is safe.
+                try {
+                    masterInput.close();
+                } finally {
+                    super.close();
+                }
+            } else {
+                super.close();
+            }
         }
     }
 
@@ -89,11 +137,59 @@ public class ExternalTerminal extends LineDisciplineTerminal {
      * This method runs in a separate thread and continuously reads
      * from the master input, processing the bytes through the line discipline.
      * <p>
-     * Never blocks indefinitely: when no input is available the loop sleeps
-     * briefly (interruptible), so close() always stops the thread even on
-     * uninterruptible, unclosable streams like System.in (#269).
+     * Owned inputs block in {@code read()}; borrowed inputs are polled (see
+     * {@link #pumpPolling()}).
      */
     public void pump() {
+        if (inputOwned) {
+            pumpBlocking();
+        } else {
+            pumpPolling();
+        }
+    }
+
+    /**
+     * Blocking pump for owned inputs. Supports streams whose
+     * {@code available()} always returns zero and observes EOF promptly.
+     * {@link #close()} closes the owned stream, which releases a blocked
+     * {@code read()} and lets this thread exit.
+     */
+    private void pumpBlocking() {
+        try {
+            byte[] bBuf = new byte[1024];
+            while (!closed.get()) {
+                int c = masterInput.read(bBuf);
+                if (c < 0 || closed.get()) {
+                    //make to close the slaveInputPipe()
+                    //this will prevent the
+                    //Write end dead Exception coming from PipedInputStream
+                    closeSlaveInputPipe();
+                    break;
+                }
+                processInputBytes(bBuf, c);
+            }
+        } catch (IOException e) {
+            try {
+                close();
+            } catch (Throwable t) {
+                e.addSuppressed(t);
+            }
+            if (!closed.get()) {
+                LOGGER.log(Level.WARNING, "Error reading from external terminal", e);
+            }
+        }
+    }
+
+    /**
+     * Polling pump for borrowed inputs.
+     * <p>
+     * Never blocks indefinitely: when no input is available the loop sleeps
+     * briefly (interruptible), so close() always stops the thread even on
+     * uninterruptible, unclosable streams like System.in (#269). Borrowed
+     * streams must report readiness through {@code available()}; the default
+     * zero-returning implementation is never read here.
+     */
+    private void pumpPolling() {
         try {
             byte[] bBuf = new byte[1024];
             while (!closed.get()) {
