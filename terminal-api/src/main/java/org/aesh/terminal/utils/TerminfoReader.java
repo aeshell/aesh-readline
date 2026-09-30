@@ -208,8 +208,7 @@ final class TerminfoReader {
         }
         String terminfoDirs = env.get("TERMINFO_DIRS");
         if (terminfoDirs != null && !terminfoDirs.isEmpty()) {
-            // Limit -1 keeps trailing empty entries, which also expand.
-            for (String dir : terminfoDirs.split(":", -1)) {
+            for (String dir : splitDirs(terminfoDirs)) {
                 if (dir.isEmpty()) {
                     for (String systemDir : DEFAULT_DIRS) {
                         dirs.add(systemDir);
@@ -224,6 +223,39 @@ final class TerminfoReader {
             }
         }
         return dirs;
+    }
+
+    /**
+     * Split a TERMINFO_DIRS list. Both {@code :} and {@code ;} separate
+     * entries, except that a colon directly after a single ASCII letter
+     * is a Windows drive prefix ({@code C:\...}), not a separator:
+     * splitting drive letters would shred every absolute Windows path.
+     * Trailing and adjacent empties survive (split with limit -1), each
+     * expanding to the system locations at the call site.
+     *
+     * @param value the raw TERMINFO_DIRS value (non-empty)
+     * @return the entries in order, empties included
+     */
+    static List<String> splitDirs(String value) {
+        List<String> dirs = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            if (c == ';' || (c == ':' && !isDriveColon(current))) {
+                dirs.add(current.toString());
+                current.setLength(0);
+            } else {
+                current.append(c);
+            }
+        }
+        dirs.add(current.toString());
+        return dirs;
+    }
+
+    private static boolean isDriveColon(StringBuilder current) {
+        return current.length() == 1
+                && ((current.charAt(0) >= 'a' && current.charAt(0) <= 'z')
+                        || (current.charAt(0) >= 'A' && current.charAt(0) <= 'Z'));
     }
 
     private static String readFile(File file) {

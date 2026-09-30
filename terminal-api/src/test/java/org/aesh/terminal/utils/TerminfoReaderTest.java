@@ -26,6 +26,7 @@ import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -271,11 +272,27 @@ public class TerminfoReaderTest {
         writeEntry(dirB, "t", "testconf", minimalEntry(132));
 
         String text = TerminfoReader.readEntry("testconf",
-                env("TERMINFO_DIRS", dirA.getAbsolutePath() + ":" + dirB.getAbsolutePath()),
+                env("TERMINFO_DIRS",
+                        dirA.getAbsolutePath() + File.pathSeparator + dirB.getAbsolutePath()),
                 fixtureDirs.newFolder("home").getAbsolutePath());
 
         assertNotNull(text);
         assertTrue("first TERMINFO_DIRS entry must win", text.contains("cols#80"));
+    }
+
+    @Test
+    public void testSplitDirsKeepsDriveLetters() {
+        // Windows absolute paths join with either separator; the drive
+        // colon must survive. Pure string logic: runs on every OS, and
+        // fails against the old split-on-colon on Linux too.
+        assertEquals(Arrays.asList("C:\\dbA", "C:\\dbB"),
+                TerminfoReader.splitDirs("C:\\dbA;C:\\dbB"));
+        assertEquals(Arrays.asList("C:\\dbA", "C:\\dbB"),
+                TerminfoReader.splitDirs("C:\\dbA:C:\\dbB"));
+        assertEquals(Arrays.asList("/a", "/b"),
+                TerminfoReader.splitDirs("/a:/b"));
+        assertEquals(Arrays.asList("/a", "/b"),
+                TerminfoReader.splitDirs("/a;/b"));
     }
 
     @Test
