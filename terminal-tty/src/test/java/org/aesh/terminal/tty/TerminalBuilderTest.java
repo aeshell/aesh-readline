@@ -159,4 +159,30 @@ public class TerminalBuilderTest {
             terminal.close();
         }
     }
+
+    @Test
+    public void testAdmissionNonSystemStreamsDenied() {
+        assertFalse(TerminalBuilder.isSystemTerminal(false, true, false));
+        assertFalse(TerminalBuilder.isSystemTerminal(false, true, true));
+        assertFalse(TerminalBuilder.isSystemTerminal(false, false, false));
+    }
+
+    @Test
+    public void testAdmissionTtyStdinAdmitted() {
+        assertTrue(TerminalBuilder.isSystemTerminal(true, true, false));
+        assertTrue(TerminalBuilder.isSystemTerminal(true, true, true));
+    }
+
+    @Test
+    public void testAdmissionCygwinAdmitsChainWithoutStdinTty() {
+        // Standalone mintty: no Win32 console for GetConsoleMode, but the
+        // Cygwin provider's tty probe arbitrates inside the chain.
+        assertTrue(TerminalBuilder.isSystemTerminal(true, false, true));
+    }
+
+    @Test
+    public void testAdmissionPipedStdinDeniedOutsideCygwin() {
+        // Genuine pipes still reach the external fallback everywhere else.
+        assertFalse(TerminalBuilder.isSystemTerminal(true, false, false));
+    }
 }

@@ -171,14 +171,44 @@ public final class TerminalBuilder {
      * (not redirected or piped). This follows standard POSIX convention:
      * programs check {@code isatty(STDIN_FILENO)} to decide whether to
      * run interactively.
+     * <p>
+     * On Cygwin/MSYS2 the stdin check alone cannot decide: standalone
+     * mintty has no Win32 console, so GetConsoleMode(stdin) fails even
+     * though a working POSIX PTY exists. There the system-stream check
+     * admits the provider chain, whose per-transport ground truths
+     * arbitrate (WinSys declines by GetConsoleMode throw, Cygwin
+     * succeeds by tty exit status, genuine pipes fall to external).
      */
     private boolean isSystemTerminal() {
         if (system != null) {
             return system;
         }
-        return (in == null || in == System.in)
-                && (out == null || out == System.out)
-                && TtyDetect.isStdinTty();
+        return isSystemTerminal((in == null || in == System.in)
+                && (out == null || out == System.out),
+                TtyDetect.isStdinTty(), OSUtils.IS_CYGWIN);
+    }
+
+    /**
+     * The provider-chain admission decision, extracted for headless tests.
+     *
+     * @param systemStreams whether in/out are the JVM standard streams
+     * @param stdinTty whether stdin answers as a terminal
+     * @param cygwin whether running under Cygwin/MSYS2 on Windows
+     * @return true when the provider chain (not the external fallback)
+     *         should pick the terminal
+     */
+    static boolean isSystemTerminal(boolean systemStreams, boolean stdinTty, boolean cygwin) {
+        if (!systemStreams) {
+            return false;
+        }
+        if (stdinTty) {
+            return true;
+        }
+        // Standalone mintty has no Win32 console for GetConsoleMode, but
+        // its POSIX PTY answers the Cygwin provider's tty probe. Admit
+        // the chain and let each provider's ground truth decide; genuine
+        // pipes decline everywhere and still reach external.
+        return cygwin;
     }
 
     /**
