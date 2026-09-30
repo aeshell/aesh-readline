@@ -30,6 +30,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -68,6 +69,13 @@ public class TerminalConnection extends AbstractConnection {
     private CountDownLatch latch;
     private volatile boolean waiting = false;
     private volatile boolean closed = false;
+    /**
+     * Guards reader lifecycle transitions only (flag/executor/future);
+     * never held across terminal I/O or close() handling.
+     */
+    private final Object readerLock = new Object();
+    private ExecutorService readerExecutor;
+    private Future<?> readerFuture;
     private Terminal.SignalHandler prevIntrHandler;
     private Terminal.SignalHandler prevWincHandler;
     private Terminal.SignalHandler prevContHandler;
@@ -220,14 +228,33 @@ public class TerminalConnection extends AbstractConnection {
 
     @Override
     public void openNonBlocking() {
-        ExecutorService executorService = Executors.newSingleThreadExecutor(runnable -> {
-            Thread inputThread = Executors.defaultThreadFactory().newThread(runnable);
-            inputThread.setName("Aesh InputStream Reader");
-            //need to be a daemon, if not it will block on shutdown
-            inputThread.setDaemon(true);
-            return inputThread;
-        });
-        executorService.execute(this::openBlocking);
+        synchronized (readerLock) {
+            if (closed) {
+                LOGGER.log(Level.FINE, "openNonBlocking on a closed connection is a no-op");
+                return;
+            }
+            if (readerFuture != null && !readerFuture.isDone()) {
+                return;
+            }
+            readerExecutor = Executors.newSingleThreadExecutor(runnable -> {
+                Thread inputThread = Executors.defaultThreadFactory().newThread(runnable);
+                inputThread.setName("Aesh InputStream Reader");
+                //need to be a daemon, if not it will block on shutdown
+                inputThread.setDaemon(true);
+                return inputThread;
+            });
+            readerFuture = readerExecutor.submit(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        openBlocking();
+                    } catch (Throwable t) {
+                        LOGGER.log(Level.WARNING, "Reader thread failed, closing connection", t);
+                        close();
+                    }
+                }
+            });
+        }
     }
 
     @Override
@@ -298,6 +325,11 @@ public class TerminalConnection extends AbstractConnection {
      * @param buffer initial data to process before reading from the terminal input
      */
     public void openBlocking(String buffer) {
+        synchronized (readerLock) {
+            if (closed) {
+                return;
+            }
+        }
         if (terminal.supportsNonBlockingRead()) {
             openBlockingWithPoll(buffer);
         } else {
@@ -682,6 +714,16 @@ public class TerminalConnection extends AbstractConnection {
         }
         closed = true;
         reading = false;
+        // Release the owned reader worker, if any. No await: close() runs
+        // on the worker itself on the EOF path, so joining would self-join.
+        // The poll loops observe reading == false within one interval, and
+        // the thread stays a daemon backstop regardless. Refs are kept so
+        // tests can observe termination; close() itself runs once.
+        synchronized (readerLock) {
+            if (readerExecutor != null) {
+                readerExecutor.shutdownNow();
+            }
+        }
         // Close split screen if active
         if (splitScreenImpl != null) {
             try {

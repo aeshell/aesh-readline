@@ -24,6 +24,10 @@ import java.io.IOException;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.aesh.terminal.utils.ANSI;
@@ -137,5 +141,115 @@ public class TerminalConnectionCloseTest {
     public void testCloseCleanupSequencesFocus() {
         assertEquals(ANSI.FOCUS_TRACKING_DISABLE,
                 TerminalConnection.closeCleanupSequences(false, true));
+    }
+
+    private static int countReaderThreads() {
+        Thread[] threads = new Thread[Thread.activeCount() + 16];
+        int n = Thread.enumerate(threads);
+        int count = 0;
+        for (int i = 0; i < n; i++) {
+            if ("Aesh InputStream Reader".equals(threads[i].getName())
+                    && threads[i].isAlive()) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private static void awaitReaderCount(int expected, long timeoutMs) throws InterruptedException {
+        long deadline = System.currentTimeMillis() + timeoutMs;
+        while (System.currentTimeMillis() < deadline) {
+            if (countReaderThreads() == expected) {
+                return;
+            }
+            Thread.sleep(20);
+        }
+        assertEquals("reader thread count", expected, countReaderThreads());
+    }
+
+    @Test
+    public void testConcurrentOpensStartSingleReader() throws Exception {
+        TerminalConnection conn = createConnection();
+        int base = countReaderThreads();
+        int starters = 8;
+        CountDownLatch ready = new CountDownLatch(starters);
+        CountDownLatch go = new CountDownLatch(1);
+        List<Thread> threads = new ArrayList<>();
+        try {
+            for (int i = 0; i < starters; i++) {
+                Thread starter = new Thread(() -> {
+                    try {
+                        ready.countDown();
+                        assertTrue(go.await(5, TimeUnit.SECONDS));
+                        conn.openNonBlocking();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                });
+                starter.setDaemon(true);
+                threads.add(starter);
+                starter.start();
+            }
+            assertTrue(ready.await(5, TimeUnit.SECONDS));
+            go.countDown();
+            for (Thread starter : threads) {
+                starter.join(5000);
+                assertFalse(starter.isAlive());
+            }
+            awaitReaderCount(base + 1, 5000);
+            assertTrue(conn.reading());
+        } finally {
+            conn.close();
+        }
+        awaitReaderCount(base, 5000);
+    }
+
+    @Test
+    public void testCloseBeforeOpenStartsNothing() throws Exception {
+        TerminalConnection conn = createConnection();
+        conn.close();
+        int base = countReaderThreads();
+        conn.openNonBlocking();
+        Thread.sleep(200);
+        assertFalse(conn.reading());
+        assertEquals(base, countReaderThreads());
+    }
+
+    @Test
+    public void testOpenAfterCloseStaysClosed() throws Exception {
+        TerminalConnection conn = createConnection();
+        int base = countReaderThreads();
+        conn.openNonBlocking();
+        awaitReaderCount(base + 1, 5000);
+        conn.close();
+        awaitReaderCount(base, 5000);
+        conn.openNonBlocking();
+        Thread.sleep(200);
+        assertFalse("open after close must not resurrect reading", conn.reading());
+        assertEquals(base, countReaderThreads());
+    }
+
+    @Test
+    public void testReaderExceptionShutsDown() throws Exception {
+        PipedOutputStream stdinWriter = new PipedOutputStream();
+        PipedInputStream stdinReader = new PipedInputStream(stdinWriter, 4096);
+        ByteArrayOutputStream stdoutCapture = new ByteArrayOutputStream();
+        TerminalConnection conn = new TerminalConnection(StandardCharsets.UTF_8,
+                stdinReader, stdoutCapture);
+        int base = countReaderThreads();
+        try {
+            conn.openNonBlocking();
+            awaitReaderCount(base + 1, 5000);
+            conn.setStdinHandler(cps -> {
+                throw new RuntimeException("Simulated reader failure");
+            });
+            stdinWriter.write("x".getBytes(StandardCharsets.UTF_8));
+            stdinWriter.flush();
+            awaitReaderCount(base, 5000);
+            assertFalse("failed reader must not leave reading true", conn.reading());
+        } finally {
+            stdinWriter.close();
+            conn.close();
+        }
     }
 }
