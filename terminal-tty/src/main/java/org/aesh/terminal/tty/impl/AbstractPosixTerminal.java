@@ -86,7 +86,20 @@ public abstract class AbstractPosixTerminal extends AbstractTerminal {
     }
 
     public void close() throws IOException {
-        pty.setAttr(originalAttributes);
+        try {
+            pty.setAttr(originalAttributes);
+        } catch (IOException restoreFailure) {
+            // A failed restore must not skip the underlying close:
+            // report both, with the close failure suppressed.
+            try {
+                pty.close();
+            } catch (IOException closeFailure) {
+                if (closeFailure != restoreFailure) {
+                    restoreFailure.addSuppressed(closeFailure);
+                }
+            }
+            throw restoreFailure;
+        }
         pty.close();
     }
 }

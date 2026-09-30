@@ -17,19 +17,29 @@ package org.aesh.terminal.tty;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOError;
 import java.io.IOException;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
+import org.aesh.terminal.Attributes;
+import org.aesh.terminal.Terminal;
 import org.aesh.terminal.utils.ANSI;
 import org.junit.Test;
 
@@ -141,6 +151,106 @@ public class TerminalConnectionCloseTest {
     public void testCloseCleanupSequencesFocus() {
         assertEquals(ANSI.FOCUS_TRACKING_DISABLE,
                 TerminalConnection.closeCleanupSequences(false, true));
+    }
+
+    /**
+     * Terminal whose attribute restore and close fail on demand, recording
+     * the close. A dynamic proxy avoids hand-implementing the wide
+     * Terminal interface.
+     */
+    private static final class FailingTerminal implements InvocationHandler {
+        final AtomicReference<Throwable> setAttributesFailure = new AtomicReference<>();
+        final AtomicReference<Throwable> closeFailure = new AtomicReference<>();
+        final AtomicBoolean closed = new AtomicBoolean();
+        final Attributes attributes = new Attributes();
+
+        Terminal proxy() {
+            return (Terminal) Proxy.newProxyInstance(getClass().getClassLoader(),
+                    new Class<?>[] { Terminal.class }, this);
+        }
+
+        @Override
+        public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+            switch (method.getName()) {
+                case "getAttributes":
+                    return attributes;
+                case "setAttributes":
+                    Throwable restoreFailure = setAttributesFailure.get();
+                    if (restoreFailure != null) {
+                        throw restoreFailure;
+                    }
+                    return null;
+                case "close":
+                    closed.set(true);
+                    Throwable shutdownFailure = closeFailure.get();
+                    if (shutdownFailure != null) {
+                        throw shutdownFailure;
+                    }
+                    return null;
+                case "handle":
+                case "getCodePointConsumer":
+                case "device":
+                    return null;
+                case "toString":
+                    return "FailingTerminal";
+                case "hashCode":
+                    return System.identityHashCode(proxy);
+                case "equals":
+                    return proxy == args[0];
+                default:
+                    throw new UnsupportedOperationException(method.getName());
+            }
+        }
+    }
+
+    @Test
+    public void testRestoreFailureStillClosesTerminal() throws Exception {
+        FailingTerminal failing = new FailingTerminal();
+        failing.setAttributesFailure.set(new IOError(new IOException("restore blew up")));
+        TerminalConnection conn = new TerminalConnection(failing.proxy());
+        // Must stay silent and still close the terminal.
+        conn.close();
+        assertTrue("terminal.close() must run despite restore failure",
+                failing.closed.get());
+    }
+
+    @Test
+    public void testBothFailuresCloseSilently() throws Exception {
+        FailingTerminal failing = new FailingTerminal();
+        failing.setAttributesFailure.set(new IOError(new IOException("restore blew up")));
+        failing.closeFailure.set(new RuntimeException("close blew up"));
+        TerminalConnection conn = new TerminalConnection(failing.proxy());
+        conn.close();
+        assertTrue(failing.closed.get());
+    }
+
+    @Test
+    public void testRestoreAndCloseShapes() throws Exception {
+        FailingTerminal failing = new FailingTerminal();
+        Terminal terminal = failing.proxy();
+        Attributes saved = new Attributes();
+
+        assertNull(TerminalConnection.restoreAndClose(terminal, saved));
+        assertTrue(failing.closed.get());
+
+        IOError restoreFailure = new IOError(new IOException("restore blew up"));
+        RuntimeException closeFailure = new RuntimeException("close blew up");
+        failing.closed.set(false);
+        failing.setAttributesFailure.set(restoreFailure);
+        failing.closeFailure.set(closeFailure);
+        Throwable primary = TerminalConnection.restoreAndClose(terminal, saved);
+        assertSame(restoreFailure, primary);
+        assertEquals(1, primary.getSuppressed().length);
+        assertSame(closeFailure, primary.getSuppressed()[0]);
+        assertTrue(failing.closed.get());
+
+        failing.closed.set(false);
+        failing.setAttributesFailure.set(null);
+        failing.closeFailure.set(null);
+        assertNull(TerminalConnection.restoreAndClose(terminal, saved));
+        assertTrue(failing.closed.get());
+
+        assertNull(TerminalConnection.restoreAndClose(null, saved));
     }
 
     private static int countReaderThreads() {

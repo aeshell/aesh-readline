@@ -768,17 +768,50 @@ public class TerminalConnection extends AbstractConnection {
         // System.in, and on some platforms (macOS) closing a tty fd while
         // another thread reads from it blocks the closer indefinitely (#288).
         try {
-            //reset attributes and close terminal
-            if (attributes != null && terminal != null) {
-                terminal.setAttributes(attributes);
-                terminal.close();
+            Throwable closeFailure = restoreAndClose(terminal, attributes);
+            if (closeFailure != null) {
+                LOGGER.log(Level.WARNING, "Failed to close the terminal correctly", closeFailure);
             }
-        } catch (Exception | IOError e) {
-            LOGGER.log(Level.WARNING, "Failed to close the terminal correctly", e);
         } finally {
             if (latch != null)
                 latch.countDown();
         }
+    }
+
+    /**
+     * Restore saved attributes, then close the terminal, collecting rather
+     * than short-circuiting failures: a restoration failure must not skip
+     * the underlying close. The first failure is primary; a later one
+     * suppresses into it (identity-guarded).
+     * <p>
+     * Package-visible so the failure shapes are unit-testable without a TTY.
+     *
+     * @param terminal the terminal to restore and close, may be null
+     * @param attributes the saved attributes to restore, may be null
+     * @return the primary failure, or null when both steps succeeded
+     */
+    static Throwable restoreAndClose(Terminal terminal, Attributes attributes) {
+        if (terminal == null) {
+            return null;
+        }
+        Throwable primary = null;
+        if (attributes != null) {
+            try {
+                terminal.setAttributes(attributes);
+            } catch (Exception | IOError e) {
+                primary = e;
+            }
+        }
+        try {
+            terminal.close();
+        } catch (Exception | IOError e) {
+            if (primary == null) {
+                primary = e;
+            } else if (e != primary) {
+                primary.addSuppressed(e);
+            }
+        }
+        return primary;
     }
 
 }
