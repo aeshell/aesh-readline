@@ -14,6 +14,7 @@
 package org.aesh.terminal.tty;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -133,5 +134,76 @@ public class TerminalConnectionCharsetTest {
         } finally {
             conn.close();
         }
+    }
+
+    @Test
+    public void testResolveCharsetExplicitWins() throws IOException {
+        PosixSysTerminal term = new PosixSysTerminal("test", "ansi", new FakePty(), false);
+        try {
+            assertEquals(StandardCharsets.ISO_8859_1,
+                    TerminalConnection.resolveCharset(StandardCharsets.ISO_8859_1, term, true));
+            assertEquals(StandardCharsets.UTF_16,
+                    TerminalConnection.resolveCharset(StandardCharsets.UTF_16, term, false));
+        } finally {
+            term.close();
+        }
+    }
+
+    @Test
+    public void testResolveCharsetNullFollowsPolicy() throws IOException {
+        PosixSysTerminal term = new PosixSysTerminal("test", "ansi", new FakePty(), false);
+        try {
+            assertEquals(StandardCharsets.UTF_8,
+                    TerminalConnection.resolveCharset(null, term, true));
+            assertEquals(Charset.defaultCharset(),
+                    TerminalConnection.resolveCharset(null, term, false));
+        } finally {
+            term.close();
+        }
+        ExternalTerminal external = new ExternalTerminal("test", "ansi",
+                new ByteArrayInputStream(new byte[0]), new ByteArrayOutputStream());
+        try {
+            assertEquals(Charset.defaultCharset(),
+                    TerminalConnection.resolveCharset(null, external, true));
+        } finally {
+            external.close();
+        }
+    }
+
+    @Test
+    public void testStreamConstructorsRouteThroughPolicy() throws IOException {
+        // Explicit pair survives end to end through public construction.
+        TerminalConnection explicit = new TerminalConnection(StandardCharsets.UTF_16,
+                StandardCharsets.UTF_16, new ByteArrayInputStream(new byte[0]),
+                new ByteArrayOutputStream(), null);
+        try {
+            assertEquals(StandardCharsets.UTF_16, explicit.inputEncoding());
+            assertEquals(StandardCharsets.UTF_16, explicit.outputEncoding());
+        } finally {
+            explicit.close();
+        }
+        // Unspecified pair follows the policy: explicit streams build an
+        // external terminal, so the JVM default wins whatever the flag.
+        TerminalConnection unspecified = new TerminalConnection(null, null,
+                new ByteArrayInputStream(new byte[0]), new ByteArrayOutputStream(), null);
+        try {
+            assertEquals(Charset.defaultCharset(), unspecified.inputEncoding());
+            assertEquals(Charset.defaultCharset(), unspecified.outputEncoding());
+        } finally {
+            unspecified.close();
+        }
+    }
+
+    @Test
+    public void testUtf8RoundTripVsLegacyDefault() {
+        // What the Cygwin policy selects away from: mintty UTF-8 bytes
+        // decode correctly under UTF-8 and garble under windows-1252.
+        // Env-independent: fixed charsets on both sides.
+        String text = "h" + (char) 0xE9 + "llo "
+                + new String(new int[] { 0x1F600 }, 0, 1);
+        byte[] utf8 = text.getBytes(StandardCharsets.UTF_8);
+        assertEquals(text, new String(utf8, StandardCharsets.UTF_8));
+        assertFalse("legacy decoding must garble",
+                text.equals(new String(utf8, Charset.forName("windows-1252"))));
     }
 }

@@ -91,14 +91,8 @@ public class TerminalConnection extends AbstractConnection {
                 .nativeSignals(true)
                 .name("Aesh console")
                 .build();
-        if (inputCharset != null)
-            this.inputCharset = inputCharset;
-        else
-            this.inputCharset = defaultConnectionCharset(terminal, OSUtils.IS_CYGWIN);
-        if (outputCharset != null)
-            this.outputCharset = outputCharset;
-        else
-            this.outputCharset = defaultConnectionCharset(terminal, OSUtils.IS_CYGWIN);
+        this.inputCharset = resolveCharset(inputCharset, terminal, OSUtils.IS_CYGWIN);
+        this.outputCharset = resolveCharset(outputCharset, terminal, OSUtils.IS_CYGWIN);
         init(terminal);
     }
 
@@ -129,22 +123,25 @@ public class TerminalConnection extends AbstractConnection {
     }
 
     /**
-     * Creates a new TerminalConnection using system default charset and standard I/O streams.
+     * Creates a new TerminalConnection with standard I/O streams and
+     * unspecified charsets, resolved by the default-selection policy.
      *
      * @throws IOException if an I/O error occurs
      */
     public TerminalConnection() throws IOException {
-        this(Charset.defaultCharset(), System.in, System.out);
+        this(null, System.in, System.out);
     }
 
     /**
-     * Creates a new TerminalConnection using system defaults with a connection handler.
+     * Creates a new TerminalConnection with a connection handler, standard
+     * I/O streams, and unspecified charsets, resolved by the
+     * default-selection policy.
      *
      * @param handler the connection handler to be called when the connection is initialized
      * @throws IOException if an I/O error occurs
      */
     public TerminalConnection(Consumer<Connection> handler) throws IOException {
-        this(Charset.defaultCharset(), Charset.defaultCharset(), System.in, System.out, handler);
+        this(null, null, System.in, System.out, handler);
     }
 
     /**
@@ -153,8 +150,8 @@ public class TerminalConnection extends AbstractConnection {
      * @param terminal the terminal to wrap
      */
     public TerminalConnection(Terminal terminal) {
-        this.inputCharset = defaultConnectionCharset(terminal, OSUtils.IS_CYGWIN);
-        this.outputCharset = defaultConnectionCharset(terminal, OSUtils.IS_CYGWIN);
+        this.inputCharset = resolveCharset(null, terminal, OSUtils.IS_CYGWIN);
+        this.outputCharset = resolveCharset(null, terminal, OSUtils.IS_CYGWIN);
         init(terminal);
     }
 
@@ -597,6 +594,25 @@ public class TerminalConnection extends AbstractConnection {
     @Override
     public org.aesh.terminal.tty.ScreenRegion currentRegion() {
         return currentRegion;
+    }
+
+    /**
+     * Resolve the charset for one connection direction: an explicitly
+     * requested charset always wins, otherwise the default-selection
+     * policy decides.
+     * <p>
+     * Package-visible for testing alongside {@link #defaultConnectionCharset}.
+     *
+     * @param requested the caller-specified charset, or null when unspecified
+     * @param terminal the terminal being wrapped
+     * @param cygwinEnvironment whether running in Cygwin/MSYS2 on Windows
+     * @return the charset to use
+     */
+    static Charset resolveCharset(Charset requested, Terminal terminal, boolean cygwinEnvironment) {
+        if (requested != null) {
+            return requested;
+        }
+        return defaultConnectionCharset(terminal, cygwinEnvironment);
     }
 
     /**

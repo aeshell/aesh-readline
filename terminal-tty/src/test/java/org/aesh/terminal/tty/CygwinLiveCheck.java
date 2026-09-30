@@ -32,7 +32,9 @@ import org.aesh.terminal.utils.OSUtils;
  * <p>
  * Expected: interactive mintty builds a PosixSysTerminal over CygwinPty
  * (GetConsoleMode-based gating must not divert it to external); piped
- * stdin builds an external terminal.
+ * stdin builds an external terminal. Under a legacy Windows default
+ * charset, a default-built connection must still report UTF-8 for both
+ * directions (mintty speaks UTF-8); explicit charsets always win.
  */
 public final class CygwinLiveCheck {
 
@@ -56,6 +58,14 @@ public final class CygwinLiveCheck {
             System.err.println("terminal=" + terminal.getClass().getName());
         } finally {
             terminal.close();
+        }
+        TerminalConnection connection = new TerminalConnection();
+        try {
+            System.err.println("jvmDefault=" + java.nio.charset.Charset.defaultCharset());
+            System.err.println("inputEncoding=" + connection.inputEncoding());
+            System.err.println("outputEncoding=" + connection.outputEncoding());
+        } finally {
+            connection.close();
         }
         System.err.println("CYGWIN-CHECK-OK");
     }
