@@ -509,6 +509,22 @@ public class TerminalConnection extends AbstractConnection {
             currentRegion.write(s);
             return this;
         }
+        return writeRaw(s);
+    }
+
+    /**
+     * Write text straight to the terminal output, bypassing split-screen
+     * region routing.
+     * <p>
+     * Application writes go through {@link #write(String)} (region-routed);
+     * split-screen renderer escape sequences and region implementations
+     * use this sink so cursor addressing never re-enters routing (which
+     * would recurse or land escapes in scrollback as text).
+     *
+     * @param s the string to encode and write
+     * @return this connection
+     */
+    public org.aesh.terminal.Connection writeRaw(String s) {
         java.util.function.Consumer<int[]> handler = stdoutHandler();
         if (handler instanceof org.aesh.terminal.io.Encoder) {
             ((org.aesh.terminal.io.Encoder) handler).accept(s);

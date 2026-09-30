@@ -83,7 +83,7 @@ public class SplitScreenImpl implements SplitScreen {
         shutdownHook = new Thread(() -> {
             if (!closed) {
                 try {
-                    connection.write("\033[r\033[2J\033[1;1H");
+                    render("\033[r\033[2J\033[1;1H");
                 } catch (Exception ignored) {
                 }
             }
@@ -141,7 +141,25 @@ public class SplitScreenImpl implements SplitScreen {
         // Position cursor in the bottom region for readline
         sb.append("\033[").append(bottomStartRow).append(";1H");
 
-        connection.write(sb.toString());
+        render(sb.toString());
+    }
+
+    /**
+     * Send renderer output to the terminal: serialized under the render
+     * lock and routed past region dispatch straight to the output
+     * boundary, so escape sequences never re-enter routing or land in
+     * scrollback as text.
+     *
+     * @param text the escape sequences and text to emit
+     */
+    private void render(String text) {
+        synchronized (renderLock) {
+            if (connection instanceof org.aesh.terminal.tty.TerminalConnection) {
+                ((org.aesh.terminal.tty.TerminalConnection) connection).writeRaw(text);
+            } else {
+                connection.write(text);
+            }
+        }
     }
 
     private void appendSeparator(StringBuilder sb) {
@@ -170,20 +188,20 @@ public class SplitScreenImpl implements SplitScreen {
      * Called by ScreenRegionImpl. Thread-safe.
      */
     void writeToTopRegion(String text) {
-        if (closed || suspended)
-            return;
-
-        // Split text into lines and add to scrollback
-        String[] lines = text.split("\n", -1);
-        for (String line : lines) {
-            if (!line.isEmpty()) {
-                topRegion.scrollback.addLine(line);
-            }
-        }
-
-        // Redraw the top region (synchronized to prevent interleaving
-        // with readline output in the bottom region)
         synchronized (renderLock) {
+            if (closed || suspended)
+                return;
+
+            // Split text into lines and add to scrollback
+            String[] lines = text.split("\n", -1);
+            for (String line : lines) {
+                if (!line.isEmpty()) {
+                    topRegion.scrollback.addLine(line);
+                }
+            }
+
+            // Redraw under the same lock so concurrent bottom-region
+            // writes cannot interleave cursor save/restore sequences
             redrawTopRegion();
         }
     }
@@ -211,7 +229,7 @@ public class SplitScreenImpl implements SplitScreen {
         // Restore cursor position
         sb.append("\0338");
 
-        connection.write(sb.toString());
+        render(sb.toString());
     }
 
     /**
@@ -257,7 +275,7 @@ public class SplitScreenImpl implements SplitScreen {
             sb.append("\033[").append(bottomStartRow).append(";").append(termHeight).append("r");
             // Position cursor in bottom region
             sb.append("\033[").append(bottomStartRow).append(";1H");
-            connection.write(sb.toString());
+            render(sb.toString());
 
             redrawTopRegion();
         }
@@ -287,12 +305,15 @@ public class SplitScreenImpl implements SplitScreen {
     public void setSplitRatio(double ratio) {
         this.ratio = ratio;
         calculateLayout();
-        // Redraw
-        StringBuilder sb = new StringBuilder();
-        sb.append("\033[2J");
-        appendSeparator(sb);
-        connection.write(sb.toString());
-        redrawTopRegion();
+        // Redraw under one hold so a concurrent region write cannot
+        // slip between the clear and the top redraw
+        synchronized (renderLock) {
+            StringBuilder sb = new StringBuilder();
+            sb.append("\033[2J");
+            appendSeparator(sb);
+            render(sb.toString());
+            redrawTopRegion();
+        }
     }
 
     @Override
@@ -307,7 +328,7 @@ public class SplitScreenImpl implements SplitScreen {
         sb.append("\0337"); // save cursor
         appendSeparator(sb);
         sb.append("\0338"); // restore cursor
-        connection.write(sb.toString());
+        render(sb.toString());
     }
 
     @Override
@@ -315,7 +336,7 @@ public class SplitScreenImpl implements SplitScreen {
         if (!suspended) {
             suspended = true;
             // Reset scroll region and clear screen — the command takes over
-            connection.write("\033[r\033[2J\033[1;1H");
+            render("\033[r\033[2J\033[1;1H");
         }
     }
 
@@ -324,8 +345,10 @@ public class SplitScreenImpl implements SplitScreen {
         if (suspended) {
             suspended = false;
             calculateLayout();
-            initialRender();
-            redrawTopRegion();
+            synchronized (renderLock) {
+                initialRender();
+                redrawTopRegion();
+            }
         }
     }
 
@@ -336,7 +359,7 @@ public class SplitScreenImpl implements SplitScreen {
                 closed = true;
                 // Reset scroll region, clear screen
                 try {
-                    connection.write("\033[r\033[2J\033[1;1H");
+                    render("\033[r\033[2J\033[1;1H");
                 } catch (Exception e) {
                     LOGGER.log(Level.FINE, "Failed to reset terminal on close", e);
                 }
@@ -425,9 +448,11 @@ public class SplitScreenImpl implements SplitScreen {
             if (isTop) {
                 splitScreen.writeToTopRegion(text);
             } else {
-                // Bottom region — write directly to connection
-                // (readline handles its own rendering)
-                splitScreen.getConnection().write(text);
+                // Bottom region — bypass region routing and go straight
+                // to the output boundary (readline handles its own
+                // rendering). Routing through Connection.write() would
+                // re-enter the current region and recurse.
+                splitScreen.render(text);
             }
         }
 
@@ -443,9 +468,11 @@ public class SplitScreenImpl implements SplitScreen {
 
         @Override
         public void clear() {
-            scrollback.clear();
-            if (isTop) {
-                splitScreen.redrawTopRegion();
+            synchronized (splitScreen.renderLock) {
+                scrollback.clear();
+                if (isTop) {
+                    splitScreen.redrawTopRegion();
+                }
             }
         }
 
