@@ -277,6 +277,19 @@ public class TerminalConnectionCloseTest {
         assertEquals("reader thread count", expected, countReaderThreads());
     }
 
+    private static void awaitReading(TerminalConnection conn, long timeoutMs) throws InterruptedException {
+        // Thread-alive and flag-set are two different events: the worker
+        // must be scheduled before it sets reading, so poll the flag.
+        long deadline = System.currentTimeMillis() + timeoutMs;
+        while (System.currentTimeMillis() < deadline) {
+            if (conn.reading()) {
+                return;
+            }
+            Thread.sleep(20);
+        }
+        assertTrue("worker must observe reading", conn.reading());
+    }
+
     @Test
     public void testConcurrentOpensStartSingleReader() throws Exception {
         TerminalConnection conn = createConnection();
@@ -307,7 +320,7 @@ public class TerminalConnectionCloseTest {
                 assertFalse(starter.isAlive());
             }
             awaitReaderCount(base + 1, 5000);
-            assertTrue(conn.reading());
+            awaitReading(conn, 5000);
         } finally {
             conn.close();
         }
