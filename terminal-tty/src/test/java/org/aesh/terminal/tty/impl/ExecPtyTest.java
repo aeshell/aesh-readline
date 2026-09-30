@@ -20,11 +20,20 @@
 package org.aesh.terminal.tty.impl;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.File;
+import java.io.FileDescriptor;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.util.EnumSet;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import org.aesh.terminal.Attributes;
 import org.aesh.terminal.Attributes.ControlChar;
@@ -306,4 +315,132 @@ public class ExecPtyTest {
         }
     }
 
+    // ==================== Slave stream ownership ====================
+
+    private static File tempTty() throws IOException {
+        File tty = File.createTempFile("execpty", ".tmp");
+        tty.deleteOnExit();
+        return tty;
+    }
+
+    @Test
+    public void testSlaveStreamsCached() throws IOException {
+        ExecPty pty = new ExecPty(tempTty().getAbsolutePath());
+        try {
+            assertSame(pty.getSlaveInput(), pty.getSlaveInput());
+            assertSame(pty.getSlaveOutput(), pty.getSlaveOutput());
+        } finally {
+            pty.close();
+        }
+    }
+
+    @Test
+    public void testCloseInvalidatesOwnedStreams() throws IOException {
+        ExecPty pty = new ExecPty(tempTty().getAbsolutePath());
+        InputStream in = pty.getSlaveInput();
+        OutputStream out = pty.getSlaveOutput();
+        pty.close();
+        try {
+            in.read();
+            fail("owned input must be closed");
+        } catch (IOException expected) {
+        }
+        try {
+            out.write('x');
+            fail("owned output must be closed");
+        } catch (IOException expected) {
+        }
+        // Second close stays quiet.
+        pty.close();
+    }
+
+    @Test
+    public void testBorrowedStreamsSurviveClose() throws IOException {
+        ExecPty pty = new ExecPty("definitely-not-a-tty-xyz");
+        try {
+            assertSame("invalid tty falls back to System.in",
+                    System.in, pty.getSlaveInput());
+            assertSame("invalid tty falls back to System.out",
+                    System.out, pty.getSlaveOutput());
+            pty.close();
+            // FileDescriptor validity, not available(): touching
+            // System.in's monitor contends with surefire's own
+            // command-reader thread, which holds it in blocking read.
+            assertTrue("System.in must survive", FileDescriptor.in.valid());
+            assertTrue("System.out must survive", FileDescriptor.out.valid());
+            assertSame(System.in, pty.getSlaveInput());
+            assertSame(System.out, pty.getSlaveOutput());
+        } finally {
+            // Never close System.in/out, even in cleanup.
+        }
+    }
+
+    @Test
+    public void testPartialConstructionReleasesInput() throws Exception {
+        File tty = tempTty();
+        ExecPty pty = new ExecPty(tty.getAbsolutePath()) {
+            @Override
+            public Attributes getAttr() {
+                return new Attributes();
+            }
+
+            @Override
+            public OutputStream getSlaveOutput() {
+                throw new RuntimeException("output open blew up");
+            }
+        };
+        InputStream input = pty.getSlaveInput();
+        try {
+            new PosixSysTerminal("test", "ansi", pty, false);
+            fail("construction must propagate the output failure");
+        } catch (RuntimeException e) {
+            assertEquals("output open blew up", e.getMessage());
+        }
+        try {
+            input.read();
+            fail("input opened during failed construction must be released");
+        } catch (IOException expected) {
+        }
+        assertTrue(tty.delete() || !tty.exists());
+    }
+
+    @Test
+    public void testCloseUnblocksReader() throws Exception {
+        ExecPty pty = new ExecPty(tempTty().getAbsolutePath());
+        InputStream in = pty.getSlaveInput();
+        CountDownLatch started = new CountDownLatch(1);
+        Thread reader = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    started.countDown();
+                    // Production read pattern (see openBlockingLegacy):
+                    // never block in read(), gate on available().
+                    while (true) {
+                        if (in.available() <= 0) {
+                            Thread.sleep(10);
+                            continue;
+                        }
+                        if (in.read() < 0) {
+                            break;
+                        }
+                    }
+                } catch (IOException | InterruptedException e) {
+                    // Expected shutdown paths: closed stream or interrupt.
+                    Thread.currentThread().interrupt();
+                }
+            }
+        });
+        reader.setDaemon(true);
+        reader.start();
+        assertTrue(started.await(5, TimeUnit.SECONDS));
+        Thread.sleep(200);
+        long start = System.nanoTime();
+        pty.close();
+        long closeMs = (System.nanoTime() - start) / 1_000_000;
+        assertTrue("close() must return promptly with an active reader (#288): "
+                + closeMs + "ms", closeMs < 2000);
+        reader.join(5000);
+        assertFalse("reader must observe the closed stream and exit", reader.isAlive());
+    }
 }

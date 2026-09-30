@@ -58,8 +58,26 @@ public class PosixSysTerminal extends AbstractPosixTerminal {
      */
     public PosixSysTerminal(String name, String type, Pty pty, boolean nativeSignals) throws IOException {
         super(name, type, pty);
-        this.input = pty.getSlaveInput();
-        this.output = pty.getSlaveOutput();
+        // Final fields force locals-first: a failing output open must
+        // still give the PTY — the streams' owner — a chance to release
+        // the input half before the constructor throws. Never close the
+        // stream directly here: it may be borrowed (System.in), which
+        // only the owning PTY may judge.
+        InputStream slaveInput = pty.getSlaveInput();
+        try {
+            OutputStream slaveOutput = pty.getSlaveOutput();
+            this.input = slaveInput;
+            this.output = slaveOutput;
+        } catch (RuntimeException e) {
+            try {
+                pty.close();
+            } catch (IOException | RuntimeException closeFailure) {
+                if (closeFailure != e) {
+                    e.addSuppressed(closeFailure);
+                }
+            }
+            throw e;
+        }
         if (nativeSignals) {
             for (final Signal signal : Signal.values()) {
                 nativeHandlers.put(signal, Signals.register(signal.name(), () -> raise(signal)));

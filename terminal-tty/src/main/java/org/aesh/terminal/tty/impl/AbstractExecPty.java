@@ -64,7 +64,7 @@ public abstract class AbstractExecPty implements Pty {
     }
 
     @Override
-    public void close() {
+    public void close() throws IOException {
     }
 
     @Override

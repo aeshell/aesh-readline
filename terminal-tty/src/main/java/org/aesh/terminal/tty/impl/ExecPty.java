@@ -50,6 +50,11 @@ public class ExecPty extends AbstractExecPty {
     private final boolean validTTYFile;
     private static final String NOT_A_TTY = "not a tty";
 
+    private InputStream slaveInput;
+    private OutputStream slaveOutput;
+    private boolean slaveInputOwned;
+    private boolean slaveOutputOwned;
+
     /**
      * Returns the PTY for the current terminal.
      *
@@ -90,29 +95,83 @@ public class ExecPty extends AbstractExecPty {
 
     @Override
     public InputStream getSlaveInput() {
-        try {
-            if (!validTTYFile) {
-                return System.in;
+        if (slaveInput == null) {
+            synchronized (this) {
+                if (slaveInput == null) {
+                    try {
+                        if (!validTTYFile) {
+                            slaveInput = System.in;
+                        } else {
+                            slaveInput = new FileInputStream(getName());
+                            slaveInputOwned = true;
+                        }
+                    } catch (FileNotFoundException fnfe) {
+                        // When the tty file is not accessible to the current user,
+                        // fallback to using System.in.
+                        slaveInput = System.in;
+                    }
+                }
             }
-            return new FileInputStream(getName());
-        } catch (FileNotFoundException fnfe) {
-            // When the tty file is not accessible to the current user,
-            // fallback to using System.in.
-            return System.in;
         }
+        return slaveInput;
     }
 
     @Override
     public OutputStream getSlaveOutput() {
-        try {
-            if (!validTTYFile) {
-                return System.out;
+        if (slaveOutput == null) {
+            synchronized (this) {
+                if (slaveOutput == null) {
+                    try {
+                        if (!validTTYFile) {
+                            slaveOutput = System.out;
+                        } else {
+                            slaveOutput = new FileOutputStream(getName());
+                            slaveOutputOwned = true;
+                        }
+                    } catch (FileNotFoundException fnfe) {
+                        // When the tty file is not accessible to the current user,
+                        // fallback to using System.out.
+                        slaveOutput = System.out;
+                    }
+                }
             }
-            return new FileOutputStream(getName());
-        } catch (FileNotFoundException fnfe) {
-            // When the tty file is not accessible to the current user,
-            // fallback to using System.out.
-            return System.out;
+        }
+        return slaveOutput;
+    }
+
+    /**
+     * Close the streams this PTY opened. Borrowed standard streams
+     * ({@code System.in/out} fallbacks) are never closed. The first
+     * failure propagates so {@link AbstractPosixTerminal#close()} can
+     * attach it to its suppression chain.
+     *
+     * @throws IOException if closing an owned stream fails
+     */
+    @Override
+    public void close() throws IOException {
+        IOException firstFailure = null;
+        if (slaveInputOwned && slaveInput != null) {
+            try {
+                slaveInput.close();
+            } catch (IOException e) {
+                firstFailure = e;
+            }
+            slaveInputOwned = false;
+        }
+        if (slaveOutputOwned && slaveOutput != null) {
+            try {
+                slaveOutput.close();
+            } catch (IOException e) {
+                if (firstFailure == null) {
+                    firstFailure = e;
+                } else if (e != firstFailure) {
+                    firstFailure.addSuppressed(e);
+                }
+            }
+            slaveOutputOwned = false;
+        }
+        if (firstFailure != null) {
+            throw firstFailure;
         }
     }
 

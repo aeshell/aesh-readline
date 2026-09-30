@@ -175,6 +175,14 @@ public class CygwinPty extends AbstractExecPty {
         return doGetSize(cfg);
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Never closes file descriptors here: the slave streams are
+     * {@code FileDescriptor} wrappers around inherited standard streams,
+     * which this PTY borrows rather than owns.
+     */
+
     @Override
     public void close() {
         // Note: no checked exception — restore failures are logged, never thrown,
@@ -187,7 +195,11 @@ public class CygwinPty extends AbstractExecPty {
             }
             savedConsoleMode = -1;
         }
-        super.close();
+        try {
+            super.close();
+        } catch (IOException e) {
+            LOGGER.log(Level.FINE, "Failed to close PTY streams on close", e);
+        }
     }
 
     /**
