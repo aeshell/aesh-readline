@@ -261,13 +261,19 @@ public class WinSysTerminal extends AbstractWindowsTerminal {
                 if (unicodeChar == '\t' && shiftPressed) {
                     String btab = capabilityLookup.apply(Capability.key_btab);
                     if (btab != null) {
-                        sb.append(btab);
+                        for (int k = 0; k < repeatCount; k++) {
+                            sb.append(btab);
+                        }
                     }
                 } else {
-                    if (isAlt) {
-                        sb.append('\033');
+                    // Windows coalesces held-key repeats into one record:
+                    // repeat the whole unit, mirroring the virtual-key branch.
+                    for (int k = 0; k < repeatCount; k++) {
+                        if (isAlt) {
+                            sb.append('\033');
+                        }
+                        sb.append(unicodeChar);
                     }
-                    sb.append(unicodeChar);
                 }
             } else {
                 // virtual keycodes: http://msdn.microsoft.com/en-us/library/windows/desktop/dd375731(v=vs.85).aspx

@@ -124,6 +124,69 @@ public class WinSysTerminalTest {
                 "\033[C\033[C\033[C".getBytes(), result);
     }
 
+    // ==================== Printable repeat counts ====================
+
+    private static final Function<Capability, String> BTAB_CAPABILITY = cap -> "\033[Z";
+
+    @Test
+    public void testPrintableRepeatCount() {
+        int[] event = keyEvent(true, 3, 0x41, 'A', 0); // A x3, coalesced hold
+        byte[] result = WinSysTerminal.processKeyEvent(event, NO_ESCAPE, NO_CAPABILITY);
+        assertArrayEquals("Held A x3 should produce AAA",
+                new byte[] { 'A', 'A', 'A' }, result);
+    }
+
+    @Test
+    public void testPrintableSinglePressUnchanged() {
+        int[] event = keyEvent(true, 1, 0x41, 'A', 0);
+        byte[] result = WinSysTerminal.processKeyEvent(event, NO_ESCAPE, NO_CAPABILITY);
+        assertArrayEquals(new byte[] { 'A' }, result);
+    }
+
+    @Test
+    public void testAltPrintableRepeatCount() {
+        int[] event = keyEvent(true, 2, 0x41, 'A', LEFT_ALT_PRESSED);
+        byte[] result = WinSysTerminal.processKeyEvent(event, NO_ESCAPE, NO_CAPABILITY);
+        assertArrayEquals("Alt-A x2 should repeat the ESC-prefixed unit",
+                "\033A\033A".getBytes(), result);
+    }
+
+    @Test
+    public void testControlPrintableRepeatCount() {
+        int[] event = keyEvent(true, 2, 0x41, (char) 0x01, LEFT_CTRL_PRESSED); // Ctrl+A x2
+        byte[] result = WinSysTerminal.processKeyEvent(event, NO_ESCAPE, NO_CAPABILITY);
+        assertArrayEquals(new byte[] { 0x01, 0x01 }, result);
+    }
+
+    @Test
+    public void testShiftTabRepeatCount() {
+        int[] event = keyEvent(true, 2, 0x09, '\t', SHIFT_PRESSED);
+        byte[] result = WinSysTerminal.processKeyEvent(event, NO_ESCAPE, BTAB_CAPABILITY);
+        assertArrayEquals("\033[Z\033[Z".getBytes(), result);
+    }
+
+    @Test
+    public void testShiftTabWithoutCapabilityProducesNothing() {
+        int[] event = keyEvent(true, 2, 0x09, '\t', SHIFT_PRESSED);
+        byte[] result = WinSysTerminal.processKeyEvent(event, NO_ESCAPE, NO_CAPABILITY);
+        assertEquals(0, result.length);
+    }
+
+    @Test
+    public void testAltNumpadKeyUpEmitsOnce() {
+        // ALT+NumPad input method: character delivered on Alt key-up.
+        int[] event = keyEvent(false, 1, 0x12, 'A', 0);
+        byte[] result = WinSysTerminal.processKeyEvent(event, NO_ESCAPE, NO_CAPABILITY);
+        assertArrayEquals(new byte[] { 'A' }, result);
+    }
+
+    @Test
+    public void testPlainKeyUpFiltered() {
+        int[] event = keyEvent(false, 1, 0x41, 'A', 0);
+        byte[] result = WinSysTerminal.processKeyEvent(event, NO_ESCAPE, NO_CAPABILITY);
+        assertEquals(0, result.length);
+    }
+
     @Test
     public void testUnmappedVirtualKeyProducesNothing() {
         int[] event = keyEvent(true, 1, 0xFF, '\0', 0); // unmapped vk
