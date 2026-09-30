@@ -287,8 +287,10 @@ public class WinSysTerminalTest {
         int[][] events = { keyDown(0, (char) 0xE9, 0) };
         assertArrayEquals(new byte[] { (byte) 0xC3, (byte) 0xA9 },
                 processSequence(events, StandardCharsets.UTF_8));
+        // ISO-8859-1 stands in for windows-1252 (same single-byte 0xE9):
+        // extended charsets are not registered in native images.
         assertArrayEquals(new byte[] { (byte) 0xE9 },
-                processSequence(events, Charset.forName("windows-1252")));
+                processSequence(events, StandardCharsets.ISO_8859_1));
     }
 
     @Test

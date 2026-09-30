@@ -197,13 +197,15 @@ public class TerminalConnectionCharsetTest {
     @Test
     public void testUtf8RoundTripVsLegacyDefault() {
         // What the Cygwin policy selects away from: mintty UTF-8 bytes
-        // decode correctly under UTF-8 and garble under windows-1252.
+        // decode correctly under UTF-8 and garble under a legacy single-byte
+        // charset. ISO-8859-1 stands in for windows-1252 (identical behavior
+        // here): extended charsets are not registered in native images.
         // Env-independent: fixed charsets on both sides.
         String text = "h" + (char) 0xE9 + "llo "
                 + new String(new int[] { 0x1F600 }, 0, 1);
         byte[] utf8 = text.getBytes(StandardCharsets.UTF_8);
         assertEquals(text, new String(utf8, StandardCharsets.UTF_8));
         assertFalse("legacy decoding must garble",
-                text.equals(new String(utf8, Charset.forName("windows-1252"))));
+                text.equals(new String(utf8, StandardCharsets.ISO_8859_1)));
     }
 }
