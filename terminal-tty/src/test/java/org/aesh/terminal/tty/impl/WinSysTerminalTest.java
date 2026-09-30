@@ -20,6 +20,8 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.function.Function;
@@ -216,7 +218,7 @@ public class WinSysTerminalTest {
     private static byte[] processSequence(int[][] events,
             Function<Short, String> escapeLookup, Charset charset) {
         WinSysTerminal.PendingSurrogate pending = new WinSysTerminal.PendingSurrogate();
-        java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
         for (int[] event : events) {
             byte[] bytes = WinSysTerminal.processKeyEvent(
                     event, escapeLookup, NO_CAPABILITY, charset, pending);
@@ -299,7 +301,7 @@ public class WinSysTerminalTest {
     }
 
     @Test
-    public void testConnectionPushesInputCharset() throws java.io.IOException {
+    public void testConnectionPushesInputCharset() throws IOException {
         TestableWinSysTerminal term = new TestableWinSysTerminal();
         TerminalConnection conn = new TerminalConnection(term);
         try {
@@ -434,7 +436,7 @@ public class WinSysTerminalTest {
         static boolean vtEnableResult = true;
         boolean vtOutputEnabled;
 
-        TestableWinSysTerminal() throws java.io.IOException {
+        TestableWinSysTerminal() throws IOException {
             super("test", false, SignalHandlers.SIG_DFL);
         }
 
@@ -488,7 +490,7 @@ public class WinSysTerminalTest {
     }
 
     @Test
-    public void testValidConsoleSelectsWriteConsolePath() throws java.io.IOException {
+    public void testValidConsoleSelectsWriteConsolePath() throws IOException {
         TestableWinSysTerminal.consoleValid = true;
         TestableWinSysTerminal.vtEnableResult = true;
         TestableWinSysTerminal term = new TestableWinSysTerminal();
@@ -502,7 +504,7 @@ public class WinSysTerminalTest {
     }
 
     @Test
-    public void testInvalidConsoleFallsBackToEncoderPath() throws java.io.IOException {
+    public void testInvalidConsoleFallsBackToEncoderPath() throws IOException {
         TestableWinSysTerminal.consoleValid = false;
         TestableWinSysTerminal.vtEnableResult = true;
         TestableWinSysTerminal term = new TestableWinSysTerminal();
@@ -516,7 +518,7 @@ public class WinSysTerminalTest {
     }
 
     @Test
-    public void testVtFailureStillSelectsWriteConsolePath() throws java.io.IOException {
+    public void testVtFailureStillSelectsWriteConsolePath() throws IOException {
         TestableWinSysTerminal.consoleValid = true;
         TestableWinSysTerminal.vtEnableResult = false;
         TestableWinSysTerminal term = new TestableWinSysTerminal();
@@ -550,7 +552,7 @@ public class WinSysTerminalTest {
     }
 
     @Test
-    public void testRedirectedOutputSelectsBytePath() throws java.io.IOException {
+    public void testRedirectedOutputSelectsBytePath() throws IOException {
         // A pipe handle answers GetConsoleMode with -1: the stub reports
         // the redirect verdict the same way production now derives it.
         TestableWinSysTerminal.consoleValid = WinSysTerminal.isConsoleModeValid(-1);

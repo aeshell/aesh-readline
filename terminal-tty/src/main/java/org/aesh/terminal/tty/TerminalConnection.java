@@ -21,6 +21,7 @@ package org.aesh.terminal.tty;
 
 import static org.aesh.terminal.Terminal.READ_EXPIRED;
 
+import java.io.IOError;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -730,7 +731,7 @@ public class TerminalConnection extends AbstractConnection {
                 terminal.setAttributes(attributes);
                 terminal.close();
             }
-        } catch (Exception | java.io.IOError e) {
+        } catch (Exception | IOError e) {
             LOGGER.log(Level.WARNING, "Failed to close the terminal correctly", e);
         } finally {
             if (latch != null)

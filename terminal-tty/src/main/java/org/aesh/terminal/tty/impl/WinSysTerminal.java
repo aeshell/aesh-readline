@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.Objects;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.logging.Level;
 
 import org.aesh.terminal.Attributes;
@@ -259,9 +260,9 @@ public class WinSysTerminal extends AbstractWindowsTerminal {
      * @return the bytes to feed to the terminal input pipe, or empty array for filtered events
      */
     static byte[] processKeyEvent(int[] event,
-            java.util.function.Function<Short, String> escapeSequenceLookup,
-            java.util.function.Function<Capability, String> capabilityLookup,
-            java.nio.charset.Charset charset, PendingSurrogate pending) {
+            Function<Short, String> escapeSequenceLookup,
+            Function<Capability, String> capabilityLookup,
+            Charset charset, PendingSurrogate pending) {
         boolean keyDown = event[1] != 0;
         int repeatCount = event[2];
         short vKeyCode = (short) event[3];
