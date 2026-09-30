@@ -62,6 +62,8 @@ public class SplitScreenRoutingTest {
     static class StubTerminal implements Terminal {
         final ByteArrayOutputStream captured = new ByteArrayOutputStream();
         final InputStream input = new ByteArrayInputStream(new byte[0]);
+        volatile int width = 80;
+        volatile int height = 24;
 
         String delta(int mark) {
             byte[] bytes = captured.toByteArray();
@@ -113,7 +115,7 @@ public class SplitScreenRoutingTest {
 
         @Override
         public Size getSize() {
-            return new Size(80, 24);
+            return new Size(width, height);
         }
 
         @Override
@@ -468,6 +470,189 @@ public class SplitScreenRoutingTest {
                     delta.contains(SAVE) && delta.contains(RESTORE));
         } finally {
             split.close();
+        }
+    }
+
+    // ==================== Split ratio margins (#340) ====================
+
+    @Test
+    public void testSetSplitRatioReprogramsMargins() throws Exception {
+        StubTerminal stub = new StubTerminal();
+        TerminalConnection conn = new TerminalConnection(stub);
+        try {
+            SplitScreen split = conn.splitScreen(0.5);
+            // 24 rows at 0.5: top 11, separator 12, bottom from 13
+            int mark = stub.captured.size();
+            split.setSplitRatio(0.25);
+            // 23 available rows at 0.25: top 5, separator 6, bottom from 7
+            String delta = stub.delta(mark);
+            assertEquals("ratio change must program the new margins exactly once",
+                    1, countOccurrences(delta, ESC + "[7;24r"));
+            assertTrue("cursor must park in the new bottom region",
+                    delta.contains(ESC + "[7;1H"));
+            assertEquals("software top size must track the ratio",
+                    new Size(80, 5), split.topRegion().size());
+            assertEquals("software bottom size must track the ratio",
+                    new Size(80, 18), split.bottomRegion().size());
+        } finally {
+            conn.close();
+        }
+    }
+
+    @Test
+    public void testMultipleRatioChangesTrackMargins() throws Exception {
+        StubTerminal stub = new StubTerminal();
+        TerminalConnection conn = new TerminalConnection(stub);
+        try {
+            SplitScreen split = conn.splitScreen(0.5);
+            double[] ratios = { 0.7, 0.3, 0.5 };
+            // bottomStartRow per ratio on 24 rows: 18, 8, 13
+            int[] bottomRows = { 18, 8, 13 };
+            for (int i = 0; i < ratios.length; i++) {
+                int mark = stub.captured.size();
+                split.setSplitRatio(ratios[i]);
+                String delta = stub.delta(mark);
+                assertEquals("change " + i + " must program its own margins once",
+                        1, countOccurrences(delta, ESC + "[" + bottomRows[i] + ";24r"));
+                assertTrue("change " + i + " must park the cursor",
+                        delta.contains(ESC + "[" + bottomRows[i] + ";1H"));
+            }
+            // Final layout is coherent: regions plus separator fill the screen
+            assertEquals(new Size(80, 11), split.topRegion().size());
+            assertEquals(new Size(80, 12), split.bottomRegion().size());
+        } finally {
+            conn.close();
+        }
+    }
+
+    @Test
+    public void testResizeThenRatioTrackMargins() throws Exception {
+        StubTerminal stub = new StubTerminal();
+        TerminalConnection conn = new TerminalConnection(stub);
+        try {
+            SplitScreen split = conn.splitScreen(0.5);
+            stub.height = 30;
+            int mark = stub.captured.size();
+            ((SplitScreenImpl) split).handleResize(new Size(80, 30));
+            // 29 available rows at 0.5: top 14, separator 15, bottom from 16
+            assertEquals("resize must program margins for the new height",
+                    1, countOccurrences(stub.delta(mark), ESC + "[16;30r"));
+            mark = stub.captured.size();
+            split.setSplitRatio(0.25);
+            // 29 available rows at 0.25: top 7, separator 8, bottom from 9
+            String delta = stub.delta(mark);
+            assertEquals("ratio change after resize must use the new height",
+                    1, countOccurrences(delta, ESC + "[9;30r"));
+            assertEquals(new Size(80, 7), split.topRegion().size());
+            assertEquals(new Size(80, 22), split.bottomRegion().size());
+        } finally {
+            conn.close();
+        }
+    }
+
+    @Test
+    public void testSetSplitRatioRejectsInvalid() throws Exception {
+        StubTerminal stub = new StubTerminal();
+        TerminalConnection conn = new TerminalConnection(stub);
+        try {
+            SplitScreen split = conn.splitScreen(0.5);
+            int mark = stub.captured.size();
+            double[] bad = { 0.0, 1.0, -0.5, 1.5, Double.NaN,
+                    Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY };
+            for (double ratio : bad) {
+                try {
+                    split.setSplitRatio(ratio);
+                    assertTrue("ratio " + ratio + " must be rejected", false);
+                } catch (IllegalArgumentException expected) {
+                    // Expected.
+                }
+            }
+            assertEquals("rejected ratios must emit nothing",
+                    "", stub.delta(mark));
+            assertEquals("rejected ratios must not change the stored ratio",
+                    0.5, split.getSplitRatio(), 0.0);
+            assertEquals("layout must be unchanged after rejections",
+                    new Size(80, 11), split.topRegion().size());
+        } finally {
+            conn.close();
+        }
+    }
+
+    @Test
+    public void testSetSplitRatioNotifiesResizeHandlers() throws Exception {
+        StubTerminal stub = new StubTerminal();
+        TerminalConnection conn = new TerminalConnection(stub);
+        try {
+            SplitScreen split = conn.splitScreen(0.5);
+            final List<Size> topSizes = new ArrayList<>();
+            final List<Size> bottomSizes = new ArrayList<>();
+            split.topRegion().setResizeHandler(new Consumer<Size>() {
+                @Override
+                public void accept(Size size) {
+                    topSizes.add(size);
+                }
+            });
+            split.bottomRegion().setResizeHandler(new Consumer<Size>() {
+                @Override
+                public void accept(Size size) {
+                    bottomSizes.add(size);
+                }
+            });
+            split.setSplitRatio(0.25);
+            assertEquals("top handler must fire once with the new size",
+                    java.util.Collections.singletonList(new Size(80, 5)), topSizes);
+            assertEquals("bottom handler must fire once with the new size",
+                    java.util.Collections.singletonList(new Size(80, 18)), bottomSizes);
+        } finally {
+            conn.close();
+        }
+    }
+
+    @Test
+    public void testSetSplitRatioWhileSuspendedOrClosed() throws Exception {
+        StubTerminal stub = new StubTerminal();
+        TerminalConnection conn = new TerminalConnection(stub);
+        try {
+            SplitScreen split = conn.splitScreen(0.5);
+            split.suspend();
+            int mark = stub.captured.size();
+            split.setSplitRatio(0.3);
+            assertEquals("ratio change while suspended must stay silent",
+                    "", stub.delta(mark));
+            assertEquals("ratio must still be stored while suspended",
+                    0.3, split.getSplitRatio(), 0.0);
+            assertEquals("software sizes update even while suspended",
+                    new Size(80, 6), split.topRegion().size());
+            mark = stub.captured.size();
+            split.resume();
+            // 23 available rows at 0.3: top 6, separator 7, bottom from 8
+            assertTrue("resume must program margins for the stored ratio",
+                    stub.delta(mark).contains(ESC + "[8;24r"));
+            split.close();
+            mark = stub.captured.size();
+            split.setSplitRatio(0.6);
+            assertEquals("ratio change after close must stay silent",
+                    "", stub.delta(mark));
+        } finally {
+            conn.close();
+        }
+    }
+
+    @Test
+    public void testSetSplitRatioOnTooSmallTerminalSuspends() throws Exception {
+        StubTerminal stub = new StubTerminal();
+        TerminalConnection conn = new TerminalConnection(stub);
+        try {
+            SplitScreen split = conn.splitScreen(0.5);
+            stub.height = 6;
+            int mark = stub.captured.size();
+            split.setSplitRatio(0.4);
+            assertTrue("too-small terminal must auto-suspend like resize does",
+                    ((SplitScreenImpl) split).isSuspended());
+            assertTrue("auto-suspend must reset the scroll region",
+                    stub.delta(mark).contains(RESET));
+        } finally {
+            conn.close();
         }
     }
 }

@@ -267,16 +267,7 @@ public class SplitScreenImpl implements SplitScreen {
         calculateLayout();
 
         synchronized (renderLock) {
-            StringBuilder sb = new StringBuilder();
-            sb.append("\033[r"); // reset scroll region first
-            sb.append("\033[2J"); // clear screen
-            appendSeparator(sb);
-            // Set scroll region to new bottom area
-            sb.append("\033[").append(bottomStartRow).append(";").append(termHeight).append("r");
-            // Position cursor in bottom region
-            sb.append("\033[").append(bottomStartRow).append(";1H");
-            render(sb.toString());
-
+            renderLayout();
             redrawTopRegion();
         }
 
@@ -287,6 +278,25 @@ public class SplitScreenImpl implements SplitScreen {
         if (bottomRegion.resizeHandler != null) {
             bottomRegion.resizeHandler.accept(bottomRegion.size());
         }
+    }
+
+    /**
+     * Render the full split layout: reset the scroll region, clear the
+     * screen, draw the separator, program the bottom-region scrolling
+     * margins (DECSTBM), and park the cursor in the bottom region.
+     * <p>
+     * Callers must hold renderLock; render() re-enters it.
+     */
+    private void renderLayout() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("\033[r"); // reset scroll region first
+        sb.append("\033[2J"); // clear screen
+        appendSeparator(sb);
+        // Set scroll region to bottom area
+        sb.append("\033[").append(bottomStartRow).append(";").append(termHeight).append("r");
+        // Position cursor in bottom region
+        sb.append("\033[").append(bottomStartRow).append(";1H");
+        render(sb.toString());
     }
 
     // ===================== SplitScreen interface =====================
@@ -303,16 +313,36 @@ public class SplitScreenImpl implements SplitScreen {
 
     @Override
     public void setSplitRatio(double ratio) {
-        this.ratio = ratio;
-        calculateLayout();
-        // Redraw under one hold so a concurrent region write cannot
-        // slip between the clear and the top redraw
+        if (Double.isNaN(ratio) || ratio <= 0.0 || ratio >= 1.0) {
+            throw new IllegalArgumentException(
+                    "Split ratio must be between 0 and 1 (exclusive): " + ratio);
+        }
         synchronized (renderLock) {
-            StringBuilder sb = new StringBuilder();
-            sb.append("\033[2J");
-            appendSeparator(sb);
-            render(sb.toString());
+            if (closed) {
+                return;
+            }
+            this.ratio = ratio;
+            calculateLayout();
+            if (suspended) {
+                // Software sizes are updated; resume() redraws.
+                return;
+            }
+            if (getFullTerminalSize().getHeight() < MIN_REGION_HEIGHT * 2 + 1) {
+                // Mirror handleResize: too small for split.
+                autoSuspended = true;
+                suspend();
+                return;
+            }
+            renderLayout();
             redrawTopRegion();
+        }
+
+        // Notify resize handlers
+        if (topRegion.resizeHandler != null) {
+            topRegion.resizeHandler.accept(topRegion.size());
+        }
+        if (bottomRegion.resizeHandler != null) {
+            bottomRegion.resizeHandler.accept(bottomRegion.size());
         }
     }
 
