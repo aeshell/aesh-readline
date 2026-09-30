@@ -379,7 +379,7 @@ public class WinSysTerminalTest {
         byte[] result = WinSysTerminal.processKeyEvent(event, NO_ESCAPE, NO_CAPABILITY, StandardCharsets.UTF_8,
                 new WinSysTerminal.PendingSurrogate());
         assertEquals("ALT+NumPad should produce the character on key-up",
-                "\u00e9", new String(result));
+                "\u00e9", new String(result, StandardCharsets.UTF_8));
     }
 
     @Test
@@ -423,7 +423,7 @@ public class WinSysTerminalTest {
             byte[] result = WinSysTerminal.processKeyEvent(event, NO_ESCAPE, NO_CAPABILITY, StandardCharsets.UTF_8,
                     new WinSysTerminal.PendingSurrogate());
             assertEquals("Shift+key for '" + c + "' should produce the character",
-                    String.valueOf(c), new String(result));
+                    String.valueOf(c), new String(result, StandardCharsets.UTF_8));
         }
     }
 
