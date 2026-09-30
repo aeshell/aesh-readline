@@ -37,6 +37,7 @@ import org.aesh.terminal.Attributes.LocalFlag;
 import org.aesh.terminal.Attributes.OutputFlag;
 import org.aesh.terminal.tty.Size;
 import org.aesh.terminal.utils.LoggerUtil;
+import org.aesh.terminal.utils.OSUtils;
 
 /**
  * FFM-based {@link Pty} implementation for POSIX systems (Linux and macOS).
@@ -134,9 +135,15 @@ public class FfmPty implements Pty {
      * Creates an FfmPty for the current terminal.
      *
      * @return a new FfmPty instance
-     * @throws IOException if the terminal cannot be opened or queried
+     * @throws IOException if the terminal cannot be opened or queried, or
+     *         the OS/ABI has no implemented layouts (decline to ExecPty)
      */
     public static Pty current() throws IOException {
+        if (!OSUtils.IS_FFM_POSIX_SUPPORTED) {
+            throw new IOException("FfmPty requires Linux/macOS on x86_64/aarch64, got "
+                    + System.getProperty("os.name", "?") + "/"
+                    + System.getProperty("os.arch", "?"));
+        }
         return new FfmPty();
     }
 

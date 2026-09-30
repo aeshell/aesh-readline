@@ -62,6 +62,43 @@ public final class OSUtils {
     public static final boolean IS_SUNOS = System.getProperty("os.name").toLowerCase().contains("sunos");
 
     /**
+     * True when the FFM-based POSIX backends may be selected.
+     * <p>
+     * The versioned FFM layouts only implement two families — Linux and
+     * macOS — on 64-bit x86 and ARM. Every other POSIX system would take
+     * the Linux branch of a two-way OS check and read foreign structs
+     * with the wrong layout, so it must decline to the portable
+     * subprocess fallback instead.
+     */
+    public static final boolean IS_FFM_POSIX_SUPPORTED = isFfmPosixSupported(
+            System.getProperty("os.name", ""), System.getProperty("os.arch", ""));
+
+    /**
+     * Whether the FFM-based POSIX backends support the given platform.
+     * <p>
+     * Pure function of its arguments so eligibility is testable without
+     * depending on the host (same injectable-discriminator shape as the
+     * theme detector's {@code osName} parameter).
+     *
+     * @param osName the {@code os.name} value, any case
+     * @param osArch the {@code os.arch} value, any case
+     * @return true only for Linux/macOS on x86_64/aarch64
+     */
+    public static boolean isFfmPosixSupported(String osName, String osArch) {
+        String os = osName.toLowerCase();
+        boolean supportedOs = os.contains("linux") || os.startsWith("mac") || os.contains("darwin");
+        if (!supportedOs) {
+            return false;
+        }
+        String arch = osArch.toLowerCase();
+        // Layouts are documented for 64-bit x86/ARM only, and the poll()
+        // descriptor maps nfds_t as 8 bytes on Linux but 4 on 32-bit
+        // kernels — unknown or 32-bit arches decline to stty.
+        return arch.equals("amd64") || arch.equals("x86_64")
+                || arch.equals("aarch64") || arch.equals("arm64");
+    }
+
+    /**
      * Detects Cygwin, MSYS2, or Git-Bash environments on Windows.
      */
     private static boolean detectCygwinOrMsys() {

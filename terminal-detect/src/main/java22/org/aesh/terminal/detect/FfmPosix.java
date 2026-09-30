@@ -64,6 +64,31 @@ final class FfmPosix {
         IS_WINDOWS = osName.contains("win");
     }
 
+    static final boolean IS_LINUX;
+    static {
+        String osName = System.getProperty("os.name", "").toLowerCase();
+        IS_LINUX = osName.contains("linux");
+    }
+
+    /**
+     * True only for OS/architecture pairs with implemented layouts.
+     * <p>
+     * Local copy of the {@code OSUtils.isFfmPosixSupported} allowlist:
+     * this module is zero-dependency, so it cannot reference terminal-api.
+     * Keep the two in sync — Linux/macOS on x86_64/aarch64 only. Anything
+     * else (BSDs, Solaris, 32-bit) would take the Linux struct branch with
+     * the wrong termios layout and corrupt terminal flags.
+     */
+    static final boolean IS_SUPPORTED_ABI;
+    static {
+        String osName = System.getProperty("os.name", "").toLowerCase();
+        String osArch = System.getProperty("os.arch", "").toLowerCase();
+        boolean os = osName.contains("linux") || osName.startsWith("mac") || osName.contains("darwin");
+        boolean arch = osArch.equals("amd64") || osArch.equals("x86_64")
+                || osArch.equals("aarch64") || osArch.equals("arm64");
+        IS_SUPPORTED_ABI = os && arch;
+    }
+
     static final int O_RDWR = 0x0002;
 
     static final int TCSANOW = 0;

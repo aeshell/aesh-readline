@@ -55,7 +55,8 @@ public class FfmPtyCloseTest {
     }
 
     private static boolean canRunScriptMatrix() {
-        if (!OSUtils.IS_LINUX || isNativeImage() || !isJava22OrLater()) {
+        if (!OSUtils.IS_LINUX || isNativeImage() || !isJava22OrLater()
+                || !OSUtils.IS_FFM_POSIX_SUPPORTED) {
             return false;
         }
         try {

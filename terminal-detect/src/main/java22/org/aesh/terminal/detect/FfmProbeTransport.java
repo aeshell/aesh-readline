@@ -52,7 +52,7 @@ final class FfmProbeTransport implements TerminalProbeTransport {
 
     @Override
     public boolean isAvailable() {
-        if (FfmPosix.IS_WINDOWS) {
+        if (!FfmPosix.IS_SUPPORTED_ABI) {
             return false;
         }
         if (!FfmPosix.isNativeAccessEnabled()) {
@@ -91,6 +91,11 @@ final class FfmProbeTransport implements TerminalProbeTransport {
         private boolean closed;
 
         FfmProbeSession() throws IOException {
+            if (!FfmPosix.IS_SUPPORTED_ABI) {
+                throw new IOException("FFM probing requires Linux/macOS on x86_64/aarch64, got "
+                        + System.getProperty("os.name", "?") + "/"
+                        + System.getProperty("os.arch", "?"));
+            }
             Arena sessionArena = Arena.ofConfined();
             boolean opened = false;
             try {

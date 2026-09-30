@@ -52,9 +52,15 @@ public class FfmPtyTest {
 
     /**
      * Checks if FfmPty is available (Java 22+ and POSIX).
+     * <p>
+     * Since #342 the base layer ships an FfmPty stub, so class presence
+     * alone proves nothing; the ABI allowlist decides.
      */
     private static boolean isFfmAvailable() {
         if (!Config.isOSPOSIXCompatible()) {
+            return false;
+        }
+        if (!org.aesh.terminal.utils.OSUtils.IS_FFM_POSIX_SUPPORTED) {
             return false;
         }
         try {

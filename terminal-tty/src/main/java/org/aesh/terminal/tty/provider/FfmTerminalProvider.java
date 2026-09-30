@@ -87,8 +87,12 @@ public class FfmTerminalProvider implements TerminalProvider {
 
     @Override
     public boolean isSupported() {
-        // FFM PTY is only for POSIX (not Windows, not Cygwin)
-        if (OSUtils.IS_WINDOWS || OSUtils.IS_CYGWIN) {
+        // FFM PTY layouts exist only for Linux/macOS on x86_64/aarch64;
+        // anything else (BSDs, 32-bit, Windows/Cygwin) declines to ExecPty.
+        // A foreign struct mismatch would read wrong fields or flip wrong
+        // terminal flags, so unsupported ABIs decline before any handle
+        // is created.
+        if (!OSUtils.IS_FFM_POSIX_SUPPORTED) {
             return false;
         }
         // Check if native access is enabled. Without it, creating FFM
