@@ -256,22 +256,45 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
         // when entering raw mode, rather than being preserved from the OS
         // default. ENABLE_QUICK_EDIT_MODE blocks ReadConsoleInputW while
         // text selection is active, causing lost keystrokes.
-        int mode = ENABLE_WINDOW_INPUT;
-        if (attr.getLocalFlag(Attributes.LocalFlag.ECHO)) {
+        boolean mouse = mouseInputEnabled;
+        int mode = rawInputMode(attr.getLocalFlag(Attributes.LocalFlag.ECHO),
+                attr.getLocalFlag(Attributes.LocalFlag.ICANON),
+                attr.getLocalFlag(Attributes.LocalFlag.ISIG), mouse);
+        setConsoleMode(mode);
+    }
+
+    /**
+     * Compose a raw console input mode word from POSIX-style flags.
+     * <p>
+     * {@code ENABLE_EXTENDED_FLAGS} is always present: per the
+     * SetConsoleMode contract it is required to switch
+     * {@code ENABLE_QUICK_EDIT_MODE} off, which is never set here, so
+     * selection can never block console reads. {@code
+     * ENABLE_VIRTUAL_TERMINAL_INPUT} stays off (it duplicates key events,
+     * see #276). Package-visible so the Cygwin path shares the one
+     * composition instead of duplicating it.
+     *
+     * @param echo whether ECHO input stays on
+     * @param icanon whether line input stays on
+     * @param isig whether processed input stays on
+     * @param mouse whether mouse input is enabled
+     * @return the console input mode word
+     */
+    static int rawInputMode(boolean echo, boolean icanon, boolean isig, boolean mouse) {
+        int mode = ENABLE_WINDOW_INPUT | ENABLE_EXTENDED_FLAGS;
+        if (echo) {
             mode |= ENABLE_ECHO_INPUT;
         }
-        if (attr.getLocalFlag(Attributes.LocalFlag.ICANON)) {
+        if (icanon) {
             mode |= ENABLE_LINE_INPUT;
         }
-        if (attr.getLocalFlag(Attributes.LocalFlag.ISIG)) {
+        if (isig) {
             mode |= ENABLE_PROCESSED_INPUT;
         }
-        if (mouseInputEnabled) {
+        if (mouse) {
             mode |= ENABLE_MOUSE_INPUT;
-            // ENABLE_EXTENDED_FLAGS is required to disable ENABLE_QUICK_EDIT_MODE
-            mode |= ENABLE_EXTENDED_FLAGS;
         }
-        setConsoleMode(mode);
+        return mode;
     }
 
     /**

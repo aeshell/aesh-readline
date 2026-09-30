@@ -40,6 +40,7 @@ public class CygwinPtyConsoleModeTest {
     private static final int ENABLE_ECHO_INPUT = 0x0004;
     private static final int ENABLE_WINDOW_INPUT = 0x0008;
     private static final int ENABLE_QUICK_EDIT_MODE = 0x0040;
+    private static final int ENABLE_EXTENDED_FLAGS = 0x0080;
 
     /**
      * CygwinPty with a stubbed console: readConsoleMode returns a canned
@@ -78,37 +79,44 @@ public class CygwinPtyConsoleModeTest {
 
     @Test
     public void testToConsoleModeRaw() {
-        assertEquals(ENABLE_WINDOW_INPUT,
+        assertEquals(ENABLE_WINDOW_INPUT | ENABLE_EXTENDED_FLAGS,
                 CygwinPty.toConsoleMode(attrs(false, false, false)));
     }
 
     @Test
     public void testToConsoleModeCooked() {
-        assertEquals(ENABLE_WINDOW_INPUT | ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT,
+        assertEquals(ENABLE_WINDOW_INPUT | ENABLE_EXTENDED_FLAGS | ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT
+                | ENABLE_PROCESSED_INPUT,
                 CygwinPty.toConsoleMode(attrs(true, true, true)));
     }
 
     @Test
     public void testToConsoleModeIndividualFlags() {
-        assertEquals(ENABLE_WINDOW_INPUT | ENABLE_ECHO_INPUT,
+        assertEquals(ENABLE_WINDOW_INPUT | ENABLE_EXTENDED_FLAGS | ENABLE_ECHO_INPUT,
                 CygwinPty.toConsoleMode(attrs(true, false, false)));
-        assertEquals(ENABLE_WINDOW_INPUT | ENABLE_LINE_INPUT,
+        assertEquals(ENABLE_WINDOW_INPUT | ENABLE_EXTENDED_FLAGS | ENABLE_LINE_INPUT,
                 CygwinPty.toConsoleMode(attrs(false, true, false)));
-        assertEquals(ENABLE_WINDOW_INPUT | ENABLE_PROCESSED_INPUT,
+        assertEquals(ENABLE_WINDOW_INPUT | ENABLE_EXTENDED_FLAGS | ENABLE_PROCESSED_INPUT,
                 CygwinPty.toConsoleMode(attrs(false, false, true)));
     }
 
     @Test
     public void testToConsoleModeNeverSetsQuickEdit() {
         // Stale flags like QUICK_EDIT_MODE must never leak into raw mode —
-        // it blocks console reads while text selection is active.
+        // it blocks console reads while text selection is active. The
+        // extended flag must always be present: without it Quick Edit
+        // cannot switch off even though it is never set here.
         for (boolean echo : new boolean[] { false, true }) {
             for (boolean icanon : new boolean[] { false, true }) {
                 for (boolean isig : new boolean[] { false, true }) {
                     int mode = CygwinPty.toConsoleMode(attrs(echo, icanon, isig));
                     assertEquals("No stale flags for echo=" + echo + " icanon=" + icanon + " isig=" + isig,
-                            0, mode & ~(ENABLE_WINDOW_INPUT | ENABLE_ECHO_INPUT
-                                    | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT));
+                            0, mode & ~(ENABLE_WINDOW_INPUT | ENABLE_EXTENDED_FLAGS
+                                    | ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT));
+                    assertTrue("EXTENDED_FLAGS required to keep QUICK_EDIT off",
+                            (mode & ENABLE_EXTENDED_FLAGS) != 0);
+                    assertEquals("QUICK_EDIT must never be composed", 0,
+                            mode & ENABLE_QUICK_EDIT_MODE);
                 }
             }
         }
@@ -173,7 +181,8 @@ public class CygwinPtyConsoleModeTest {
         StubCygwinPty pty = new StubCygwinPty(cooked);
         pty.setAttr(attrs(false, false, false));
         assertEquals(1, pty.writes.size());
-        assertEquals(Integer.valueOf(ENABLE_WINDOW_INPUT), pty.writes.get(0));
+        assertEquals(Integer.valueOf(ENABLE_WINDOW_INPUT | ENABLE_EXTENDED_FLAGS),
+                pty.writes.get(0));
     }
 
     @Test

@@ -31,8 +31,9 @@ import java.nio.charset.StandardCharsets;
  * console input records (terminal answers arrive as key-down
  * {@code KEY_EVENT} records with characters — the same path interactive
  * terminal queries already use). Raw mode is built from scratch
- * ({@code ENABLE_WINDOW_INPUT} only): no echo, no line input, no mouse,
- * no quick-edit (which would block reads during text selection), and
+ * ({@code ENABLE_WINDOW_INPUT} plus {@code ENABLE_EXTENDED_FLAGS}):
+ * no echo, no line input, no mouse, no quick-edit (which would block
+ * reads during text selection), and
  * deliberately no {@code ENABLE_VIRTUAL_TERMINAL_INPUT} (which duplicates
  * key events). The output handle gains
  * {@code ENABLE_VIRTUAL_TERMINAL_PROCESSING} for the session so the
@@ -82,9 +83,19 @@ final class Win32ProbeTransport implements TerminalProbeTransport {
         return Win32ProbeTransport.class.getModule().isNativeAccessEnabled();
     }
 
-    private static final class Win32ProbeSession implements TerminalProbeSession {
+    /**
+     * The raw console input word for probe sessions: window input plus
+     * the extended flag that Quick Edit needs to switch off (never set
+     * here), and deliberately no virtual-terminal input. Package-visible
+     * so the composed word is unit-testable without a console.
+     *
+     * @return the console input mode word
+     */
+    static int rawInputMode() {
+        return Win32Probe.ENABLE_WINDOW_INPUT | Win32Probe.ENABLE_EXTENDED_FLAGS;
+    }
 
-        private final long inputHandle;
+    private static final class Win32ProbeSession implements TerminalProbeSession {        private final long inputHandle;
         private final long outputHandle;
         private final int savedInputMode;
         private final int savedOutputMode;
@@ -109,7 +120,7 @@ final class Win32ProbeTransport implements TerminalProbeTransport {
             if (outMode == -1) {
                 throw new IOException("Not a console (output GetConsoleMode failed)");
             }
-            if (!Win32Probe.setConsoleMode(in, Win32Probe.ENABLE_WINDOW_INPUT)) {
+            if (!Win32Probe.setConsoleMode(in, rawInputMode())) {
                 throw new IOException("Failed to set console raw mode");
             }
             boolean vtChanged = false;

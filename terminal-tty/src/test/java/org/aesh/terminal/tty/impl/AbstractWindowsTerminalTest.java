@@ -41,6 +41,9 @@ public class AbstractWindowsTerminalTest {
     private static final int ENABLE_MOUSE_INPUT = 0x0010;
     private static final int ENABLE_QUICK_EDIT_MODE = 0x0040;
     private static final int ENABLE_EXTENDED_FLAGS = 0x0080;
+    // Standard Win32 value, kept local: the main code deliberately names
+    // no constant for a flag it must never set.
+    private static final int ENABLE_VIRTUAL_TERMINAL_INPUT = 0x0200;
 
     /**
      * Stubbed AbstractWindowsTerminal for testing without a real console.
@@ -134,6 +137,20 @@ public class AbstractWindowsTerminalTest {
         }
     }
 
+    /**
+     * The SetConsoleMode contract every composed word must satisfy: the
+     * extended flag present (otherwise Quick Edit cannot switch off),
+     * Quick Edit absent, and VT input absent (it duplicates key events).
+     */
+    private static void assertRawModeContract(int mode) {
+        assertTrue("EXTENDED_FLAGS required to disable QUICK_EDIT",
+                (mode & ENABLE_EXTENDED_FLAGS) != 0);
+        assertEquals("QUICK_EDIT must never be composed", 0,
+                mode & ENABLE_QUICK_EDIT_MODE);
+        assertEquals("VIRTUAL_TERMINAL_INPUT must stay off", 0,
+                mode & ENABLE_VIRTUAL_TERMINAL_INPUT);
+    }
+
     // ==================== setAttributes flag matrix (#277 M5) ====================
 
     @Test
@@ -147,9 +164,11 @@ public class AbstractWindowsTerminalTest {
             // All flags false by default in new Attributes
             term.setAttributes(raw);
 
-            // Should have ONLY ENABLE_WINDOW_INPUT — everything else cleared
-            assertEquals("Raw mode should have only WINDOW_INPUT",
-                    ENABLE_WINDOW_INPUT, term.currentMode);
+            // Raw mode: WINDOW_INPUT plus EXTENDED_FLAGS (required to
+            // switch QUICK_EDIT off), nothing else.
+            assertEquals("Raw mode should have WINDOW_INPUT + EXTENDED_FLAGS",
+                    ENABLE_WINDOW_INPUT | ENABLE_EXTENDED_FLAGS, term.currentMode);
+            assertRawModeContract(term.currentMode);
         } finally {
             term.close();
         }
@@ -166,7 +185,9 @@ public class AbstractWindowsTerminalTest {
             term.setAttributes(raw);
 
             assertEquals("Raw mode with ISIG should have WINDOW_INPUT + PROCESSED_INPUT",
-                    ENABLE_WINDOW_INPUT | ENABLE_PROCESSED_INPUT, term.currentMode);
+                    ENABLE_WINDOW_INPUT | ENABLE_EXTENDED_FLAGS | ENABLE_PROCESSED_INPUT,
+                    term.currentMode);
+            assertRawModeContract(term.currentMode);
         } finally {
             term.close();
         }
@@ -183,9 +204,11 @@ public class AbstractWindowsTerminalTest {
             cooked.setLocalFlag(Attributes.LocalFlag.ISIG, true);
             term.setAttributes(cooked);
 
-            int expected = ENABLE_WINDOW_INPUT | ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT;
-            assertEquals("Cooked mode should have WINDOW + ECHO + LINE + PROCESSED",
+            int expected = ENABLE_WINDOW_INPUT | ENABLE_EXTENDED_FLAGS | ENABLE_ECHO_INPUT
+                    | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT;
+            assertEquals("Cooked mode should have WINDOW + EXTENDED + ECHO + LINE + PROCESSED",
                     expected, term.currentMode);
+            assertRawModeContract(term.currentMode);
         } finally {
             term.close();
         }
@@ -205,6 +228,7 @@ public class AbstractWindowsTerminalTest {
             // QUICK_EDIT_MODE must NOT be preserved — it blocks ReadConsoleInputW
             assertEquals("QUICK_EDIT_MODE should be cleared in raw mode", 0,
                     term.currentMode & ENABLE_QUICK_EDIT_MODE);
+            assertRawModeContract(term.currentMode);
         } finally {
             term.close();
         }
@@ -223,8 +247,10 @@ public class AbstractWindowsTerminalTest {
                     (term.currentMode & ENABLE_MOUSE_INPUT) != 0);
             assertTrue("Mouse input should set ENABLE_EXTENDED_FLAGS",
                     (term.currentMode & ENABLE_EXTENDED_FLAGS) != 0);
-            assertEquals("Mouse + raw should not have QUICK_EDIT_MODE", 0,
-                    term.currentMode & ENABLE_QUICK_EDIT_MODE);
+            assertEquals("Mouse + raw should be WINDOW + MOUSE + EXTENDED",
+                    ENABLE_WINDOW_INPUT | ENABLE_MOUSE_INPUT | ENABLE_EXTENDED_FLAGS,
+                    term.currentMode);
+            assertRawModeContract(term.currentMode);
         } finally {
             term.close();
         }
@@ -240,10 +266,11 @@ public class AbstractWindowsTerminalTest {
             Attributes raw = new Attributes();
             term.setAttributes(raw);
 
-            // Build-from-scratch should produce ONLY ENABLE_WINDOW_INPUT
+            // Build-from-scratch should produce WINDOW_INPUT + EXTENDED_FLAGS
             // regardless of what was in the console mode before
             assertEquals("Stale flags should not be preserved",
-                    ENABLE_WINDOW_INPUT, term.currentMode);
+                    ENABLE_WINDOW_INPUT | ENABLE_EXTENDED_FLAGS, term.currentMode);
+            assertRawModeContract(term.currentMode);
         } finally {
             term.close();
         }

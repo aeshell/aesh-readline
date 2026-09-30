@@ -60,6 +60,12 @@ final class Win32Probe {
 
     static final int ENABLE_WINDOW_INPUT = 0x0008;
     static final int ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x0004;
+    /**
+     * Required alongside the absence of ENABLE_QUICK_EDIT_MODE: per the
+     * SetConsoleMode contract, Quick Edit only switches off when this
+     * flag is present in the mode word.
+     */
+    static final int ENABLE_EXTENDED_FLAGS = 0x0080;
 
     static final int WAIT_OBJECT_0 = 0x00000000;
     static final int WAIT_TIMEOUT = 0x00000102;

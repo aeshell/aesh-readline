@@ -277,17 +277,10 @@ public class CygwinPty extends AbstractExecPty {
      * @return the console mode flags
      */
     static int toConsoleMode(Attributes attr) {
-        int mode = ENABLE_WINDOW_INPUT;
-        if (attr.getLocalFlag(Attributes.LocalFlag.ECHO)) {
-            mode |= ENABLE_ECHO_INPUT;
-        }
-        if (attr.getLocalFlag(Attributes.LocalFlag.ICANON)) {
-            mode |= ENABLE_LINE_INPUT;
-        }
-        if (attr.getLocalFlag(Attributes.LocalFlag.ISIG)) {
-            mode |= ENABLE_PROCESSED_INPUT;
-        }
-        return mode;
+        return AbstractWindowsTerminal.rawInputMode(
+                attr.getLocalFlag(Attributes.LocalFlag.ECHO),
+                attr.getLocalFlag(Attributes.LocalFlag.ICANON),
+                attr.getLocalFlag(Attributes.LocalFlag.ISIG), false);
     }
 
     /**
