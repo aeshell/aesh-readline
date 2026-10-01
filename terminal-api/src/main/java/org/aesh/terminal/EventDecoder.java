@@ -44,6 +44,15 @@ import org.aesh.terminal.utils.ANSI;
  * change DSR notifications and routes them to the handler instead of passing
  * them through as input. This prevents theme change notifications from
  * corrupting the readline buffer.
+ * <p>
+ * Input ownership during terminal queries: signals are extracted first
+ * and dispatched synchronously, never entering any query accumulator.
+ * Subscribed notifications (theme, mouse, focus) route to their handlers
+ * before the input handler runs. Every other byte belongs to exactly one
+ * of the query lease frame, the application input, or timeout redelivery:
+ * never zero (no silent drops) and never two (no double delivery).
+ * Query framing itself lives in {@code TerminalReplyFramer}
+ * (terminal-detect), shared with standalone probing.
  *
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */

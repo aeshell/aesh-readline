@@ -261,76 +261,37 @@ final class TerminalColorQuery {
         boolean cprSeen;
     }
 
+    /**
+     * Count reply frames through the shared splitter. Totals match the
+     * previous hand-rolled scan exactly: every CSI ending in {@code c},
+     * {@code y}, or a CPR-shaped {@code R} counts once, as do BEL/ST
+     * OSC terminators. (A {@code >}-body DA2 never counted and still
+     * does not; it accumulates for parsers without completing reads.)
+     */
     private static FrameCount countFrames(StringBuilder sb) {
         FrameCount count = new FrameCount();
-        boolean inCsi = false;
-        int bodyStart = -1;
-        for (int i = 0; i < sb.length(); i++) {
-            char c = sb.charAt(i);
-            if (c == BEL) {
-                count.total++;
-                inCsi = false;
-            } else if (c == '\033') {
-                if (i + 1 < sb.length() && sb.charAt(i + 1) == '\\') {
+        for (TerminalReplyFramer.Span span : TerminalReplyFramer.split(sb)) {
+            switch (span.kind) {
+                case OSC:
                     count.total++;
-                    i++;
-                } else if (i + 1 < sb.length() && sb.charAt(i + 1) == '[') {
-                    inCsi = true;
-                    bodyStart = i + 2;
-                    i++;
-                }
-            } else if (inCsi && c == 'c') {
-                // DA1 response: ESC[?...c
-                count.total++;
-                count.da1Seen = true;
-                inCsi = false;
-            } else if (inCsi && c == 'y') {
-                // DECRPM response: ESC[?<mode>;<Ps>$y
-                count.total++;
-                count.decrpm++;
-                inCsi = false;
-            } else if (inCsi && c == 'R') {
-                // CPR response: ESC[<row>;<col>R (never DECSTBM's lowercase r)
-                if (isCprBody(sb, bodyStart, i)) {
+                    break;
+                case DEVICE_ATTRIBUTES:
+                    count.total++;
+                    count.da1Seen = true;
+                    break;
+                case MODE_REPORT:
+                    count.total++;
+                    count.decrpm++;
+                    break;
+                case CURSOR_POSITION:
                     count.total++;
                     count.cprSeen = true;
-                }
-                inCsi = false;
-            } else if (inCsi && !Character.isDigit(c) && c != ';' && c != '?' && c != '$') {
-                inCsi = false;
+                    break;
+                default:
+                    break;
             }
         }
         return count;
-    }
-
-    /**
-     * Whether a CSI body holds CPR coordinates: digits and ';' only, with
-     * at least one of each. Lenient by design — the response parser
-     * validates strictly afterwards, so a false positive only ends the
-     * read early on input the parser would reject anyway.
-     *
-     * @param sb the accumulated response
-     * @param bodyStart the body start, or -1 when unknown
-     * @param end the final-byte index (exclusive)
-     * @return true if the body is CPR-shaped
-     */
-    private static boolean isCprBody(StringBuilder sb, int bodyStart, int end) {
-        if (bodyStart < 0 || bodyStart >= end) {
-            return false;
-        }
-        boolean digit = false;
-        boolean separator = false;
-        for (int i = bodyStart; i < end; i++) {
-            char c = sb.charAt(i);
-            if (c >= '0' && c <= '9') {
-                digit = true;
-            } else if (c == ';') {
-                separator = true;
-            } else {
-                return false;
-            }
-        }
-        return digit && separator;
     }
 
     // ==================== OSC Response Parsing ====================

@@ -710,6 +710,120 @@ public class ConnectionOscQueryTest {
                 connection.stdinHandler() == originalHandler);
     }
 
+    // ==================== Lease input routing (#352) ====================
+
+    private static String joined(List<int[]> chunks) {
+        StringBuilder sb = new StringBuilder();
+        for (int[] chunk : chunks) {
+            for (int cp : chunk) {
+                sb.appendCodePoint(cp);
+            }
+        }
+        return sb.toString();
+    }
+
+    @Test
+    public void testKeysDuringQueryDeliveredPromptly() throws Exception {
+        MockConnection connection = new MockConnection();
+        List<int[]> appReceived = new ArrayList<>();
+        connection.setStdinHandler(appReceived::add);
+        Consumer<int[]> appHandler = connection.stdinHandler();
+
+        Thread responseThread = new Thread(() -> {
+            try {
+                connection.awaitHandlerChange(appHandler, 1000);
+                connection.simulateInput("typed");
+                Thread.sleep(50);
+                connection.simulateInput("\u001B]10;rgb:FFFF/8080/0000\u0007");
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        });
+        responseThread.start();
+
+        int[] rgb = connection.terminal().queryForegroundColor(1000);
+        responseThread.join(2000);
+
+        assertNotNull("reply must still parse", rgb);
+        assertTrue("keys typed during the query must reach the app handler, got: "
+                + joined(appReceived), joined(appReceived).contains("typed"));
+    }
+
+    @Test
+    public void testKeysAfterReplyFrameDelivered() throws Exception {
+        MockConnection connection = new MockConnection();
+        List<int[]> appReceived = new ArrayList<>();
+        connection.setStdinHandler(appReceived::add);
+        Consumer<int[]> appHandler = connection.stdinHandler();
+
+        Thread responseThread = new Thread(() -> {
+            try {
+                connection.awaitHandlerChange(appHandler, 1000);
+                connection.simulateInput("\u001B]10;rgb:FFFF/8080/0000\u0007after");
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        });
+        responseThread.start();
+
+        int[] rgb = connection.terminal().queryForegroundColor(1000);
+        responseThread.join(2000);
+
+        assertNotNull("reply must still parse", rgb);
+        assertTrue("keys trailing the reply frame must reach the app handler, got: "
+                + joined(appReceived), joined(appReceived).contains("after"));
+    }
+
+    @Test
+    public void testUnrelatedInputDeliveredExactlyOnceOnTimeout() throws Exception {
+        MockConnection connection = new MockConnection();
+        List<int[]> appReceived = new ArrayList<>();
+        connection.setStdinHandler(appReceived::add);
+        Consumer<int[]> appHandler = connection.stdinHandler();
+
+        Thread responseThread = new Thread(() -> {
+            try {
+                connection.awaitHandlerChange(appHandler, 1000);
+                connection.simulateInput("abc");
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        });
+        responseThread.start();
+
+        assertNull("unmatched query must time out",
+                connection.terminal().queryOsc(10, "?", 200, input -> null));
+        responseThread.join(2000);
+
+        assertEquals("unrelated input must be delivered exactly once, got: "
+                + joined(appReceived), "abc", joined(appReceived));
+    }
+
+    @Test
+    public void testArrowKeysHeldForRedelivery() throws Exception {
+        MockConnection connection = new MockConnection();
+        List<int[]> appReceived = new ArrayList<>();
+        connection.setStdinHandler(appReceived::add);
+        Consumer<int[]> appHandler = connection.stdinHandler();
+
+        Thread responseThread = new Thread(() -> {
+            try {
+                connection.awaitHandlerChange(appHandler, 1000);
+                connection.simulateInput("\u001B[A");
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        });
+        responseThread.start();
+
+        assertNull("unmatched query must time out",
+                connection.terminal().queryOsc(10, "?", 200, input -> null));
+        responseThread.join(2000);
+
+        assertEquals("CSI-shaped keys must redeliver exactly once, got: "
+                + joined(appReceived), "\u001B[A", joined(appReceived));
+    }
+
     private static class MockConnection implements Connection {
         private volatile Consumer<int[]> stdinHandler;
         private Consumer<Size> sizeHandler;

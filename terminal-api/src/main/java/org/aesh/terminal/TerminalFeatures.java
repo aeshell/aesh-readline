@@ -19,8 +19,8 @@
  */
 package org.aesh.terminal;
 
-import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
@@ -33,6 +33,9 @@ import java.util.logging.Logger;
 import org.aesh.terminal.detect.ImageProtocol;
 import org.aesh.terminal.detect.ModeSupport;
 import org.aesh.terminal.detect.TerminalCapabilities;
+import org.aesh.terminal.detect.TerminalReplyFramer;
+import org.aesh.terminal.detect.TerminalReplyFramer.Kind;
+import org.aesh.terminal.detect.TerminalReplyFramer.Span;
 import org.aesh.terminal.detect.TerminalTheme;
 import org.aesh.terminal.image.ImageProtocolDetector;
 import org.aesh.terminal.tty.Capability;
@@ -118,10 +121,13 @@ public class TerminalFeatures {
      * <p>
      * Response chunks accumulate: each arriving chunk extends a buffer that
      * the parser re-examines whole, so replies split across reads match
-     * once their frame completes. On timeout nothing matched, so every
-     * buffered byte is unclaimed input — handed back to the restored input
-     * handler rather than dropped. On success the buffer holds the matched
-     * frame and is discarded.
+     * once their frame completes. Bytes that can never belong to a reply
+     * (runs without ESC, framed by {@code TerminalReplyFramer} shared
+     * with standalone probing) are forwarded to the pre-lease input
+     * handler promptly instead of waiting out the query. On timeout
+     * nothing matched, so every held byte is unclaimed input — handed
+     * back to the restored input handler rather than dropped. On success
+     * the buffer holds the matched frame and is discarded.
      * <p>
      * This method uses {@link Connection#setStdinHandler(Consumer)} to receive responses,
      * which requires the connection to be actively reading input (i.e.,
@@ -146,7 +152,8 @@ public class TerminalFeatures {
 
         CountDownLatch latch = new CountDownLatch(1);
         final Object[] result = { null };
-        final IntAccumulator responses = new IntAccumulator();
+        Consumer<int[]> appHandler = connection.stdinHandler();
+        final ReplyAccumulator responses = new ReplyAccumulator(appHandler);
         Attributes savedAttributes = connection.enterRawMode();
 
         try (StdinLease ignored = connection.captureStdin(new Consumer<int[]>() {
@@ -176,7 +183,7 @@ public class TerminalFeatures {
         @SuppressWarnings("unchecked")
         T typedResult = (T) result[0];
         if (typedResult == null) {
-            redeliverUnmatched(responses);
+            redeliverUnmatched(responses.snapshot());
         }
         return typedResult;
     }
@@ -192,8 +199,7 @@ public class TerminalFeatures {
      *
      * @param responses the accumulated query input
      */
-    private void redeliverUnmatched(IntAccumulator responses) {
-        int[] leftovers = responses.snapshot();
+    private void redeliverUnmatched(int[] leftovers) {
         if (leftovers.length > 0) {
             Consumer<int[]> restored = connection.stdinHandler();
             if (restored != null) {
@@ -203,26 +209,67 @@ public class TerminalFeatures {
     }
 
     /**
-     * Growable code-point buffer for fragmented query responses.
-     * Transport chunking splits replies arbitrarily; parsers run on the
-     * cumulative snapshot per chunk until a complete frame matches.
+     * Query-input accumulator with prompt plain-text forwarding.
+     * <p>
+     * Bytes that can never belong to a reply frame (runs without ESC,
+     * framed by the shared {@code TerminalReplyFramer}) go straight to
+     * the pre-lease application handler instead of waiting out the
+     * query: keystrokes typed during a probe surface immediately. Reply
+     * frames, complete non-reply shapes, and partial tails stay buffered
+     * for the parser and for timeout redelivery, so the delivered set
+     * matches the old hold-everything behavior exactly — only sooner.
+     * Without a pre-lease handler everything accumulates, as before.
      */
-    private static final class IntAccumulator {
-        private int[] buf = new int[256];
-        private int len;
+    private static final class ReplyAccumulator {
+        private final StringBuilder pending = new StringBuilder();
+        private final Consumer<int[]> appHandler;
 
-        void append(int[] chunk) {
-            if (len + chunk.length > buf.length) {
-                int[] grown = new int[Math.max(len + chunk.length, buf.length * 2)];
-                System.arraycopy(buf, 0, grown, 0, len);
-                buf = grown;
-            }
-            System.arraycopy(chunk, 0, buf, len, chunk.length);
-            len += chunk.length;
+        ReplyAccumulator(Consumer<int[]> appHandler) {
+            this.appHandler = appHandler;
         }
 
+        /**
+         * Append a chunk; forward provably-non-reply runs promptly.
+         *
+         * @param chunk the arriving code points
+         */
+        void append(int[] chunk) {
+            pending.append(new String(chunk, 0, chunk.length));
+            if (appHandler == null) {
+                return;
+            }
+            List<Span> spans = TerminalReplyFramer.split(pending);
+            StringBuilder kept = null;
+            int cursor = 0;
+            for (Span span : spans) {
+                if (span.kind != Kind.PLAIN_TEXT) {
+                    continue;
+                }
+                if (kept == null) {
+                    kept = new StringBuilder(pending.length());
+                }
+                kept.append(pending, cursor, span.start);
+                forward(pending.substring(span.start, span.end));
+                cursor = span.end;
+            }
+            if (kept != null) {
+                kept.append(pending, cursor, pending.length());
+                pending.setLength(0);
+                pending.append(kept);
+            }
+        }
+
+        /**
+         * The held bytes for parsing and timeout redelivery.
+         *
+         * @return the buffered code points
+         */
         int[] snapshot() {
-            return Arrays.copyOf(buf, len);
+            return pending.toString().codePoints().toArray();
+        }
+
+        private void forward(String text) {
+            appHandler.accept(text.codePoints().toArray());
         }
     }
 
@@ -237,7 +284,7 @@ public class TerminalFeatures {
     public Point getCursorPosition() {
         CountDownLatch latch = new CountDownLatch(1);
         final Point[] p = { null };
-        final IntAccumulator responses = new IntAccumulator();
+        final ReplyAccumulator responses = new ReplyAccumulator(connection.stdinHandler());
         Attributes attributes = connection.enterRawMode();
         // try-with-resources restores the previous handler on every exit
         // path, including query timeout — the previous hand-rolled version
@@ -267,7 +314,7 @@ public class TerminalFeatures {
             connection.setAttributes(attributes);
         }
         if (p[0] == null) {
-            redeliverUnmatched(responses);
+            redeliverUnmatched(responses.snapshot());
         }
         return p[0];
     }
