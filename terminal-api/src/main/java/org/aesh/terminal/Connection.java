@@ -42,6 +42,33 @@ import org.aesh.terminal.utils.Parser;
  * Advanced terminal features (queries, capability detection, semantic output,
  * mode toggles) are accessible via {@link #terminal()}, which returns a
  * {@link TerminalFeatures} object.
+ * <p>
+ * Ownership and cancellation contract. Every transport honors these
+ * rules; per-transport notes name the mechanism:
+ * <ul>
+ * <li><b>Owner.</b> Borrowed streams (standard in/out, caller-owned
+ * pipes and sockets) are never closed by the connection; owned
+ * resources (opened fds, arenas, pump threads, executors) are
+ * released by {@code close()}.</li>
+ * <li><b>Close/cancel.</b> {@code close()} is idempotent, bounded, and
+ * safe on any thread including reader/pump threads (no self-join).
+ * Cancellation wakes readers through flags, interrupts, stream
+ * closure (owned streams only), or bounded waits — never by closing
+ * a borrowed stream.</li>
+ * <li><b>EOF/error.</b> End-of-stream is observed where the transport
+ * can see it ({@code read()} returning -1, closed slave pipes,
+ * {@code POLLNVAL}); polling transports cannot observe EOF on an
+ * empty pipe and rely on explicit {@code close()} instead.</li>
+ * <li><b>Repeat open.</b> Reopening a closed connection is a
+ * transport-defined no-op or a fresh start; a close never
+ * resurrects a stopped reader.</li>
+ * <li><b>Callbacks.</b> Input, signal, size, and close handlers run
+ * on reader or event threads (never documented as the caller
+ * thread); handlers must be thread-safe and non-blocking.</li>
+ * <li><b>Output.</b> Concurrent writes serialize to complete
+ * messages; renderer escapes bypass application routing where the
+ * transport offers a raw sink.</li>
+ * </ul>
  *
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
@@ -449,9 +476,10 @@ public interface Connection extends Appendable, AutoCloseable {
     }
 
     /**
-     * Stop reading from the input stream.
-     * The stream will be closed and cleanup methods will be called.
-     * Eg for terminals they will be restored to their original settings.
+     * Stop reading from the input stream and release owned resources.
+     * Borrowed streams are left open; owned resources are released and
+     * cleanup methods are called. Eg for terminals they will be
+     * restored to their original settings.
      */
     @Override
     void close();
