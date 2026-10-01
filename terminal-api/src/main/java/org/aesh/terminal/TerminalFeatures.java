@@ -30,7 +30,6 @@ import java.util.logging.Logger;
 
 import org.aesh.terminal.detect.ImageProtocol;
 import org.aesh.terminal.detect.ModeSupport;
-import org.aesh.terminal.detect.TerminalCapabilities;
 import org.aesh.terminal.detect.TerminalReplyFramer;
 import org.aesh.terminal.detect.TerminalReplyFramer.Kind;
 import org.aesh.terminal.detect.TerminalReplyFramer.Span;
@@ -58,6 +57,13 @@ import org.aesh.terminal.utils.TerminalColorCapability;
  * <li><b>Semantic Output</b> — shell integration markers, hyperlinks, clipboard</li>
  * <li><b>Mode Toggles</b> — synchronized output, grapheme cluster mode, theme notifications</li>
  * </ul>
+ * <p>
+ * Capability ownership: the device, live queries, seeded probe modes,
+ * and this connection's own theme subscription belong to the
+ * connection. Process-global startup defaults never answer for a
+ * connection directly — local connections seed a snapshot from them
+ * (see {@link #seedProbedModes}), while remote ones answer from
+ * device heuristics plus live queries.
  *
  * @see Connection#terminal()
  */
@@ -68,6 +74,16 @@ public class TerminalFeatures {
     // EventDecoder updates the shared theme cache before invoking its handler.
     // This marker enables interception when no application callback was supplied.
     private static final Consumer<TerminalTheme> CACHE_ONLY_THEME_HANDLER = new CacheOnlyThemeHandler();
+
+    /**
+     * Startup-probe snapshot seeding this connection. Set by local
+     * connections from the shared probe results; null stays null, so
+     * connections without a local terminal (ssh, telnet, http) never
+     * consult process-global probe facts that describe another machine.
+     */
+    private volatile ModeSupport seededMode2026;
+    private volatile ModeSupport seededMode2027;
+    private volatile Boolean seededNativeGraphemeClustering;
 
     private static final class CacheOnlyThemeHandler implements Consumer<TerminalTheme> {
         @Override
@@ -821,6 +837,28 @@ public class TerminalFeatures {
     }
 
     /**
+     * Seed this connection's probed modes from startup detection.
+     * <p>
+     * Local-only: callers with a local terminal copy the shared probe
+     * results in so per-connection answers keep working after the
+     * global instance is invalidated or replaced. Remote connections
+     * leave these null and answer from device heuristics plus live
+     * queries. Re-seeding overwrites unconditionally; null arguments
+     * clear back to unseeded.
+     *
+     * @param mode2026 the probed Mode 2026 support, or null if unprobed
+     * @param mode2027 the probed Mode 2027 support, or null if unprobed
+     * @param nativeGraphemeClustering the probed native clustering,
+     *        or null if unprobed
+     */
+    public void seedProbedModes(ModeSupport mode2026, ModeSupport mode2027,
+            Boolean nativeGraphemeClustering) {
+        seededMode2026 = mode2026;
+        seededMode2027 = mode2027;
+        seededNativeGraphemeClustering = nativeGraphemeClustering;
+    }
+
+    /**
      * Check if Mode 2026 (synchronized output) is supported.
      * <p>
      * Uses the batched probe result if available (most accurate).
@@ -832,15 +870,16 @@ public class TerminalFeatures {
         if (connection.device() == null || !connection.supportsAnsi()) {
             return false;
         }
-        // Check terminal-detect probe results if available
-        ModeSupport probed = TerminalCapabilities.getInstance().synchronizedOutputSupport();
-        if (probed != null) {
-            if (probed == ModeSupport.SUPPORTED)
+        // Seeded startup-probe snapshot first, then the device heuristic.
+        // The shared probe instance is never consulted: it describes the
+        // local process terminal, not necessarily this connection.
+        if (seededMode2026 != null) {
+            if (seededMode2026 == ModeSupport.SUPPORTED)
                 return true;
-            if (probed == ModeSupport.NOT_SUPPORTED)
+            if (seededMode2026 == ModeSupport.NOT_SUPPORTED)
                 return false;
         }
-        // Not probed or NO_RESPONSE: fall back to heuristic
+        // Not seeded or NO_RESPONSE: fall back to heuristic
         return connection.device().supportsSynchronizedOutput();
     }
 
@@ -869,21 +908,17 @@ public class TerminalFeatures {
         if (connection.device() == null || !connection.supportsAnsi()) {
             return false;
         }
-        // Check terminal-detect probe results if available
-        TerminalCapabilities caps = TerminalCapabilities.getInstance();
-        ModeSupport probed = caps.graphemeClusterSupport();
-        if (probed != null) {
-            if (probed == ModeSupport.SUPPORTED)
+        if (seededMode2027 != null) {
+            if (seededMode2027 == ModeSupport.SUPPORTED)
                 return true;
-            if (probed == ModeSupport.NOT_SUPPORTED) {
+            if (seededMode2027 == ModeSupport.NOT_SUPPORTED) {
                 // Mode 2027 not supported, but check native clustering
-                Boolean nativeGC = caps.nativeGraphemeClustering();
-                if (nativeGC != null && nativeGC)
+                if (seededNativeGraphemeClustering != null && seededNativeGraphemeClustering)
                     return true;
                 return false;
             }
         }
-        // Not probed or NO_RESPONSE: fall back to heuristic
+        // Not seeded or NO_RESPONSE: fall back to heuristic
         return connection.device().supportsGraphemeClusterMode();
     }
 

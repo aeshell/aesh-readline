@@ -41,6 +41,9 @@ import org.aesh.terminal.Connection;
 import org.aesh.terminal.Device;
 import org.aesh.terminal.EventDecoder;
 import org.aesh.terminal.Terminal;
+import org.aesh.terminal.TerminalFeatures;
+import org.aesh.terminal.detect.TerminalCapabilities;
+import org.aesh.terminal.detect.TerminalTheme;
 import org.aesh.terminal.io.Decoder;
 import org.aesh.terminal.io.Encoder;
 import org.aesh.terminal.io.InputPeeker;
@@ -506,6 +509,59 @@ public class TerminalConnection extends AbstractConnection {
     public void stopReading() {
         reading = false;
         awake();
+    }
+
+    /**
+     * Forwards local theme notifications to the shared startup cache.
+     * <p>
+     * Installed around the application handler by
+     * {@link #setThemeChangeHandler}: the decoder itself stays neutral
+     * so remote connections sharing that code never pollute process
+     * defaults — only this local connection forwards. Unwraps
+     * transparently in {@link #themeChangeHandler()}, so marker
+     * identity checks and save/restore wrappers behave exactly as
+     * with a directly installed handler.
+     */
+    private static final class GlobalThemeForwarder implements Consumer<TerminalTheme> {
+        private final Consumer<TerminalTheme> downstream;
+
+        GlobalThemeForwarder(Consumer<TerminalTheme> downstream) {
+            this.downstream = downstream;
+        }
+
+        @Override
+        public void accept(TerminalTheme theme) {
+            TerminalCapabilities.onThemeChanged(theme);
+            if (downstream != null) {
+                downstream.accept(theme);
+            }
+        }
+    }
+
+    @Override
+    public void setThemeChangeHandler(Consumer<TerminalTheme> handler) {
+        super.setThemeChangeHandler(handler == null ? null : new GlobalThemeForwarder(handler));
+    }
+
+    @Override
+    public Consumer<TerminalTheme> themeChangeHandler() {
+        Consumer<TerminalTheme> installed = super.themeChangeHandler();
+        if (installed instanceof GlobalThemeForwarder) {
+            return ((GlobalThemeForwarder) installed).downstream;
+        }
+        return installed;
+    }
+
+    @Override
+    public TerminalFeatures terminal() {
+        TerminalFeatures features = super.terminal();
+        // Seed once per access from the shared startup probe: the values
+        // are a snapshot copy, so later global replacement cannot corrupt
+        // this connection — and a completed late probe still flows in.
+        TerminalCapabilities caps = TerminalCapabilities.getInstance();
+        features.seedProbedModes(caps.synchronizedOutputSupport(),
+                caps.graphemeClusterSupport(), caps.nativeGraphemeClustering());
+        return features;
     }
 
     @Override

@@ -26,7 +26,6 @@ import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import org.aesh.terminal.detect.TerminalCapabilities;
 import org.aesh.terminal.detect.TerminalTheme;
 import org.aesh.terminal.io.InputPeeker;
 import org.aesh.terminal.parser.VtHandler;
@@ -784,7 +783,9 @@ public class EventDecoder implements Consumer<int[]> {
                 theme = TerminalTheme.LIGHT;
             }
             if (theme != null) {
-                TerminalCapabilities.onThemeChanged(theme);
+                // Local connections forward to the shared cache through
+                // their own handler wrapper (#353); this decoder stays a
+                // neutral router so remote connections never pollute it.
                 themeChangeHandler.accept(theme);
             }
         }

@@ -28,6 +28,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.aesh.terminal.detect.ModeSupport;
 import org.aesh.terminal.detect.TerminalCapabilities;
 import org.aesh.terminal.detect.TerminalTheme;
 import org.junit.Before;
@@ -80,7 +81,7 @@ public class EventDecoderThemeDsrTest {
     }
 
     @Test
-    public void testThemeDsrRefreshesCachedThemeAndRgb() throws Exception {
+    public void testThemeDsrLeavesSharedCacheAlone() throws Exception {
         TerminalCapabilities saved = TerminalCapabilities.getInstance();
         TerminalCapabilities caps = TerminalCapabilities.detect();
         Field foreground = TerminalCapabilities.class.getDeclaredField("foregroundRGB");
@@ -89,25 +90,31 @@ public class EventDecoderThemeDsrTest {
         background.setAccessible(true);
         foreground.set(caps, new int[] { 240, 240, 240 });
         background.set(caps, new int[] { 10, 10, 10 });
+        TerminalTheme before = caps.theme();
         try {
             TerminalCapabilities.setInstance(caps);
             decoder.accept(DSR_LIGHT);
 
-            assertSame("Other capabilities must stay cached", caps, TerminalCapabilities.getInstance());
-            assertEquals(TerminalTheme.LIGHT, caps.theme());
-            assertNull("Old foreground must be discarded", caps.foregroundRGB());
-            assertNull("Old background must be discarded", caps.backgroundRGB());
+            // The shared cache belongs to local startup probing; a bare
+            // decoder (remote connections share this code) must not
+            // touch it. Local forwarding lives in TerminalConnection.
+            assertSame("Instance must stay cached", caps, TerminalCapabilities.getInstance());
+            assertEquals("Shared theme must not move", before, caps.theme());
+            assertArrayEquals("Shared foreground must stay",
+                    new int[] { 240, 240, 240 }, caps.foregroundRGB());
+            assertArrayEquals("Shared background must stay",
+                    new int[] { 10, 10, 10 }, caps.backgroundRGB());
 
             decoder.accept(DSR_DARK);
-            assertEquals(TerminalTheme.DARK, caps.theme());
-            assertEquals(2, receivedThemes.size());
+            assertEquals(before, caps.theme());
+            assertEquals("App routing is unaffected", 2, receivedThemes.size());
         } finally {
             TerminalCapabilities.setInstance(saved);
         }
     }
 
     @Test
-    public void testEnableWithoutCallbackStillRefreshesCachedTheme() {
+    public void testEnableWithoutCallbackLeavesSharedCacheAlone() {
         TerminalCapabilities saved = TerminalCapabilities.getInstance();
         TerminalCapabilities caps = TerminalCapabilities.detect();
         StreamConnection connection = new StreamConnection(StandardCharsets.UTF_8,
@@ -131,12 +138,102 @@ public class EventDecoderThemeDsrTest {
             assertNotNull("Notifications must be intercepted even without a callback",
                     connection.themeChangeHandler());
 
+            TerminalTheme before = caps.theme();
             connection.eventDecoder.accept(DSR_LIGHT);
-            assertEquals(TerminalTheme.LIGHT, caps.theme());
+            assertEquals("Remote-shaped connections must not refresh shared defaults",
+                    before, caps.theme());
 
             features.disableThemeChangeNotification();
             assertNull("Disable must remove the internal interception handler",
                     connection.themeChangeHandler());
+        } finally {
+            connection.close();
+            TerminalCapabilities.setInstance(saved);
+        }
+    }
+
+    // ==================== Per-connection isolation (#353) ====================
+
+    private static StreamConnection themeConnection(List<TerminalTheme> received) {
+        return themeConnection(received, false);
+    }
+
+    private static StreamConnection themeConnection(List<TerminalTheme> received, boolean ansi) {
+        StreamConnection connection = new StreamConnection(StandardCharsets.UTF_8,
+                new ByteArrayInputStream(new byte[0]), new ByteArrayOutputStream()) {
+            private final Device themeDevice = new BaseDevice("xterm") {
+                @Override
+                public boolean supportsThemeQuery() {
+                    return true;
+                }
+
+                @Override
+                public boolean supportsSynchronizedOutput() {
+                    return false;
+                }
+
+                @Override
+                public boolean supportsGraphemeClusterMode() {
+                    return false;
+                }
+            };
+
+            @Override
+            public Device device() {
+                return themeDevice;
+            }
+
+            @Override
+            public boolean supportsAnsi() {
+                return ansi;
+            }
+        };
+        connection.setThemeChangeHandler(received::add);
+        return connection;
+    }
+
+    @Test
+    public void testConflictingThemesStayPerConnection() {
+        TerminalCapabilities saved = TerminalCapabilities.getInstance();
+        TerminalCapabilities caps = TerminalCapabilities.detect();
+        List<TerminalTheme> firstThemes = new ArrayList<>();
+        List<TerminalTheme> secondThemes = new ArrayList<>();
+        StreamConnection first = themeConnection(firstThemes);
+        StreamConnection second = themeConnection(secondThemes);
+        try {
+            TerminalCapabilities.setInstance(caps);
+            TerminalTheme before = caps.theme();
+            first.eventDecoder.accept(DSR_DARK);
+            second.eventDecoder.accept(DSR_LIGHT);
+
+            assertEquals("Shared defaults must not move", before, caps.theme());
+            assertEquals(java.util.Collections.singletonList(TerminalTheme.DARK), firstThemes);
+            assertEquals("Each connection keeps its own theme", java.util.Collections.singletonList(TerminalTheme.LIGHT),
+                    secondThemes);
+        } finally {
+            first.close();
+            second.close();
+            TerminalCapabilities.setInstance(saved);
+        }
+    }
+
+    @Test
+    public void testRemoteModesIgnoreSharedProbe() throws Exception {
+        TerminalCapabilities saved = TerminalCapabilities.getInstance();
+        TerminalCapabilities caps = TerminalCapabilities.detect();
+        Field mode2026 = TerminalCapabilities.class.getDeclaredField("mode2026Support");
+        mode2026.setAccessible(true);
+        mode2026.set(caps, ModeSupport.SUPPORTED);
+        Field mode2027 = TerminalCapabilities.class.getDeclaredField("mode2027Support");
+        mode2027.setAccessible(true);
+        mode2027.set(caps, ModeSupport.SUPPORTED);
+        List<TerminalTheme> received = new ArrayList<>();
+        StreamConnection connection = themeConnection(received, true);
+        try {
+            TerminalCapabilities.setInstance(caps);
+            assertFalse("Remote answers must not consult the local probe",
+                    connection.terminal().supportsSynchronizedOutput());
+            assertFalse(connection.terminal().supportsGraphemeClusterMode());
         } finally {
             connection.close();
             TerminalCapabilities.setInstance(saved);
