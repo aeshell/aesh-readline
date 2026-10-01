@@ -913,6 +913,108 @@ public class ConnectionOscQueryTest {
                 + joined(appReceived), joined(appReceived).isEmpty());
     }
 
+    // ==================== Success-path redelivery (#352) ====================
+
+    @Test
+    public void testArrowsBeforeReplyRedeliveredOnSuccess() throws Exception {
+        MockConnection connection = new MockConnection();
+        List<int[]> appReceived = new ArrayList<>();
+        Consumer<int[]> appHandler = appReceived::add;
+        connection.setStdinHandler(appHandler);
+
+        Thread responseThread = new Thread(() -> {
+            try {
+                connection.awaitHandlerChange(appHandler, 1000);
+                connection.simulateInput("\u001B[A\u001B]10;rgb:FFFF/8080/0000\u0007");
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        });
+        responseThread.start();
+
+        int[] rgb = connection.terminal().queryForegroundColor(1000);
+        responseThread.join(2000);
+
+        assertNotNull("reply must still parse", rgb);
+        assertEquals("arrow caught with the reply must redeliver exactly once, got: "
+                + joined(appReceived), "\u001B[A", joined(appReceived));
+    }
+
+    @Test
+    public void testArrowsAfterReplyRedeliveredOnSuccess() throws Exception {
+        MockConnection connection = new MockConnection();
+        List<int[]> appReceived = new ArrayList<>();
+        Consumer<int[]> appHandler = appReceived::add;
+        connection.setStdinHandler(appHandler);
+
+        Thread responseThread = new Thread(() -> {
+            try {
+                connection.awaitHandlerChange(appHandler, 1000);
+                connection.simulateInput("\u001B]10;rgb:FFFF/8080/0000\u0007\u001B[B");
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        });
+        responseThread.start();
+
+        int[] rgb = connection.terminal().queryForegroundColor(1000);
+        responseThread.join(2000);
+
+        assertNotNull("reply must still parse", rgb);
+        assertEquals("arrow trailing the reply must redeliver exactly once, got: "
+                + joined(appReceived), "\u001B[B", joined(appReceived));
+    }
+
+    @Test
+    public void testLeadingKeysInMatchingChunkDelivered() throws Exception {
+        MockConnection connection = new MockConnection();
+        List<int[]> appReceived = new ArrayList<>();
+        Consumer<int[]> appHandler = appReceived::add;
+        connection.setStdinHandler(appHandler);
+
+        Thread responseThread = new Thread(() -> {
+            try {
+                connection.awaitHandlerChange(appHandler, 1000);
+                connection.simulateInput("pre\u001B]10;rgb:FFFF/8080/0000\u0007");
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        });
+        responseThread.start();
+
+        int[] rgb = connection.terminal().queryForegroundColor(1000);
+        responseThread.join(2000);
+
+        assertNotNull("reply must still parse", rgb);
+        assertEquals("keys leading the reply frame must reach the app exactly once, got: "
+                + joined(appReceived), "pre", joined(appReceived));
+    }
+
+    @Test
+    public void testPartialTailDroppedOnSuccess() throws Exception {
+        MockConnection connection = new MockConnection();
+        List<int[]> appReceived = new ArrayList<>();
+        Consumer<int[]> appHandler = appReceived::add;
+        connection.setStdinHandler(appHandler);
+
+        Thread responseThread = new Thread(() -> {
+            try {
+                connection.awaitHandlerChange(appHandler, 1000);
+                connection.simulateInput("\u001B]10;rgb:FFFF/8080/0000\u0007\u001B[?");
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        });
+        responseThread.start();
+
+        int[] rgb = connection.terminal().queryForegroundColor(1000);
+        responseThread.join(2000);
+
+        assertNotNull("reply must still parse", rgb);
+        assertTrue("trailing partial may be a reply fragment and stays dropped, got: "
+                + joined(appReceived), joined(appReceived).isEmpty());
+    }
+
     private static class MockConnection implements Connection {
         private volatile Consumer<int[]> stdinHandler;
         private Consumer<Size> sizeHandler;

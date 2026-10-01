@@ -20,7 +20,6 @@
 package org.aesh.terminal;
 
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
@@ -126,7 +125,8 @@ public class TerminalFeatures {
      * handler promptly instead of waiting out the query. On timeout
      * nothing matched, so every held byte is unclaimed input — handed
      * back to the restored input handler rather than dropped. On success
-     * the buffer holds the matched frame and is discarded.
+     * the matched frames stay consumed while complete non-reply shapes
+     * caught alongside them are handed back the same way.
      * <p>
      * This method uses {@link Connection#setStdinHandler(Consumer)} to receive responses,
      * which requires the connection to be actively reading input (i.e.,
@@ -183,6 +183,11 @@ public class TerminalFeatures {
         T typedResult = (T) result[0];
         if (typedResult == null) {
             redeliverUnmatched(responses.snapshot());
+        } else {
+            // A matched reply consumes its frames; complete non-reply
+            // shapes caught in the buffer (arrow keys and friends) still
+            // belong to the application.
+            redeliverUnmatched(responses.unmatchedOnSuccess());
         }
         return typedResult;
     }
@@ -210,17 +215,17 @@ public class TerminalFeatures {
     /**
      * Query-input accumulator with prompt plain-text forwarding.
      * <p>
-     * Bytes that can never belong to a reply frame (runs without ESC,
-     * framed by the shared {@code TerminalReplyFramer}) go straight to
-     * the pre-lease application handler instead of waiting out the
-     * query: keystrokes typed during a probe surface immediately. Reply
-     * frames, complete non-reply shapes, and partial tails stay buffered
-     * for the parser and for timeout redelivery, so the delivered set
-     * matches the old hold-everything behavior exactly — only sooner.
+     * Each chunk is scanned once together with the carried tail: plain
+     * runs go straight to the pre-lease application handler, reply
+     * frames and complete non-reply shapes accumulate for the parser,
+     * and the trailing partial becomes the next tail. Parsers therefore
+     * see the same frames as a hold-everything buffer minus already
+     * delivered plain input, while keystrokes surface immediately.
      * Without a pre-lease handler everything accumulates, as before.
      */
     private static final class ReplyAccumulator {
-        private final StringBuilder pending = new StringBuilder();
+        private final StringBuilder frames = new StringBuilder();
+        private String tail = "";
         private final Consumer<int[]> appHandler;
 
         ReplyAccumulator(Consumer<int[]> appHandler) {
@@ -233,42 +238,73 @@ public class TerminalFeatures {
          * @param chunk the arriving code points
          */
         void append(int[] chunk) {
-            pending.append(new String(chunk, 0, chunk.length));
+            String text = tail + new String(chunk, 0, chunk.length);
+            tail = "";
             if (appHandler == null) {
+                frames.append(text);
                 return;
             }
-            List<Span> spans = TerminalReplyFramer.split(pending);
-            StringBuilder kept = null;
+            int end = text.length();
             int cursor = 0;
-            for (Span span : spans) {
-                if (span.kind != Kind.PLAIN_TEXT) {
-                    continue;
+            for (Span span : TerminalReplyFramer.split(text)) {
+                if (span.kind == Kind.PARTIAL) {
+                    tail = text.substring(span.start, span.end);
+                    end = span.start;
+                    break;
                 }
-                if (kept == null) {
-                    kept = new StringBuilder(pending.length());
+                if (span.kind == Kind.PLAIN_TEXT) {
+                    frames.append(text, cursor, span.start);
+                    forward(text.substring(span.start, span.end));
+                    cursor = span.end;
                 }
-                kept.append(pending, cursor, span.start);
-                forward(pending.substring(span.start, span.end));
-                cursor = span.end;
             }
-            if (kept != null) {
-                kept.append(pending, cursor, pending.length());
-                pending.setLength(0);
-                pending.append(kept);
-            }
+            frames.append(text, cursor, end);
         }
 
         /**
-         * The held bytes for parsing and timeout redelivery.
+         * The held bytes for parsing and timeout redelivery: frames plus
+         * the current tail. Plain runs were already delivered and stay out.
          *
          * @return the buffered code points
          */
         int[] snapshot() {
-            return pending.toString().codePoints().toArray();
+            return toCodePoints(frames.toString() + tail);
+        }
+
+        /**
+         * Held bytes minus consumed reply frames, for success redelivery:
+         * complete non-reply shapes (arrow keys and friends) reach the
+         * application instead of being dropped with the matched frames.
+         * Partial tails may be reply fragments and stay dropped, as do
+         * already-delivered plain runs.
+         *
+         * @return the redeliverable code points
+         */
+        int[] unmatchedOnSuccess() {
+            String held = frames.toString();
+            StringBuilder out = new StringBuilder();
+            int cursor = 0;
+            for (Span span : TerminalReplyFramer.split(held)) {
+                if (isReply(span.kind)) {
+                    out.append(held, cursor, span.start);
+                    cursor = span.end;
+                }
+            }
+            out.append(held, cursor, held.length());
+            return toCodePoints(out.toString());
+        }
+
+        private static boolean isReply(Kind kind) {
+            return kind == Kind.OSC || kind == Kind.DEVICE_ATTRIBUTES
+                    || kind == Kind.MODE_REPORT || kind == Kind.CURSOR_POSITION;
+        }
+
+        private static int[] toCodePoints(String text) {
+            return text.codePoints().toArray();
         }
 
         private void forward(String text) {
-            appHandler.accept(text.codePoints().toArray());
+            appHandler.accept(toCodePoints(text));
         }
     }
 
@@ -314,6 +350,8 @@ public class TerminalFeatures {
         }
         if (p[0] == null) {
             redeliverUnmatched(responses.snapshot());
+        } else {
+            redeliverUnmatched(responses.unmatchedOnSuccess());
         }
         return p[0];
     }
