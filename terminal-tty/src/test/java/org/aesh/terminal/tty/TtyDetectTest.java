@@ -19,6 +19,7 @@
  */
 package org.aesh.terminal.tty;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assume.assumeFalse;
@@ -45,6 +46,20 @@ public class TtyDetectTest {
         TtyDetect.isTty(TtyDetect.FD_STDIN);
         TtyDetect.isTty(TtyDetect.FD_STDOUT);
         TtyDetect.isTty(TtyDetect.FD_STDERR);
+    }
+
+    @Test
+    public void testContextOverloadAgreesWithAmbient() {
+        // The overload takes only the OS branch from the context;
+        // liveness is always probed fresh, so both forms must agree
+        // on the live host.
+        org.aesh.terminal.utils.PlatformContext system = org.aesh.terminal.utils.PlatformContext.system();
+        assertEquals(TtyDetect.isTty(TtyDetect.FD_STDIN),
+                TtyDetect.isTty(TtyDetect.FD_STDIN, system));
+        assertEquals(TtyDetect.isTty(TtyDetect.FD_STDOUT),
+                TtyDetect.isTty(TtyDetect.FD_STDOUT, system));
+        assertEquals(TtyDetect.isTty(TtyDetect.FD_STDERR),
+                TtyDetect.isTty(TtyDetect.FD_STDERR, system));
     }
 
     @Test

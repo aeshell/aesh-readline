@@ -36,6 +36,7 @@ import org.aesh.terminal.tty.impl.ExternalTerminal;
 import org.aesh.terminal.tty.impl.WinExternalTerminal;
 import org.aesh.terminal.utils.LoggerUtil;
 import org.aesh.terminal.utils.OSUtils;
+import org.aesh.terminal.utils.PlatformContext;
 
 /**
  * Builder for creating Terminal instances with configurable input/output streams and settings.
@@ -227,7 +228,7 @@ public final class TerminalBuilder {
             while (it.hasNext()) {
                 try {
                     TerminalProvider provider = it.next();
-                    if (provider.isSupported()) {
+                    if (provider.isSupported(PlatformContext.system())) {
                         providers.add(provider);
                         LOGGER.log(Level.FINE, "Found supported terminal provider: {0} (priority={1})",
                                 new Object[] { provider.name(), provider.priority() });

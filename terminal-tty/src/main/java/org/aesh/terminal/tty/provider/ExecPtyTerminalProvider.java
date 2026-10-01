@@ -25,7 +25,7 @@ import org.aesh.terminal.Terminal;
 import org.aesh.terminal.provider.TerminalProvider;
 import org.aesh.terminal.tty.impl.ExecPty;
 import org.aesh.terminal.tty.impl.PosixSysTerminal;
-import org.aesh.terminal.utils.OSUtils;
+import org.aesh.terminal.utils.PlatformContext;
 
 /**
  * Terminal provider using exec-based PTY (stty/tty commands).
@@ -48,7 +48,12 @@ public class ExecPtyTerminalProvider implements TerminalProvider {
 
     @Override
     public boolean isSupported() {
-        return !OSUtils.IS_WINDOWS && !OSUtils.IS_CYGWIN;
+        return isSupported(PlatformContext.system());
+    }
+
+    @Override
+    public boolean isSupported(PlatformContext context) {
+        return !context.isWindows() && !context.isCygwin();
     }
 
     @Override

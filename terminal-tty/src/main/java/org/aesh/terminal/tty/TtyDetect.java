@@ -25,7 +25,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.aesh.terminal.tty.impl.WinConsoleNative;
-import org.aesh.terminal.utils.OSUtils;
+import org.aesh.terminal.utils.PlatformContext;
 
 /**
  * Utility for detecting whether file descriptors are connected to a terminal.
@@ -87,11 +87,27 @@ public final class TtyDetect {
      * @return true if the file descriptor is connected to a terminal
      */
     public static boolean isTty(int fd) {
+        return isTty(fd, PlatformContext.system());
+    }
+
+    /**
+     * Check if the given file descriptor is connected to a terminal,
+     * with the OS branch taken from captured platform facts.
+     * <p>
+     * Only the OS branch is captured: liveness itself (per-fd
+     * {@code test -t}, console handles, {@code Console.isTerminal()}) is
+     * always probed fresh, since redirection can change between calls.
+     *
+     * @param fd the file descriptor (0=stdin, 1=stdout, 2=stderr)
+     * @param context the captured platform facts
+     * @return true if the file descriptor is connected to a terminal
+     */
+    public static boolean isTty(int fd, PlatformContext context) {
         // On Windows, avoid System.console() entirely — it triggers the
         // JDK's internal JLine terminal initialization (JnaWinSysTerminal),
         // which starts a WindowsStreamPump thread that competes with our
         // own pump for ReadConsoleInputW events, causing lost keystrokes (#276).
-        if (OSUtils.IS_WINDOWS) {
+        if (context.isWindows()) {
             Boolean winResult = tryWindowsConsoleHandle(fd);
             if (winResult != null) {
                 return winResult;

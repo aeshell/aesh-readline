@@ -30,7 +30,7 @@ import org.aesh.terminal.provider.TerminalProvider;
 import org.aesh.terminal.tty.impl.PosixSysTerminal;
 import org.aesh.terminal.tty.impl.Pty;
 import org.aesh.terminal.utils.LoggerUtil;
-import org.aesh.terminal.utils.OSUtils;
+import org.aesh.terminal.utils.PlatformContext;
 
 /**
  * Terminal provider using FFM-based PTY (Java 22+, POSIX systems).
@@ -87,12 +87,17 @@ public class FfmTerminalProvider implements TerminalProvider {
 
     @Override
     public boolean isSupported() {
+        return isSupported(PlatformContext.system());
+    }
+
+    @Override
+    public boolean isSupported(PlatformContext context) {
         // FFM PTY layouts exist only for Linux/macOS on x86_64/aarch64;
         // anything else (BSDs, 32-bit, Windows/Cygwin) declines to ExecPty.
         // A foreign struct mismatch would read wrong fields or flip wrong
         // terminal flags, so unsupported ABIs decline before any handle
         // is created.
-        if (!OSUtils.IS_FFM_POSIX_SUPPORTED) {
+        if (!context.isFfmPosixSupported()) {
             return false;
         }
         // Check if native access is enabled. Without it, creating FFM

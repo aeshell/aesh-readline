@@ -25,7 +25,7 @@ import org.aesh.terminal.Terminal;
 import org.aesh.terminal.provider.TerminalProvider;
 import org.aesh.terminal.tty.TtyDetect;
 import org.aesh.terminal.tty.impl.WinSysTerminal;
-import org.aesh.terminal.utils.OSUtils;
+import org.aesh.terminal.utils.PlatformContext;
 
 /**
  * Terminal provider for Windows system console (JNI or FFM).
@@ -50,7 +50,12 @@ public class WinSysTerminalProvider implements TerminalProvider {
 
     @Override
     public boolean isSupported() {
-        if (!OSUtils.IS_WINDOWS || OSUtils.IS_CYGWIN) {
+        return isSupported(PlatformContext.system());
+    }
+
+    @Override
+    public boolean isSupported(PlatformContext context) {
+        if (!context.isWindows() || context.isCygwin()) {
             return false;
         }
         // Do NOT call System.console() here — on Windows it triggers the
@@ -59,7 +64,7 @@ public class WinSysTerminalProvider implements TerminalProvider {
         // The piped/redirected check lives in createTerminal() as a fresh
         // GetConsoleMode probe, keeping isSupported() a fast, side-effect-free
         // heuristic per the TerminalProvider contract.
-        String term = System.getenv("TERM");
+        String term = context.term();
         if ("dumb".equals(term)) {
             return false;
         }

@@ -191,7 +191,12 @@ public abstract class ConnectionLifecycleTestBase<C> {
             feedInput(connection, before);
             assertDelivered(connection, before);
             closeConnection(connection);
-            feedInput(connection, "after;".getBytes(StandardCharsets.US_ASCII));
+            try {
+                feedInput(connection, "after;".getBytes(StandardCharsets.US_ASCII));
+            } catch (Exception postCloseRefused) {
+                // A transport may refuse post-close input outright
+                // (broken pipe); silence below is what matters.
+            }
             Thread.sleep(SETTLE_MS);
             assertEquals("nothing delivered after close",
                     "", new String(drainDelivered(connection), StandardCharsets.US_ASCII));

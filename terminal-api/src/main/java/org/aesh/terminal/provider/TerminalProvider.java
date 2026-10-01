@@ -22,6 +22,7 @@ package org.aesh.terminal.provider;
 import java.io.IOException;
 
 import org.aesh.terminal.Terminal;
+import org.aesh.terminal.utils.PlatformContext;
 
 /**
  * Service Provider Interface for terminal implementations.
@@ -62,6 +63,21 @@ public interface TerminalProvider {
      * @return true if this provider can potentially create a terminal
      */
     boolean isSupported();
+
+    /**
+     * Whether this provider is supported under the given platform facts.
+     * <p>
+     * Providers with environment-sensitive eligibility override this to
+     * read the context instead of ambient state, so selection matrices
+     * stay host-independent. The default preserves the ambient behavior
+     * for third-party providers.
+     *
+     * @param context the captured platform facts
+     * @return true if this provider can potentially create a terminal
+     */
+    default boolean isSupported(PlatformContext context) {
+        return isSupported();
+    }
 
     /**
      * The priority of this provider. Higher values are preferred.

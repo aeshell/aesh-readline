@@ -25,7 +25,7 @@ import org.aesh.terminal.Terminal;
 import org.aesh.terminal.provider.TerminalProvider;
 import org.aesh.terminal.tty.impl.CygwinPty;
 import org.aesh.terminal.tty.impl.PosixSysTerminal;
-import org.aesh.terminal.utils.OSUtils;
+import org.aesh.terminal.utils.PlatformContext;
 
 /**
  * Terminal provider for Cygwin/MSYS2 environments on Windows.
@@ -47,7 +47,12 @@ public class CygwinTerminalProvider implements TerminalProvider {
 
     @Override
     public boolean isSupported() {
-        return OSUtils.IS_CYGWIN;
+        return isSupported(PlatformContext.system());
+    }
+
+    @Override
+    public boolean isSupported(PlatformContext context) {
+        return context.isCygwin();
     }
 
     @Override
