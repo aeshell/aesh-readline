@@ -18,10 +18,18 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 /**
  * Environment-driven detection facts: terminal identity and the basic
@@ -156,5 +164,92 @@ public class TerminalDetectorTest {
         assertEquals(TerminalTheme.LIGHT, TerminalDetector.themeFromDword(1));
         assertEquals(TerminalTheme.LIGHT, TerminalDetector.themeFromDword(0x1));
         assertEquals(TerminalTheme.UNKNOWN, TerminalDetector.themeFromDword(null));
+    }
+
+    // ==================== Captured environment reuse (#347) ====================
+
+    @Rule
+    public TemporaryFolder tmp = new TemporaryFolder();
+
+    private static void write(File file, String content) throws IOException {
+        try (FileWriter writer = new FileWriter(file)) {
+            writer.write(content);
+        }
+    }
+
+    @Test
+    public void testPlatformThemeReusesCapturedEnvironment() throws Exception {
+        File stateDir = new File(tmp.newFolder("localappdata"), "Microsoft/Windows Terminal");
+        assertTrue(stateDir.mkdirs());
+        write(new File(stateDir, "settings.json"), "{\"colorScheme\": \"Campbell\"}");
+
+        Map<String, String> env = new HashMap<>();
+        env.put("WT_SESSION", "some-session-id");
+        env.put("LOCALAPPDATA", new File(tmp.getRoot(), "localappdata").getAbsolutePath());
+        String previousHome = System.getProperty("user.home");
+        System.setProperty("user.home", tmp.newFolder("home").getAbsolutePath());
+        try {
+            TerminalDetector detector = new TerminalDetector(env, "Windows 11");
+            assertEquals("windows-terminal", detector.terminalName);
+            assertEquals("captured WT settings must resolve through the same detector",
+                    TerminalTheme.DARK, detector.detectIdeOrPlatformTheme());
+        } finally {
+            System.setProperty("user.home", previousHome);
+        }
+    }
+
+    @Test
+    public void testPlatformThemeWithoutFixtureFallsThrough() throws Exception {
+        Map<String, String> env = new HashMap<>();
+        env.put("WT_SESSION", "some-session-id");
+        TerminalDetector.setProcessRunner(new TerminalDetector.ProcessRunner() {
+            @Override
+            public String run(String... cmd) {
+                return null;
+            }
+        });
+        String previousHome = System.getProperty("user.home");
+        try {
+            System.setProperty("user.home", tmp.newFolder("home").getAbsolutePath());
+            assertEquals(TerminalTheme.UNKNOWN,
+                    new TerminalDetector(env, "Windows 11").detectIdeOrPlatformTheme());
+        } finally {
+            System.setProperty("user.home", previousHome);
+            TerminalDetector.setProcessRunner(null);
+        }
+    }
+
+    @Test
+    public void testNoDoubledIdentitySubprocesses() {
+        // Without WT_SESSION the identity check runs a registry query;
+        // the theme fallback runs another. Both must happen exactly once —
+        // a second detector would repeat the identity query (#347).
+        Map<String, String> env = new HashMap<>();
+        env.put("TERM", "xterm");
+        final List<String> commands = new ArrayList<>();
+        TerminalDetector.setProcessRunner(new TerminalDetector.ProcessRunner() {
+            @Override
+            public String run(String... cmd) {
+                StringBuilder joined = new StringBuilder();
+                for (String part : cmd) {
+                    if (joined.length() > 0) {
+                        joined.append(' ');
+                    }
+                    joined.append(part);
+                }
+                commands.add(joined.toString());
+                return null;
+            }
+        });
+        try {
+            assertEquals(TerminalTheme.UNKNOWN,
+                    new TerminalDetector(env, "Windows 11").detectIdeOrPlatformTheme());
+            assertEquals("identity + theme probes must run exactly once each: " + commands,
+                    2, commands.size());
+            assertEquals("no subprocess may repeat: " + commands,
+                    2, new HashSet<>(commands).size());
+        } finally {
+            TerminalDetector.setProcessRunner(null);
+        }
     }
 }

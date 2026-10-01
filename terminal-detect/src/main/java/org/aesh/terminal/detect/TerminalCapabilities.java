@@ -272,7 +272,7 @@ public final class TerminalCapabilities {
     private static TerminalCapabilities computeFull() {
         TerminalCapabilities caps = detect();
         if (caps.detector.theme == TerminalTheme.UNKNOWN) {
-            caps.resolvedTheme = TerminalDetector.detectPlatformTheme();
+            caps.resolvedTheme = caps.detector.detectIdeOrPlatformTheme();
         }
 
         // Run terminal mode + color queries
@@ -348,7 +348,7 @@ public final class TerminalCapabilities {
                     }
                 }
                 if (caps.resolvedTheme == null && detector.theme == TerminalTheme.UNKNOWN) {
-                    TerminalTheme platform = TerminalDetector.detectPlatformTheme();
+                    TerminalTheme platform = detector.detectIdeOrPlatformTheme();
                     synchronized (caps) {
                         if (!caps.themeEventSeen && caps.resolvedTheme == null) {
                             caps.resolvedTheme = platform;

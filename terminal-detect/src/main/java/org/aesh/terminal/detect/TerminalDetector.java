@@ -31,6 +31,12 @@ final class TerminalDetector {
     // passes System.getenv(), tests pass fixture maps)
     private final Map<String, String> env;
 
+    // Operating system name (injected for testability; production passes
+    // the real os.name, tests pass literals like "Windows 11"). Drives the
+    // Windows registry identity gate, the IDE layout selection, and the
+    // OS theme branch — one captured value shared by all of them.
+    private final String osName;
+
     // Environment variables
     private final String term;
     private final String termProgram;
@@ -61,7 +67,12 @@ final class TerminalDetector {
     }
 
     TerminalDetector(Map<String, String> env) {
+        this(env, System.getProperty("os.name", ""));
+    }
+
+    TerminalDetector(Map<String, String> env, String osName) {
         this.env = env;
+        this.osName = osName;
         this.term = env.get("TERM");
         this.termProgram = env.get("TERM_PROGRAM");
         this.terminalEmulator = env.get("TERMINAL_EMULATOR");
@@ -160,7 +171,7 @@ final class TerminalDetector {
         if (wtSession != null || wtProfileId != null) {
             return true;
         }
-        return detectWindowsTerminalByRegistry();
+        return detectWindowsTerminalByRegistry(osName);
     }
 
     boolean isInMultiplexer() {
@@ -333,32 +344,31 @@ final class TerminalDetector {
      * IDE settings files are consulted first (JetBrains, VSCode, Windows
      * Terminal); the OS-level checks below apply when no IDE terminal
      * is detected or its settings yield nothing.
-     */
-    static TerminalTheme detectPlatformTheme() {
-        return new TerminalDetector().detectIdeOrPlatformTheme();
-    }
-
-    /**
-     * Two-stage platform theme detection for a detector with known
-     * environment: IDE settings files first, OS-level checks second.
-     * Package-private for tests with fixture environments.
-     *
-     * @return the detected theme, or UNKNOWN if not determinable
+     * <p>
+     * Runs on this detector's captured environment: callers reuse the
+     * detector they already scanned instead of constructing a second one
+     * (which would repeat registry identity subprocesses on Windows).
      */
     TerminalTheme detectIdeOrPlatformTheme() {
-        TerminalTheme ide = IdeThemeDetector.detect(terminalName, env);
+        TerminalTheme ide = IdeThemeDetector.detect(terminalName, env, osName);
         if (ide != TerminalTheme.UNKNOWN) {
             return ide;
         }
-        return detectOsPlatformTheme();
+        return detectOsPlatformTheme(osName);
     }
 
-    private static TerminalTheme detectOsPlatformTheme() {
-        String osName = System.getProperty("os.name", "").toLowerCase();
+    /**
+     * OS-level theme checks dispatched on the captured OS name.
+     *
+     * @param osName the operating system name
+     * @return the detected theme, or UNKNOWN if not determinable
+     */
+    private static TerminalTheme detectOsPlatformTheme(String osName) {
+        String os = osName == null ? "" : osName.toLowerCase();
         try {
-            if (osName.contains("mac")) {
+            if (os.contains("mac")) {
                 return detectMacOsTheme();
-            } else if (osName.contains("windows")) {
+            } else if (os.contains("windows")) {
                 return detectWindowsTheme();
             } else {
                 return detectLinuxDesktopTheme();
@@ -426,8 +436,34 @@ final class TerminalDetector {
         return TerminalTheme.UNKNOWN;
     }
 
+    /**
+     * Subprocess runner behind a swappable hook for tests.
+     * <p>
+     * Every identity and OS probe funnels through here, so a counting
+     * fixture observes all subprocess invocations from one place while
+     * production keeps the direct {@code ProcessBuilder} behavior.
+     */
+    interface ProcessRunner {
+        String run(String... cmd);
+    }
+
+    private static final class DirectRunner implements ProcessRunner {
+        @Override
+        public String run(String... cmd) {
+            return runCommandDirect(cmd);
+        }
+    }
+
+    private static final ProcessRunner DIRECT_RUNNER = new DirectRunner();
+
+    private static volatile ProcessRunner processRunner = DIRECT_RUNNER;
+
+    static void setProcessRunner(ProcessRunner runner) {
+        processRunner = runner != null ? runner : DIRECT_RUNNER;
+    }
+
     private static String execCommand(String... cmd) {
-        return runCommand(cmd);
+        return processRunner.run(cmd);
     }
 
     /**
@@ -441,7 +477,7 @@ final class TerminalDetector {
      * @param cmd the command and arguments
      * @return the captured output, or null on failure or nonzero exit
      */
-    private static String runCommand(String... cmd) {
+    private static String runCommandDirect(String... cmd) {
         Process process = null;
         try {
             process = new ProcessBuilder(cmd)
@@ -469,8 +505,8 @@ final class TerminalDetector {
 
     // ==================== Windows Terminal Registry Detection ====================
 
-    private static boolean detectWindowsTerminalByRegistry() {
-        if (!System.getProperty("os.name", "").toLowerCase().contains("windows")) {
+    private static boolean detectWindowsTerminalByRegistry(String osName) {
+        if (!osName.toLowerCase().contains("windows")) {
             return false;
         }
         try {
@@ -496,7 +532,7 @@ final class TerminalDetector {
     }
 
     private static String regQuery(String key, String valueName) {
-        String output = runCommand("reg", "query", key, "/v", valueName);
+        String output = execCommand("reg", "query", key, "/v", valueName);
         if (output == null) {
             return null;
         }
@@ -516,7 +552,7 @@ final class TerminalDetector {
      * @return the parsed value, or null if missing or malformed
      */
     private static Integer regQueryDword(String key, String valueName) {
-        String output = runCommand("reg", "query", key, "/v", valueName);
+        String output = execCommand("reg", "query", key, "/v", valueName);
         return parseRegDword(output, valueName);
     }
 
