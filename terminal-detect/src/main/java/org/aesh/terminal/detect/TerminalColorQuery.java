@@ -304,106 +304,7 @@ final class TerminalColorQuery {
      * @param oscParam the parameter index (-1 for none, 0-255 for palette)
      */
     static int[] parseOscColorResponse(String response, int oscCode, int oscParam) {
-        if (response == null || response.length() < 10) {
-            return null;
-        }
-
-        String oscMarker = "\033]" + oscCode + ";";
-        int searchFrom = 0;
-
-        while (true) {
-            int start = response.indexOf(oscMarker, searchFrom);
-            if (start < 0) {
-                return null;
-            }
-
-            int afterMarker = start + oscMarker.length();
-
-            if (oscParam >= 0) {
-                String paramMarker = oscParam + ";";
-                if (!response.substring(afterMarker).startsWith(paramMarker)) {
-                    searchFrom = afterMarker;
-                    continue;
-                }
-                afterMarker += paramMarker.length();
-            }
-
-            int rgbStart = response.indexOf("rgb:", afterMarker);
-            if (rgbStart < 0) {
-                return null;
-            }
-
-            int belPos = response.indexOf(BEL, afterMarker);
-            int stPos = response.indexOf("\033\\", afterMarker);
-            int terminatorPos = -1;
-            if (belPos >= 0 && stPos >= 0) {
-                terminatorPos = Math.min(belPos, stPos);
-            } else if (belPos >= 0) {
-                terminatorPos = belPos;
-            } else if (stPos >= 0) {
-                terminatorPos = stPos;
-            }
-
-            if (terminatorPos >= 0 && rgbStart > terminatorPos) {
-                searchFrom = terminatorPos + 1;
-                continue;
-            }
-
-            rgbStart += 4;
-
-            // Stop at this response's own terminator: the earliest of
-            // BEL and ST. A later reply's terminator must not extend
-            // this response's color content.
-            int end = response.indexOf(BEL, rgbStart);
-            int stEnd = response.indexOf("\033\\", rgbStart);
-            if (end < 0 || (stEnd >= 0 && stEnd < end)) {
-                end = stEnd;
-            }
-            if (end < 0) {
-                end = response.length();
-            }
-
-            String rgbPart = response.substring(rgbStart, end);
-            String[] parts = rgbPart.split("/");
-            return parseHexRgbParts(parts);
-        }
-    }
-
-    private static int[] parseHexRgbParts(String[] parts) {
-        if (parts.length != 3) {
-            return null;
-        }
-        try {
-            int[] rgb = new int[3];
-            for (int i = 0; i < 3; i++) {
-                String hex = parts[i].trim();
-                if (hex.isEmpty() || hex.length() > 4) {
-                    return null;
-                }
-                int raw = Integer.parseInt(hex, 16);
-                int value;
-                switch (hex.length()) {
-                    case 1:
-                        value = raw * 17;
-                        break;
-                    case 2:
-                        value = raw;
-                        break;
-                    case 3:
-                        value = raw >> 4;
-                        break;
-                    case 4:
-                        value = raw >> 8;
-                        break;
-                    default:
-                        return null;
-                }
-                rgb[i] = Math.min(255, Math.max(0, value));
-            }
-            return rgb;
-        } catch (NumberFormatException e) {
-            return null;
-        }
+        return TerminalReplyParser.oscColor(response, oscCode, oscParam);
     }
 
     // ==================== Grapheme Cluster Probe ====================
@@ -452,25 +353,15 @@ final class TerminalColorQuery {
                     return false;
                 }
 
-                // Parse CPR: ESC [ row ; col R
-                int rIdx = response.indexOf('R');
-                if (rIdx < 0)
+                // Parse CPR: first complete valid frame wins (stale
+                // garbage never poisons a later well-formed frame).
+                int[] position = TerminalReplyParser.cursorPosition(response);
+                if (position == null) {
                     return false;
-                int escIdx = response.lastIndexOf('\033', rIdx);
-                if (escIdx < 0 || escIdx + 2 >= rIdx)
-                    return false;
-                String params = response.substring(escIdx + 2, rIdx);
-                String[] parts = params.split(";");
-                if (parts.length >= 2) {
-                    try {
-                        int col = Integer.parseInt(parts[1].trim());
-                        // Flag emoji: 2 columns if clustered, 4 if not
-                        return col <= 3;
-                    } catch (NumberFormatException e) {
-                        return false;
-                    }
                 }
-                return false;
+                int col = position[1];
+                // Flag emoji: 2 columns if clustered, 4 if not
+                return col <= 3;
             } catch (IOException ignored) {
                 return false;
             }
@@ -516,55 +407,16 @@ final class TerminalColorQuery {
             result.mode2027 = ModeSupport.NOT_SUPPORTED;
         }
 
-        int pos = 0;
-        while (true) {
-            // Find ESC[? ...
-            int start = response.indexOf("\033[?", pos);
-            if (start < 0)
-                break;
-            // ... scan to this CSI's own final byte (0x40-0x7E).
-            int end = start + 3;
-            while (end < response.length() && !isCsiFinal(response.charAt(end))) {
-                end++;
-            }
-            if (end < response.length() && response.charAt(end) == 'y'
-                    && end > start + 3 && response.charAt(end - 1) == '$') {
-                // Parse the params between ESC[? and $y
-                String params = response.substring(start + 3, end - 1);
-                String[] parts = params.split(";");
-                if (parts.length >= 2) {
-                    try {
-                        int mode = Integer.parseInt(parts[0].trim());
-                        int ps = Integer.parseInt(parts[1].trim());
-                        // Ps: 1=set, 2=reset(recognized), 3=permanently set → SUPPORTED
-                        //     0=not recognized, 4=permanently reset → NOT_SUPPORTED
-                        ModeSupport support = (ps >= 1 && ps <= 3)
-                                ? ModeSupport.SUPPORTED
-                                : ModeSupport.NOT_SUPPORTED;
-
-                        if (mode == 2026)
-                            result.mode2026 = support;
-                        else if (mode == 2027)
-                            result.mode2027 = support;
-                    } catch (NumberFormatException ignored) {
-                    }
-                }
-            }
-            // Always advance past this one CSI (or past the end); the next
-            // iteration finds the following response, if any.
-            pos = end + 1;
+        // One framed scan per mode; the last valid report wins, anything
+        // else leaves the default (or an earlier valid report) alone.
+        ModeSupport mode2026 = TerminalReplyParser.modeSupport(response, 2026);
+        if (mode2026 != ModeSupport.NO_RESPONSE) {
+            result.mode2026 = mode2026;
         }
-    }
-
-    /**
-     * Check for a CSI final byte (0x40-0x7E): parameters, intermediates,
-     * and private markers all fall below this range.
-     *
-     * @param c the character to test
-     * @return true if it terminates a CSI sequence
-     */
-    private static boolean isCsiFinal(char c) {
-        return c >= '@' && c <= '~';
+        ModeSupport mode2027 = TerminalReplyParser.modeSupport(response, 2027);
+        if (mode2027 != ModeSupport.NO_RESPONSE) {
+            result.mode2027 = mode2027;
+        }
     }
 
     // ==================== DA1 Response Parsing ====================
@@ -583,42 +435,17 @@ final class TerminalColorQuery {
      * list. Only a sequence terminated by {@code c} is DA1.
      */
     static void parseDA1Response(String response, TerminalColorQuery result) {
-        int pos = 0;
-        while (true) {
-            // Find ESC[? ...
-            int start = response.indexOf("\033[?", pos);
-            if (start < 0) {
-                return;
+        TerminalReplyParser.TerminalDeviceAttributes attributes = TerminalReplyParser.deviceAttributes(response);
+        if (attributes == null) {
+            return;
+        }
+        result.da1DeviceClass = attributes.deviceClass;
+        result.da1Features = new ArrayList<>(attributes.features);
+        for (int feature : attributes.features) {
+            if (feature == DA1_FEATURE_SIXEL) {
+                result.supportsSixel = true;
             }
-            // ... scan params (digits, separators, DECRPM's '$' intermediate)
-            int end = start + 3;
-            while (end < response.length() && (Character.isDigit(response.charAt(end))
-                    || response.charAt(end) == ';' || response.charAt(end) == '?'
-                    || response.charAt(end) == '$')) {
-                end++;
-            }
-            if (end < response.length() && response.charAt(end) == 'c') {
-                String params = response.substring(start + 3, end);
-                String[] parts = params.split(";");
-                if (parts.length == 0) {
-                    return;
-                }
-                try {
-                    result.da1DeviceClass = Integer.parseInt(parts[0].trim());
-                    result.da1Features = new ArrayList<>();
-                    for (int i = 1; i < parts.length; i++) {
-                        int feature = Integer.parseInt(parts[i].trim());
-                        result.da1Features.add(feature);
-                        if (feature == DA1_FEATURE_SIXEL) {
-                            result.supportsSixel = true;
-                        }
-                    }
-                } catch (NumberFormatException ignored) {
-                }
-                return;
-            }
-            // Some other CSI response (e.g. DECRPM $y) — keep looking
-            pos = end + 1;
         }
     }
+
 }

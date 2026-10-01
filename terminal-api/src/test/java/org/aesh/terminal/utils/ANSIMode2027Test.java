@@ -50,6 +50,13 @@ public class ANSIMode2027Test {
     // ==================== DECRPM Parser: Valid Responses ====================
 
     @Test
+    public void testParseMode2027Response_MalformedFirstThenValid() {
+        String response = "\u001B[?2027;$y\u001B[?2027;0$y";
+        assertEquals(Boolean.FALSE,
+                ANSI.parseMode2027Response(response.codePoints().toArray()));
+    }
+
+    @Test
     public void testParseMode2027Response_Set() {
         // Ps=1: mode is set (enabled)
         String response = "\u001B[?2027;1$y";

@@ -22,6 +22,8 @@ package org.aesh.terminal.utils;
 import java.util.Arrays;
 
 import org.aesh.terminal.DeviceAttributes;
+import org.aesh.terminal.detect.ModeSupport;
+import org.aesh.terminal.detect.TerminalReplyParser;
 import org.aesh.terminal.detect.TerminalTheme;
 import org.aesh.terminal.tty.Point;
 
@@ -303,75 +305,18 @@ public class ANSI {
      *         coordinates)
      */
     public static Point getActualCursor(int[] input) {
-        boolean started = false;
-        boolean gotSep = false;
-        boolean complete = false;
-        int fieldDigits = 0;
-        int col = 0;
-        int row = 0;
-
-        //read until we get a 'R'; without it the frame is still
-        //arriving and must not parse (fragmented query responses
-        //are re-examined as more chunks arrive). The loop covers the
-        //last byte too — a frame ending exactly at 'R' is complete.
-        //Only digits form coordinates: any other byte abandons the
-        //frame and scanning resyncs at the next ESC [, so a garbage
-        //prefix can never latch invented coordinates nor poison a
-        //later well-formed frame in the same buffer.
-        for (int i = 0; i < input.length; i++) {
-            if (input[i] == 27 && i + 1 < input.length && input[i + 1] == 91) {
-                //search for the beginning which starts with esc,[
-                //a fresh frame supersedes any partial one
-                started = true;
-                gotSep = false;
-                fieldDigits = 0;
-                col = 0;
-                row = 0;
-                i++;
-            } else if (started) {
-                if (input[i] == 82) {
-                    // A well-formed frame has digits in both fields
-                    if (gotSep && fieldDigits > 0) {
-                        complete = true;
-                        break;
-                    }
-                    started = false;
-                } else if (input[i] == 59) {
-                    // we got a ';' which is the separator: exactly one,
-                    // and never with an empty row field
-                    if (gotSep || fieldDigits == 0) {
-                        started = false;
-                    } else {
-                        gotSep = true;
-                        fieldDigits = 0;
-                    }
-                } else if (input[i] >= '0' && input[i] <= '9') {
-                    int digit = input[i] - '0';
-                    if (gotSep) {
-                        if (col > (Integer.MAX_VALUE - digit) / 10) {
-                            started = false;
-                        } else {
-                            col = col * 10 + digit;
-                            fieldDigits++;
-                        }
-                    } else {
-                        if (row > (Integer.MAX_VALUE - digit) / 10) {
-                            started = false;
-                        } else {
-                            row = row * 10 + digit;
-                            fieldDigits++;
-                        }
-                    }
-                } else {
-                    started = false;
-                }
-            }
-        }
-
-        if (!complete) {
+        if (input == null) {
             return null;
         }
-        return new Point(col, row);
+        StringBuilder sb = new StringBuilder();
+        for (int c : input) {
+            sb.appendCodePoint(c);
+        }
+        int[] position = TerminalReplyParser.cursorPosition(sb.toString());
+        if (position == null) {
+            return null;
+        }
+        return new Point(position[1], position[0]);
     }
 
     /**
@@ -894,76 +839,7 @@ public class ANSI {
         for (int c : input) {
             sb.appendCodePoint(c);
         }
-        String response = sb.toString();
-
-        // Build the pattern to search for
-        String oscMarker = "\u001B]" + oscCode + ";";
-        int start = response.indexOf(oscMarker);
-        if (start < 0) {
-            // Try alternate format with just ']'
-            oscMarker = "]" + oscCode + ";";
-            start = response.indexOf(oscMarker);
-            if (start >= 0 && start > 0 && response.charAt(start - 1) == '\u001B') {
-                start--;
-                oscMarker = "\u001B" + oscMarker;
-            } else if (start < 0) {
-                return null;
-            }
-        }
-
-        // Move past the OSC marker
-        int searchStart = start + oscMarker.length();
-
-        // If a specific parameter is expected, verify it's present
-        if (oscParam >= 0) {
-            String paramMarker = oscParam + ";";
-            if (!response.substring(searchStart).startsWith(paramMarker)) {
-                return null;
-            }
-            searchStart += paramMarker.length();
-        }
-
-        // Find rgb: from current position
-        // Handle case where there might be an unexpected parameter before rgb:
-        int rgbStart = response.indexOf("rgb:", searchStart);
-        if (rgbStart < 0) {
-            return null;
-        }
-
-        // Verify rgb: comes before any terminator
-        int belPos = response.indexOf('\u0007', searchStart);
-        int stPos = response.indexOf("\u001B\\", searchStart);
-        int terminatorPos = -1;
-        if (belPos >= 0 && stPos >= 0) {
-            terminatorPos = Math.min(belPos, stPos);
-        } else if (belPos >= 0) {
-            terminatorPos = belPos;
-        } else if (stPos >= 0) {
-            terminatorPos = stPos;
-        }
-
-        if (terminatorPos >= 0 && rgbStart > terminatorPos) {
-            return null;
-        }
-
-        rgbStart += 4; // skip "rgb:"
-
-        // Find the terminator (BEL or ESC \) — earliest of the two, so a
-        // later reply's terminator cannot extend this response's content.
-        int end = response.indexOf('\u0007', rgbStart);
-        int stEnd = response.indexOf("\u001B\\", rgbStart);
-        if (end < 0 || (stEnd >= 0 && stEnd < end)) {
-            end = stEnd;
-        }
-        if (end < 0) {
-            return null;
-        }
-
-        String rgbPart = response.substring(rgbStart, end);
-
-        // Parse RRRR/GGGG/BBBB
-        String[] parts = rgbPart.split("/");
-        return parseHexRgbParts(parts);
+        return TerminalReplyParser.oscColor(sb.toString(), oscCode, oscParam);
     }
 
     /**
@@ -1507,52 +1383,7 @@ public class ANSI {
      * @return true if the terminal supports Mode 2026, false if not, null if unparseable
      */
     public static Boolean parseMode2026Response(int[] input) {
-        if (input == null || input.length < 9) {
-            return null;
-        }
-
-        StringBuilder sb = new StringBuilder();
-        for (int c : input) {
-            sb.appendCodePoint(c);
-        }
-        String response = sb.toString();
-
-        // Look for DECRPM pattern: ESC [ ? 2026 ; Ps $ y
-        int start = response.indexOf("\u001B[?2026;");
-        if (start < 0) {
-            return null;
-        }
-
-        // Move past "ESC[?2026;"
-        int paramStart = start + "\u001B[?2026;".length();
-
-        // Find the terminating "$y"
-        int end = response.indexOf("$y", paramStart);
-        if (end < 0) {
-            return null;
-        }
-
-        String paramStr = response.substring(paramStart, end).trim();
-        if (paramStr.isEmpty()) {
-            return null;
-        }
-
-        try {
-            int ps = Integer.parseInt(paramStr);
-            switch (ps) {
-                case 1: // set (enabled)
-                case 2: // reset (disabled, but recognized)
-                case 3: // permanently set
-                    return Boolean.TRUE;
-                case 0: // not recognized
-                case 4: // permanently reset
-                    return Boolean.FALSE;
-                default:
-                    return null;
-            }
-        } catch (NumberFormatException e) {
-            return null;
-        }
+        return toBoolean(TerminalReplyParser.modeSupport(toResponse(input), 2026));
     }
 
     // ==================== Mode 2027 (Grapheme Cluster Mode) ====================
@@ -1588,52 +1419,7 @@ public class ANSI {
      * @return true if the terminal supports Mode 2027, false if not, null if unparseable
      */
     public static Boolean parseMode2027Response(int[] input) {
-        if (input == null || input.length < 9) {
-            return null;
-        }
-
-        StringBuilder sb = new StringBuilder();
-        for (int c : input) {
-            sb.appendCodePoint(c);
-        }
-        String response = sb.toString();
-
-        // Look for DECRPM pattern: ESC [ ? 2027 ; Ps $ y
-        int start = response.indexOf("\u001B[?2027;");
-        if (start < 0) {
-            return null;
-        }
-
-        // Move past "ESC[?2027;" — 8 chars: \u001B [ ? 2 0 2 7 ;
-        int paramStart = start + "\u001B[?2027;".length();
-
-        // Find the terminating "$y"
-        int end = response.indexOf("$y", paramStart);
-        if (end < 0) {
-            return null;
-        }
-
-        String paramStr = response.substring(paramStart, end).trim();
-        if (paramStr.isEmpty()) {
-            return null;
-        }
-
-        try {
-            int ps = Integer.parseInt(paramStr);
-            switch (ps) {
-                case 1: // set (enabled)
-                case 2: // reset (disabled, but recognized)
-                case 3: // permanently set
-                    return Boolean.TRUE;
-                case 0: // not recognized
-                case 4: // permanently reset
-                    return Boolean.FALSE;
-                default:
-                    return null;
-            }
-        } catch (NumberFormatException e) {
-            return null;
-        }
+        return toBoolean(TerminalReplyParser.modeSupport(toResponse(input), 2027));
     }
 
     // ==================== Device Attributes (DA1/DA2) ====================
@@ -1655,58 +1441,37 @@ public class ANSI {
      * @param input the input sequence as code points
      * @return DeviceAttributes parsed from DA1, or null if parsing failed
      */
-    public static DeviceAttributes parseDA1Response(int[] input) {
-        if (input == null || input.length < 4) {
+    private static String toResponse(int[] input) {
+        if (input == null) {
             return null;
         }
-
         StringBuilder sb = new StringBuilder();
         for (int c : input) {
             sb.appendCodePoint(c);
         }
-        String response = sb.toString();
+        return sb.toString();
+    }
 
-        // Look for DA1 response pattern: ESC [ ? ... c
-        int start = response.indexOf("\u001B[?");
-        if (start < 0) {
+    private static Boolean toBoolean(ModeSupport support) {
+        if (support == ModeSupport.SUPPORTED) {
+            return Boolean.TRUE;
+        }
+        if (support == ModeSupport.NOT_SUPPORTED) {
+            return Boolean.FALSE;
+        }
+        return null;
+    }
+
+    public static DeviceAttributes parseDA1Response(int[] input) {
+        if (input == null || input.length < 4) {
             return null;
         }
-
-        // Find the terminating 'c'
-        int end = response.indexOf('c', start);
-        if (end < 0) {
+        TerminalReplyParser.TerminalDeviceAttributes attributes = TerminalReplyParser.deviceAttributes(toResponse(input));
+        if (attributes == null) {
             return null;
         }
-
-        // Extract the parameters between "?" and "c"
-        String params = response.substring(start + 3, end);
-        if (params.isEmpty()) {
-            return null;
-        }
-
-        // Parse semicolon-separated parameters
-        String[] parts = params.split(";");
-        if (parts.length == 0) {
-            return null;
-        }
-
-        try {
-            // First parameter is device class
-            int deviceClass = Integer.parseInt(parts[0].trim());
-
-            // Remaining parameters are feature codes
-            java.util.Set<Integer> features = new java.util.HashSet<>();
-            for (int i = 1; i < parts.length; i++) {
-                String part = parts[i].trim();
-                if (!part.isEmpty()) {
-                    features.add(Integer.parseInt(part));
-                }
-            }
-
-            return new DeviceAttributes(deviceClass, features);
-        } catch (NumberFormatException e) {
-            return null;
-        }
+        return new DeviceAttributes(attributes.deviceClass,
+                new java.util.HashSet<>(attributes.features));
     }
 
     /**

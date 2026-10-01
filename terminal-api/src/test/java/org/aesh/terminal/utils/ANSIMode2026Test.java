@@ -165,6 +165,22 @@ public class ANSIMode2026Test {
     }
 
     @Test
+    public void testParseMode2026Response_DA1First() {
+        // Batched probe order: DA1 precedes the mode report.
+        String response = "\u001B[?63;1c\u001B[?2026;1$y";
+        assertEquals(Boolean.TRUE,
+                ANSI.parseMode2026Response(response.codePoints().toArray()));
+    }
+
+    @Test
+    public void testParseMode2026Response_MalformedFirstThenValid() {
+        // A malformed report never poisons a later valid one.
+        String response = "\u001B[?2026;$y\u001B[?2026;1$y";
+        assertEquals(Boolean.TRUE,
+                ANSI.parseMode2026Response(response.codePoints().toArray()));
+    }
+
+    @Test
     public void testParseMode2026Response_NonNumericPs() {
         String response = "\u001B[?2026;x$y";
         int[] input = response.codePoints().toArray();

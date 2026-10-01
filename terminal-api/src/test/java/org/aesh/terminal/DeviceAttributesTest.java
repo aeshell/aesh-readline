@@ -105,6 +105,28 @@ public class DeviceAttributesTest {
     }
 
     @Test
+    public void testParseDA1Response_AfterDecrpm() {
+        // Batched probe order: a DECRPM report precedes the attributes.
+        // The old global scan swallowed DECRPM params and returned null.
+        String response = "\u001B[?2026;1$y\u001B[?63;1c";
+        DeviceAttributes da = ANSI.parseDA1Response(response.codePoints().toArray());
+
+        assertNotNull("DA1 after DECRPM must parse", da);
+        assertEquals(63, da.getDeviceClass());
+        assertTrue(da.hasDA1());
+    }
+
+    @Test
+    public void testParseDA1Response_SkipsEmptyParams() {
+        String response = "\u001B[?63;1;;4c";
+        DeviceAttributes da = ANSI.parseDA1Response(response.codePoints().toArray());
+
+        assertNotNull(da);
+        assertEquals(63, da.getDeviceClass());
+        assertTrue(da.hasFeature(DeviceAttributes.Feature.SIXEL));
+    }
+
+    @Test
     public void testParseDA1Response_MinimalVT100() {
         // Minimal VT100 response: ESC [ ? 1 ; 0 c
         String response = "\u001B[?1;0c";
