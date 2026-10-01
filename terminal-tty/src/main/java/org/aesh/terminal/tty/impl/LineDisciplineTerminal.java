@@ -246,11 +246,27 @@ public class LineDisciplineTerminal extends AbstractTerminal {
         masterOutput.write(c);
     }
 
+    /**
+     * Whether output bytes need per-byte postprocessing.
+     * <p>
+     * The only transformation {@link #processOutputByte(int)} applies is
+     * NL to CR-NL expansion, which requires both OPOST and ONLCR.
+     * Otherwise bulk writes pass through with a single call.
+     *
+     * @return true when bytes must be processed one at a time
+     */
+    private boolean postProcessesOutput() {
+        return attributes.getOutputFlag(Attributes.OutputFlag.OPOST)
+                && attributes.getOutputFlag(Attributes.OutputFlag.ONLCR);
+    }
+
     public void close() throws IOException {
         slaveInputPipe.close();
     }
 
     private class FilteringOutputStream extends OutputStream {
+        private final byte[] crlf = new byte[] { '\r', '\n' };
+
         @Override
         public void write(int b) throws IOException {
             processOutputByte(b);
@@ -268,8 +284,28 @@ public class LineDisciplineTerminal extends AbstractTerminal {
 
         @Override
         public void write(byte[] b, int off, int len) throws IOException {
-            for (int i = off; i < off + len; i++) {
-                processOutputByte(b[i]);
+            if (len <= 0) {
+                return;
+            }
+            if (!postProcessesOutput()) {
+                masterOutput.write(b, off, len);
+                return;
+            }
+            // OPOST with ONLCR: bulk-write the runs between newlines and
+            // expand each '\n' to CR-LF, preserving exact per-byte semantics.
+            int runStart = off;
+            int end = off + len;
+            for (int i = off; i < end; i++) {
+                if (b[i] == '\n') {
+                    if (i > runStart) {
+                        masterOutput.write(b, runStart, i - runStart);
+                    }
+                    masterOutput.write(crlf, 0, 2);
+                    runStart = i + 1;
+                }
+            }
+            if (runStart < end) {
+                masterOutput.write(b, runStart, end - runStart);
             }
         }
 

@@ -134,6 +134,33 @@ escape. No input-data leg exists: the read wrapper's allocation shape
 is identical with or without bytes flowing, and staging bytes on a PTY
 slave from inside the measured JVM is not possible.
 
+### LineDisciplineOutputBenchmark (bulk output batching, #349)
+
+Bulk writes through line-discipline terminals into a byte-array
+backend (the conservative case -- a pipe or socket backend pays a
+syscall per call instead of a method call). Payloads cover paste,
+log, and image sizes with mixed newlines and UTF-8 text; modes are
+`raw` (OPOST off), `opost` (OPOST without ONLCR), and `onlcr`
+(OPOST with ONLCR). No PTY needed:
+
+```bash
+java -jar benchmark/target/benchmarks.jar LineDisciplineOutputBenchmark \
+  -prof gc -rf json -rff line-out.json
+```
+
+Measured on Linux x86_64, Temurin 25.0.4, JMH 1.37 (3 forks,
+10 measured iterations, 99.9% CIs), before/after batching:
+
+| Mode | Size | Before (µs/op) | After (µs/op) |
+|------|------|----------------|---------------|
+| raw | 4 KB | 20.069 ± 0.154 | 0.050 ± 0.002 |
+| raw | 64 KB | 289.988 ± 1.815 | 0.900 ± 0.004 |
+| raw | 1 MB | 4508.260 ± 9.045 | 17.421 ± 0.166 |
+| opost | 1 MB | 4582.077 ± 18.075 | 17.355 ± 0.154 |
+| onlcr | 4 KB | 18.383 ± 0.066 | 2.107 ± 0.010 |
+| onlcr | 64 KB | 302.357 ± 1.833 | 40.161 ± 0.144 |
+| onlcr | 1 MB | 4800.805 ± 20.505 | 621.699 ± 2.337 |
+
 ### Common Options
 
 ```bash
@@ -177,6 +204,15 @@ identical with or without bytes flowing.
 | `peekIdle` | Idle `poll` with zero timeout, no data waiting |
 | `getSizeLoop` | Window-size `ioctl(TIOCGWINSZ)` per call |
 | `attrCycle` | `tcgetattr` plus `tcsetattr` round-trip |
+
+### LineDisciplineOutputBenchmark
+
+Bulk output through line-discipline terminals across OPOST modes
+and paste/log/image sizes (see the results table above). No PTY needed.
+
+| Benchmark | Description |
+|-----------|-------------|
+| `writeBulk` | Bulk `write(byte[])` at the parameterized size and mode |
 
 ### ActionDecoderBenchmark
 
