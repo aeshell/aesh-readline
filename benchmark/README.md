@@ -68,6 +68,35 @@ downcall handles cold. Both require a controlling terminal; FFM also
 requires Java 22+ and native access. They do not measure OSC response
 latency or JVM/framework startup.
 
+### Probe backend policy: one-shot versus reused startup (#351)
+
+End-to-end `detectFull()` wall time per probe backend, forcing FFM or
+stty through the public transport override (unresponsive PTY, theme
+from environment, so both legs pay identical parse/theme costs).
+One-shot CLI legs are fresh JVMs; warm legs re-probe in-process.
+Measured on Linux x86_64, Temurin 25.0.4 (JVM) and GraalVM 25.0.1
+(native image built from the packaged JARs):
+
+| Workload | FFM (JVM) | stty (JVM) | FFM (native) | stty (native) |
+|----------|-----------|------------|--------------|---------------|
+| one-shot CLI `detectFull` | ~10 ms | ~10 ms | unavailable | ~2 ms |
+| warm re-probe mean | 2-3 ms | 3-5 ms | unavailable | 1-2 ms |
+
+Notes: the native FFM transport reports unavailable because
+`Module.isNativeAccessEnabled()` is false inside the image (ABI and
+`/dev/tty` gates pass), so native selection falls through to stty —
+which works at ~2ms. Session-only rows are unchanged from #297
+(cold FFM ~35ms with Linker/handles vs stty ~6ms; warm FFM 0.005ms
+vs stty 2.43ms).
+
+Decision: no policy change. One-shot CLI time is dominated by JVM
+startup (~100ms+), dwarfing the ~millisecond backend delta; warm
+reuse already prefers FFM, which wins by ~2.4ms per probe; native
+images take stty by necessity, so a prefer-stty property would be a
+no-op there and prewarming has nothing to warm. Portability is
+preserved by the existing fallback order, and no production property
+is introduced (the test-only override proposal stays in #296).
+
 ```bash
 mvn clean package -Pbenchmark -pl benchmark -am -DskipTests
 
