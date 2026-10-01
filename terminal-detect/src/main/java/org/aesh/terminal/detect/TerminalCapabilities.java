@@ -20,6 +20,7 @@
 package org.aesh.terminal.detect;
 
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
@@ -43,6 +44,26 @@ import java.util.concurrent.TimeUnit;
  * caps.awaitColors(500, TimeUnit.MILLISECONDS);
  * int[] bg = caps.backgroundRGB(); // available once query completes
  * </pre>
+ * <p>
+ * Result model: instances are snapshots with copy-on-read value
+ * semantics. Array and map getters return fresh copies, so callers may
+ * retain or mutate results freely without affecting the cache or each
+ * other. Absent facts read as {@code null} (unprobed colors), empty
+ * collections (unprobed palette), {@code UNKNOWN} (undetermined theme),
+ * or {@code false} (unproven color support) — never as fabricated
+ * values. A theme notification updates the cached theme and discards
+ * stale foreground/background RGB while retaining modes, palette, and
+ * other facts.
+ * <p>
+ * Lifecycle: {@code detect()} scans the environment only;
+ * {@code detectAsync()} returns immediately and fills colors in the
+ * background; {@code detectFull()} awaits an in-flight async query and
+ * upgrades the completed instance instead of re-probing, or computes
+ * fresh when nothing shareable exists. {@code invalidate()} drops the
+ * shared instance so the next access re-detects; previously returned
+ * instances stay usable. Publication and upgrade follow this one rule;
+ * see {@code detectFull()} for the retry loop that keeps it atomic
+ * against concurrent invalidation.
  */
 public final class TerminalCapabilities {
 
@@ -482,7 +503,8 @@ public final class TerminalCapabilities {
      * @return RGB array [r, g, b] (0-255 each), or {@code null} if not queried
      */
     public int[] foregroundRGB() {
-        return foregroundRGB;
+        int[] rgb = foregroundRGB;
+        return rgb == null ? null : rgb.clone();
     }
 
     /**
@@ -493,7 +515,8 @@ public final class TerminalCapabilities {
      * @return RGB array [r, g, b] (0-255 each), or {@code null} if not queried
      */
     public int[] backgroundRGB() {
-        return backgroundRGB;
+        int[] rgb = backgroundRGB;
+        return rgb == null ? null : rgb.clone();
     }
 
     /**
@@ -505,7 +528,15 @@ public final class TerminalCapabilities {
      */
     public Map<Integer, int[]> paletteColors() {
         Map<Integer, int[]> p = paletteColors;
-        return p != null ? Collections.unmodifiableMap(p) : Collections.<Integer, int[]> emptyMap();
+        if (p == null) {
+            return Collections.<Integer, int[]> emptyMap();
+        }
+        Map<Integer, int[]> copy = new LinkedHashMap<>();
+        for (Map.Entry<Integer, int[]> entry : p.entrySet()) {
+            int[] rgb = entry.getValue();
+            copy.put(entry.getKey(), rgb == null ? null : rgb.clone());
+        }
+        return Collections.unmodifiableMap(copy);
     }
 
     /**
@@ -516,7 +547,11 @@ public final class TerminalCapabilities {
      */
     public int[] paletteColor(int index) {
         Map<Integer, int[]> p = paletteColors;
-        return p != null ? p.get(index) : null;
+        if (p == null) {
+            return null;
+        }
+        int[] rgb = p.get(index);
+        return rgb == null ? null : rgb.clone();
     }
 
     // ANSI standard color accessors (indices 0-7)

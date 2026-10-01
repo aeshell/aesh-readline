@@ -8,6 +8,8 @@ import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -570,6 +572,127 @@ public class TerminalCapabilitiesTest {
             assertSame("fallback must cache as full", result.get(), TerminalCapabilities.detectFull());
         } finally {
             release.countDown();
+            TerminalCapabilities.setProbeTransport(null);
+            TerminalCapabilities.setInstance(saved);
+        }
+    }
+
+    // ==================== Snapshot value semantics (#354) ====================
+
+    private static void setField(Object target, String name, Object value) throws Exception {
+        Field field = TerminalCapabilities.class.getDeclaredField(name);
+        field.setAccessible(true);
+        field.set(target, value);
+    }
+
+    @Test
+    public void testReturnedValuesAreCopies() throws Exception {
+        TerminalCapabilities caps = TerminalCapabilities.detect();
+        setField(caps, "foregroundRGB", new int[] { 1, 2, 3 });
+        setField(caps, "backgroundRGB", new int[] { 4, 5, 6 });
+        Map<Integer, int[]> palette = new HashMap<>();
+        palette.put(0, new int[] { 7, 8, 9 });
+        setField(caps, "paletteColors", palette);
+
+        caps.foregroundRGB()[0] = 99;
+        caps.backgroundRGB()[0] = 99;
+        caps.paletteColor(0)[0] = 99;
+        caps.paletteColors().get(0)[1] = 99;
+        try {
+            caps.paletteColors().put(9, new int[] { 9, 9, 9 });
+            fail("palette map must stay unmodifiable");
+        } catch (UnsupportedOperationException expected) {
+        }
+
+        assertArrayEquals(new int[] { 1, 2, 3 }, caps.foregroundRGB());
+        assertArrayEquals(new int[] { 4, 5, 6 }, caps.backgroundRGB());
+        assertArrayEquals(new int[] { 7, 8, 9 }, caps.paletteColor(0));
+        assertArrayEquals(new int[] { 7, 8, 9 }, caps.paletteColors().get(0));
+    }
+
+    @Test
+    public void testAbsentFactsReadAsNullOrEmpty() {
+        TerminalCapabilities caps = TerminalCapabilities.detect();
+        assertNull(caps.foregroundRGB());
+        assertNull(caps.backgroundRGB());
+        assertNull(caps.paletteColor(0));
+        assertTrue(caps.paletteColors().isEmpty());
+        assertNotNull(caps.theme());
+    }
+
+    @Test
+    public void testConcurrentMixedCallers() throws Exception {
+        TerminalCapabilities saved = TerminalCapabilities.getInstance();
+        final AtomicReference<Throwable> failure = new AtomicReference<>();
+        Runnable reader = new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    for (int i = 0; i < 200 && failure.get() == null; i++) {
+                        TerminalCapabilities caps = TerminalCapabilities.getInstance();
+                        if (caps.theme() == null || caps.paletteColors() == null) {
+                            throw new AssertionError("getters must never go null");
+                        }
+                        caps.backgroundRGB();
+                        caps.supportsTrueColor();
+                    }
+                } catch (Throwable t) {
+                    failure.compareAndSet(null, t);
+                }
+            }
+        };
+        Thread[] readers = new Thread[4];
+        for (int i = 0; i < readers.length; i++) {
+            readers[i] = new Thread(reader, "snapshot-reader");
+            readers[i].setDaemon(true);
+            readers[i].start();
+        }
+        Thread churn = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    for (int i = 0; i < 50 && failure.get() == null; i++) {
+                        TerminalCapabilities.invalidate();
+                        TerminalCapabilities.getInstance();
+                        TerminalCapabilities.onThemeChanged(
+                                i % 2 == 0 ? TerminalTheme.DARK : TerminalTheme.LIGHT);
+                    }
+                } catch (Throwable t) {
+                    failure.compareAndSet(null, t);
+                }
+            }
+        }, "snapshot-churn");
+        churn.setDaemon(true);
+        churn.start();
+        churn.join(30000);
+        for (Thread readerThread : readers) {
+            readerThread.join(30000);
+        }
+        try {
+            assertNull("no racing caller may fail: " + failure.get(), failure.get());
+            for (Thread readerThread : readers) {
+                assertFalse("readers must finish", readerThread.isAlive());
+            }
+        } finally {
+            TerminalCapabilities.setInstance(saved);
+        }
+    }
+
+    @Test
+    public void testRepeatedFullReusesSingleSession() {
+        Assume.assumeFalse("live query skipped in multiplexer",
+                new TerminalDetector().isInMultiplexer());
+        TerminalCapabilities saved = TerminalCapabilities.getInstance();
+        CountingTransport transport = new CountingTransport(probeBatch(false));
+        try {
+            TerminalCapabilities.setProbeTransport(transport);
+            TerminalCapabilities.invalidate();
+            TerminalCapabilities first = TerminalCapabilities.detectFull();
+            TerminalCapabilities second = TerminalCapabilities.detectFull();
+            assertSame(first, second);
+            assertEquals("repeat full must not re-probe", 1, transport.opens);
+            assertArrayEquals(new int[] { 0, 0, 0 }, second.backgroundRGB());
+        } finally {
             TerminalCapabilities.setProbeTransport(null);
             TerminalCapabilities.setInstance(saved);
         }
