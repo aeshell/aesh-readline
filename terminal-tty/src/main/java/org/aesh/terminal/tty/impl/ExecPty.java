@@ -28,14 +28,15 @@ import java.io.InputStream;
 import java.io.InterruptedIOException;
 import java.io.OutputStream;
 import java.lang.ProcessBuilder.Redirect;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.aesh.terminal.Attributes;
+import org.aesh.terminal.detect.ProcessRunner;
 import org.aesh.terminal.tty.Size;
-import org.aesh.terminal.utils.ExecHelper;
 import org.aesh.terminal.utils.LoggerUtil;
 import org.aesh.terminal.utils.OSUtils;
 
@@ -64,14 +65,16 @@ public class ExecPty extends AbstractExecPty {
     public static Pty current() throws IOException {
         try {
             LOGGER.log(Level.FINE, "getting pty: " + OSUtils.TTY_COMMAND);
-            Process p = new ProcessBuilder(OSUtils.TTY_COMMAND)
-                    .redirectInput(Redirect.INHERIT).start();
-            String result = ExecHelper.waitAndCapture(p).trim();
-            if (p.exitValue() != 0) {
+            ProcessBuilder starter = new ProcessBuilder(OSUtils.TTY_COMMAND)
+                    .redirectInput(Redirect.INHERIT);
+            ProcessRunner.Result result = ProcessRunner.execute(starter,
+                    ProcessRunner.DEFAULT_TIMEOUT_MS);
+            if (result.timedOut() || result.exitCode() != 0) {
                 throw new IOException("Not a tty");
             }
-            LOGGER.log(Level.FINE, "result: " + result);
-            return new ExecPty(result);
+            String tty = result.text(Charset.defaultCharset()).trim();
+            LOGGER.log(Level.FINE, "result: " + tty);
+            return new ExecPty(tty);
         } catch (InterruptedException e) {
             throw (IOException) new InterruptedIOException("Command interrupted").initCause(e);
         }

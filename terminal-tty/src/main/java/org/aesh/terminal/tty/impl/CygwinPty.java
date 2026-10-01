@@ -27,14 +27,15 @@ import java.io.InputStream;
 import java.io.InterruptedIOException;
 import java.io.OutputStream;
 import java.lang.ProcessBuilder.Redirect;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.aesh.terminal.Attributes;
+import org.aesh.terminal.detect.ProcessRunner;
 import org.aesh.terminal.tty.Size;
-import org.aesh.terminal.utils.ExecHelper;
 import org.aesh.terminal.utils.LoggerUtil;
 import org.aesh.terminal.utils.OSUtils;
 
@@ -70,14 +71,15 @@ public class CygwinPty extends AbstractExecPty {
      */
     public static Pty current() throws IOException {
         try {
-            Process p = new ProcessBuilder(OSUtils.TTY_COMMAND)
-                    .redirectInput(Redirect.INHERIT)
-                    .start();
-            String result = ExecHelper.waitAndCapture(p).trim();
-            if (p.exitValue() != 0) {
+            ProcessBuilder starter = new ProcessBuilder(OSUtils.TTY_COMMAND)
+                    .redirectInput(Redirect.INHERIT);
+            ProcessRunner.Result result = ProcessRunner.execute(starter,
+                    ProcessRunner.DEFAULT_TIMEOUT_MS);
+            if (result.timedOut() || result.exitCode() != 0) {
                 throw new IOException("Not a tty");
             }
-            return new CygwinPty(result);
+            String tty = result.text(Charset.defaultCharset()).trim();
+            return new CygwinPty(tty);
         } catch (InterruptedException e) {
             throw (IOException) new InterruptedIOException("Command interrupted").initCause(e);
         }

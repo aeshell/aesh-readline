@@ -78,6 +78,11 @@
             <type>test-jar</type>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.aesh</groupId>
+            <artifactId>terminal-detect</artifactId>
+            <version>${project.version}</version>
+        </dependency>
 
         <dependency>
             <groupId>junit</groupId>

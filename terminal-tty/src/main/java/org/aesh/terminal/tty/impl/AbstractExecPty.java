@@ -24,6 +24,7 @@ import java.io.InputStream;
 import java.io.InterruptedIOException;
 import java.io.OutputStream;
 import java.lang.ProcessBuilder.Redirect;
+import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -31,8 +32,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.aesh.terminal.Attributes;
+import org.aesh.terminal.detect.ProcessRunner;
 import org.aesh.terminal.tty.Size;
-import org.aesh.terminal.utils.ExecHelper;
 import org.aesh.terminal.utils.LoggerUtil;
 
 /**
@@ -203,13 +204,14 @@ public abstract class AbstractExecPty implements Pty {
             processBuilder.redirectInput(Redirect.INHERIT);
             // Force C locale so stty and other commands produce English output
             processBuilder.environment().put("LC_ALL", "C");
-            Process p = processBuilder.start();
-            String result = ExecHelper.waitAndCapture(p);
-            LOGGER.log(Level.FINE, "Result: " + result);
-            if (p.exitValue() != 0) {
-                throw new IOException("Error executing '" + String.join(" ", cmd) + "': " + result);
+            ProcessRunner.Result result = ProcessRunner.execute(processBuilder,
+                    ProcessRunner.DEFAULT_TIMEOUT_MS);
+            String output = result.text(Charset.defaultCharset());
+            LOGGER.log(Level.FINE, "Result: " + output);
+            if (result.timedOut() || result.exitCode() != 0) {
+                throw new IOException("Error executing '" + String.join(" ", cmd) + "': " + output);
             }
-            return result;
+            return output;
         } catch (InterruptedException e) {
             throw (IOException) new InterruptedIOException("Command interrupted").initCause(e);
         }
