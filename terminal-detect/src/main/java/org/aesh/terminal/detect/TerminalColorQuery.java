@@ -170,10 +170,11 @@ final class TerminalColorQuery {
             try (TerminalProbeSession session = transport.open()) {
                 session.write(buildColorQuery());
 
-                // 22 expected terminators: 2 DECRPM + 1 DA1 + 19 OSC responses
-                // (terminals that don't support DECRQM won't send DECRPM, so
-                // the DA1 fence ensures we don't wait for them)
-                String response = readResponse(session.input(), 22);
+                // Full batch: 2 DECRPM + 1 DA1 + 19 OSC responses.
+                // Terminals without DECRQM send no DECRPM; the DA1 fence
+                // finalizes the mode budget so the read ends with the
+                // 19 post-fence OSC replies instead of a timeout.
+                String response = readBatchResponse(session.input());
                 if (response == null || response.isEmpty()) {
                     return null;
                 }
@@ -220,48 +221,116 @@ final class TerminalColorQuery {
         return queries.toString().getBytes(StandardCharsets.US_ASCII);
     }
 
-    private static String readResponse(InputStream in, int expectedResponses) throws IOException {
+    private static String readBatchResponse(InputStream in) throws IOException {
         byte[] buf = new byte[4096];
         StringBuilder sb = new StringBuilder();
         int n;
         while ((n = in.read(buf)) > 0) {
             sb.append(new String(buf, 0, n));
-            if (countTerminators(sb) >= expectedResponses) {
+            FrameCount count = countFrames(sb);
+            // Full batch: 2 DECRPM + DA1 + 19 OSC. Terminals without DECRQM
+            // legitimately send no DECRPM, so once the DA1 fence lands the
+            // mode budget is final and only the 19 post-fence OSC replies
+            // can still be outstanding — never wait the full count past it.
+            int expected = count.da1Seen ? count.decrpm + 20 : 22;
+            if (count.total >= expected) {
                 break;
             }
         }
         return sb.toString();
     }
 
-    private static int countTerminators(StringBuilder sb) {
-        int count = 0;
+    private static String readCprResponse(InputStream in) throws IOException {
+        byte[] buf = new byte[4096];
+        StringBuilder sb = new StringBuilder();
+        int n;
+        while ((n = in.read(buf)) > 0) {
+            sb.append(new String(buf, 0, n));
+            if (countFrames(sb).cprSeen) {
+                break;
+            }
+        }
+        return sb.toString();
+    }
+
+    /** Frame totals from one scan of an accumulated probe response. */
+    private static final class FrameCount {
+        int total;
+        int decrpm;
+        boolean da1Seen;
+        boolean cprSeen;
+    }
+
+    private static FrameCount countFrames(StringBuilder sb) {
+        FrameCount count = new FrameCount();
         boolean inCsi = false;
+        int bodyStart = -1;
         for (int i = 0; i < sb.length(); i++) {
             char c = sb.charAt(i);
             if (c == BEL) {
-                count++;
+                count.total++;
                 inCsi = false;
             } else if (c == '\033') {
                 if (i + 1 < sb.length() && sb.charAt(i + 1) == '\\') {
-                    count++;
+                    count.total++;
                     i++;
                 } else if (i + 1 < sb.length() && sb.charAt(i + 1) == '[') {
                     inCsi = true;
+                    bodyStart = i + 2;
                     i++;
                 }
             } else if (inCsi && c == 'c') {
                 // DA1 response: ESC[?...c
-                count++;
+                count.total++;
+                count.da1Seen = true;
                 inCsi = false;
             } else if (inCsi && c == 'y') {
                 // DECRPM response: ESC[?<mode>;<Ps>$y
-                count++;
+                count.total++;
+                count.decrpm++;
+                inCsi = false;
+            } else if (inCsi && c == 'R') {
+                // CPR response: ESC[<row>;<col>R (never DECSTBM's lowercase r)
+                if (isCprBody(sb, bodyStart, i)) {
+                    count.total++;
+                    count.cprSeen = true;
+                }
                 inCsi = false;
             } else if (inCsi && !Character.isDigit(c) && c != ';' && c != '?' && c != '$') {
                 inCsi = false;
             }
         }
         return count;
+    }
+
+    /**
+     * Whether a CSI body holds CPR coordinates: digits and ';' only, with
+     * at least one of each. Lenient by design — the response parser
+     * validates strictly afterwards, so a false positive only ends the
+     * read early on input the parser would reject anyway.
+     *
+     * @param sb the accumulated response
+     * @param bodyStart the body start, or -1 when unknown
+     * @param end the final-byte index (exclusive)
+     * @return true if the body is CPR-shaped
+     */
+    private static boolean isCprBody(StringBuilder sb, int bodyStart, int end) {
+        if (bodyStart < 0 || bodyStart >= end) {
+            return false;
+        }
+        boolean digit = false;
+        boolean separator = false;
+        for (int i = bodyStart; i < end; i++) {
+            char c = sb.charAt(i);
+            if (c >= '0' && c <= '9') {
+                digit = true;
+            } else if (c == ';') {
+                separator = true;
+            } else {
+                return false;
+            }
+        }
+        return digit && separator;
     }
 
     // ==================== OSC Response Parsing ====================
@@ -413,7 +482,7 @@ final class TerminalColorQuery {
                 session.write(buildGraphemeProbe());
 
                 // Read CPR response: ESC [ row ; col R
-                String response = readResponse(session.input(), 1); // expect 1 terminator (the 'R')
+                String response = readCprResponse(session.input());
 
                 // Restore cursor and erase the test emoji
                 session.write(RESTORE_CURSOR_AND_ERASE);

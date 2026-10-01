@@ -19,6 +19,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -600,5 +601,102 @@ public class TerminalProbeTransportTest {
         public void close() {
             transport.active.decrementAndGet();
         }
+    }
+
+    // ==================== Probe completion without redundant reads (#345) ====================
+
+    /**
+     * Single-shot stream: the whole reply arrives in one read, and any
+     * second read fails the test — the probe must complete on matching
+     * replies instead of reading into the transport timeout.
+     */
+    private static final class FailOnExtraReadStream extends InputStream {
+        private final byte[] payload;
+        private int pos;
+        private int bulkReads;
+
+        FailOnExtraReadStream(byte[] payload) {
+            this.payload = payload.clone();
+        }
+
+        @Override
+        public int read() {
+            return pos < payload.length ? payload[pos++] & 0xff : -1;
+        }
+
+        @Override
+        public int read(byte[] b, int off, int len) {
+            bulkReads++;
+            if (bulkReads > 1) {
+                fail("probe must complete on the matching reply without an extra read");
+            }
+            if (pos >= payload.length) {
+                return -1;
+            }
+            int count = Math.min(len, payload.length - pos);
+            System.arraycopy(payload, pos, b, off, count);
+            pos += count;
+            return count;
+        }
+    }
+
+    /**
+     * Batch without DECRPM: DA1 fence + the 19 OSC replies, as sent by
+     * terminals without DECRQM support.
+     */
+    private static byte[] fenceOnlyBatch() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("\033[?63;1;2;4c");
+        sb.append("\033]10;rgb:ffff/ffff/ffff\007");
+        sb.append("\033]11;rgb:0000/0000/0000\007");
+        for (int i = 0; i <= 15; i++) {
+            sb.append("\033]4;").append(i).append(";rgb:1111/2222/3333\007");
+        }
+        sb.append("\033]4;255;rgb:eeee/eeee/eeee\007");
+        return bytes(sb.toString());
+    }
+
+    @Test
+    public void testGraphemeCompletesWithoutExtraRead() {
+        StreamProbeTransport transport = new StreamProbeTransport(
+                new FailOnExtraReadStream(bytes("\033[1;2R")));
+        assertTrue("clustered CPR must parse true", TerminalColorQuery.probeGraphemeClustering(transport));
+        assertTrue(transport.session.closed);
+    }
+
+    @Test
+    public void testColorBatchCompletesAtFenceWithoutExtraRead() {
+        StreamProbeTransport transport = new StreamProbeTransport(
+                new FailOnExtraReadStream(fenceOnlyBatch()));
+        TerminalColorQuery result = TerminalColorQuery.query(transport);
+        assertNotNull("fence-only batch must parse", result);
+        assertTrue(result.da1Received);
+        assertArrayEquals(new int[] { 0, 0, 0 }, result.background);
+        assertEquals(16, result.palette.size());
+        assertTrue(result.supports256);
+        assertTrue(transport.session.closed);
+    }
+
+    @Test
+    public void testFragmentedCprAcrossReads() {
+        // CPR split mid-frame: framing happens after reassembly, so the
+        // partial chunk must not complete early or get stuck.
+        StreamProbeTransport transport = new StreamProbeTransport(
+                new ChunkedInputStream(bytes("\033[24;8" + "0R"), false));
+        assertFalse("col 80 must parse false", TerminalColorQuery.probeGraphemeClustering(transport));
+        assertTrue(transport.session.closed);
+    }
+
+    @Test
+    public void testFragmentedFenceOnlyBatch() {
+        // Fence plus fragmentation combined: DA1 lands early in the
+        // stream, OSC replies trickle two bytes at a time.
+        StreamProbeTransport transport = new StreamProbeTransport(
+                new ChunkedInputStream(fenceOnlyBatch(), false));
+        TerminalColorQuery result = TerminalColorQuery.query(transport);
+        assertNotNull(result);
+        assertTrue(result.da1Received);
+        assertArrayEquals(new int[] { 0, 0, 0 }, result.background);
+        assertTrue(transport.session.closed);
     }
 }
