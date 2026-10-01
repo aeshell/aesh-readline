@@ -19,6 +19,7 @@
  */
 package org.aesh.terminal.tty;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -265,15 +266,17 @@ public class ArtifactVerificationTest {
         // Verify all 9 downcall signatures are present by checking for distinctive
         // parameter patterns. Each LibC function has a unique type signature.
         // isatty: (jint) -> jint (no captureCallState)
-        // open: (void*, jint) -> jint
+        // open: (void*, jint) -> jint (keeps captureCallState; errno is read)
         // read: (jint, void*, jlong) -> jlong
         // tcgetattr: (jint, void*) -> jint
         // tcsetattr: (jint, jint, void*) -> jint
         // ioctl: firstVariadicArg
         assertTrue("reachability-metadata.json must contain read() downcall (jlong return type)",
                 content.contains("\"jlong\""));
-        assertTrue("reachability-metadata.json must contain captureCallState option",
+        assertTrue("reachability-metadata.json must keep captureCallState for open()",
                 content.contains("\"captureCallState\""));
+        assertEquals("only open() may capture call state (#348)",
+                1, countOccurrences(content, "\"captureCallState\""));
         assertTrue("reachability-metadata.json must contain firstVariadicArg for ioctl",
                 content.contains("\"firstVariadicArg\""));
     }
@@ -317,6 +320,19 @@ public class ArtifactVerificationTest {
                 content.contains("FfmPty"));
         assertTrue("reflect-config.json must register FfmPty.current() method",
                 content.contains("current"));
+    }
+
+    private static int countOccurrences(String haystack, String needle) {
+        int count = 0;
+        int from = 0;
+        while (true) {
+            int at = haystack.indexOf(needle, from);
+            if (at < 0) {
+                return count;
+            }
+            count++;
+            from = at + needle.length();
+        }
     }
 
     private String readFileContent(File file) {

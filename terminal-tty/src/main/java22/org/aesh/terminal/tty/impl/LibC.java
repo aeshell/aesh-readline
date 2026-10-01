@@ -33,7 +33,10 @@ import java.lang.invoke.MethodHandle;
  * Provides thin wrappers around {@code tcgetattr}, {@code tcsetattr},
  * {@code ioctl}, {@code open}, {@code close}, {@code read}, and {@code poll}.
  * <p>
- * All functions use captured errno for error reporting.
+ * Only {@link #open} captures errno, and it reports the value in its
+ * exception. The remaining wrappers omit the capture: no caller reads
+ * it, and each capture costs a confined arena plus a capture segment
+ * per call. Decisions are made on return codes alone.
  * Requires {@code --enable-native-access=ALL-UNNAMED} at runtime.
  */
 final class LibC {
@@ -75,8 +78,7 @@ final class LibC {
                 STDLIB.find("close").orElseThrow(),
                 FunctionDescriptor.of(
                         ValueLayout.JAVA_INT,       // return
-                        ValueLayout.JAVA_INT),      // fd
-                ERRNO_STATE);
+                        ValueLayout.JAVA_INT));     // fd
 
         // ssize_t read(int fd, void *buf, size_t count)
         READ = LINKER.downcallHandle(
@@ -85,8 +87,7 @@ final class LibC {
                         ValueLayout.JAVA_LONG,      // return (ssize_t)
                         ValueLayout.JAVA_INT,       // fd
                         ValueLayout.ADDRESS,        // buf
-                        ValueLayout.JAVA_LONG),     // count (size_t)
-                ERRNO_STATE);
+                        ValueLayout.JAVA_LONG));     // count (size_t)
 
         // int poll(struct pollfd *fds, nfds_t nfds, int timeout)
         // nfds_t is unsigned long (8 bytes) on Linux, unsigned int (4 bytes) on macOS
@@ -98,8 +99,7 @@ final class LibC {
                         PosixConstants.IS_MACOS
                                 ? ValueLayout.JAVA_INT      // nfds_t = unsigned int on macOS
                                 : ValueLayout.JAVA_LONG,    // nfds_t = unsigned long on Linux
-                        ValueLayout.JAVA_INT),      // timeout
-                ERRNO_STATE);
+                        ValueLayout.JAVA_INT));      // timeout
 
         // int tcgetattr(int fd, struct termios *termios_p)
         TCGETATTR = LINKER.downcallHandle(
@@ -107,8 +107,7 @@ final class LibC {
                 FunctionDescriptor.of(
                         ValueLayout.JAVA_INT,       // return
                         ValueLayout.JAVA_INT,       // fd
-                        ValueLayout.ADDRESS),       // termios_p
-                ERRNO_STATE);
+                        ValueLayout.ADDRESS));       // termios_p
 
         // int tcsetattr(int fd, int optional_actions, const struct termios *termios_p)
         TCSETATTR = LINKER.downcallHandle(
@@ -117,8 +116,7 @@ final class LibC {
                         ValueLayout.JAVA_INT,       // return
                         ValueLayout.JAVA_INT,       // fd
                         ValueLayout.JAVA_INT,       // optional_actions
-                        ValueLayout.ADDRESS),       // termios_p
-                ERRNO_STATE);
+                        ValueLayout.ADDRESS));       // termios_p
 
         // int ioctl(int fd, unsigned long request, ...)
         // We bind the variadic form with one pointer arg for TIOCGWINSZ
@@ -129,7 +127,6 @@ final class LibC {
                         ValueLayout.JAVA_INT,       // fd
                         ValueLayout.JAVA_LONG,      // request
                         ValueLayout.ADDRESS),       // arg (struct winsize *)
-                ERRNO_STATE,
                 Linker.Option.firstVariadicArg(2));
     }
 
@@ -159,7 +156,14 @@ final class LibC {
         try {
             MemorySegment path = arena.allocateFrom(pathname);
             MemorySegment capturedState = arena.allocate(Linker.Option.captureStateLayout());
-            return (int) OPEN.invokeExact(capturedState, path, flags);
+            int fd = (int) OPEN.invokeExact(capturedState, path, flags);
+            if (fd < 0) {
+                throw new RuntimeException("open() failed for " + pathname
+                        + " (errno=" + capturedState.get(ValueLayout.JAVA_INT, 0) + ")");
+            }
+            return fd;
+        } catch (RuntimeException e) {
+            throw e;
         } catch (Throwable t) {
             throw new RuntimeException("open() failed for " + pathname, t);
         }
@@ -172,9 +176,8 @@ final class LibC {
      * @return 0 on success, -1 on error
      */
     static int close(int fd) {
-        try (Arena arena = Arena.ofConfined()) {
-            MemorySegment capturedState = arena.allocate(Linker.Option.captureStateLayout());
-            return (int) CLOSE.invokeExact(capturedState, fd);
+        try {
+            return (int) CLOSE.invokeExact(fd);
         } catch (Throwable t) {
             throw new RuntimeException("close() failed", t);
         }
@@ -189,9 +192,8 @@ final class LibC {
      * @return the number of bytes read, 0 for EOF, or -1 on error
      */
     static long read(int fd, MemorySegment buf, long count) {
-        try (Arena arena = Arena.ofConfined()) {
-            MemorySegment capturedState = arena.allocate(Linker.Option.captureStateLayout());
-            return (long) READ.invokeExact(capturedState, fd, buf, count);
+        try {
+            return (long) READ.invokeExact(fd, buf, count);
         } catch (Throwable t) {
             throw new RuntimeException("read() failed", t);
         }
@@ -206,12 +208,11 @@ final class LibC {
      * @return the number of fds with events, 0 on timeout, -1 on error
      */
     static int poll(MemorySegment pollfd, int nfds, int timeout) {
-        try (Arena arena = Arena.ofConfined()) {
-            MemorySegment capturedState = arena.allocate(Linker.Option.captureStateLayout());
+        try {
             if (PosixConstants.IS_MACOS) {
-                return (int) POLL.invokeExact(capturedState, pollfd, nfds, timeout);
+                return (int) POLL.invokeExact(pollfd, nfds, timeout);
             } else {
-                return (int) POLL.invokeExact(capturedState, pollfd, (long) nfds, timeout);
+                return (int) POLL.invokeExact(pollfd, (long) nfds, timeout);
             }
         } catch (Throwable t) {
             throw new RuntimeException("poll() failed", t);
@@ -226,9 +227,8 @@ final class LibC {
      * @return 0 on success, -1 on error
      */
     static int tcgetattr(int fd, MemorySegment termios) {
-        try (Arena arena = Arena.ofConfined()) {
-            MemorySegment capturedState = arena.allocate(Linker.Option.captureStateLayout());
-            return (int) TCGETATTR.invokeExact(capturedState, fd, termios);
+        try {
+            return (int) TCGETATTR.invokeExact(fd, termios);
         } catch (Throwable t) {
             throw new RuntimeException("tcgetattr() failed", t);
         }
@@ -243,9 +243,8 @@ final class LibC {
      * @return 0 on success, -1 on error
      */
     static int tcsetattr(int fd, int optionalActions, MemorySegment termios) {
-        try (Arena arena = Arena.ofConfined()) {
-            MemorySegment capturedState = arena.allocate(Linker.Option.captureStateLayout());
-            return (int) TCSETATTR.invokeExact(capturedState, fd, optionalActions, termios);
+        try {
+            return (int) TCSETATTR.invokeExact(fd, optionalActions, termios);
         } catch (Throwable t) {
             throw new RuntimeException("tcsetattr() failed", t);
         }
@@ -260,9 +259,8 @@ final class LibC {
      * @return 0 on success, -1 on error
      */
     static int ioctl(int fd, long request, MemorySegment arg) {
-        try (Arena arena = Arena.ofConfined()) {
-            MemorySegment capturedState = arena.allocate(Linker.Option.captureStateLayout());
-            return (int) IOCTL.invokeExact(capturedState, fd, request, arg);
+        try {
+            return (int) IOCTL.invokeExact(fd, request, arg);
         } catch (Throwable t) {
             throw new RuntimeException("ioctl() failed", t);
         }

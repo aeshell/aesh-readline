@@ -100,6 +100,40 @@ the probe still creates its downcall handles on first use. Repeat these
 measurements on the deployment JVM rather than treating this machine's
 numbers as a startup budget for another process.
 
+### FfmSyscallBenchmark (per-syscall wrapper cost, #348)
+
+Measures the FFM PTY wrappers through the public `Pty` API: idle
+`poll` (`peekIdle`), `ioctl` (`getSizeLoop`), and a
+`tcgetattr`/`tcsetattr` round-trip (`attrCycle`). Every wrapper used to
+allocate a confined arena plus an errno capture segment per call while
+no caller ever read the captured errno. Run under a controlling PTY:
+
+```bash
+script -qefc 'java -jar benchmark/target/benchmarks.jar FfmSyscallBenchmark \
+  -jvmArgsAppend --enable-native-access=ALL-UNNAMED -prof gc \
+  -rf json -rff ffm-syscall.json' /dev/null
+```
+
+Measured on Linux x86_64, Temurin 25.0.4, JMH 1.37 (3 forks,
+10 measured iterations, 99.9% CIs), before/after dropping the unread
+capture (kept only for `open`, which now reports errno):
+
+| Leg | Before (µs/op) | After (µs/op) | Alloc before → after (B/op) |
+|-----|----------------|---------------|------------------------------|
+| peekIdle | 0.5064 ± 0.0030 | 0.4913 ± 0.0021 | 0.02 → 0.02 |
+| getSizeLoop | 0.4416 ± 0.0053 | 0.4225 ± 0.0042 | 72.0 → 72.0 |
+| attrCycle | 2.2388 ± 0.0069 | 2.1580 ± 0.0093 | 2024.0 → 1712.0 |
+
+Per-call allocation was already ~zero on HotSpot (escape analysis
+scalarizes the non-escaping confined arenas — confirmed by a 25s
+async-profiler allocation profile of the peek loop with zero samples),
+so the gain is a few nanoseconds of eliminated setup per call plus
+312 B/op on the attribute round-trip. The remaining bytes are the
+`Attributes` object graph and the returned `Size`, which legitimately
+escape. No input-data leg exists: the read wrapper's allocation shape
+is identical with or without bytes flowing, and staging bytes on a PTY
+slave from inside the measured JVM is not possible.
+
 ### Common Options
 
 ```bash
@@ -130,6 +164,19 @@ java -jar benchmark/target/benchmarks.jar -rf csv -rff results.csv
 | `-prof <profiler>` | Use profiler: gc, stack, perf, async |
 
 ## Benchmark Classes
+
+### FfmSyscallBenchmark
+
+Per-syscall cost of the FFM PTY wrappers through the public `Pty` API
+(see the results table above). Requires a controlling PTY and native
+access. No input-data leg: the read wrapper's allocation shape is
+identical with or without bytes flowing.
+
+| Benchmark | Description |
+|-----------|-------------|
+| `peekIdle` | Idle `poll` with zero timeout, no data waiting |
+| `getSizeLoop` | Window-size `ioctl(TIOCGWINSZ)` per call |
+| `attrCycle` | `tcgetattr` plus `tcsetattr` round-trip |
 
 ### ActionDecoderBenchmark
 

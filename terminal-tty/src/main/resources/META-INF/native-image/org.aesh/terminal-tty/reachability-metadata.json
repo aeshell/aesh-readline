@@ -12,38 +12,32 @@
       },
       {
         "returnType": "jint",
-        "parameterTypes": ["jint"],
-        "options": { "captureCallState": true }
+        "parameterTypes": ["jint"]
       },
       {
         "returnType": "jlong",
-        "parameterTypes": ["jint", "void*", "jlong"],
-        "options": { "captureCallState": true }
+        "parameterTypes": ["jint", "void*", "jlong"]
       },
       {
         "returnType": "jint",
-        "parameterTypes": ["void*", "jlong", "jint"],
-        "options": { "captureCallState": true }
+        "parameterTypes": ["void*", "jlong", "jint"]
       },
       {
         "returnType": "jint",
-        "parameterTypes": ["void*", "jint", "jint"],
-        "options": { "captureCallState": true }
+        "parameterTypes": ["void*", "jint", "jint"]
       },
       {
         "returnType": "jint",
-        "parameterTypes": ["jint", "void*"],
-        "options": { "captureCallState": true }
+        "parameterTypes": ["jint", "void*"]
       },
       {
         "returnType": "jint",
-        "parameterTypes": ["jint", "jint", "void*"],
-        "options": { "captureCallState": true }
+        "parameterTypes": ["jint", "jint", "void*"]
       },
       {
         "returnType": "jint",
         "parameterTypes": ["jint", "jlong", "void*"],
-        "options": { "captureCallState": true, "firstVariadicArg": 2 }
+        "options": { "firstVariadicArg": 2 }
       }
     ]
   }
