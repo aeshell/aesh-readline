@@ -439,4 +439,117 @@ public class SixelImageTest {
         }
         return "";
     }
+
+    private static byte[] createStripedPng(int width, int height, int stripes, boolean vertical) {
+        try {
+            BufferedImage img = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+            Graphics2D g = img.createGraphics();
+            for (int i = 0; i < stripes; i++) {
+                // 4x4x4 classic cube: sixel triples stay distinct (0/33/66/100).
+                int red = ((i >> 4) & 3) * 85;
+                int green = ((i >> 2) & 3) * 85;
+                int blue = (i & 3) * 85;
+                g.setColor(new Color(red, green, blue));
+                if (vertical) {
+                    int stripeWidth = width / stripes;
+                    g.fillRect(i * stripeWidth, 0, stripeWidth, height);
+                } else {
+                    int stripeHeight = height / stripes;
+                    g.fillRect(0, i * stripeHeight, width, stripeHeight);
+                }
+            }
+            g.dispose();
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            ImageIO.write(img, "PNG", baos);
+            return baos.toByteArray();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to create striped test PNG", e);
+        }
+    }
+
+    private static String sixelTriple(int stripe) {
+        return (((stripe >> 4) & 3) * 100 / 3) + ";"
+                + (((stripe >> 2) & 3) * 100 / 3) + ";"
+                + ((stripe & 3) * 100 / 3);
+    }
+
+    private static void assertStripeCoverage(byte[] data, int stripes, int maxColors) {
+        Map<Integer, String> defs = paletteDefinitions(
+                new SixelImage(data).maxColors(maxColors).encode());
+        assertEquals("every stripe color deserves a palette entry",
+                stripes, defs.size());
+        for (int i = 0; i < stripes; i++) {
+            assertTrue("stripe " + i + " color missing from palette",
+                    defs.containsValue(sixelTriple(i)));
+        }
+    }
+
+    @Test
+    public void testLargeImageSamplesAllStripeColors() {
+        // 1280x800 with 64 stripes: the old linear step sampled ~100 of
+        // 1M pixels and missed most stripes; the root step keeps ~10k.
+        assertStripeCoverage(createStripedPng(1280, 800, 64, true), 64, 64);
+    }
+
+    @Test
+    public void testNarrowImageSamplesAllStripeColors() {
+        // 192x1920 with 64 horizontal stripes: aspect-independent twin
+        // of the wide leg (old step 36 skipped stripes).
+        assertStripeCoverage(createStripedPng(192, 1920, 64, false), 64, 64);
+    }
+
+    @Test
+    public void testRleRoundTripMatchesUncompressed() {
+        // Expanding every !count+char run must reproduce the
+        // uncompressed encoding exactly (same image, same palette).
+        byte[] data = createStripedPng(320, 120, 16, true);
+        String compressed = new SixelImage(data).useRle(true).encode();
+        String plain = new SixelImage(data).useRle(false).encode();
+        assertTrue("striped image must actually use RLE", compressed.contains("!"));
+        assertEquals(plain, expandRle(compressed));
+    }
+
+    private static String expandRle(String encoded) {
+        StringBuilder out = new StringBuilder();
+        Matcher m = Pattern.compile("!(\\d+)(.)").matcher(encoded);
+        int last = 0;
+        while (m.find()) {
+            out.append(encoded, last, m.start());
+            int count = Integer.parseInt(m.group(1));
+            char c = m.group(2).charAt(0);
+            for (int i = 0; i < count; i++) {
+                out.append(c);
+            }
+            last = m.end();
+        }
+        return out.append(encoded, last, encoded.length()).toString();
+    }
+
+    @Test
+    public void testTransparentPixelsKeepStoredRgb() {
+        // Alpha is dropped, stored RGB encoded as-is: transparent red
+        // plus opaque blue must both reach the palette. Pixels are set
+        // directly: fillRect with alpha zero would composite to nothing.
+        try {
+            BufferedImage img = new BufferedImage(4, 4, BufferedImage.TYPE_INT_ARGB);
+            for (int y = 0; y < 4; y++) {
+                for (int x = 0; x < 2; x++) {
+                    img.setRGB(x, y, 0x00FF0000);
+                }
+                for (int x = 2; x < 4; x++) {
+                    img.setRGB(x, y, 0xFF0000FF);
+                }
+            }
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            ImageIO.write(img, "PNG", baos);
+            Map<Integer, String> defs = paletteDefinitions(
+                    new SixelImage(baos.toByteArray()).encode());
+            assertTrue("stored red of transparent pixels must survive",
+                    defs.containsValue("100;0;0"));
+            assertTrue("opaque blue must survive",
+                    defs.containsValue("0;0;100"));
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to create transparency test PNG", e);
+        }
+    }
 }

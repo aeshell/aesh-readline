@@ -214,6 +214,21 @@ and paste/log/image sizes (see the results table above). No PTY needed.
 |-----------|-------------|
 | `writeBulk` | Bulk `write(byte[])` at the parameterized size and mode |
 
+### SixelEncodeBenchmark
+
+Sixel encoding across image shapes (photo, logo, narrow, large
+fixtures PNG-encoded once in setup; every invocation encodes fresh,
+bypassing the output cache). Measured on Linux x86_64, Temurin
+25.0.4, JMH 1.37 (2 forks, 5 measured iterations, 99.9% CIs),
+before/after the sampling, memo, banding, and presence changes:
+
+| Fixture | Before (ms/op) | After (ms/op) |
+|---------|----------------|---------------|
+| photo 640x480 gradient+noise | 168.47 ± 2.14 | 121.84 ± 1.62 |
+| logo 640x480 flat blocks | 11.90 ± 0.19 | 9.74 ± 0.12 |
+| narrow 120x1200 stripes | 5.49 ± 0.05 | 3.59 ± 0.05 |
+| large 1280x800 gradient | 271.32 ± 6.66 | 48.59 ± 0.99 |
+
 ### ActionDecoderBenchmark
 
 Measures the performance of key sequence parsing in `ActionDecoder`. This is critical for input handling as every keystroke goes through this path.

@@ -91,6 +91,10 @@ public class SixelImage implements TerminalImage {
 
     /**
      * Create a Sixel image from raw image data.
+     * <p>
+     * Transparency policy: the alpha channel is dropped and the stored
+     * RGB is encoded as-is. Scaling converts through an opaque RGB
+     * image, so transparent pixels of a scaled image render black.
      *
      * @param imageData the image data (PNG, JPEG, GIF, etc.)
      */
@@ -222,48 +226,59 @@ public class SixelImage implements TerminalImage {
             sb.append("#").append(i).append(";2;").append(r).append(";").append(g).append(";").append(b);
         }
 
-        // Encode image data as sixels
+        // Encode image data as sixels, one sixel band (6 rows) at a time.
+        // A full int[H][W] index matrix costs 4 bytes per pixel (48MB at
+        // 12MP); banding keeps the peak at 6 rows. Repeated colors hit the
+        // memo instead of rescanning the palette.
         int height = image.getHeight();
         int width = image.getWidth();
-        int[][] colorIndices = new int[height][width];
-
-        // Map pixels to palette colors
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
-                int rgb = image.getRGB(x, y);
-                colorIndices[y][x] = palette.findClosest(rgb);
-            }
-        }
+        Map<Integer, Integer> indexMemo = new HashMap<>();
+        int[] rowRgb = new int[width];
 
         // Process image in bands of 6 rows (one sixel band)
         for (int bandY = 0; bandY < height; bandY += 6) {
+            int bandRows = Math.min(6, height - bandY);
+            int[][] bandIndices = new int[bandRows][width];
+            boolean[] bandHasColor = new boolean[palette.size()];
+            for (int row = 0; row < bandRows; row++) {
+                image.getRGB(0, bandY + row, width, 1, rowRgb, 0, width);
+                for (int x = 0; x < width; x++) {
+                    int rgb = rowRgb[x] & 0xFFFFFF;
+                    Integer known = indexMemo.get(rgb);
+                    if (known == null) {
+                        known = palette.findClosest(rowRgb[x]);
+                        indexMemo.put(rgb, known);
+                    }
+                    bandIndices[row][x] = known;
+                    bandHasColor[known] = true;
+                }
+            }
             // For each color in the palette
             for (int color = 0; color < palette.size(); color++) {
+                if (!bandHasColor[color]) {
+                    continue;
+                }
                 StringBuilder colorRow = new StringBuilder();
 
-                // Build sixel row for this color
+                // Build sixel row for this color (bandHasColor above
+                // guarantees content, so no emptiness recheck needed)
                 for (int x = 0; x < width; x++) {
                     int sixelValue = 0;
-                    for (int bit = 0; bit < 6; bit++) {
-                        int y = bandY + bit;
-                        if (y < height && colorIndices[y][x] == color) {
+                    for (int bit = 0; bit < bandRows; bit++) {
+                        if (bandIndices[bit][x] == color) {
                             sixelValue |= (1 << bit);
                         }
                     }
                     colorRow.append((char) (sixelValue + 63));
                 }
 
-                // Only output if there's actual content for this color
-                String rowStr = colorRow.toString();
-                if (!isEmptyRow(rowStr)) {
-                    sb.append("#").append(color);
-                    if (useRle) {
-                        sb.append(rleEncode(rowStr));
-                    } else {
-                        sb.append(rowStr);
-                    }
-                    sb.append("$"); // Carriage return
+                sb.append("#").append(color);
+                if (useRle) {
+                    sb.append(rleEncode(colorRow.toString()));
+                } else {
+                    sb.append(colorRow);
                 }
+                sb.append("$"); // Carriage return
             }
             sb.append("-"); // New sixel line
         }
@@ -328,15 +343,6 @@ public class SixelImage implements TerminalImage {
         return new int[] { newWidth, newHeight };
     }
 
-    private boolean isEmptyRow(String row) {
-        for (int i = 0; i < row.length(); i++) {
-            if (row.charAt(i) != '?') { // '?' = 0 = no pixels set
-                return false;
-            }
-        }
-        return true;
-    }
-
     private String rleEncode(String input) {
         if (input.isEmpty()) {
             return input;
@@ -373,11 +379,15 @@ public class SixelImage implements TerminalImage {
      * Simple color quantization using median cut algorithm variant.
      */
     private ColorPalette quantizeColors(BufferedImage image) {
-        // Collect unique colors (limit sample size for large images)
+        // Collect unique colors (limit sample size for large images).
+        // The step applies to both axes, so it is the square root of the
+        // area ratio: total samples stay near 10k for any size or aspect
+        // ratio. A linear step would sample (w/step)x(h/step) — about a
+        // hundred pixels of a megapixel image, missing most colors.
         Map<Integer, Integer> colorCounts = new HashMap<>();
         int width = image.getWidth();
         int height = image.getHeight();
-        int step = Math.max(1, (width * height) / 10000); // Sample up to 10k pixels
+        int step = Math.max(1, (int) Math.sqrt((double) width * height / 10000));
 
         for (int y = 0; y < height; y += step) {
             for (int x = 0; x < width; x += step) {
