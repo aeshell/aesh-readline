@@ -40,4 +40,17 @@
       { "name": "current", "parameterTypes": [] }
     ]
   }
+,
+  {
+    "name": "org.aesh.terminal.tty.impl.LibC",
+    "methods": [
+      { "name": "open", "parameterTypes": ["java.lang.foreign.Arena", "java.lang.String", "int"] }
+    ]
+  },
+  {
+    "name": "org.aesh.terminal.detect.TerminalCapabilities",
+    "fields": [
+      { "name": "mode2026Support" }
+    ]
+  }
 ]

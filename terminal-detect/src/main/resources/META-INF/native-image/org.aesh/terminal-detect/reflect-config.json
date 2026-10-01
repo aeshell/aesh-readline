@@ -32,4 +32,14 @@
       { "name": "getConsoleMode", "parameterTypes": ["long"] }
     ]
   }
+,
+  {
+    "name": "org.aesh.terminal.detect.TerminalCapabilities",
+    "fields": [
+      { "name": "resolvedTheme" },
+      { "name": "foregroundRGB" },
+      { "name": "backgroundRGB" },
+      { "name": "paletteColors" }
+    ]
+  }
 ]

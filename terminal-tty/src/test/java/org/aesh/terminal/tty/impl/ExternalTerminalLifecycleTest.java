@@ -94,7 +94,16 @@ public class ExternalTerminalLifecycleTest extends ConnectionLifecycleTestBase<E
     public void testPumpStopsOnClose() throws Exception {
         ExternalTerminal terminal = newConnection();
         try {
-            Thread pump = findPumpThread(terminal);
+            // Thread registration may lag thread start (notably in
+            // native images): poll boundedly instead of scanning once.
+            Thread pump = null;
+            long deadline = System.currentTimeMillis() + 5000;
+            while (pump == null && System.currentTimeMillis() < deadline) {
+                pump = findPumpThread(terminal);
+                if (pump == null) {
+                    Thread.sleep(50);
+                }
+            }
             assertTrue("pump must run while open", pump != null && pump.isAlive());
             closeConnection(terminal);
             pump.join(10000);
