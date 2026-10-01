@@ -437,69 +437,29 @@ final class TerminalDetector {
     }
 
     /**
-     * Subprocess runner behind a swappable hook for tests.
+     * Run a command through the shared runner, capturing merged
+     * stdout/stderr output.
      * <p>
-     * Every identity and OS probe funnels through here, so a counting
-     * fixture observes all subprocess invocations from one place while
-     * production keeps the direct {@code ProcessBuilder} behavior.
-     */
-    interface ProcessRunner {
-        String run(String... cmd);
-    }
-
-    private static final class DirectRunner implements ProcessRunner {
-        @Override
-        public String run(String... cmd) {
-            return runCommandDirect(cmd);
-        }
-    }
-
-    private static final ProcessRunner DIRECT_RUNNER = new DirectRunner();
-
-    private static volatile ProcessRunner processRunner = DIRECT_RUNNER;
-
-    static void setProcessRunner(ProcessRunner runner) {
-        processRunner = runner != null ? runner : DIRECT_RUNNER;
-    }
-
-    private static String execCommand(String... cmd) {
-        return processRunner.run(cmd);
-    }
-
-    /**
-     * Run a command, capturing merged stdout/stderr output.
-     * <p>
-     * Shared by the platform probes so subprocess lifecycle handling
-     * (drain, wait, exit check, destroy) lives in one place. Text is
+     * Shared by the platform probes; lifecycle handling (deadline,
+     * drain, destroy, reap) lives in {@code ProcessRunner}. Text is
      * decoded with the platform default charset, matching the previous
      * per-call behavior.
      *
      * @param cmd the command and arguments
      * @return the captured output, or null on failure or nonzero exit
      */
-    private static String runCommandDirect(String... cmd) {
-        Process process = null;
+    private static String execCommand(String... cmd) {
         try {
-            process = new ProcessBuilder(cmd)
-                    .redirectErrorStream(true).start();
-            byte[] buf = new byte[1024];
-            StringBuilder sb = new StringBuilder();
-            int n;
-            while ((n = process.getInputStream().read(buf)) != -1) {
-                sb.append(new String(buf, 0, n));
-            }
-            process.waitFor();
-            if (process.exitValue() != 0)
+            ProcessRunner.Result result = ProcessRunner.execute(cmd);
+            if (result.timedOut() || result.exitCode() != 0) {
                 return null;
-            return sb.toString();
+            }
+            return result.text(java.nio.charset.Charset.defaultCharset());
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             return null;
         } catch (Exception ignored) {
             return null;
-        } finally {
-            if (process != null)
-                process.destroy();
         }
     }
 

@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
+import org.aesh.terminal.detect.ProcessRunner;
 import org.aesh.terminal.tty.Capability;
 
 /**
@@ -82,9 +83,10 @@ public final class InfoCmp {
 
     private static String runInfocmp(String terminal) throws InterruptedException {
         try {
-            Process p = new ProcessBuilder(OSUtils.INFOCMP_COMMAND, terminal).start();
-            String output = ExecHelper.waitAndCapture(p);
-            return p.exitValue() == 0 ? output : null;
+            ProcessRunner.Result result = ProcessRunner.execute(OSUtils.INFOCMP_COMMAND, terminal);
+            return result.exitCode() == 0
+                    ? result.text(java.nio.charset.Charset.defaultCharset())
+                    : null;
         } catch (IOException e) {
             return null;
         }

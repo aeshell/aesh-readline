@@ -202,10 +202,10 @@ public class TerminalDetectorTest {
     public void testPlatformThemeWithoutFixtureFallsThrough() throws Exception {
         Map<String, String> env = new HashMap<>();
         env.put("WT_SESSION", "some-session-id");
-        TerminalDetector.setProcessRunner(new TerminalDetector.ProcessRunner() {
+        ProcessRunner.setInstalled(new ProcessRunner.RunnerTransport() {
             @Override
-            public String run(String... cmd) {
-                return null;
+            public ProcessRunner.Result run(ProcessBuilder starter, long timeoutMs) {
+                return new ProcessRunner.Result(1, false, new byte[0]);
             }
         });
         String previousHome = System.getProperty("user.home");
@@ -215,7 +215,7 @@ public class TerminalDetectorTest {
                     new TerminalDetector(env, "Windows 11").detectIdeOrPlatformTheme());
         } finally {
             System.setProperty("user.home", previousHome);
-            TerminalDetector.setProcessRunner(null);
+            ProcessRunner.setInstalled(null);
         }
     }
 
@@ -227,18 +227,11 @@ public class TerminalDetectorTest {
         Map<String, String> env = new HashMap<>();
         env.put("TERM", "xterm");
         final List<String> commands = new ArrayList<>();
-        TerminalDetector.setProcessRunner(new TerminalDetector.ProcessRunner() {
+        ProcessRunner.setInstalled(new ProcessRunner.RunnerTransport() {
             @Override
-            public String run(String... cmd) {
-                StringBuilder joined = new StringBuilder();
-                for (String part : cmd) {
-                    if (joined.length() > 0) {
-                        joined.append(' ');
-                    }
-                    joined.append(part);
-                }
-                commands.add(joined.toString());
-                return null;
+            public ProcessRunner.Result run(ProcessBuilder starter, long timeoutMs) {
+                commands.add(String.join(" ", starter.command()));
+                return new ProcessRunner.Result(1, false, new byte[0]);
             }
         });
         try {
@@ -249,7 +242,7 @@ public class TerminalDetectorTest {
             assertEquals("no subprocess may repeat: " + commands,
                     2, new HashSet<>(commands).size());
         } finally {
-            TerminalDetector.setProcessRunner(null);
+            ProcessRunner.setInstalled(null);
         }
     }
 }

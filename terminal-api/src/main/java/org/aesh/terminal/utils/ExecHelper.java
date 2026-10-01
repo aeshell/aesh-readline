@@ -38,12 +38,19 @@ public final class ExecHelper {
     /**
      * Wait for a process to complete and capture its output.
      * Both stdout and stderr are captured and returned as a single string.
+     * <p>
+     * Deprecated: waits without a deadline and drains stderr only after
+     * stdout EOF, which deadlocks when stderr fills first. New code runs
+     * subprocesses through {@code ProcessRunner}, which owns one
+     * deadline for start, drain, and wait.
      *
      * @param p the process to wait for
      * @return the combined output of stdout and stderr
      * @throws IOException if an I/O error occurs
      * @throws InterruptedException if the thread is interrupted while waiting
+     * @deprecated Use {@code org.aesh.terminal.detect.ProcessRunner} instead.
      */
+    @Deprecated
     public static String waitAndCapture(Process p) throws IOException, InterruptedException {
         ByteArrayOutputStream bout = new ByteArrayOutputStream();
         InputStream in = null;
