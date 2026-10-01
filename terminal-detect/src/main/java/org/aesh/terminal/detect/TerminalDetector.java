@@ -456,6 +456,9 @@ final class TerminalDetector {
             if (process.exitValue() != 0)
                 return null;
             return sb.toString();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return null;
         } catch (Exception ignored) {
             return null;
         } finally {

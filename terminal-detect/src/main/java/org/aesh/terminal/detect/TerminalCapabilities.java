@@ -220,19 +220,52 @@ public final class TerminalCapabilities {
      * @return the detected capabilities with resolved theme
      */
     public static TerminalCapabilities detectFull() {
-        TerminalCapabilities current = instance;
-        if (current != null && current.fullyDetected) {
-            return current;
-        }
-        synchronized (TerminalCapabilities.class) {
-            current = instance;
+        while (true) {
+            TerminalCapabilities current = instance;
             if (current != null && current.fullyDetected) {
                 return current;
             }
-            TerminalCapabilities caps = computeFull();
-            caps.fullyDetected = true;
-            instance = caps;
-            return caps;
+            if (current != null && current.asyncStarted && current.colorQueryLatch != null) {
+                // An async detection is in flight (or finished): join it
+                // instead of starting a second raw-mode session, then flip
+                // the completed instance to full. The async background work
+                // performs everything full detection needs (env scan, color
+                // and mode queries, grapheme probe under the same gating),
+                // so awaiting the latch leaves no missing work behind.
+                // The wait happens outside the class monitor, which the
+                // background thread never needs.
+                boolean completed;
+                try {
+                    current.awaitColors(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
+                    completed = true;
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    completed = false;
+                }
+                synchronized (TerminalCapabilities.class) {
+                    if (instance == current) {
+                        if (completed) {
+                            current.fullyDetected = true;
+                            return current;
+                        }
+                        TerminalCapabilities caps = computeFull();
+                        caps.fullyDetected = true;
+                        instance = caps;
+                        return caps;
+                    }
+                }
+                continue;
+            }
+            synchronized (TerminalCapabilities.class) {
+                current = instance;
+                if (current != null && (current.fullyDetected || current.asyncStarted)) {
+                    continue;
+                }
+                TerminalCapabilities caps = computeFull();
+                caps.fullyDetected = true;
+                instance = caps;
+                return caps;
+            }
         }
     }
 
