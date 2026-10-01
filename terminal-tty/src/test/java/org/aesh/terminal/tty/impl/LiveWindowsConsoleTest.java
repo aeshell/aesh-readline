@@ -140,4 +140,25 @@ public class LiveWindowsConsoleTest {
         assertTrue("Allocated console must report a real output code page",
                 WinConsoleNative.getConsoleOutputCP() > 0);
     }
+
+    @Test
+    public void testLiveCloseReopenHandoff() throws IOException, InterruptedException {
+        // Rapid close/reopen cycles on a real console: each replacement
+        // must be admitted exactly once the old pump is dead (#344), and
+        // must itself start a live pump. Key injection needs console-input
+        // bindings this repo does not have, so first-key delivery after
+        // replacement is covered headless instead (scripted pump tests);
+        // this leg characterizes the real-console handoff timing.
+        for (int i = 0; i < 5; i++) {
+            WinSysTerminal term = new WinSysTerminal("live-handoff-" + i, false);
+            try {
+                assertTrue("replacement pump must be alive", term.pump.isAlive());
+            } finally {
+                term.close();
+            }
+            term.pump.join(5000);
+            assertFalse("old pump must stop after close (cycle " + i + ")",
+                    term.pump.isAlive());
+        }
+    }
 }

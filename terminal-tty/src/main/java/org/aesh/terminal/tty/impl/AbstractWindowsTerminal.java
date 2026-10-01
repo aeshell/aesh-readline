@@ -110,6 +110,13 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
     private volatile boolean closing;
     private final AtomicBoolean closed = new AtomicBoolean();
     /**
+     * Bound (ms) for waiting out the input pump in close(). The pump wakes
+     * from its native wait within one poll interval, so this is a backstop
+     * against a wedged pump — not the expected path. close() always
+     * releases the live slot afterwards, even on expiry.
+     */
+    private static final int PUMP_JOIN_TIMEOUT_MS = 5000;
+    /**
      * The single live Windows console terminal. Two input pumps on one
      * console compete for ReadConsoleInputW events, losing keystrokes
      * (#276). A second concurrent construction fails loudly instead, and
@@ -467,8 +474,26 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
         // Flush but do not close — the output stream (typically System.out)
         // is not owned by this terminal and may still be used after close.
         writer.flush();
-        // Release the single live slot so a later terminal can be created (#289).
-        LIVE.compareAndSet(this, null);
+        // Hold the single live slot until the old pump can no longer
+        // consume input (#344): a replacement created earlier would race
+        // the dying pump for console events. The wait is bounded — the
+        // pump wakes from its native wait within one poll interval — and
+        // close() always releases afterwards, even on expiry.
+        // Skipped on the pump thread itself (no self-join): the pump-exit
+        // backstop below releases the slot instead.
+        if (pump != null && Thread.currentThread() != pump) {
+            try {
+                pump.join(PUMP_JOIN_TIMEOUT_MS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            if (pump.isAlive()) {
+                LOGGER.log(Level.WARNING,
+                        "Windows input pump still alive after close wait; releasing live slot anyway");
+            }
+            // Release the single live slot so a later terminal can be created (#289).
+            LIVE.compareAndSet(this, null);
+        }
     }
 
     /**
@@ -592,11 +617,49 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
      * arrow keys) arrive at EventDecoder as complete chunks rather than
      * byte-by-byte.
      */
+    /**
+     * Returns the console input handle the pump waits on.
+     * <p>
+     * Separated for testing alongside {@link #waitForInput(long, int)}: it
+     * keeps scriptable subclasses off native code entirely.
+     *
+     * @return the standard input console handle
+     */
+    protected long inputHandle() {
+        return WinConsoleNative.getStdHandle(WinConsoleNative.STD_INPUT_HANDLE);
+    }
+
+    /**
+     * Waits for console input with a timeout.
+     * <p>
+     * Separated for testing: scriptable subclasses drive the pump's
+     * wait/close/reopen interleavings without a real console.
+     *
+     * @param handle the console input handle
+     * @param timeoutMs the wait timeout in milliseconds
+     * @return the wait result (see {@code WinConsoleNative} constants)
+     */
+    protected int waitForInput(long handle, int timeoutMs) {
+        return WinConsoleNative.waitForSingleObject(handle, timeoutMs);
+    }
+
+    /**
+     * Returns the number of unread console input events.
+     * <p>
+     * Separated for testing alongside {@link #waitForInput(long, int)}.
+     *
+     * @param handle the console input handle
+     * @return the number of pending events
+     */
+    protected int pendingInputEvents(long handle) {
+        return WinConsoleNative.getNumberOfConsoleInputEvents(handle);
+    }
+
     protected void pump() {
         try {
-            long inputHandle = WinConsoleNative.getStdHandle(WinConsoleNative.STD_INPUT_HANDLE);
+            long inputHandle = inputHandle();
             while (!closing) {
-                int waitResult = WinConsoleNative.waitForSingleObject(inputHandle, PUMP_TIMEOUT_MS);
+                int waitResult = waitForInput(inputHandle, PUMP_TIMEOUT_MS);
                 if (waitResult == WinConsoleNative.WAIT_TIMEOUT) {
                     // Timeout — loop back to check closing flag
                     continue;
@@ -604,10 +667,15 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
                 if (waitResult == WinConsoleNative.WAIT_FAILED) {
                     break;
                 }
+                if (closing) {
+                    // A key event woke the wait after close() started — leave
+                    // the event for the replacement terminal (#344).
+                    break;
+                }
                 // WAIT_OBJECT_0: input available — read first event and drain remaining
                 processInputByteNoFlush(readConsoleInput());
                 // Drain all remaining pending events without waiting
-                int pending = WinConsoleNative.getNumberOfConsoleInputEvents(inputHandle);
+                int pending = pendingInputEvents(inputHandle);
                 while (pending > 0 && !closing) {
                     processInputByteNoFlush(readConsoleInput());
                     pending--;
@@ -617,6 +685,15 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
         } catch (IOException e) {
             if (!closing) {
                 LOGGER.log(Level.WARNING, "Error in WindowsStreamPump", e);
+            }
+        } finally {
+            // Backstop: the pump is dead past this point. If close() already
+            // ran, the slot must be free even when close() skipped its own
+            // release (self-close from this thread). A never-closed terminal
+            // keeps its slot: releasing here would admit a second live pump
+            // while this instance is still open (#289).
+            if (closed.get()) {
+                LIVE.compareAndSet(this, null);
             }
         }
     }

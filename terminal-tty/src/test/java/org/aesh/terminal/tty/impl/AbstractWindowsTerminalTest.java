@@ -19,6 +19,8 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import org.aesh.terminal.Attributes;
 import org.aesh.terminal.tty.Size;
@@ -409,5 +411,223 @@ public class AbstractWindowsTerminalTest {
         // The slot is reusable after close — sequential use still works.
         StubWindowsTerminal second = new StubWindowsTerminal(0);
         second.close();
+    }
+
+    // ==================== pump handoff on close/reopen (#344) ====================
+
+    /**
+     * Scriptable pump: the native wait/read touchpoints are programmable,
+     * so wait/close/reopen interleavings run deterministically headless.
+     * <p>
+     * The scripted wait models native-wait semantics — close()'s interrupt
+     * does not release it, only the event (or the 30s cap) does — so the
+     * close-during-wait interleaving is reachable. All waits are bounded;
+     * threads are daemons, so a forgotten release fails the test, never
+     * the suite.
+     */
+    private static class ScriptedPumpTerminal extends StubWindowsTerminal {
+
+        final CountDownLatch waitEntered = new CountDownLatch(1);
+        final CountDownLatch releaseWait = new CountDownLatch(1);
+        final CountDownLatch readEntered = new CountDownLatch(1);
+        final CountDownLatch releaseRead = new CountDownLatch(1);
+        volatile boolean signalWait;
+        volatile boolean closeOnRead;
+        volatile int waitCalls;
+        volatile int readCalls;
+        final byte[] payload;
+
+        ScriptedPumpTerminal(byte[] payload) throws IOException {
+            super(ENABLE_WINDOW_INPUT);
+            this.payload = payload.clone();
+        }
+
+        @Override
+        protected long inputHandle() {
+            return 1L;
+        }
+
+        @Override
+        protected int waitForInput(long handle, int timeoutMs) {
+            waitCalls++;
+            waitEntered.countDown();
+            if (releaseWait.getCount() == 0) {
+                return signalWait ? WinConsoleNative.WAIT_OBJECT_0 : WinConsoleNative.WAIT_TIMEOUT;
+            }
+            long deadline = System.currentTimeMillis() + 30000;
+            boolean released = false;
+            while (!released && System.currentTimeMillis() < deadline) {
+                try {
+                    released = releaseWait.await(1000, TimeUnit.MILLISECONDS);
+                } catch (InterruptedException e) {
+                    // Swallowed deliberately: models the uninterruptible
+                    // native wait, which close()'s interrupt cannot wake.
+                }
+            }
+            if (!released) {
+                return WinConsoleNative.WAIT_TIMEOUT;
+            }
+            return signalWait ? WinConsoleNative.WAIT_OBJECT_0 : WinConsoleNative.WAIT_TIMEOUT;
+        }
+
+        @Override
+        protected int pendingInputEvents(long handle) {
+            return 0;
+        }
+
+        @Override
+        protected byte[] readConsoleInput() {
+            readCalls++;
+            readEntered.countDown();
+            try {
+                if (!releaseRead.await(30, TimeUnit.SECONDS)) {
+                    return new byte[0];
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return new byte[0];
+            }
+            if (closeOnRead) {
+                close();
+            }
+            return payload.clone();
+        }
+    }
+
+    private static Thread closeInBackground(final ScriptedPumpTerminal term) {
+        Thread closer = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                term.close();
+            }
+        }, "pump-handoff-closer");
+        closer.setDaemon(true);
+        closer.start();
+        return closer;
+    }
+
+    private static void joinBounded(Thread thread, String what) throws InterruptedException {
+        thread.join(10000);
+        assertTrue(what + " must finish promptly", !thread.isAlive());
+    }
+
+    @Test
+    public void testSignaledWaitAfterCloseSkipsRead() throws Exception {
+        ScriptedPumpTerminal term = new ScriptedPumpTerminal(new byte[] { 'k' });
+        // Pre-release the read: a lost race then fails fast, never hangs.
+        term.releaseRead.countDown();
+        try {
+            assertTrue("pump must reach its wait", term.waitEntered.await(5, TimeUnit.SECONDS));
+            Thread closer = closeInBackground(term);
+            // close() sets closing synchronously before joining; settle so
+            // the release below lands strictly after.
+            Thread.sleep(500);
+            term.signalWait = true;
+            term.releaseWait.countDown();
+            joinBounded(closer, "close()");
+            assertEquals("a wait signaled after close started must not be read",
+                    0, term.readCalls);
+        } finally {
+            term.releaseWait.countDown();
+            term.close();
+        }
+    }
+
+    @Test
+    public void testLiveSlotHeldUntilPumpStops() throws Exception {
+        ScriptedPumpTerminal old = new ScriptedPumpTerminal(new byte[] { 'k' });
+        try {
+            assertTrue("pump must reach its wait", old.waitEntered.await(5, TimeUnit.SECONDS));
+            Thread closer = closeInBackground(old);
+            // The old pump is still inside its wait: replacement must fail.
+            ScriptedPumpTerminal leaked = null;
+            try {
+                leaked = new ScriptedPumpTerminal(new byte[] { 'x' });
+                fail("replacement created while the old pump is alive must be rejected");
+            } catch (IOException expected) {
+                // expected: slot still held
+            } finally {
+                if (leaked != null) {
+                    leaked.close();
+                }
+            }
+            // Release the old pump; it exits via timeout with closing set.
+            old.releaseWait.countDown();
+            joinBounded(closer, "close()");
+            assertTrue("old pump must be dead after close", !old.pump.isAlive());
+            // Slot reusable, and the first key lands in the new pipe.
+            ScriptedPumpTerminal next = new ScriptedPumpTerminal(new byte[] { 'y' });
+            try {
+                next.releaseRead.countDown();
+                next.signalWait = true;
+                next.releaseWait.countDown();
+                assertTrue("replacement pump must read", next.readEntered.await(5, TimeUnit.SECONDS));
+                boolean delivered = false;
+                long deadline = System.currentTimeMillis() + 5000;
+                while (!delivered && System.currentTimeMillis() < deadline) {
+                    if (next.input().available() > 0) {
+                        delivered = next.input().read() == 'y';
+                    } else {
+                        Thread.sleep(10);
+                    }
+                }
+                assertTrue("first key after replacement must reach the new terminal", delivered);
+            } finally {
+                next.close();
+            }
+        } finally {
+            old.releaseWait.countDown();
+            old.close();
+        }
+    }
+
+    @Test
+    public void testCloseOnPumpThreadReleasesViaBackstop() throws Exception {
+        ScriptedPumpTerminal term = new ScriptedPumpTerminal(new byte[] { 'k' });
+        term.closeOnRead = true;
+        term.releaseRead.countDown();
+        try {
+            term.signalWait = true;
+            term.releaseWait.countDown();
+            assertTrue("pump must reach its read", term.readEntered.await(5, TimeUnit.SECONDS));
+            // close() ran on the pump thread (no join, no direct release):
+            // poll for the backstop freeing the slot.
+            ScriptedPumpTerminal next = null;
+            long deadline = System.currentTimeMillis() + 5000;
+            while (next == null && System.currentTimeMillis() < deadline) {
+                try {
+                    next = new ScriptedPumpTerminal(new byte[] { 'y' });
+                } catch (IOException e) {
+                    Thread.sleep(50);
+                }
+            }
+            assertTrue("pump-exit backstop must free the slot after self-close", next != null);
+            next.releaseWait.countDown();
+            next.close();
+            joinBounded(term.pump, "old pump");
+        } finally {
+            term.close();
+        }
+    }
+
+    @Test
+    public void testCloseReleasesSlotWhenPumpWedged() throws Exception {
+        ScriptedPumpTerminal term = new ScriptedPumpTerminal(new byte[] { 'k' });
+        try {
+            assertTrue("pump must reach its wait", term.waitEntered.await(5, TimeUnit.SECONDS));
+            // Never release the wait: the join backstop (5s) must fire and
+            // close() must still return bounded with the slot freed.
+            long start = System.currentTimeMillis();
+            term.close();
+            long elapsed = System.currentTimeMillis() - start;
+            assertTrue("close() with a wedged pump must stay bounded, took " + elapsed + "ms",
+                    elapsed < 15000);
+            ScriptedPumpTerminal next = new ScriptedPumpTerminal(new byte[] { 'y' });
+            next.releaseWait.countDown();
+            next.close();
+        } finally {
+            term.releaseWait.countDown();
+            term.close();
+        }
     }
 }
