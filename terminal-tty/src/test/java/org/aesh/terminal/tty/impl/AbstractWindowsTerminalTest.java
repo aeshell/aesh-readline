@@ -416,17 +416,17 @@ public class AbstractWindowsTerminalTest {
     // ==================== pump handoff on close/reopen (#344) ====================
 
     /**
-     * Scriptable pump: the native wait/read touchpoints are programmable,
-     * so wait/close/reopen interleavings run deterministically headless.
+     * Scriptable pump state, installed in a static slot before construction.
      * <p>
-     * The scripted wait models native-wait semantics — close()'s interrupt
-     * does not release it, only the event (or the 30s cap) does — so the
-     * close-during-wait interleaving is reachable. All waits are bounded;
-     * threads are daemons, so a forgotten release fails the test, never
-     * the suite.
+     * The pump thread starts inside {@code super()} — before instance
+     * fields are assigned — so per-test state reachable from the pump must
+     * not live in instance fields (the pump would read them null). All
+     * shared state hangs off this holder, published via a static volatile
+     * write before construction; the pump reads it through the same
+     * volatile. Same pattern as {@code StubWindowsTerminal}'s static
+     * {@code INIT_MODE}. Cleared after each test once its pump is dead.
      */
-    private static class ScriptedPumpTerminal extends StubWindowsTerminal {
-
+    private static final class PumpScript {
         final CountDownLatch waitEntered = new CountDownLatch(1);
         final CountDownLatch releaseWait = new CountDownLatch(1);
         final CountDownLatch readEntered = new CountDownLatch(1);
@@ -437,9 +437,28 @@ public class AbstractWindowsTerminalTest {
         volatile int readCalls;
         final byte[] payload;
 
-        ScriptedPumpTerminal(byte[] payload) throws IOException {
-            super(ENABLE_WINDOW_INPUT);
+        PumpScript(byte[] payload) {
             this.payload = payload.clone();
+        }
+    }
+
+    private static volatile PumpScript currentScript;
+
+    /**
+     * Scriptable pump: the native wait/read touchpoints are programmable,
+     * so wait/close/reopen interleavings run deterministically headless.
+     * <p>
+     * The scripted wait models native-wait semantics — close()'s interrupt
+     * does not release it, only the event (or the 30s cap) does — so the
+     * close-during-wait interleaving is reachable. All waits are bounded;
+     * threads are daemons, so a forgotten release fails the test, never
+     * the suite. A cleared script reads as idle/empty, letting a
+     * post-close pump drain without touching freed state.
+     */
+    private static class ScriptedPumpTerminal extends StubWindowsTerminal {
+
+        ScriptedPumpTerminal() throws IOException {
+            super(ENABLE_WINDOW_INPUT);
         }
 
         @Override
@@ -449,16 +468,20 @@ public class AbstractWindowsTerminalTest {
 
         @Override
         protected int waitForInput(long handle, int timeoutMs) {
-            waitCalls++;
-            waitEntered.countDown();
-            if (releaseWait.getCount() == 0) {
-                return signalWait ? WinConsoleNative.WAIT_OBJECT_0 : WinConsoleNative.WAIT_TIMEOUT;
+            PumpScript script = currentScript;
+            if (script == null) {
+                return WinConsoleNative.WAIT_TIMEOUT;
+            }
+            script.waitCalls++;
+            script.waitEntered.countDown();
+            if (script.releaseWait.getCount() == 0) {
+                return script.signalWait ? WinConsoleNative.WAIT_OBJECT_0 : WinConsoleNative.WAIT_TIMEOUT;
             }
             long deadline = System.currentTimeMillis() + 30000;
             boolean released = false;
             while (!released && System.currentTimeMillis() < deadline) {
                 try {
-                    released = releaseWait.await(1000, TimeUnit.MILLISECONDS);
+                    released = script.releaseWait.await(1000, TimeUnit.MILLISECONDS);
                 } catch (InterruptedException e) {
                     // Swallowed deliberately: models the uninterruptible
                     // native wait, which close()'s interrupt cannot wake.
@@ -467,7 +490,7 @@ public class AbstractWindowsTerminalTest {
             if (!released) {
                 return WinConsoleNative.WAIT_TIMEOUT;
             }
-            return signalWait ? WinConsoleNative.WAIT_OBJECT_0 : WinConsoleNative.WAIT_TIMEOUT;
+            return script.signalWait ? WinConsoleNative.WAIT_OBJECT_0 : WinConsoleNative.WAIT_TIMEOUT;
         }
 
         @Override
@@ -477,20 +500,24 @@ public class AbstractWindowsTerminalTest {
 
         @Override
         protected byte[] readConsoleInput() {
-            readCalls++;
-            readEntered.countDown();
+            PumpScript script = currentScript;
+            if (script == null) {
+                return new byte[0];
+            }
+            script.readCalls++;
+            script.readEntered.countDown();
             try {
-                if (!releaseRead.await(30, TimeUnit.SECONDS)) {
+                if (!script.releaseRead.await(30, TimeUnit.SECONDS)) {
                     return new byte[0];
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 return new byte[0];
             }
-            if (closeOnRead) {
+            if (script.closeOnRead) {
                 close();
             }
-            return payload.clone();
+            return script.payload.clone();
         }
     }
 
@@ -513,36 +540,41 @@ public class AbstractWindowsTerminalTest {
 
     @Test
     public void testSignaledWaitAfterCloseSkipsRead() throws Exception {
-        ScriptedPumpTerminal term = new ScriptedPumpTerminal(new byte[] { 'k' });
+        PumpScript script = new PumpScript(new byte[] { 'k' });
+        currentScript = script;
+        ScriptedPumpTerminal term = new ScriptedPumpTerminal();
         // Pre-release the read: a lost race then fails fast, never hangs.
-        term.releaseRead.countDown();
+        script.releaseRead.countDown();
         try {
-            assertTrue("pump must reach its wait", term.waitEntered.await(5, TimeUnit.SECONDS));
+            assertTrue("pump must reach its wait", script.waitEntered.await(5, TimeUnit.SECONDS));
             Thread closer = closeInBackground(term);
             // close() sets closing synchronously before joining; settle so
             // the release below lands strictly after.
             Thread.sleep(500);
-            term.signalWait = true;
-            term.releaseWait.countDown();
+            script.signalWait = true;
+            script.releaseWait.countDown();
             joinBounded(closer, "close()");
             assertEquals("a wait signaled after close started must not be read",
-                    0, term.readCalls);
+                    0, script.readCalls);
         } finally {
-            term.releaseWait.countDown();
+            script.releaseWait.countDown();
             term.close();
+            currentScript = null;
         }
     }
 
     @Test
     public void testLiveSlotHeldUntilPumpStops() throws Exception {
-        ScriptedPumpTerminal old = new ScriptedPumpTerminal(new byte[] { 'k' });
+        PumpScript oldScript = new PumpScript(new byte[] { 'k' });
+        currentScript = oldScript;
+        ScriptedPumpTerminal old = new ScriptedPumpTerminal();
         try {
-            assertTrue("pump must reach its wait", old.waitEntered.await(5, TimeUnit.SECONDS));
+            assertTrue("pump must reach its wait", oldScript.waitEntered.await(5, TimeUnit.SECONDS));
             Thread closer = closeInBackground(old);
             // The old pump is still inside its wait: replacement must fail.
             ScriptedPumpTerminal leaked = null;
             try {
-                leaked = new ScriptedPumpTerminal(new byte[] { 'x' });
+                leaked = new ScriptedPumpTerminal();
                 fail("replacement created while the old pump is alive must be rejected");
             } catch (IOException expected) {
                 // expected: slot still held
@@ -552,16 +584,19 @@ public class AbstractWindowsTerminalTest {
                 }
             }
             // Release the old pump; it exits via timeout with closing set.
-            old.releaseWait.countDown();
+            oldScript.releaseWait.countDown();
             joinBounded(closer, "close()");
             assertTrue("old pump must be dead after close", !old.pump.isAlive());
-            // Slot reusable, and the first key lands in the new pipe.
-            ScriptedPumpTerminal next = new ScriptedPumpTerminal(new byte[] { 'y' });
+            // Slot reusable, and the first key lands in the new pipe. The
+            // old pump is dead, so swapping the script slot is safe.
+            PumpScript nextScript = new PumpScript(new byte[] { 'y' });
+            currentScript = nextScript;
+            ScriptedPumpTerminal next = new ScriptedPumpTerminal();
             try {
-                next.releaseRead.countDown();
-                next.signalWait = true;
-                next.releaseWait.countDown();
-                assertTrue("replacement pump must read", next.readEntered.await(5, TimeUnit.SECONDS));
+                nextScript.releaseRead.countDown();
+                nextScript.signalWait = true;
+                nextScript.releaseWait.countDown();
+                assertTrue("replacement pump must read", nextScript.readEntered.await(5, TimeUnit.SECONDS));
                 boolean delivered = false;
                 long deadline = System.currentTimeMillis() + 5000;
                 while (!delivered && System.currentTimeMillis() < deadline) {
@@ -573,48 +608,60 @@ public class AbstractWindowsTerminalTest {
                 }
                 assertTrue("first key after replacement must reach the new terminal", delivered);
             } finally {
+                nextScript.releaseWait.countDown();
                 next.close();
+                currentScript = null;
             }
         } finally {
-            old.releaseWait.countDown();
+            oldScript.releaseWait.countDown();
             old.close();
+            currentScript = null;
         }
     }
 
     @Test
     public void testCloseOnPumpThreadReleasesViaBackstop() throws Exception {
-        ScriptedPumpTerminal term = new ScriptedPumpTerminal(new byte[] { 'k' });
-        term.closeOnRead = true;
-        term.releaseRead.countDown();
+        PumpScript script = new PumpScript(new byte[] { 'k' });
+        script.closeOnRead = true;
+        currentScript = script;
+        ScriptedPumpTerminal term = new ScriptedPumpTerminal();
+        script.releaseRead.countDown();
         try {
-            term.signalWait = true;
-            term.releaseWait.countDown();
-            assertTrue("pump must reach its read", term.readEntered.await(5, TimeUnit.SECONDS));
+            script.signalWait = true;
+            script.releaseWait.countDown();
+            assertTrue("pump must reach its read", script.readEntered.await(5, TimeUnit.SECONDS));
             // close() ran on the pump thread (no join, no direct release):
-            // poll for the backstop freeing the slot.
+            // swap the script and poll for the backstop freeing the slot.
+            // The old pump is exiting and only touches freed state benignly.
+            PumpScript nextScript = new PumpScript(new byte[] { 'y' });
+            currentScript = nextScript;
             ScriptedPumpTerminal next = null;
             long deadline = System.currentTimeMillis() + 5000;
             while (next == null && System.currentTimeMillis() < deadline) {
                 try {
-                    next = new ScriptedPumpTerminal(new byte[] { 'y' });
+                    next = new ScriptedPumpTerminal();
                 } catch (IOException e) {
                     Thread.sleep(50);
                 }
             }
             assertTrue("pump-exit backstop must free the slot after self-close", next != null);
-            next.releaseWait.countDown();
+            nextScript.releaseWait.countDown();
             next.close();
             joinBounded(term.pump, "old pump");
         } finally {
+            script.releaseWait.countDown();
             term.close();
+            currentScript = null;
         }
     }
 
     @Test
     public void testCloseReleasesSlotWhenPumpWedged() throws Exception {
-        ScriptedPumpTerminal term = new ScriptedPumpTerminal(new byte[] { 'k' });
+        PumpScript script = new PumpScript(new byte[] { 'k' });
+        currentScript = script;
+        ScriptedPumpTerminal term = new ScriptedPumpTerminal();
         try {
-            assertTrue("pump must reach its wait", term.waitEntered.await(5, TimeUnit.SECONDS));
+            assertTrue("pump must reach its wait", script.waitEntered.await(5, TimeUnit.SECONDS));
             // Never release the wait: the join backstop (5s) must fire and
             // close() must still return bounded with the slot freed.
             long start = System.currentTimeMillis();
@@ -622,12 +669,15 @@ public class AbstractWindowsTerminalTest {
             long elapsed = System.currentTimeMillis() - start;
             assertTrue("close() with a wedged pump must stay bounded, took " + elapsed + "ms",
                     elapsed < 15000);
-            ScriptedPumpTerminal next = new ScriptedPumpTerminal(new byte[] { 'y' });
-            next.releaseWait.countDown();
+            PumpScript nextScript = new PumpScript(new byte[] { 'y' });
+            currentScript = nextScript;
+            ScriptedPumpTerminal next = new ScriptedPumpTerminal();
+            nextScript.releaseWait.countDown();
             next.close();
         } finally {
-            term.releaseWait.countDown();
+            script.releaseWait.countDown();
             term.close();
+            currentScript = null;
         }
     }
 }
