@@ -24,6 +24,8 @@ import static org.junit.Assert.*;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 import org.aesh.terminal.detect.TerminalTheme;
@@ -822,6 +824,93 @@ public class ConnectionOscQueryTest {
 
         assertEquals("CSI-shaped keys must redeliver exactly once, got: "
                 + joined(appReceived), "\u001B[A", joined(appReceived));
+    }
+
+    // ==================== Query cancellation (#352) ====================
+
+    @Test
+    public void testInterruptDuringQueryReturnsNullAndRedelivers() throws Exception {
+        MockConnection connection = new MockConnection();
+        List<int[]> appReceived = new ArrayList<>();
+        Consumer<int[]> appHandler = appReceived::add;
+        connection.setStdinHandler(appHandler);
+
+        final AtomicReference<int[]> result = new AtomicReference<>();
+        final AtomicBoolean interruptedSeen = new AtomicBoolean();
+        Thread joiner = new Thread(() -> {
+            try {
+                result.set(connection.terminal().queryOsc(10, "?", 30000, input -> null));
+            } finally {
+                interruptedSeen.set(Thread.currentThread().isInterrupted());
+            }
+        }, "query-joiner");
+        joiner.setDaemon(true);
+        joiner.start();
+        // Lease installed: keys go in, then the interrupt lands while the
+        // joiner parks in the latch wait (or before it enters — same path).
+        connection.awaitHandlerChange(appHandler, 1000);
+        connection.simulateInput("keys");
+        joiner.interrupt();
+        joiner.join(10000);
+
+        assertFalse("interrupted query must return", joiner.isAlive());
+        assertNull("interrupted query must return null", result.get());
+        assertTrue("interrupt status must survive the query", interruptedSeen.get());
+        assertEquals("held input must redeliver exactly once, got: "
+                + joined(appReceived), "keys", joined(appReceived));
+    }
+
+    @Test
+    public void testInterruptCursorQueryRestoresFlag() throws Exception {
+        MockConnection connection = new MockConnection();
+        List<int[]> appReceived = new ArrayList<>();
+        Consumer<int[]> appHandler = appReceived::add;
+        connection.setStdinHandler(appHandler);
+
+        final AtomicReference<Point> result = new AtomicReference<>();
+        final AtomicBoolean interruptedSeen = new AtomicBoolean();
+        Thread joiner = new Thread(() -> {
+            try {
+                result.set(connection.terminal().getCursorPosition());
+            } finally {
+                interruptedSeen.set(Thread.currentThread().isInterrupted());
+            }
+        }, "cursor-joiner");
+        joiner.setDaemon(true);
+        joiner.start();
+        connection.awaitHandlerChange(appHandler, 1000);
+        connection.simulateInput("keys");
+        joiner.interrupt();
+        joiner.join(10000);
+
+        assertFalse("interrupted cursor query must return", joiner.isAlive());
+        assertNull("interrupted cursor query must return null", result.get());
+        assertTrue("interrupt status must survive getCursorPosition", interruptedSeen.get());
+        assertEquals("held input must redeliver exactly once, got: "
+                + joined(appReceived), "keys", joined(appReceived));
+    }
+
+    @Test
+    public void testInterruptWithEmptyBufferDeliversNothing() throws Exception {
+        MockConnection connection = new MockConnection();
+        List<int[]> appReceived = new ArrayList<>();
+        Consumer<int[]> appHandler = appReceived::add;
+        connection.setStdinHandler(appHandler);
+
+        final AtomicReference<int[]> result = new AtomicReference<>();
+        Thread joiner = new Thread(() -> {
+            result.set(connection.terminal().queryOsc(10, "?", 30000, input -> null));
+        }, "query-joiner");
+        joiner.setDaemon(true);
+        joiner.start();
+        connection.awaitHandlerChange(appHandler, 1000);
+        joiner.interrupt();
+        joiner.join(10000);
+
+        assertFalse(joiner.isAlive());
+        assertNull(result.get());
+        assertTrue("empty buffer must redeliver nothing, got: "
+                + joined(appReceived), joined(appReceived).isEmpty());
     }
 
     private static class MockConnection implements Connection {

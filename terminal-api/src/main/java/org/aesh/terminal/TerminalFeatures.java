@@ -27,7 +27,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.aesh.terminal.detect.ImageProtocol;
@@ -308,7 +307,7 @@ public class TerminalFeatures {
             try {
                 latch.await(DEFAULT_QUERY_TIMEOUT_MS, TimeUnit.MILLISECONDS);
             } catch (InterruptedException e) {
-                LOGGER.log(Level.WARNING, "getCursorPosition interrupted", e);
+                Thread.currentThread().interrupt();
             }
         } finally {
             connection.setAttributes(attributes);
