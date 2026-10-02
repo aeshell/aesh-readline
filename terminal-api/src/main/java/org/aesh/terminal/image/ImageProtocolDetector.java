@@ -107,7 +107,17 @@ public final class ImageProtocolDetector {
      * @return the detected protocol, or NONE if unknown
      */
     public static ImageProtocol detectFromEnvironment() {
-        TerminalEnvironment env = TerminalEnvironment.getInstance();
+        return detectFromEnvironment(TerminalEnvironment.getInstance());
+    }
+
+    /**
+     * Detect an image protocol from explicitly captured terminal facts.
+     * No process-global environment is consulted.
+     *
+     * @param env the captured terminal environment
+     * @return the detected protocol, or NONE
+     */
+    public static ImageProtocol detectFromEnvironment(TerminalEnvironment env) {
         Device.TerminalType terminalType = env.getTerminalType();
         ImageProtocol protocol = getProtocolForTerminalType(terminalType);
         if (env.isInMultiplexer() && protocol == ImageProtocol.KITTY) {
@@ -220,10 +230,15 @@ public final class ImageProtocolDetector {
     /**
      * Get the image protocol based on a terminal type string.
      *
-     * @param termType the terminal type string (e.g., from TERM)
+     * No process-global environment is consulted.
+     *
+     * @param termType the terminal type string (e.g., from TERM), or null
      * @return the detected protocol, or NONE
      */
-    private static ImageProtocol getProtocolForTermType(String termType) {
+    public static ImageProtocol getProtocolForTermType(String termType) {
+        if (termType == null) {
+            return ImageProtocol.NONE;
+        }
         String typeLower = termType.toLowerCase();
 
         if (typeLower.contains("kitty") || typeLower.contains("ghostty") ||

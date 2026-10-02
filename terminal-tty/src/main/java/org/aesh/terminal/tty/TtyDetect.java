@@ -31,8 +31,8 @@ import org.aesh.terminal.utils.PlatformContext;
  * Utility for detecting whether file descriptors are connected to a terminal.
  * <p>
  * Each descriptor is examined independently: Windows probes the matching
- * standard handle with {@code GetConsoleMode}, POSIX runs {@code test -t}
- * for the descriptor. Both answer per-fd, so mixed redirection (e.g. tty
+ * standard handle with {@code GetConsoleMode}, POSIX and Cygwin/MSYS
+ * run {@code test -t} for the descriptor. Both answer per-fd, so mixed redirection (e.g. tty
  * stdout with piped stdin) reports each stream truthfully.
  * <p>
  * No native access is needed on POSIX at any Java version. Where the
@@ -103,22 +103,25 @@ public final class TtyDetect {
      * @return true if the file descriptor is connected to a terminal
      */
     public static boolean isTty(int fd, PlatformContext context) {
+        if (fd < FD_STDIN || fd > FD_STDERR) {
+            return false;
+        }
+        // Cygwin/mintty descriptors may be pipe-backed Windows handles.
+        // Check the descriptor through its POSIX runtime, not through
+        // GetConsoleMode. In particular, stdin being a PTY does not prove
+        // that stdout is one: redirection must still suppress ANSI output.
+        if (context.isCygwin()) {
+            Boolean exact = tryTestT(fd);
+            if (exact != null) {
+                return exact;
+            }
+        }
         // On Windows, avoid System.console() entirely — it triggers the
         // JDK's internal JLine terminal initialization (JnaWinSysTerminal),
         // which starts a WindowsStreamPump thread that competes with our
         // own pump for ReadConsoleInputW events, causing lost keystrokes (#276).
         if (context.isWindows()) {
-            Boolean winResult = tryWindowsConsoleHandle(fd);
-            if (winResult != null) {
-                return winResult;
-            }
-            // Fallback for Windows when native library is not available:
-            // deny by default — ExternalTerminal handles pipes correctly,
-            // and claiming a console we can't drive is dangerous.
-            return false;
-        }
-        if (fd < 0) {
-            return false;
+            return isWindowsConsole(fd);
         }
         // Exact per-fd answer wherever sh exists (all POSIX, all Java
         // versions, no native access needed).
@@ -133,6 +136,21 @@ public final class TtyDetect {
         }
         // Fallback: System.console() != null heuristic (pre-Java 22)
         return System.console() != null;
+    }
+
+    /**
+     * Check for a native Windows console on one standard descriptor.
+     * <p>
+     * Unlike {@link #isTty(int)}, this never accepts a Cygwin/MSYS PTY.
+     * Native Windows providers need this transport-specific proof even
+     * when the process runs inside a POSIX shell. Probed fresh each time;
+     * unavailable native access and nonstandard descriptors return false.
+     *
+     * @param fd the standard descriptor, 0-2
+     * @return true only when GetConsoleMode succeeds
+     */
+    public static boolean isWindowsConsole(int fd) {
+        return Boolean.TRUE.equals(tryWindowsConsoleHandle(fd));
     }
 
     /**

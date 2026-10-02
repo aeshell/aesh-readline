@@ -28,6 +28,7 @@ import org.aesh.terminal.detect.ImageProtocol;
 import org.aesh.terminal.image.ImageProtocolDetector;
 import org.aesh.terminal.tty.Capability;
 import org.aesh.terminal.utils.ColorDepth;
+import org.aesh.terminal.utils.TerminalEnvironment;
 
 /**
  * Contains info and capabilities for the device we are connected to.
@@ -505,13 +506,20 @@ public interface Device {
      * Not all terminals support these queries, and some terminal multiplexers
      * (like tmux, screen) may intercept or block them.
      * <p>
-     * This method uses {@link org.aesh.terminal.utils.TerminalEnvironment} for
-     * environment-based detection.
+     * Uses this device's terminal identity and multiplexer facts. Local
+     * system devices may supply an explicitly captured environment.
      *
      * @return true if OSC queries are likely supported
      */
     default boolean supportsOscQueries() {
-        return org.aesh.terminal.utils.TerminalEnvironment.getInstance().supportsOscQueries();
+        TerminalType terminalType = detectTerminalType();
+        if ("dumb".equals(type()) || terminalType == TerminalType.JETBRAINS) {
+            return false;
+        }
+        if (isMultiplexer() && !isTmuxPassthroughEnabled()) {
+            return false;
+        }
+        return terminalType.supports(OscCode.FOREGROUND) && terminalType.supports(OscCode.BACKGROUND);
     }
 
     /**
@@ -520,14 +528,12 @@ public interface Device {
      * Mode 2027 tells the terminal to use UAX #29 grapheme cluster segmentation
      * instead of per-codepoint wcwidth for cursor positioning.
      * <p>
-     * This method uses {@link org.aesh.terminal.utils.TerminalEnvironment} for
-     * environment-based detection.
+     * Uses this device's terminal identity.
      *
      * @return true if Mode 2027 is likely supported
      */
     default boolean supportsGraphemeClusterMode() {
-        return org.aesh.terminal.utils.TerminalEnvironment.getInstance()
-                .supportsGraphemeClusterMode();
+        return detectTerminalType().supportsGraphemeClusterMode();
     }
 
     /**
@@ -536,59 +542,46 @@ public interface Device {
      * Synchronized output prevents screen tearing during rapid terminal
      * redraws by buffering rendering until the mode is disabled.
      * <p>
-     * This method uses {@link org.aesh.terminal.utils.TerminalEnvironment} for
-     * environment-based detection.
+     * Uses this device's terminal identity.
      *
      * @return true if Mode 2026 is likely supported
      */
     default boolean supportsSynchronizedOutput() {
-        return org.aesh.terminal.utils.TerminalEnvironment.getInstance()
-                .supportsSynchronizedOutput();
+        return detectTerminalType().supportsSynchronizedOutput();
     }
 
     /**
      * Check if this device supports OSC 133 shell integration.
      * <p>
-     * This method uses {@link org.aesh.terminal.utils.TerminalEnvironment} for
-     * environment-based detection.
+     * Uses this device's terminal identity.
      *
      * @return true if OSC 133 shell integration is likely supported
      */
     default boolean supportsShellIntegration() {
-        return org.aesh.terminal.utils.TerminalEnvironment.getInstance()
-                .supportsShellIntegration();
+        return detectTerminalType().supportsShellIntegration();
     }
 
     /**
      * Check if this device supports OSC 8 hyperlinks.
      * <p>
-     * This method uses {@link org.aesh.terminal.utils.TerminalEnvironment} for
-     * environment-based detection.
+     * Uses this device's terminal identity.
      *
      * @return true if OSC 8 hyperlinks are likely supported
      */
     default boolean supportsHyperlinks() {
-        return org.aesh.terminal.utils.TerminalEnvironment.getInstance().supportsHyperlinks();
+        return detectTerminalType().supportsHyperlinks();
     }
 
     /**
-     * Detect the terminal type from environment variables and TERM type.
-     * <p>
-     * This method uses {@link org.aesh.terminal.utils.TerminalEnvironment}
-     * which parses environment variables once and caches the result.
-     * <p>
-     * Detection priority:
-     * <ol>
-     * <li>IDE-specific environment variables (TERMINAL_EMULATOR)</li>
-     * <li>Terminal-specific environment variables (KITTY_WINDOW_ID, etc.)</li>
-     * <li>TERM_PROGRAM environment variable</li>
-     * <li>TERM type string</li>
-     * </ol>
+     * Identify this device from {@link #type()}, without consulting the
+     * process environment. Local system devices can override this with
+     * an explicitly captured host identity when the type names a generic
+     * terminfo entry, such as "windows" or "xterm-256color".
      *
      * @return the detected terminal type
      */
     default TerminalType detectTerminalType() {
-        return org.aesh.terminal.utils.TerminalEnvironment.getInstance().getTerminalType();
+        return TerminalEnvironment.detectTerminalType(type());
     }
 
     /**
@@ -631,16 +624,18 @@ public interface Device {
      * When running inside tmux, OSC sequences are only passed through to the
      * outer terminal if allow-passthrough is enabled.
      *
-     * @return true if running in tmux with passthrough likely enabled
+     * No passthrough is assumed without device-local configuration.
+     *
+     * @return true if this device has explicitly enabled passthrough
      */
     default boolean isTmuxPassthroughEnabled() {
-        return org.aesh.terminal.utils.TerminalEnvironment.getInstance().isTmuxPassthroughEnabled();
+        return false;
     }
 
     /**
      * Get the color depth of this device based on terminfo capabilities.
      * <p>
-     * Falls back to environment-based detection if terminfo doesn't provide
+     * Falls back to this device's terminal identity if terminfo doesn't provide
      * color information.
      *
      * @return the detected color depth
@@ -650,8 +645,11 @@ public interface Device {
         if (maxColors != null) {
             return ColorDepth.fromColorCount(maxColors);
         }
-        // Fallback to environment-based detection
-        return org.aesh.terminal.utils.TerminalEnvironment.getInstance().getDefaultColorDepth();
+        if ("dumb".equals(type())) {
+            return ColorDepth.NO_COLOR;
+        }
+        TerminalType terminalType = detectTerminalType();
+        return terminalType == TerminalType.UNKNOWN ? ColorDepth.COLORS_8 : terminalType.getDefaultColorDepth();
     }
 
     /**
@@ -661,7 +659,8 @@ public interface Device {
      * @return true if running inside a multiplexer
      */
     default boolean isMultiplexer() {
-        return org.aesh.terminal.utils.TerminalEnvironment.getInstance().isInMultiplexer();
+        TerminalType terminalType = detectTerminalType();
+        return terminalType == TerminalType.TMUX || terminalType == TerminalType.SCREEN;
     }
 
     /**
@@ -676,16 +675,13 @@ public interface Device {
     /**
      * Get the image protocol supported by this device.
      * <p>
-     * Detection checks environment variables first (most reliable on all
-     * platforms), then falls back to terminal type string matching.
+     * Uses this device's terminal identity. Process-local environment
+     * variables cannot describe a remote device.
      *
      * @return the detected image protocol, or NONE if not supported
      */
     default ImageProtocol getImageProtocol() {
-        ImageProtocol protocol = ImageProtocolDetector.detectFromEnvironment();
-        if (protocol != ImageProtocol.NONE) {
-            return protocol;
-        }
-        return ImageProtocolDetector.detectFromTermType(type());
+        ImageProtocol protocol = ImageProtocolDetector.getProtocolForTerminalType(detectTerminalType());
+        return protocol != ImageProtocol.NONE ? protocol : ImageProtocolDetector.getProtocolForTermType(type());
     }
 }

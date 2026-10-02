@@ -47,6 +47,7 @@ import org.aesh.terminal.tty.utils.ShutdownHooks;
 import org.aesh.terminal.tty.utils.Signals;
 import org.aesh.terminal.utils.Curses;
 import org.aesh.terminal.utils.LoggerUtil;
+import org.aesh.terminal.utils.TerminalEnvironment;
 
 abstract class AbstractWindowsTerminal extends AbstractTerminal {
 
@@ -135,7 +136,7 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
 
     AbstractWindowsTerminal(boolean consumeCP, OutputStream output, String name, boolean nativeSignals,
             SignalHandler signalHandler) throws IOException {
-        super(name, "windows", signalHandler);
+        super(name, "windows", signalHandler, TerminalEnvironment.getInstance());
         // Claim the single live slot before registering signal handlers or
         // starting the pump — a second live instance would compete for
         // console input events (#276, #289).

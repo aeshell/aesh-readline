@@ -26,9 +26,11 @@ import java.util.List;
 import org.aesh.terminal.BaseDevice;
 import org.aesh.terminal.Device;
 import org.aesh.terminal.Terminal;
+import org.aesh.terminal.TerminalFeatures;
 import org.aesh.terminal.detect.ModeSupport;
 import org.aesh.terminal.detect.TerminalCapabilities;
 import org.aesh.terminal.detect.TerminalTheme;
+import org.aesh.terminal.utils.ColorDepth;
 import org.junit.Test;
 
 /**
@@ -113,6 +115,33 @@ public class TerminalConnectionThemeTest {
             TerminalCapabilities.setInstance(caps);
             assertTrue("local connection must answer from the seeded probe result",
                     connection.terminal().supportsSynchronizedOutput());
+        } finally {
+            connection.close();
+            TerminalCapabilities.setInstance(saved);
+        }
+    }
+
+    @Test
+    public void testDetectedColorDepthUpgradesLegacyWindowsTerminfo() throws Exception {
+        TerminalCapabilities saved = TerminalCapabilities.getInstance();
+        TerminalCapabilities caps = TerminalCapabilities.detect();
+        Field background = TerminalCapabilities.class.getDeclaredField("backgroundRGB");
+        background.setAccessible(true);
+        background.set(caps, new int[] { 16, 32, 48 });
+        Device device = DeviceBuilder.builder().name("windows").build();
+        assertEquals(Integer.valueOf(8), device.getNumericCapability(Capability.max_colors));
+        LocalTestConnection connection = new LocalTestConnection(stubTerminal(device));
+        try {
+            TerminalCapabilities.setInstance(caps);
+            assertTrue("The probe fixture must establish true color", caps.supportsTrueColor());
+            TerminalFeatures features = connection.terminal();
+            assertEquals("Legacy terminfo must not downgrade detection", ColorDepth.TRUE_COLOR,
+                    features.colorDepth());
+            assertEquals(ColorDepth.TRUE_COLOR, features.colorCapability().getColorDepth());
+
+            TerminalCapabilities.setInstance(saved);
+            assertEquals("Retained features must keep their connection-owned snapshot", ColorDepth.TRUE_COLOR,
+                    features.colorDepth());
         } finally {
             connection.close();
             TerminalCapabilities.setInstance(saved);

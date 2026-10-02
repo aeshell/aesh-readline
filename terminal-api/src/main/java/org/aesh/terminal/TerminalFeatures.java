@@ -34,8 +34,6 @@ import org.aesh.terminal.detect.TerminalReplyFramer;
 import org.aesh.terminal.detect.TerminalReplyFramer.Kind;
 import org.aesh.terminal.detect.TerminalReplyFramer.Span;
 import org.aesh.terminal.detect.TerminalTheme;
-import org.aesh.terminal.image.ImageProtocolDetector;
-import org.aesh.terminal.tty.Capability;
 import org.aesh.terminal.tty.Point;
 import org.aesh.terminal.utils.ANSI;
 import org.aesh.terminal.utils.CodePointUtils;
@@ -84,6 +82,7 @@ public class TerminalFeatures {
     private volatile ModeSupport seededMode2026;
     private volatile ModeSupport seededMode2027;
     private volatile Boolean seededNativeGraphemeClustering;
+    private volatile ColorDepth seededColorDepth;
 
     private static final class CacheOnlyThemeHandler implements Consumer<TerminalTheme> {
         @Override
@@ -702,14 +701,14 @@ public class TerminalFeatures {
      * <p>
      * This is the recommended entry point for image protocol detection when a
      * {@link Connection} is available. It avoids the DA1 query cost when
-     * environment variables or terminal type already identify the protocol.
+     * the connection's own device already identifies the protocol.
      *
      * @return the detected image protocol, or NONE
      */
     public ImageProtocol getImageProtocol() {
         ImageProtocol protocol = connection.device() != null
                 ? connection.device().getImageProtocol()
-                : ImageProtocolDetector.detectFromEnvironment();
+                : ImageProtocol.NONE;
         if (protocol != ImageProtocol.NONE) {
             return protocol;
         }
@@ -724,8 +723,13 @@ public class TerminalFeatures {
      */
     public ImageProtocol queryImageProtocol(long timeoutMs) {
         DeviceAttributes attrs = queryPrimaryDeviceAttributes(timeoutMs);
-        String termType = connection.device() != null ? connection.device().type() : null;
-        return ImageProtocolDetector.detect(attrs, termType);
+        ImageProtocol protocol = connection.device() != null
+                ? connection.device().getImageProtocol()
+                : ImageProtocol.NONE;
+        if (protocol == ImageProtocol.KITTY || protocol == ImageProtocol.ITERM2) {
+            return protocol;
+        }
+        return attrs != null && attrs.supportsSixel() ? ImageProtocol.SIXEL : protocol;
     }
 
     /**
@@ -784,8 +788,7 @@ public class TerminalFeatures {
         if (connection.device() != null) {
             return connection.device().supportsOscQueries();
         }
-        return org.aesh.terminal.utils.TerminalEnvironment.getInstance().supportsOscQueries()
-                && connection.supportsAnsi();
+        return false;
     }
 
     /**
@@ -804,17 +807,31 @@ public class TerminalFeatures {
 
     /**
      * Get the color depth of this terminal connection.
+     * <p>
+     * Detection seeded by a local connection can upgrade its device's
+     * terminfo baseline. Remote connections use only their own device.
      *
      * @return the detected color depth
      */
     public ColorDepth colorDepth() {
-        if (connection.device() != null) {
-            Integer maxColors = connection.device().getNumericCapability(Capability.max_colors);
-            if (maxColors != null) {
-                return ColorDepth.fromColorCount(maxColors);
-            }
-        }
-        return TerminalColorCapability.detectColorDepthFromEnvironment();
+        ColorDepth depth = connection.device() != null
+                ? connection.device().getColorDepth()
+                : ColorDepth.COLORS_8;
+        ColorDepth detected = seededColorDepth;
+        return detected != null && detected.getColorCount() > depth.getColorCount() ? detected : depth;
+    }
+
+    /**
+     * Seed a local connection's detected color depth without consulting
+     * process-global detection during subsequent capability reads.
+     * <p>
+     * The seed upgrades a lower terminfo baseline, never downgrades it.
+     * Passing null clears the seed. Remote connections leave it unset.
+     *
+     * @param colorDepth the detected depth, or null to clear the seed
+     */
+    public void seedColorDepth(ColorDepth colorDepth) {
+        seededColorDepth = colorDepth;
     }
 
     /**

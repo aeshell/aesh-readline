@@ -51,6 +51,7 @@ import org.aesh.terminal.tty.impl.ExternalTerminal;
 import org.aesh.terminal.tty.impl.PosixSysTerminal;
 import org.aesh.terminal.tty.impl.WinSysTerminal;
 import org.aesh.terminal.utils.ANSI;
+import org.aesh.terminal.utils.ColorDepth;
 import org.aesh.terminal.utils.LoggerUtil;
 import org.aesh.terminal.utils.OSUtils;
 
@@ -561,6 +562,9 @@ public class TerminalConnection extends AbstractConnection {
         TerminalCapabilities caps = TerminalCapabilities.getInstance();
         features.seedProbedModes(caps.synchronizedOutputSupport(),
                 caps.graphemeClusterSupport(), caps.nativeGraphemeClustering());
+        features.seedColorDepth(caps.supportsTrueColor() ? ColorDepth.TRUE_COLOR
+                : caps.supports256Colors() ? ColorDepth.COLORS_256
+                        : caps.supportsColor() ? ColorDepth.COLORS_16 : ColorDepth.NO_COLOR);
         return features;
     }
 

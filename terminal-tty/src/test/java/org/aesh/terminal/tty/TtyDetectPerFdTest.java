@@ -166,4 +166,31 @@ public class TtyDetectPerFdTest {
                 + " < " + input.getAbsolutePath() + "'";
         assertEquals("0:false 1:true 2:true 999:false", runProbe(inner));
     }
+
+    @Test
+    public void testCygwinContextUsesPosixDescriptorProof() throws Exception {
+        Assume.assumeTrue("needs script(1) for a real PTY", canRunScriptMatrix());
+        assertEquals("0:true 1:true 2:true 999:false", runProbe(probeCommand() + " cygwin"));
+    }
+
+    @Test
+    public void testCygwinRedirectedStdoutStaysNonTty() throws Exception {
+        Assume.assumeTrue("needs script(1) for a real PTY", canRunScriptMatrix());
+        File output = File.createTempFile("tty-stdout", ".txt");
+        output.deleteOnExit();
+        assertEquals("0:true 1:false 2:true 999:false",
+                runProbe(probeCommand() + " cygwin > " + output.getAbsolutePath()));
+    }
+
+    @Test
+    public void testCygwinPipedStdoutStaysNonTty() throws Exception {
+        Assume.assumeTrue("needs script(1) for a real PTY", canRunScriptMatrix());
+        assertEquals("0:true 1:false 2:true 999:false", runProbe(probeCommand() + " cygwin | cat"));
+    }
+
+    @Test
+    public void testNativeWindowsContextDoesNotAcceptPosixDescriptors() throws Exception {
+        Assume.assumeTrue("needs script(1) for a real PTY", canRunScriptMatrix());
+        assertEquals("0:false 1:false 2:false 999:false", runProbe(probeCommand() + " windows"));
+    }
 }

@@ -82,7 +82,7 @@ public class WinSysTerminalProvider implements TerminalProvider {
         // isStdinTty()): GetConsoleMode fails on pipes and redirected
         // handles. Throwing here lets TerminalBuilder fall through to the
         // next provider instead of driving a console that isn't there (#289).
-        if (!TtyDetect.isTty(TtyDetect.FD_STDIN)) {
+        if (!TtyDetect.isWindowsConsole(TtyDetect.FD_STDIN)) {
             throw new IOException("No Windows console attached to stdin (GetConsoleMode failed)");
         }
         return new WinSysTerminal(name, nativeSignals);

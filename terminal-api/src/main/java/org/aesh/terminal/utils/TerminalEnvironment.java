@@ -19,6 +19,8 @@
  */
 package org.aesh.terminal.utils;
 
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 
@@ -42,6 +44,8 @@ import org.aesh.terminal.detect.TerminalCapabilities;
  * @author Ståle Pedersen
  */
 public final class TerminalEnvironment {
+
+    private static final Map<String, Device.TerminalType> TERMINAL_TYPES = terminalTypes();
 
     // Cached environment values (parsed lazily)
     private static volatile TerminalEnvironment instance;
@@ -84,15 +88,14 @@ public final class TerminalEnvironment {
     }
 
     /**
-     * Package-private constructor for testing.
-     * Reads environment variables from the provided map instead of
-     * {@code System.getenv()}, enabling deterministic unit tests for
-     * terminal detection logic. No process-global detection results are
-     * consulted for an injected environment.
+     * Capture terminal facts from the supplied environment instead of
+     * {@code System.getenv()}. No process-global detection results are
+     * consulted. Values are captured at construction; later map changes
+     * do not affect this instance.
      *
      * @param env the environment variable map (keys are variable names)
      */
-    TerminalEnvironment(Map<String, String> env) {
+    public TerminalEnvironment(Map<String, String> env) {
         this(env, null);
     }
 
@@ -555,68 +558,80 @@ public final class TerminalEnvironment {
             }
         }
 
-        // Priority 4: TERM type
-        if (term != null) {
-            String termLower = term.toLowerCase();
+        // Priority 4: the TERM type, shared with explicitly typed devices.
+        return detectTerminalType(term);
+    }
 
-            // Linux console
-            if (termLower.equals("linux")) {
-                return Device.TerminalType.LINUX_CONSOLE;
-            }
-
-            // Multiplexers
-            if (termLower.startsWith("tmux")) {
-                return Device.TerminalType.TMUX;
-            }
-            if (termLower.startsWith("screen")) {
-                return Device.TerminalType.SCREEN;
-            }
-
-            // Modern terminals with specific TERM values
-            if (termLower.contains("kitty")) {
-                return Device.TerminalType.KITTY;
-            }
-            if (termLower.contains("ghostty")) {
-                return Device.TerminalType.GHOSTTY;
-            }
-            if (termLower.contains("alacritty")) {
-                return Device.TerminalType.ALACRITTY;
-            }
-            if (termLower.contains("wezterm")) {
-                return Device.TerminalType.WEZTERM;
-            }
-            if (termLower.contains("foot")) {
-                return Device.TerminalType.FOOT;
-            }
-            if (termLower.contains("contour")) {
-                return Device.TerminalType.CONTOUR;
-            }
-            if (termLower.contains("rio")) {
-                return Device.TerminalType.RIO;
-            }
-
-            // Linux desktop terminals
-            if (termLower.contains("konsole")) {
-                return Device.TerminalType.KONSOLE;
-            }
-            if (termLower.contains("vte") || termLower.contains("gnome")) {
-                return Device.TerminalType.GNOME_TERMINAL;
-            }
-            if (termLower.contains("rxvt")) {
-                return Device.TerminalType.RXVT;
-            }
-
-            // xterm-compatible (fallback for many terminals)
-            if (termLower.startsWith("xterm") || termLower.contains("xterm")) {
-                return Device.TerminalType.XTERM;
-            }
+    private static Map<String, Device.TerminalType> terminalTypes() {
+        Map<String, Device.TerminalType> types = new HashMap<>();
+        for (Device.TerminalType type : Device.TerminalType.values()) {
+            types.put(type.getIdentifier().toLowerCase(Locale.ROOT), type);
+            types.put(type.name().toLowerCase(Locale.ROOT).replace('_', '-'), type);
         }
+        return Collections.unmodifiableMap(types);
+    }
 
+    /**
+     * Identify a terminal from its own type string without consulting the
+     * process environment. Accepts known identifiers and TERM variants.
+     *
+     * @param termType the device or TERM type, or null
+     * @return the identified type, or UNKNOWN
+     */
+    public static Device.TerminalType detectTerminalType(String termType) {
+        if (termType == null) {
+            return Device.TerminalType.UNKNOWN;
+        }
+        String lower = termType.toLowerCase(Locale.ROOT);
+        Device.TerminalType known = TERMINAL_TYPES.get(lower);
+        if (known != null) {
+            return known;
+        }
+        // Multiplexers precede embedded emulator names such as screen.xterm.
+        if (lower.startsWith("tmux")) {
+            return Device.TerminalType.TMUX;
+        }
+        if (lower.startsWith("screen")) {
+            return Device.TerminalType.SCREEN;
+        }
+        if (lower.contains("kitty")) {
+            return Device.TerminalType.KITTY;
+        }
+        if (lower.contains("ghostty")) {
+            return Device.TerminalType.GHOSTTY;
+        }
+        if (lower.contains("alacritty")) {
+            return Device.TerminalType.ALACRITTY;
+        }
+        if (lower.contains("wezterm")) {
+            return Device.TerminalType.WEZTERM;
+        }
+        if (lower.contains("foot")) {
+            return Device.TerminalType.FOOT;
+        }
+        if (lower.contains("contour")) {
+            return Device.TerminalType.CONTOUR;
+        }
+        if (lower.contains("rio")) {
+            return Device.TerminalType.RIO;
+        }
+        if (lower.contains("konsole")) {
+            return Device.TerminalType.KONSOLE;
+        }
+        if (lower.contains("vte") || lower.contains("gnome")) {
+            return Device.TerminalType.GNOME_TERMINAL;
+        }
+        if (lower.contains("rxvt")) {
+            return Device.TerminalType.RXVT;
+        }
+        if (lower.contains("xterm")) {
+            return Device.TerminalType.XTERM;
+        }
         return Device.TerminalType.UNKNOWN;
     }
 
     private ColorDepth computeColorDepth() {
-        if (isTrueColorIndicated()) {
+        if (isTrueColorIndicated() || terminalType.supportsTrueColor()) {
             return ColorDepth.TRUE_COLOR;
         }
         if (term != null) {

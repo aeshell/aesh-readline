@@ -26,9 +26,15 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.function.Consumer;
 
 import org.aesh.terminal.Device;
+import org.aesh.terminal.Device.TerminalType;
+import org.aesh.terminal.detect.ImageProtocol;
+import org.aesh.terminal.utils.ColorDepth;
+import org.aesh.terminal.utils.TerminalEnvironment;
 import org.junit.Test;
 
 /**
@@ -130,5 +136,78 @@ public class DeviceTest {
 
         // ESC [ 11 ; 21 H (parameters are 1-based, %i increments them)
         assertArrayEquals(new int[] { 27, 91, 49, 49, 59, 50, 49, 72 }, out.get(0));
+    }
+
+    private static TerminalEnvironment environment(String... pairs) {
+        Map<String, String> env = new HashMap<>();
+        for (int i = 0; i < pairs.length; i += 2) {
+            env.put(pairs[i], pairs[i + 1]);
+        }
+        return new TerminalEnvironment(env);
+    }
+
+    @Test
+    public void testTypedDevicesDoNotBorrowLocalHostFacts() {
+        Device linux = DeviceBuilder.builder().name("linux").build();
+        Device kitty = DeviceBuilder.builder().name("kitty").build();
+        assertEquals(TerminalType.LINUX_CONSOLE, linux.detectTerminalType());
+        assertFalse(linux.supportsOscQueries());
+        assertFalse(linux.supportsSynchronizedOutput());
+        assertEquals(ImageProtocol.NONE, linux.getImageProtocol());
+        assertEquals(TerminalType.KITTY, kitty.detectTerminalType());
+        assertTrue(kitty.supportsThemeQuery());
+        assertTrue(kitty.supportsSynchronizedOutput());
+        assertEquals(ImageProtocol.KITTY, kitty.getImageProtocol());
+    }
+
+    @Test
+    public void testWindowsTerminalHostIsSeparateFromGitBashTerminfo() {
+        TerminalEnvironment env = environment("WT_SESSION", "fixture-session", "MSYSTEM", "MINGW64",
+                "TERM", "xterm-256color");
+        Device device = DeviceBuilder.builder().name("xterm-256color").environment(env).build();
+        assertEquals("xterm-256color", device.type());
+        assertEquals(TerminalType.WINDOWS_TERMINAL, device.detectTerminalType());
+        assertEquals(Integer.valueOf(256), device.getNumericCapability(Capability.max_colors));
+        assertEquals(ColorDepth.TRUE_COLOR, device.getColorDepth());
+        assertTrue(device.supportsOscQueries());
+        assertTrue(device.supportsShellIntegration());
+        assertFalse(device.isMultiplexer());
+        assertEquals(ImageProtocol.SIXEL, device.getImageProtocol());
+    }
+
+    @Test
+    public void testNativeWindowsDeviceUsesCapturedHostWithoutChangingTerminfo() {
+        Device device = DeviceBuilder.builder().name("windows")
+                .environment(environment("WT_SESSION", "fixture-session")).build();
+        assertEquals("windows", device.type());
+        assertEquals(Integer.valueOf(8), device.getNumericCapability(Capability.max_colors));
+        assertEquals(TerminalType.WINDOWS_TERMINAL, device.detectTerminalType());
+        assertEquals(ColorDepth.TRUE_COLOR, device.getColorDepth());
+        assertTrue(device.supportsHyperlinks());
+        assertFalse(device.supportsOscCode(Device.OscCode.CLIPBOARD));
+    }
+
+    @Test
+    public void testCapturedIdeHostOverridesLauncherMarkers() {
+        Device device = DeviceBuilder.builder().name("windows")
+                .environment(environment("TERM_PROGRAM", "vscode", "WT_SESSION", "launcher-session")).build();
+        assertEquals(TerminalType.VSCODE, device.detectTerminalType());
+        assertTrue(device.supportsOscCode(Device.OscCode.CLIPBOARD));
+        assertFalse(device.supportsThemeQuery());
+    }
+
+    @Test
+    public void testCapturedMultiplexerPermissionsStayDeviceLocal() {
+        Device blocked = DeviceBuilder.builder().name("screen-256color")
+                .environment(environment("TERM_PROGRAM", "kitty", "TMUX", "fixture")).build();
+        Device allowed = DeviceBuilder.builder().name("screen-256color")
+                .environment(environment("TERM_PROGRAM", "kitty", "TMUX", "fixture", "TMUX_PASSTHROUGH", "1")).build();
+        assertTrue(blocked.isMultiplexer());
+        assertFalse(blocked.isTmuxPassthroughEnabled());
+        assertFalse(blocked.supportsOscQueries());
+        assertEquals(ImageProtocol.NONE, blocked.getImageProtocol());
+        assertTrue(allowed.isTmuxPassthroughEnabled());
+        assertTrue(allowed.supportsOscQueries());
+        assertFalse(DeviceBuilder.builder().name("kitty").build().isMultiplexer());
     }
 }

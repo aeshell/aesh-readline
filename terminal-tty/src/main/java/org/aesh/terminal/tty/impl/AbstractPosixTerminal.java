@@ -24,6 +24,7 @@ import java.io.IOException;
 
 import org.aesh.terminal.Attributes;
 import org.aesh.terminal.tty.Size;
+import org.aesh.terminal.utils.TerminalEnvironment;
 
 /**
  * Abstract base class for POSIX-compliant terminal implementations using PTY.
@@ -46,7 +47,21 @@ public abstract class AbstractPosixTerminal extends AbstractTerminal {
      * @throws IOException if an I/O error occurs during initialization
      */
     public AbstractPosixTerminal(String name, String type, Pty pty) throws IOException {
-        super(name, type);
+        this(name, type, pty, null);
+    }
+
+    /**
+     * Create a POSIX terminal with captured local host facts.
+     *
+     * @param name the terminal name
+     * @param type the terminfo type
+     * @param pty the pseudo-terminal device
+     * @param environment captured host facts, or null
+     * @throws IOException if attributes cannot be read
+     */
+    protected AbstractPosixTerminal(String name, String type, Pty pty,
+            TerminalEnvironment environment) throws IOException {
+        super(name, type, SignalHandlers.SIG_DFL, environment);
         assert pty != null;
         this.pty = pty;
         this.originalAttributes = this.pty.getAttr();

@@ -29,6 +29,7 @@ import java.util.logging.Logger;
 import org.aesh.terminal.utils.Config;
 import org.aesh.terminal.utils.InfoCmp;
 import org.aesh.terminal.utils.LoggerUtil;
+import org.aesh.terminal.utils.TerminalEnvironment;
 
 /**
  * Builder for creating TerminalDevice instances with terminal capabilities.
@@ -38,6 +39,7 @@ import org.aesh.terminal.utils.LoggerUtil;
 public class DeviceBuilder {
 
     private String name;
+    private TerminalEnvironment environment;
     private final Logger LOGGER = LoggerUtil.getLogger(getClass().getName());
 
     private DeviceBuilder() {
@@ -64,6 +66,19 @@ public class DeviceBuilder {
     }
 
     /**
+     * Supply captured host facts for a local system device. Unset by
+     * default, so explicitly typed and remote devices never borrow the
+     * local process environment.
+     *
+     * @param environment captured host facts, or null
+     * @return this builder
+     */
+    public DeviceBuilder environment(TerminalEnvironment environment) {
+        this.environment = environment;
+        return this;
+    }
+
+    /**
      * Builds and returns a new TerminalDevice with the configured settings.
      * If no name is set, defaults to "ansi" on POSIX systems or "windows" on Windows.
      *
@@ -73,7 +88,7 @@ public class DeviceBuilder {
         if (name == null)
             name = Config.isOSPOSIXCompatible() ? "ansi" : "windows";
         String data = getCapabilityFromType();
-        TerminalDevice device = new TerminalDevice(name);
+        TerminalDevice device = new TerminalDevice(name, environment);
 
         if (data != null) {
             Set<Capability> bools = new HashSet<>();

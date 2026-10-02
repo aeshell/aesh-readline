@@ -31,6 +31,7 @@ import org.aesh.terminal.Terminal;
 import org.aesh.terminal.tty.DeviceBuilder;
 import org.aesh.terminal.tty.Signal;
 import org.aesh.terminal.utils.LoggerUtil;
+import org.aesh.terminal.utils.TerminalEnvironment;
 
 /**
  * Abstract base class providing common functionality for terminal implementations.
@@ -69,12 +70,27 @@ public abstract class AbstractTerminal implements Terminal {
      * @param signalHandler the default handler for all signals
      */
     public AbstractTerminal(String name, String type, SignalHandler signalHandler) {
+        this(name, type, signalHandler, null);
+    }
+
+    /**
+     * Create a terminal whose device uses explicitly captured host facts.
+     * Other constructors create type-only devices, suitable for external
+     * streams that may belong to a remote terminal.
+     *
+     * @param name the terminal name
+     * @param type the terminfo type
+     * @param signalHandler the default signal handler
+     * @param environment captured host facts, or null
+     */
+    protected AbstractTerminal(String name, String type, SignalHandler signalHandler,
+            TerminalEnvironment environment) {
         this.name = name;
         this.type = type;
         for (Signal signal : Signal.values()) {
             handlers.put(signal, signalHandler);
         }
-        device = DeviceBuilder.builder().name(type).build();
+        device = DeviceBuilder.builder().name(type).environment(environment).build();
     }
 
     public SignalHandler handle(Signal signal, SignalHandler handler) {

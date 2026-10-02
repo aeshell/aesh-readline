@@ -28,6 +28,7 @@ import java.util.Map;
 import org.aesh.terminal.tty.Signal;
 import org.aesh.terminal.tty.utils.ShutdownHooks;
 import org.aesh.terminal.tty.utils.Signals;
+import org.aesh.terminal.utils.TerminalEnvironment;
 
 /**
  * A POSIX system terminal implementation that provides native signal handling
@@ -57,7 +58,7 @@ public class PosixSysTerminal extends AbstractPosixTerminal {
      * @throws IOException if an I/O error occurs during initialization
      */
     public PosixSysTerminal(String name, String type, Pty pty, boolean nativeSignals) throws IOException {
-        super(name, type, pty);
+        super(name, type, pty, TerminalEnvironment.getInstance());
         // Final fields force locals-first: a failing output open must
         // still give the PTY — the streams' owner — a chance to release
         // the input half before the constructor throws. Never close the

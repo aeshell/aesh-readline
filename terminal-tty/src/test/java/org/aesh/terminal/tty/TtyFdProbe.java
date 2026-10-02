@@ -13,6 +13,10 @@
  */
 package org.aesh.terminal.tty;
 
+import java.util.Collections;
+
+import org.aesh.terminal.utils.PlatformContext;
+
 /**
  * Prints per-fd TTY answers for child-process redirection tests.
  * Launched with controlled stdin/stdout/stderr (PTY, file, or pipe) so
@@ -27,12 +31,20 @@ public final class TtyFdProbe {
     /**
      * Print one line: {@code 0:true 1:false 2:false 999:false}.
      *
-     * @param args ignored
+     * @param args optional simulated Windows transport context
      */
     public static void main(String[] args) {
-        System.out.println("0:" + TtyDetect.isTty(0)
-                + " 1:" + TtyDetect.isTty(1)
-                + " 2:" + TtyDetect.isTty(2)
-                + " 999:" + TtyDetect.isTty(999));
+        PlatformContext context = PlatformContext.system();
+        if (args.length > 0) {
+            context = new PlatformContext("Windows 11", "amd64",
+                    "cygwin".equals(args[0]) ? Collections.singletonMap("MSYSTEM", "MINGW64")
+                            : Collections.<String, String> emptyMap(),
+                    "");
+        }
+        // Keep the verdict visible when stdout itself is redirected.
+        System.err.println("0:" + TtyDetect.isTty(0, context)
+                + " 1:" + TtyDetect.isTty(1, context)
+                + " 2:" + TtyDetect.isTty(2, context)
+                + " 999:" + TtyDetect.isTty(999, context));
     }
 }

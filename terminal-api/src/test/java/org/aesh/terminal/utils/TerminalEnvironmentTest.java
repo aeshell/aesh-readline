@@ -533,6 +533,16 @@ public class TerminalEnvironmentTest {
     }
 
     @Test
+    public void testKnownTrueColorHostIsNotDowngradedByCompatibilityTerm() {
+        assertEquals(ColorDepth.TRUE_COLOR,
+                new TerminalEnvironment(env("WT_SESSION", "fixture", "TERM", "xterm-256color"))
+                        .getDefaultColorDepth());
+        assertEquals(ColorDepth.TRUE_COLOR,
+                new TerminalEnvironment(env("KITTY_WINDOW_ID", "fixture", "TERM", "xterm-256color"))
+                        .getDefaultColorDepth());
+    }
+
+    @Test
     public void testTrueColorIndicated() {
         assertTrue(new TerminalEnvironment(env("COLORTERM", "truecolor")).isTrueColorIndicated());
         assertTrue(new TerminalEnvironment(env("COLORTERM", "24bit")).isTrueColorIndicated());

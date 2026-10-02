@@ -23,6 +23,10 @@ import java.util.Map;
 import java.util.Set;
 
 import org.aesh.terminal.BaseDevice;
+import org.aesh.terminal.detect.ImageProtocol;
+import org.aesh.terminal.image.ImageProtocolDetector;
+import org.aesh.terminal.utils.ColorDepth;
+import org.aesh.terminal.utils.TerminalEnvironment;
 
 /**
  * Contains info regarding the current device connected to readline
@@ -31,13 +35,67 @@ import org.aesh.terminal.BaseDevice;
  */
 public class TerminalDevice extends BaseDevice {
 
+    private final TerminalEnvironment environment;
+
     /**
      * Create a new terminal device with the specified type.
      *
      * @param type the terminal type
      */
     public TerminalDevice(String type) {
+        this(type, null);
+    }
+
+    /**
+     * Create a device with explicitly captured local host facts. The type
+     * still selects its terminfo entry; the environment identifies the
+     * host behind that entry. Without an environment, all heuristics use
+     * the device's own type.
+     *
+     * @param type the terminfo type
+     * @param environment captured host facts, or null for a typed device
+     */
+    public TerminalDevice(String type, TerminalEnvironment environment) {
         super(type);
+        this.environment = environment;
+    }
+
+    @Override
+    public TerminalType detectTerminalType() {
+        return environment != null && environment.getTerminalType() != TerminalType.UNKNOWN
+                ? environment.getTerminalType()
+                : super.detectTerminalType();
+    }
+
+    @Override
+    public boolean supportsOscQueries() {
+        return environment != null && environment.getTerminalType() != TerminalType.UNKNOWN
+                ? environment.supportsOscQueries()
+                : super.supportsOscQueries();
+    }
+
+    @Override
+    public boolean isMultiplexer() {
+        return environment != null ? environment.isInMultiplexer() : super.isMultiplexer();
+    }
+
+    @Override
+    public boolean isTmuxPassthroughEnabled() {
+        return environment != null && environment.isTmuxPassthroughEnabled();
+    }
+
+    @Override
+    public ColorDepth getColorDepth() {
+        ColorDepth baseline = super.getColorDepth();
+        ColorDepth detected = environment != null ? environment.getDefaultColorDepth() : baseline;
+        return detected.getColorCount() > baseline.getColorCount() ? detected : baseline;
+    }
+
+    @Override
+    public ImageProtocol getImageProtocol() {
+        return environment != null && environment.getTerminalType() != TerminalType.UNKNOWN
+                ? ImageProtocolDetector.detectFromEnvironment(environment)
+                : super.getImageProtocol();
     }
 
     /**
@@ -96,9 +154,4 @@ public class TerminalDevice extends BaseDevice {
         this.strings.putAll(strings);
     }
 
-    // All OSC query, multiplexer, and passthrough detection is now handled
-    // by TerminalEnvironment through the Device interface default methods.
-    // No need to override here - the base Device methods delegate to
-    // TerminalEnvironment.getInstance() which provides cached, centralized
-    // detection of all terminal-related environment variables.
 }

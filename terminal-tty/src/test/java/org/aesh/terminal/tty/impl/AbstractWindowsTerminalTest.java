@@ -24,6 +24,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.aesh.terminal.Attributes;
 import org.aesh.terminal.tty.Size;
+import org.aesh.terminal.utils.TerminalEnvironment;
 import org.junit.Test;
 
 /**
@@ -34,6 +35,19 @@ import org.junit.Test;
  * Runs on all platforms.
  */
 public class AbstractWindowsTerminalTest {
+
+    @Test
+    public void testNativeConsoleDeviceCapturesItsLocalHostFacts() throws IOException {
+        TerminalEnvironment environment = TerminalEnvironment.getInstance();
+        StubWindowsTerminal terminal = new StubWindowsTerminal(0);
+        try {
+            assertEquals(environment.getTerminalType(), terminal.device().detectTerminalType());
+            assertEquals(environment.supportsOscQueries(), terminal.device().supportsOscQueries());
+            assertEquals(environment.isInMultiplexer(), terminal.device().isMultiplexer());
+        } finally {
+            terminal.close();
+        }
+    }
 
     // Console mode flag constants (match AbstractWindowsTerminal)
     private static final int ENABLE_PROCESSED_INPUT = 0x0001;

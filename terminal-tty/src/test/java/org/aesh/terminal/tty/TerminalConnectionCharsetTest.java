@@ -29,6 +29,7 @@ import org.aesh.terminal.tty.impl.ExternalTerminal;
 import org.aesh.terminal.tty.impl.PosixSysTerminal;
 import org.aesh.terminal.tty.impl.Pty;
 import org.aesh.terminal.utils.OSUtils;
+import org.aesh.terminal.utils.TerminalEnvironment;
 import org.junit.Test;
 
 /**
@@ -133,6 +134,22 @@ public class TerminalConnectionCharsetTest {
             assertEquals(expected, conn.outputEncoding());
         } finally {
             conn.close();
+        }
+    }
+
+    @Test
+    public void testSystemTerminalCapturesItsLocalHostFacts() throws IOException {
+        TerminalEnvironment environment = TerminalEnvironment.getInstance();
+        PosixSysTerminal term = new PosixSysTerminal("test", "xterm-256color", new FakePty(), false);
+        try {
+            if (environment.getTerminalType() != org.aesh.terminal.Device.TerminalType.UNKNOWN) {
+                assertEquals(environment.getTerminalType(), term.device().detectTerminalType());
+            }
+            assertEquals(environment.supportsOscQueries(), term.device().supportsOscQueries());
+            assertEquals(environment.isInMultiplexer(), term.device().isMultiplexer());
+            assertEquals(environment.isTmuxPassthroughEnabled(), term.device().isTmuxPassthroughEnabled());
+        } finally {
+            term.close();
         }
     }
 
