@@ -21,6 +21,7 @@ package org.aesh.terminal.detect;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Constructor;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -133,10 +134,28 @@ final class TerminalColorQuery {
      *
      * @return an available FFM transport, or null to try the next transport
      */
+    // Cached transport reflection handles. Resolved once on first use
+    // and reused across queries — TerminalBuilder-style probing would
+    // otherwise repeat Class.forName plus constructor lookup per query.
+    // A benign race may repeat the lookup; all threads compute the same
+    // values. Unavailability (pre-22 runtimes) is not cached: the lookup
+    // simply fails again, which is rare next to actual probing.
+    private static volatile Class<?> cachedFfmTransportClass;
+    private static volatile Constructor<?> cachedFfmTransportConstructor;
+    private static volatile Class<?> cachedWin32TransportClass;
+    private static volatile Constructor<?> cachedWin32TransportConstructor;
+
     private static TerminalProbeTransport loadFfmTransport() {
         try {
-            Class<?> clazz = Class.forName("org.aesh.terminal.detect.FfmProbeTransport");
-            TerminalProbeTransport transport = (TerminalProbeTransport) clazz.getDeclaredConstructor().newInstance();
+            Class<?> clazz = cachedFfmTransportClass;
+            Constructor<?> constructor = cachedFfmTransportConstructor;
+            if (clazz == null || constructor == null) {
+                clazz = Class.forName("org.aesh.terminal.detect.FfmProbeTransport");
+                constructor = clazz.getDeclaredConstructor();
+                cachedFfmTransportClass = clazz;
+                cachedFfmTransportConstructor = constructor;
+            }
+            TerminalProbeTransport transport = (TerminalProbeTransport) constructor.newInstance();
             return transport.isAvailable() ? transport : null;
         } catch (LinkageError | Exception ignored) {
             return null;
@@ -154,8 +173,15 @@ final class TerminalColorQuery {
      */
     private static TerminalProbeTransport loadWin32Transport() {
         try {
-            Class<?> clazz = Class.forName("org.aesh.terminal.detect.Win32ProbeTransport");
-            TerminalProbeTransport transport = (TerminalProbeTransport) clazz.getDeclaredConstructor().newInstance();
+            Class<?> clazz = cachedWin32TransportClass;
+            Constructor<?> constructor = cachedWin32TransportConstructor;
+            if (clazz == null || constructor == null) {
+                clazz = Class.forName("org.aesh.terminal.detect.Win32ProbeTransport");
+                constructor = clazz.getDeclaredConstructor();
+                cachedWin32TransportClass = clazz;
+                cachedWin32TransportConstructor = constructor;
+            }
+            TerminalProbeTransport transport = (TerminalProbeTransport) constructor.newInstance();
             return transport.isAvailable() ? transport : null;
         } catch (LinkageError | Exception ignored) {
             return null;
