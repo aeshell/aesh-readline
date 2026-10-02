@@ -19,6 +19,7 @@
  */
 package org.aesh.terminal.detect;
 
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -33,8 +34,7 @@ final class TerminalDetector {
 
     // Operating system name (injected for testability; production passes
     // the real os.name, tests pass literals like "Windows 11"). Drives the
-    // Windows registry identity gate, the IDE layout selection, and the
-    // OS theme branch — one captured value shared by all of them.
+    // IDE layout selection and the OS theme branch.
     private final String osName;
 
     // Environment variables
@@ -81,8 +81,8 @@ final class TerminalDetector {
         this.ghosttyResourcesDir = env.get("GHOSTTY_RESOURCES_DIR");
         this.weztermPane = env.get("WEZTERM_PANE");
         this.itermSessionId = env.get("ITERM_SESSION_ID");
-        this.wtSession = env.get("WT_SESSION");
-        this.wtProfileId = env.get("WT_PROFILE_ID");
+        this.wtSession = sessionMarker(env.get("WT_SESSION"));
+        this.wtProfileId = sessionMarker(env.get("WT_PROFILE_ID"));
         this.alacrittySocket = env.get("ALACRITTY_SOCKET");
         this.colorFgBg = env.get("COLORFGBG");
         this.appleInterfaceStyle = env.get("APPLE_INTERFACE_STYLE");
@@ -102,9 +102,16 @@ final class TerminalDetector {
 
     // ==================== Terminal Name Detection ====================
 
+    private static String sessionMarker(String value) {
+        return value == null || value.trim().isEmpty() ? null : value;
+    }
+
     private String detectTerminalName() {
         if (isJetBrains())
             return "jetbrains";
+        // IDE terminals can inherit session markers from their launcher.
+        if (termProgram != null && termProgram.toLowerCase(Locale.ROOT).contains("vscode"))
+            return "vscode";
         if (kittyWindowId != null)
             return "kitty";
         if (ghosttyResourcesDir != null)
@@ -124,8 +131,6 @@ final class TerminalDetector {
                 return "iterm2";
             if (lower.contains("apple_terminal") || lower.contains("terminal.app"))
                 return "apple-terminal";
-            if (lower.contains("vscode"))
-                return "vscode";
             if (lower.contains("hyper"))
                 return "hyper";
             if (lower.contains("tabby") || lower.contains("terminus"))
@@ -168,10 +173,9 @@ final class TerminalDetector {
     }
 
     private boolean isWindowsTerminal() {
-        if (wtSession != null || wtProfileId != null) {
-            return true;
-        }
-        return detectWindowsTerminalByRegistry(osName);
+        // Installed applications and default-terminal preferences do not
+        // identify the host of this process. Only session facts apply here.
+        return wtSession != null || wtProfileId != null;
     }
 
     boolean isInMultiplexer() {
@@ -461,47 +465,6 @@ final class TerminalDetector {
         } catch (Exception ignored) {
             return null;
         }
-    }
-
-    // ==================== Windows Terminal Registry Detection ====================
-
-    private static boolean detectWindowsTerminalByRegistry(String osName) {
-        if (!osName.toLowerCase().contains("windows")) {
-            return false;
-        }
-        try {
-            String delegation = regQuery("HKCU\\Console\\%%Startup", "DelegationTerminal");
-            if (delegation == null)
-                return false;
-            String lower = delegation.toLowerCase();
-            if (lower.contains("{2eaca947-7f5f-4cfa-ba87-8f7fbeefbe69}") ||
-                    lower.contains("{e12cff52-a866-4c77-9a90-f570a7aa2c6b}"))
-                return true;
-            if (lower.contains("{00000000-0000-0000-0000-000000000000}"))
-                return isWindowsTerminalInstalled();
-            return false;
-        } catch (Exception ignored) {
-            return false;
-        }
-    }
-
-    private static boolean isWindowsTerminalInstalled() {
-        String path = regQuery(
-                "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\App Paths\\wt.exe", "Path");
-        return path != null && !path.trim().isEmpty();
-    }
-
-    private static String regQuery(String key, String valueName) {
-        String output = execCommand("reg", "query", key, "/v", valueName);
-        if (output == null) {
-            return null;
-        }
-        for (String line : output.split("\\r?\\n")) {
-            int idx = line.indexOf("REG_SZ");
-            if (idx >= 0)
-                return line.substring(idx + 6).trim();
-        }
-        return null;
     }
 
     /**

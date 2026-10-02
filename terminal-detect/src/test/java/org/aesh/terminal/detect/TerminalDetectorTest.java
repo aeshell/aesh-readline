@@ -21,9 +21,9 @@ import static org.junit.Assert.assertTrue;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -117,6 +117,75 @@ public class TerminalDetectorTest {
     public void testOuterIdentitySurvivesTmuxTerm() {
         TerminalDetector detector = detector("TERM_PROGRAM", "iTerm.app", "TERM", "tmux-256color");
         assertEquals("iterm2", detector.terminalName);
+    }
+
+    @Test
+    public void testConfiguredWindowsTerminalDoesNotDetermineCurrentHost() {
+        final List<String> commands = new ArrayList<>();
+        ProcessRunner.setInstalled(new ProcessRunner.RunnerTransport() {
+            @Override
+            public ProcessRunner.Result run(ProcessBuilder starter, long timeoutMs) {
+                commands.add(String.join(" ", starter.command()));
+                String output = "DelegationTerminal REG_SZ {2eaca947-7f5f-4cfa-ba87-8f7fbeefbe69}\n";
+                return new ProcessRunner.Result(0, false, output.getBytes(StandardCharsets.US_ASCII));
+            }
+        });
+        try {
+            String[][] fixtures = {
+                    { "TERM_PROGRAM", "vscode", "vscode" },
+                    { "TERM_PROGRAM", "mintty", "mintty" },
+                    { "ALACRITTY_SOCKET", "fixture.sock", "alacritty" },
+                    { "TERM", "dumb", "unknown" },
+                    { "TERM", "xterm-256color", "xterm" }
+            };
+            for (String[] fixture : fixtures) {
+                Map<String, String> env = new HashMap<>();
+                env.put(fixture[0], fixture[1]);
+                assertEquals(fixture[0] + "=" + fixture[1], fixture[2],
+                        new TerminalDetector(env, "Windows 11").terminalName);
+            }
+            TerminalDetector empty = new TerminalDetector(new HashMap<String, String>(), "Windows 11");
+            assertEquals("unknown", empty.terminalName);
+            assertFalse(empty.trueColor);
+            assertEquals(ImageProtocol.NONE, empty.imageProtocol);
+            assertTrue("Identity must not query registry preferences: " + commands, commands.isEmpty());
+        } finally {
+            ProcessRunner.setInstalled(null);
+        }
+    }
+
+    @Test
+    public void testWindowsTerminalRequiresNonblankSessionMarkers() {
+        for (String marker : new String[] { "WT_SESSION", "WT_PROFILE_ID" }) {
+            Map<String, String> env = new HashMap<>();
+            env.put(marker, "fixture-id");
+            assertEquals("windows-terminal", new TerminalDetector(env, "Windows 11").terminalName);
+            for (String blank : new String[] { "", " ", "\t " }) {
+                env.put(marker, blank);
+                TerminalDetector fixture = new TerminalDetector(env, "Windows 11");
+                assertEquals(marker + " must not identify a terminal when blank", "unknown", fixture.terminalName);
+                assertFalse(fixture.trueColor);
+                assertEquals(ImageProtocol.NONE, fixture.imageProtocol);
+            }
+        }
+    }
+
+    @Test
+    public void testVsCodeHostOverridesInheritedWindowsTerminalMarkers() {
+        Map<String, String> env = new HashMap<>();
+        env.put("TERM_PROGRAM", "vscode");
+        env.put("WT_SESSION", "launcher-session");
+        env.put("WT_PROFILE_ID", "launcher-profile");
+        assertEquals("vscode", new TerminalDetector(env, "Windows 11").terminalName);
+    }
+
+    @Test
+    public void testGitBashInWindowsTerminalKeepsItsHostIdentity() {
+        Map<String, String> env = new HashMap<>();
+        env.put("WT_SESSION", "fixture-session");
+        env.put("MSYSTEM", "MINGW64");
+        env.put("TERM", "xterm-256color");
+        assertEquals("windows-terminal", new TerminalDetector(env, "Windows 11").terminalName);
     }
 
     @Test
@@ -220,10 +289,9 @@ public class TerminalDetectorTest {
     }
 
     @Test
-    public void testNoDoubledIdentitySubprocesses() {
-        // Without WT_SESSION the identity check runs a registry query;
-        // the theme fallback runs another. Both must happen exactly once —
-        // a second detector would repeat the identity query (#347).
+    public void testThemeFallbackDoesNotRunIdentitySubprocesses() {
+        // Identity is environment-only. OS theme fallback may query the
+        // registry once, but must not repeat unrelated identity work.
         Map<String, String> env = new HashMap<>();
         env.put("TERM", "xterm");
         final List<String> commands = new ArrayList<>();
@@ -237,10 +305,8 @@ public class TerminalDetectorTest {
         try {
             assertEquals(TerminalTheme.UNKNOWN,
                     new TerminalDetector(env, "Windows 11").detectIdeOrPlatformTheme());
-            assertEquals("identity + theme probes must run exactly once each: " + commands,
-                    2, commands.size());
-            assertEquals("no subprocess may repeat: " + commands,
-                    2, new HashSet<>(commands).size());
+            assertEquals("Only the OS theme query should run: " + commands, 1, commands.size());
+            assertTrue(commands.get(0).endsWith("/v AppsUseLightTheme"));
         } finally {
             ProcessRunner.setInstalled(null);
         }

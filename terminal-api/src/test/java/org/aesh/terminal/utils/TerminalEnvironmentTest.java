@@ -312,6 +312,35 @@ public class TerminalEnvironmentTest {
         return map;
     }
 
+    @Test
+    public void testWindowsTerminalRequiresNonblankSessionMarkers() {
+        for (String marker : new String[] { "WT_SESSION", "WT_PROFILE_ID" }) {
+            assertTrue(new TerminalEnvironment(env(marker, "fixture-id")).isWindowsTerminal());
+            for (String blank : new String[] { "", " ", "\t " }) {
+                TerminalEnvironment fixture = new TerminalEnvironment(env(marker, blank));
+                assertFalse(marker + " must not identify a terminal when blank", fixture.isWindowsTerminal());
+                assertEquals(Device.TerminalType.UNKNOWN, fixture.getTerminalType());
+            }
+        }
+    }
+
+    @Test
+    public void testVsCodeHostOverridesInheritedWindowsTerminalMarkers() {
+        TerminalEnvironment fixture = new TerminalEnvironment(env(
+                "TERM_PROGRAM", "vscode", "WT_SESSION", "launcher-session", "WT_PROFILE_ID", "launcher-profile"));
+        assertEquals(Device.TerminalType.VSCODE, fixture.getTerminalType());
+        assertFalse("Launcher markers must not identify the IDE terminal as Windows Terminal",
+                fixture.isWindowsTerminal());
+    }
+
+    @Test
+    public void testGitBashInWindowsTerminalKeepsItsHostIdentity() {
+        TerminalEnvironment fixture = new TerminalEnvironment(env(
+                "WT_SESSION", "fixture-session", "MSYSTEM", "MINGW64", "TERM", "xterm-256color"));
+        assertEquals(Device.TerminalType.WINDOWS_TERMINAL, fixture.getTerminalType());
+        assertTrue(fixture.isWindowsTerminal());
+    }
+
     // ---- Terminal type detection ----
 
     @Test
@@ -488,6 +517,20 @@ public class TerminalEnvironmentTest {
     }
 
     // ---- Color detection ----
+
+    @Test
+    public void testInjectedColorDepthUsesOnlyItsEnvironment() {
+        assertEquals(ColorDepth.COLORS_8,
+                new TerminalEnvironment(Collections.<String, String> emptyMap()).getDefaultColorDepth());
+        assertEquals(ColorDepth.COLORS_8,
+                new TerminalEnvironment(env("TERM", "linux")).getDefaultColorDepth());
+        assertEquals(ColorDepth.COLORS_256,
+                new TerminalEnvironment(env("TERM", "xterm-256color")).getDefaultColorDepth());
+        assertEquals(ColorDepth.TRUE_COLOR,
+                new TerminalEnvironment(env("COLORTERM", "truecolor")).getDefaultColorDepth());
+        assertEquals(ColorDepth.TRUE_COLOR,
+                new TerminalEnvironment(env("TERM", "xterm-direct")).getDefaultColorDepth());
+    }
 
     @Test
     public void testTrueColorIndicated() {

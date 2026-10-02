@@ -19,6 +19,7 @@
  */
 package org.aesh.terminal.utils;
 
+import java.util.Locale;
 import java.util.Map;
 
 import org.aesh.terminal.Device;
@@ -79,18 +80,23 @@ public final class TerminalEnvironment {
      * Reads environment variables from {@code System.getenv()}.
      */
     private TerminalEnvironment() {
-        this(System.getenv());
+        this(System.getenv(), startupColorDepth());
     }
 
     /**
      * Package-private constructor for testing.
      * Reads environment variables from the provided map instead of
      * {@code System.getenv()}, enabling deterministic unit tests for
-     * terminal detection logic.
+     * terminal detection logic. No process-global detection results are
+     * consulted for an injected environment.
      *
      * @param env the environment variable map (keys are variable names)
      */
     TerminalEnvironment(Map<String, String> env) {
+        this(env, null);
+    }
+
+    private TerminalEnvironment(Map<String, String> env, ColorDepth startupDepth) {
         this.term = env.get("TERM");
         this.termProgram = env.get("TERM_PROGRAM");
         this.terminalEmulator = env.get("TERMINAL_EMULATOR");
@@ -100,8 +106,8 @@ public final class TerminalEnvironment {
         this.ghosttyResourcesDir = env.get("GHOSTTY_RESOURCES_DIR");
         this.weztermPane = env.get("WEZTERM_PANE");
         this.itermSessionId = env.get("ITERM_SESSION_ID");
-        this.wtSession = env.get("WT_SESSION");
-        this.wtProfileId = env.get("WT_PROFILE_ID");
+        this.wtSession = sessionMarker(env.get("WT_SESSION"));
+        this.wtProfileId = sessionMarker(env.get("WT_PROFILE_ID"));
         this.conEmuPid = env.get("ConEmuPID");
         this.conEmuAnsi = env.get("ConEmuANSI");
         this.alacrittySocket = env.get("ALACRITTY_SOCKET");
@@ -116,7 +122,7 @@ public final class TerminalEnvironment {
         this.inScreen = term != null && term.toLowerCase().startsWith("screen");
         this.tmuxPassthroughEnabled = computeTmuxPassthrough();
         this.terminalType = computeTerminalType();
-        this.defaultColorDepth = computeColorDepth();
+        this.defaultColorDepth = startupDepth != null ? startupDepth : computeColorDepth();
     }
 
     /**
@@ -245,18 +251,14 @@ public final class TerminalEnvironment {
     /**
      * Check if running in Windows Terminal.
      * <p>
-     * Detects via environment variables (WT_SESSION, WT_PROFILE_ID) first.
-     * When those are absent (e.g., CMD/PowerShell launched from its own
-     * shortcut while WT is the default terminal), falls back to
-     * {@link TerminalCapabilities} which checks the Windows Registry.
+     * Uses the identity derived from this instance's environment. Explicit
+     * IDE-host facts take precedence over inherited launcher markers.
+     * Process-global defaults and installed applications are not evidence.
      *
      * @return true if running inside Windows Terminal
      */
     public boolean isWindowsTerminal() {
-        if (wtSession != null || wtProfileId != null) {
-            return true;
-        }
-        return "windows-terminal".equals(TerminalCapabilities.getInstance().terminalName());
+        return terminalType == Device.TerminalType.WINDOWS_TERMINAL;
     }
 
     /**
@@ -459,6 +461,10 @@ public final class TerminalEnvironment {
 
     // ==================== Private Helper Methods ====================
 
+    private static String sessionMarker(String value) {
+        return value == null || value.trim().isEmpty() ? null : value;
+    }
+
     private boolean isTermTypeMultiplexer() {
         if (term == null) {
             return false;
@@ -484,6 +490,9 @@ public final class TerminalEnvironment {
         if (isJetBrains()) {
             return Device.TerminalType.JETBRAINS;
         }
+        if (termProgram != null && termProgram.toLowerCase(Locale.ROOT).contains("vscode")) {
+            return Device.TerminalType.VSCODE;
+        }
 
         // Priority 2: Terminal-specific environment variables
         if (isKitty()) {
@@ -498,7 +507,7 @@ public final class TerminalEnvironment {
         if (isITerm2()) {
             return Device.TerminalType.ITERM2;
         }
-        if (isWindowsTerminal()) {
+        if (wtSession != null || wtProfileId != null) {
             return Device.TerminalType.WINDOWS_TERMINAL;
         }
         if (isConEmu()) {
@@ -516,9 +525,6 @@ public final class TerminalEnvironment {
             }
             if (lower.contains("apple_terminal") || lower.contains("terminal.app")) {
                 return Device.TerminalType.APPLE_TERMINAL;
-            }
-            if (lower.contains("vscode")) {
-                return Device.TerminalType.VSCODE;
             }
             if (lower.contains("wezterm")) {
                 return Device.TerminalType.WEZTERM;
@@ -610,6 +616,26 @@ public final class TerminalEnvironment {
     }
 
     private ColorDepth computeColorDepth() {
+        if (isTrueColorIndicated()) {
+            return ColorDepth.TRUE_COLOR;
+        }
+        if (term != null) {
+            String lower = term.toLowerCase(Locale.ROOT);
+            if (lower.contains("truecolor") || lower.contains("24bit") || lower.contains("direct")) {
+                return ColorDepth.TRUE_COLOR;
+            }
+            if (lower.contains("256color") || lower.contains("256-color")) {
+                return ColorDepth.COLORS_256;
+            }
+        }
+        return terminalType == Device.TerminalType.UNKNOWN
+                ? ColorDepth.COLORS_8
+                : terminalType.getDefaultColorDepth();
+    }
+
+    // Only the real process singleton is seeded from startup probe facts.
+    // Explicit environments compute their own color depth instead.
+    private static ColorDepth startupColorDepth() {
         TerminalCapabilities caps = TerminalCapabilities.getInstance();
         if (caps.supportsTrueColor()) {
             return ColorDepth.TRUE_COLOR;
