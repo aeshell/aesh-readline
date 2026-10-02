@@ -298,7 +298,7 @@ public class IdeThemeDetectorTest {
     public void testWindowsTerminalIgnoresSchemeDefinitions() {
         // The only "colorScheme"-shaped content is a definition entry;
         // definitions must never satisfy the lookup.
-        String json = "{\"colorSchemes\":"
+        String json = "{\"schemes\":"
                 + " [{\"name\": \"Campbell\", \"background\": \"#0C0C0C\"}],"
                 + " \"profiles\": {\"list\": []}}";
         assertEquals(TerminalTheme.UNKNOWN,
@@ -330,17 +330,60 @@ public class IdeThemeDetectorTest {
 
     @Test
     public void testWindowsTerminalExplicitBackgroundWins() {
-        String darkBg = "{\"colorSchemes\":"
+        String darkBg = "{\"schemes\":"
                 + " [{\"name\": \"Almost Light\", \"background\": \"#000000\"}],"
                 + " \"profiles\": {\"defaults\": {\"colorScheme\": \"Almost Light\"}}}";
         assertEquals("explicit black background beats a light-sounding name",
                 TerminalTheme.DARK, IdeThemeDetector.parseWindowsTerminalSettings(darkBg, null));
 
-        String lightBg = "{\"colorSchemes\":"
+        String lightBg = "{\"schemes\":"
                 + " [{\"name\": \"Almost Dark\", \"background\": \"#FFFFFF\"}],"
                 + " \"profiles\": {\"defaults\": {\"colorScheme\": \"Almost Dark\"}}}";
         assertEquals("explicit white background beats a dark-sounding name",
                 TerminalTheme.LIGHT, IdeThemeDetector.parseWindowsTerminalSettings(lightBg, null));
+    }
+
+    @Test
+    public void testWindowsTerminalUsesDocumentedSchemesArray() {
+        String json = "{\"schemes\":[{\"name\":\"Custom\",\"background\":\"#fff\"}],"
+                + "\"profiles\":{\"defaults\":{\"colorScheme\":\"Custom\"}}}";
+        assertEquals(TerminalTheme.LIGHT, IdeThemeDetector.parseWindowsTerminalSettings(json, null));
+        assertEquals(TerminalTheme.DARK,
+                IdeThemeDetector.parseWindowsTerminalSettings(json.replace("#fff", "#000"), null));
+    }
+
+    @Test
+    public void testWindowsTerminalActiveProfileBackgroundOverridesScheme() {
+        String json = "{\"profiles\":{\"defaults\":{\"colorScheme\":\"Campbell\"},\"list\":["
+                + "{\"guid\":\"{11111111-1111-1111-1111-111111111111}\",\"background\":\"#FFFFFF\"},"
+                + "{\"guid\":\"{22222222-2222-2222-2222-222222222222}\",\"background\":\"#000000\"}]}}";
+        assertEquals(TerminalTheme.LIGHT,
+                IdeThemeDetector.parseWindowsTerminalSettings(json, "{11111111-1111-1111-1111-111111111111}"));
+        assertEquals(TerminalTheme.DARK,
+                IdeThemeDetector.parseWindowsTerminalSettings(json, "{22222222-2222-2222-2222-222222222222}"));
+        assertEquals("Another profile's background must not leak into defaults", TerminalTheme.DARK,
+                IdeThemeDetector.parseWindowsTerminalSettings(json, "unknown-profile"));
+    }
+
+    @Test
+    public void testWindowsTerminalFocusedAppearanceDoesNotUseNestedOverrides() {
+        String json = "{\"profiles\":{\"defaults\":{\"colorScheme\":\"Campbell\"},\"list\":["
+                + "{\"guid\":\"{11111111-1111-1111-1111-111111111111}\","
+                + "\"unfocusedAppearance\":{\"background\":\"#fff\"}}]}}";
+        assertEquals("An unfocused override does not describe the default appearance", TerminalTheme.DARK,
+                IdeThemeDetector.parseWindowsTerminalSettings(json, "{11111111-1111-1111-1111-111111111111}"));
+    }
+
+    @Test
+    public void testWindowsTerminalDefaultsBackgroundIsInheritedPerSetting() {
+        String json = "{\"profiles\":{\"defaults\":{\"background\":\"#fff\",\"colorScheme\":\"Campbell\"},"
+                + "\"list\":[{\"guid\":\"{11111111-1111-1111-1111-111111111111}\","
+                + "\"colorScheme\":\"One Half Dark\"}]}}";
+        assertEquals(TerminalTheme.LIGHT, IdeThemeDetector.parseWindowsTerminalSettings(json, null));
+        assertEquals("Overriding the scheme does not remove the inherited background", TerminalTheme.LIGHT,
+                IdeThemeDetector.parseWindowsTerminalSettings(json, "{11111111-1111-1111-1111-111111111111}"));
+        assertEquals(TerminalTheme.UNKNOWN,
+                IdeThemeDetector.parseWindowsTerminalSettings(json.replace("#fff", "invalid"), null));
     }
 
     @Test

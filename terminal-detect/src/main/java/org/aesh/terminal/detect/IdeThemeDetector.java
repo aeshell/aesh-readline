@@ -125,8 +125,9 @@ final class IdeThemeDetector {
      * <p>
      * The active profile is resolved from {@code WT_PROFILE_ID} against
      * {@code profiles.list[].guid}; an unmatched or missing id falls back
-     * to {@code profiles.defaults.colorScheme}, then to a top-level usage.
-     * Scheme <em>definitions</em> in {@code colorSchemes[]} never satisfy
+     * to {@code profiles.defaults}. A profile background overrides the
+     * inherited background and the selected scheme's background.
+     * Scheme <em>definitions</em> in {@code schemes[]} never satisfy
      * the lookup. A bare application-chrome {@code theme} says nothing
      * about the terminal background. Package visible for headless tests
      * with fixture JSON.
@@ -142,7 +143,7 @@ final class IdeThemeDetector {
         String clean = stripJsonComments(json);
 
         Map<String, int[]> backgrounds = new HashMap<>();
-        int[] schemesRegion = findKeyedRegion(clean, "colorSchemes", '[', ']');
+        int[] schemesRegion = findKeyedRegion(clean, "schemes", '[', ']');
         if (schemesRegion != null) {
             String schemesBody = clean.substring(schemesRegion[0] + 1, schemesRegion[1]);
             for (String scheme : splitTopLevelObjects(schemesBody)) {
@@ -158,35 +159,45 @@ final class IdeThemeDetector {
         }
 
         String schemeName = null;
+        String background = null;
         int[] profilesRegion = findKeyedRegion(clean, "profiles", '{', '}');
         if (profilesRegion != null) {
             String profilesBody = clean.substring(profilesRegion[0] + 1, profilesRegion[1]);
             String defaultsScheme = null;
+            String defaultsBackground = null;
             int[] defaultsRegion = findKeyedRegion(profilesBody, "defaults", '{', '}');
             if (defaultsRegion != null) {
-                defaultsScheme = extractJsonValue(
-                        profilesBody.substring(defaultsRegion[0] + 1, defaultsRegion[1]),
-                        "colorScheme");
+                String defaults = profilesBody.substring(defaultsRegion[0] + 1, defaultsRegion[1]);
+                defaultsScheme = profileValue(defaults, "colorScheme");
+                defaultsBackground = profileValue(defaults, "background");
             }
             boolean matched = false;
             String matchedScheme = null;
+            String matchedBackground = null;
             int[] listRegion = findKeyedRegion(profilesBody, "list", '[', ']');
             if (listRegion != null) {
                 String listBody = profilesBody.substring(listRegion[0] + 1, listRegion[1]);
                 for (String profile : splitTopLevelObjects(listBody)) {
-                    String guid = extractJsonValue(profile, "guid");
+                    String guid = profileValue(profile, "guid");
                     if (profileId != null && guid != null && guid.equalsIgnoreCase(profileId)) {
                         matched = true;
-                        matchedScheme = extractJsonValue(profile, "colorScheme");
+                        matchedScheme = profileValue(profile, "colorScheme");
+                        matchedBackground = profileValue(profile, "background");
                         break;
                     }
                 }
             }
             if (matched) {
                 schemeName = matchedScheme != null ? matchedScheme : defaultsScheme;
+                background = matchedBackground != null ? matchedBackground : defaultsBackground;
             } else {
                 schemeName = defaultsScheme;
+                background = defaultsBackground;
             }
+        }
+        if (background != null) {
+            int[] rgb = parseHexColor(background);
+            return rgb == null ? TerminalTheme.UNKNOWN : TerminalTheme.fromRGB(rgb[0], rgb[1], rgb[2]);
         }
         if (schemeName == null) {
             schemeName = topLevelColorScheme(clean, profilesRegion, schemesRegion);
@@ -203,12 +214,12 @@ final class IdeThemeDetector {
 
     /**
      * Find a top-level {@code colorScheme} usage: the document with the
-     * profiles and colorSchemes regions blanked, so neither the active
+     * profiles and schemes regions blanked, so neither the active
      * configuration nor a scheme definition can satisfy the lookup.
      *
      * @param clean comment-stripped settings content
      * @param profilesRegion the profiles region, or null if absent
-     * @param schemesRegion the colorSchemes region, or null if absent
+     * @param schemesRegion the schemes region, or null if absent
      * @return the scheme name, or null if there is no top-level usage
      */
     private static String topLevelColorScheme(String clean, int[] profilesRegion,
@@ -226,6 +237,41 @@ final class IdeThemeDetector {
         for (int i = region[0]; i <= region[1] && i < sb.length(); i++) {
             sb.setCharAt(i, ' ');
         }
+    }
+
+    // Nested appearance/environment settings are not properties of the
+    // profile itself. Mask them before using the existing string extractor.
+    private static String profileValue(String json, String key) {
+        String body = json.trim();
+        StringBuilder direct = new StringBuilder(body);
+        for (int i = body.startsWith("{") ? 1 : 0; i < body.length(); i++) {
+            char c = body.charAt(i);
+            if (c == '"') {
+                i = quotedEnd(body, i);
+                if (i < 0) {
+                    return null;
+                }
+            } else if (c == '{' || c == '[') {
+                int end = matchDelimiter(body, i, c, c == '{' ? '}' : ']');
+                if (end < 0) {
+                    return null;
+                }
+                blankRegion(direct, new int[] { i, end });
+                i = end;
+            }
+        }
+        return extractJsonValue(direct.toString(), key);
+    }
+
+    private static int quotedEnd(String json, int start) {
+        for (int i = start + 1; i < json.length(); i++) {
+            if (json.charAt(i) == '\\') {
+                i++;
+            } else if (json.charAt(i) == '"') {
+                return i;
+            }
+        }
+        return -1;
     }
 
     // ==================== VSCode ====================
