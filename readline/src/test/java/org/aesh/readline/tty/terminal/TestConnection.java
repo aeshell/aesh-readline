@@ -172,6 +172,11 @@ public class TestConnection implements Connection {
     }
 
     public void read(String data) {
-        eventDecoder.getInputHandler().accept(Parser.toCodePoints(data));
+        // Route through EventDecoder.accept so CRLF collapsing, signal
+        // extraction and sequence filtering behave exactly like the
+        // byte/Key paths. Calling getInputHandler() directly would bypass
+        // collapseCrLf and turn one Windows ENTER ("\r\n") into two
+        // accept-line submits on POSIX-compatible git-bash (#360).
+        eventDecoder.accept(Parser.toCodePoints(data));
     }
 }

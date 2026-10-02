@@ -338,7 +338,10 @@ public class HistoryTest {
 
     @Test
     public void testFileHistoryPermission() {
-        if (Config.isOSPOSIXCompatible()) {
+        // POSIX file permissions are not honored on Windows, even when
+        // running under git-bash/Cygwin where isOSPOSIXCompatible() is true
+        // (#360). Skip there; the executable-bit assertions cannot hold.
+        if (Config.isOSPOSIXCompatible() && !Config.isWindows()) {
             File historyFile = new File(System.getProperty("java.io.tmpdir"), "aesh-history-file.test.1");
             historyFile.deleteOnExit();
             int maxSize = 10;

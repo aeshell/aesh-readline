@@ -78,6 +78,15 @@ public class ActionDecoder {
     private long escapeTimeout = DEFAULT_ESCAPE_TIMEOUT;
 
     /**
+     * True when the last buffered code point was a carriage return whose
+     * line-feed half of a split CRLF pair may still arrive. Mirrors
+     * {@code EventDecoder.collapseCrLf} so one Windows ENTER yields one
+     * submit even for callers that feed this decoder directly (e.g. pasted
+     * CRLF text or tests), and across chunk boundaries.
+     */
+    private boolean pendingCr;
+
+    /**
      * Creates a decoder with key mappings from the specified edit mode.
      *
      * @param editMode the edit mode providing key mappings
@@ -129,9 +138,37 @@ public class ActionDecoder {
      * @param input the array of code points to add
      */
     public void add(int[] input) {
-        ensureCapacity(input.length);
-        System.arraycopy(input, 0, buffer, bufferLength, input.length);
-        bufferLength += input.length;
+        if (input == null || input.length == 0) {
+            return;
+        }
+        int offset = 0;
+        if (pendingCr) {
+            pendingCr = false;
+            if (input[0] == 10) {
+                offset = 1;
+                if (input.length == 1) {
+                    return;
+                }
+            }
+        }
+        // Single fused pass: collapse LF halves of CRLF pairs inline while
+        // copying straight into the buffer. No scan pass, no temp array —
+        // the common no-CR path costs one pass with one predictable branch
+        // per code point instead of scan + vectorized copy.
+        ensureCapacity(input.length - offset);
+        boolean prevWasCr = false;
+        int write = bufferLength;
+        for (int i = offset; i < input.length; i++) {
+            int c = input[i];
+            if (c == 10 && prevWasCr) {
+                prevWasCr = false;
+                continue;
+            }
+            buffer[write++] = c;
+            prevWasCr = (c == 13);
+        }
+        pendingCr = (write > bufferLength && buffer[write - 1] == 13);
+        bufferLength = write;
     }
 
     /**
@@ -140,6 +177,15 @@ public class ActionDecoder {
      * @param input the code point to add
      */
     public void add(int input) {
+        if (pendingCr) {
+            pendingCr = false;
+            if (input == 10) {
+                return;
+            }
+        }
+        if (input == 13) {
+            pendingCr = true;
+        }
         ensureCapacity(1);
         buffer[bufferLength++] = input;
     }
