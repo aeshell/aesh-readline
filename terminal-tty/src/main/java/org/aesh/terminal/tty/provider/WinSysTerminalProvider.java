@@ -55,9 +55,15 @@ public class WinSysTerminalProvider implements TerminalProvider {
 
     @Override
     public boolean isSupported(PlatformContext context) {
-        if (!context.isWindows() || context.isCygwin()) {
+        if (!context.isWindows()) {
             return false;
         }
+        // NOTE: no Cygwin exclusion. Under a Cygwin/MSYS shell with a real
+        // console attached (ConPTY-hosted bash), the event-based WinSys
+        // backend serves the console better than the Cygwin PTY path, whose
+        // cooked console eats arrows (#360). Setups without a console
+        // (mintty pipes, redirection) still decline via the fresh
+        // GetConsoleMode probe in createTerminal().
         // Do NOT call System.console() here — on Windows it triggers the
         // JDK's internal JLine terminal (JnaWinSysTerminal + WindowsStreamPump)
         // which competes with our pump for ReadConsoleInputW events (#276).

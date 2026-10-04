@@ -60,12 +60,16 @@ public class TerminalProviderSelectionTest {
     }
 
     @Test
-    public void testMsysAdmitsOnlyCygwin() {
+    public void testMsysAdmitsCygwinAndWinSysEligibility() {
         PlatformContext msys = context("Windows 10", "amd64",
                 env("MSYSTEM", "MINGW64", "TERM", "xterm"));
-        assertTrue("Cygwin owns MSYS", CYGWIN.isSupported(msys));
+        assertTrue("Cygwin owns MSYS PTY", CYGWIN.isSupported(msys));
+        // WinSys is eligible under Cygwin too: with a real console attached
+        // (ConPTY-hosted bash) its event reads beat the Cygwin cooked console
+        // (#360). The console proof itself defers to the fresh GetConsoleMode
+        // probe in createTerminal, so mintty pipes still fall through.
+        assertTrue("WinSys eligible under Cygwin", WINSYS.isSupported(msys));
         assertFalse("Exec declines Windows", EXEC.isSupported(msys));
-        assertFalse("WinSys declines Cygwin", WINSYS.isSupported(msys));
         assertFalse("FFM declines Windows", FFM.isSupported(msys));
     }
 

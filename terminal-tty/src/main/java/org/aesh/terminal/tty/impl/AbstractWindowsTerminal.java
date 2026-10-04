@@ -20,6 +20,7 @@
 package org.aesh.terminal.tty.impl;
 
 import java.io.FilterInputStream;
+import java.io.IOError;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -269,6 +270,30 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
                 attr.getLocalFlag(Attributes.LocalFlag.ICANON),
                 attr.getLocalFlag(Attributes.LocalFlag.ISIG), mouse);
         setConsoleMode(mode);
+        // Verify the mode stuck: a silently ignored write would leave the
+        // console cooked with no error, eating arrows exactly like the
+        // CygwinPty silent-cooked trap (#360). Fail loud instead.
+        int applied = getConsoleMode();
+        if (applied == -1 || !consoleModeMatches(applied, mode)) {
+            throw new IOError(new IOException(
+                    "Console mode change did not take effect (wanted 0x" + Integer.toHexString(mode)
+                            + ", read back " + (applied == -1 ? "no console"
+                                    : "0x" + Integer.toHexString(applied))
+                            + ")"));
+        }
+    }
+
+    /**
+     * Compare the line discipline bits of two console mode words, ignoring
+     * unrelated flags the system may preserve (quick-edit, insert mode, ...).
+     *
+     * @param actual the mode read back from the console
+     * @param desired the mode that was requested
+     * @return true when echo/line/processed input agree
+     */
+    static boolean consoleModeMatches(int actual, int desired) {
+        int mask = ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT | ENABLE_PROCESSED_INPUT;
+        return (actual & mask) == (desired & mask);
     }
 
     /**

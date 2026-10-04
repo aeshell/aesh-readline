@@ -18,6 +18,7 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.io.IOError;
 import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -79,6 +80,8 @@ public class AbstractWindowsTerminalTest {
         int setInputModeCalls;
         int setOutputModeCalls;
         boolean closed;
+        boolean staleReadback;
+        boolean noConsole;
 
         StubWindowsTerminal(int initialMode) throws IOException {
             this(initialMode, 0);
@@ -114,13 +117,18 @@ public class AbstractWindowsTerminalTest {
         protected int getConsoleMode() {
             // During super() construction, instance fields are Java-default (0),
             // not their initializer values. Use INIT_MODE until fully constructed.
-            return CONSTRUCTED ? currentMode : INIT_MODE;
+            if (!CONSTRUCTED) {
+                return INIT_MODE;
+            }
+            return noConsole ? -1 : currentMode;
         }
 
         @Override
         protected void setConsoleMode(int mode) {
-            currentMode = mode;
             setInputModeCalls++;
+            if (!staleReadback) {
+                currentMode = mode;
+            }
         }
 
         @Override
@@ -225,6 +233,39 @@ public class AbstractWindowsTerminalTest {
             assertEquals("Cooked mode should have WINDOW + EXTENDED + ECHO + LINE + PROCESSED",
                     expected, term.currentMode);
             assertRawModeContract(term.currentMode);
+        } finally {
+            term.close();
+        }
+    }
+
+    @Test
+    public void testSetAttributesVerifiesModeStuck() throws IOException {
+        // Write accepted but mode unchanged on read-back: must throw loud
+        // instead of silently leaving the console cooked (#360).
+        StubWindowsTerminal term = new StubWindowsTerminal(
+                ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT);
+        term.staleReadback = true;
+
+        try {
+            term.setAttributes(new Attributes());
+            fail("Non-sticking console write must throw, not silently stay cooked");
+        } catch (IOError expected) {
+            assertTrue(expected.getCause().getMessage().contains("did not take effect"));
+        } finally {
+            term.close();
+        }
+    }
+
+    @Test
+    public void testSetAttributesNoConsoleThrows() throws IOException {
+        StubWindowsTerminal term = new StubWindowsTerminal(0);
+        term.noConsole = true;
+
+        try {
+            term.setAttributes(new Attributes());
+            fail("Vanished console must throw, not silently pretend raw mode");
+        } catch (IOError expected) {
+            assertTrue(expected.getCause().getMessage().contains("did not take effect"));
         } finally {
             term.close();
         }
