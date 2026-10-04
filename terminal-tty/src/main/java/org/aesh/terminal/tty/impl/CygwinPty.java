@@ -225,11 +225,16 @@ public class CygwinPty extends AbstractExecPty {
 
     /**
      * Try writing terminal attributes directly to the Windows console.
+     * <p>
+     * A declined or non-sticking write must never look like success: falling
+     * back to stty.exe at that point would program a different object than
+     * the one Java reads (see class comment on the mode flags) and silently
+     * leave the console cooked — arrows eaten, echo uncontrolled (#360).
      *
      * @param attr the desired attributes
-     * @return true if the console was programmed directly, false if the
-     *         caller should fall back to stty.exe
-     * @throws IOException if console programming fails after a console was found
+     * @return true if the console was programmed directly, false if no
+     *         console is present and the caller should fall back to stty.exe
+     * @throws IOException if a console is present but cannot be programmed
      */
     private boolean tryDirectSetAttr(Attributes attr) throws IOException {
         int current = readConsoleMode();
@@ -237,12 +242,44 @@ public class CygwinPty extends AbstractExecPty {
             return false;
         }
         stashConsoleMode(current);
+        int desired = toConsoleMode(attr);
+        boolean written;
         try {
-            writeConsoleMode(toConsoleMode(attr));
+            written = writeConsoleMode(desired);
         } catch (Throwable t) {
             throw new IOException("Failed to set console mode directly", t);
         }
+        if (!written) {
+            throw new IOException(
+                    "Console declined the mode change (wanted 0x" + Integer.toHexString(desired)
+                            + "); falling back to stty.exe would configure a different object"
+                            + " and silently leave the console cooked");
+        }
+        // Verify the mode stuck: on some ConPTY setups the write is accepted
+        // but silently not applied. Read back and compare the line discipline
+        // bits instead of claiming success.
+        int applied = readConsoleMode();
+        if (applied == -1 || !modeMatches(applied, desired)) {
+            throw new IOException(
+                    "Console mode change did not take effect (wrote 0x" + Integer.toHexString(desired)
+                            + ", read back " + (applied == -1 ? "no console"
+                                    : "0x" + Integer.toHexString(applied))
+                            + ")");
+        }
         return true;
+    }
+
+    /**
+     * Compare the line discipline bits of two console mode words, ignoring
+     * unrelated flags the system may preserve (quick-edit, insert mode, ...).
+     *
+     * @param actual the mode read back from the console
+     * @param desired the mode that was requested
+     * @return true when echo/line/processed input agree
+     */
+    static boolean modeMatches(int actual, int desired) {
+        int mask = ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT | ENABLE_PROCESSED_INPUT;
+        return (actual & mask) == (desired & mask);
     }
 
     /**
@@ -276,10 +313,11 @@ public class CygwinPty extends AbstractExecPty {
      * Write the raw Windows console input mode. Protected for testing.
      *
      * @param mode the console mode flags to set
+     * @return true when the console accepted the mode
      */
-    protected void writeConsoleMode(int mode) {
+    protected boolean writeConsoleMode(int mode) {
         long handle = WinConsoleNative.getStdHandle(WinConsoleNative.STD_INPUT_HANDLE);
-        WinConsoleNative.setConsoleMode(handle, mode);
+        return WinConsoleNative.setConsoleMode(handle, mode);
     }
 
     /**

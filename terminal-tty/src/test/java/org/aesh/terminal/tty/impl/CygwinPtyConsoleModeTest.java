@@ -50,6 +50,8 @@ public class CygwinPtyConsoleModeTest {
     private static class StubCygwinPty extends CygwinPty {
         int cannedMode;
         final List<Integer> writes = new ArrayList<>();
+        boolean failWrites;
+        boolean staleReadback;
 
         StubCygwinPty(int cannedMode) {
             super("test");
@@ -62,8 +64,15 @@ public class CygwinPtyConsoleModeTest {
         }
 
         @Override
-        protected void writeConsoleMode(int mode) {
+        protected boolean writeConsoleMode(int mode) {
             writes.add(mode);
+            if (failWrites) {
+                return false;
+            }
+            if (!staleReadback) {
+                cannedMode = mode;
+            }
+            return true;
         }
     }
 
@@ -183,6 +192,47 @@ public class CygwinPtyConsoleModeTest {
         assertEquals(1, pty.writes.size());
         assertEquals(Integer.valueOf(ENABLE_WINDOW_INPUT | ENABLE_EXTENDED_FLAGS),
                 pty.writes.get(0));
+    }
+
+    @Test
+    public void testSetAttrWriteDeclinedThrowsLoudly() {
+        // A console that declines the write must not look like success:
+        // falling back to stty.exe would program a different object and
+        // silently leave the console cooked (arrows eaten, #360).
+        int cooked = ENABLE_WINDOW_INPUT | ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT;
+        StubCygwinPty pty = new StubCygwinPty(cooked);
+        pty.failWrites = true;
+        try {
+            pty.setAttr(attrs(false, false, false));
+            org.junit.Assert.fail("Declined console write must throw, not silently stay cooked");
+        } catch (IOException expected) {
+            assertTrue(expected.getMessage().contains("declined"));
+        }
+    }
+
+    @Test
+    public void testSetAttrWriteNotStickingThrowsLoudly() {
+        // Write accepted but mode unchanged on read-back: same silent-cooked
+        // trap, must also throw instead of claiming direct success.
+        int cooked = ENABLE_WINDOW_INPUT | ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT;
+        StubCygwinPty pty = new StubCygwinPty(cooked);
+        pty.staleReadback = true;
+        try {
+            pty.setAttr(attrs(false, false, false));
+            org.junit.Assert.fail("Non-sticking console write must throw, not silently stay cooked");
+        } catch (IOException expected) {
+            assertTrue(expected.getMessage().contains("did not take effect"));
+        }
+    }
+
+    @Test
+    public void testModeMatchesIgnoresUnrelatedFlags() {
+        int desired = ENABLE_WINDOW_INPUT | ENABLE_EXTENDED_FLAGS;
+        assertTrue(CygwinPty.modeMatches(desired | ENABLE_QUICK_EDIT_MODE, desired));
+        assertFalse(CygwinPty.modeMatches(
+                desired | ENABLE_LINE_INPUT, desired));
+        assertFalse(CygwinPty.modeMatches(
+                desired, desired | ENABLE_ECHO_INPUT));
     }
 
     @Test
