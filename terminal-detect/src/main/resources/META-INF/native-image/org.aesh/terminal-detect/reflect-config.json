@@ -13,7 +13,17 @@
     "methods": [
       { "name": "isNativeAccessEnabled", "parameterTypes": [] },
       { "name": "open", "parameterTypes": ["java.lang.String", "int", "java.lang.foreign.Arena"] },
-      { "name": "close", "parameterTypes": ["int"] }
+      { "name": "close", "parameterTypes": ["int"] },
+      { "name": "read", "parameterTypes": ["int", "java.lang.foreign.MemorySegment", "long"] },
+      { "name": "write", "parameterTypes": ["int", "java.lang.foreign.MemorySegment", "long"] },
+      { "name": "tcgetattr", "parameterTypes": ["int", "java.lang.foreign.MemorySegment"] },
+      { "name": "tcsetattr", "parameterTypes": ["int", "int", "java.lang.foreign.MemorySegment"] }
+    ]
+  },
+  {
+    "name": "java.lang.foreign.Arena",
+    "methods": [
+      { "name": "allocate", "parameterTypes": ["long", "long"] }
     ]
   },
   {

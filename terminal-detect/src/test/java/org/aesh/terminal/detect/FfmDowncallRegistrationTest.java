@@ -52,13 +52,37 @@ public class FfmDowncallRegistrationTest {
         }
         Object arena = newConfinedArena();
         Class<?> arenaClass = Class.forName("java.lang.foreign.Arena");
+        Class<?> segmentClass = Class.forName("java.lang.foreign.MemorySegment");
         Method arenaClose = arenaClass.getMethod("close");
+        Method allocate = arenaClass.getMethod("allocate", long.class, long.class);
         Method open = ffmPosix.getMethod("open", String.class, int.class, arenaClass);
         Method close = ffmPosix.getMethod("close", int.class);
+        Method read = ffmPosix.getMethod("read", int.class, segmentClass, long.class);
+        Method write = ffmPosix.getMethod("write", int.class, segmentClass, long.class);
+        Method tcgetattr = ffmPosix.getMethod("tcgetattr", int.class, segmentClass);
+        Method tcsetattr = ffmPosix.getMethod("tcsetattr", int.class, int.class, segmentClass);
         try {
             int fd = (Integer) open.invoke(null, "/dev/null", 2, arena);
             try {
                 assertTrue("open(/dev/null) must succeed", fd >= 0);
+                Object buffer = allocate.invoke(arena, 8L, 1L);
+                Object termios = allocate.invoke(arena, 64L, 8L);
+                long written = (Long) write.invoke(null, fd, buffer, 8L);
+                assertTrue("write(/dev/null) must succeed", written >= 0);
+                long bytesRead = (Long) read.invoke(null, fd, buffer, 8L);
+                assertTrue("read(/dev/null) must report EOF", bytesRead == 0);
+                // /dev/null is not a terminal: these fail with IOException
+                // after linkage, which still proves handle registration.
+                try {
+                    tcgetattr.invoke(null, fd, termios);
+                } catch (Exception expected) {
+                    rethrowIfForeignRegistrationMissing(expected);
+                }
+                try {
+                    tcsetattr.invoke(null, fd, 0, termios);
+                } catch (Exception expected) {
+                    rethrowIfForeignRegistrationMissing(expected);
+                }
             } finally {
                 if (fd >= 0) {
                     close.invoke(null, fd);
@@ -102,6 +126,14 @@ public class FfmDowncallRegistrationTest {
     private static Object newConfinedArena() throws Exception {
         Class<?> arena = Class.forName("java.lang.foreign.Arena");
         return arena.getMethod("ofConfined").invoke(null);
+    }
+
+    private static void rethrowIfForeignRegistrationMissing(Exception e) throws Exception {
+        if (hasCauseNamed(e, "MissingForeignRegistrationError")) {
+            fail("POSIX FFM downcall is not registered for native-image: "
+                    + "add its shape to META-INF/native-image/org.aesh/terminal-detect/"
+                    + "reachability-metadata.json (#301)");
+        }
     }
 
     private static boolean hasCauseNamed(Throwable t, String simpleName) {
