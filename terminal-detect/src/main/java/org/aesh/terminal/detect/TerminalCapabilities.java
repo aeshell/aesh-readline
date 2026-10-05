@@ -292,16 +292,13 @@ public final class TerminalCapabilities {
 
     private static TerminalCapabilities computeFull() {
         TerminalCapabilities caps = detect();
-        if (caps.detector.theme == TerminalTheme.UNKNOWN) {
-            caps.resolvedTheme = caps.detector.detectIdeOrPlatformTheme();
-        }
 
-        // Run terminal mode + color queries
+        // Run terminal mode + color queries first: a measured background
+        // outranks IDE/OS hints, so the fallback below only runs when no
+        // RGB arrived. Same order as the async background thread.
         if (!caps.detector.isInMultiplexer()) {
             TerminalColorQuery result = TerminalColorQuery.query();
             if (result != null) {
-                // Shared rule with detectAsync(): measured RGB outranks
-                // earlier environment/config hints.
                 caps.applyColorResult(result);
 
                 // Cursor-position grapheme probe: only when DA1 responded
@@ -311,6 +308,9 @@ public final class TerminalCapabilities {
                     caps.nativeGraphemeClustering = nativeGC;
                 }
             }
+        }
+        if (caps.resolvedTheme == null && caps.detector.theme == TerminalTheme.UNKNOWN) {
+            caps.resolvedTheme = caps.detector.detectIdeOrPlatformTheme();
         }
         return caps;
     }

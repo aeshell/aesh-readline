@@ -7,8 +7,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -578,6 +581,86 @@ public class TerminalCapabilitiesTest {
             assertSame("fallback must cache as full", result.get(), TerminalCapabilities.detectFull());
         } finally {
             release.countDown();
+            TerminalCapabilities.setProbeTransport(null);
+            TerminalCapabilities.setInstance(saved);
+        }
+    }
+
+    // ==================== Deferred platform fallback ====================
+
+    @Test
+    public void testFullSkipsPlatformFallbackWhenProbeAnswers() throws Exception {
+        Assume.assumeFalse("live query skipped in multiplexer",
+                new TerminalDetector().isInMultiplexer());
+        Assume.assumeTrue("fallback only applies when env theme is unknown",
+                new TerminalDetector().theme == TerminalTheme.UNKNOWN);
+        TerminalCapabilities saved = TerminalCapabilities.getInstance();
+        CountingTransport transport = new CountingTransport(probeBatch(false));
+        final List<String> commands = new ArrayList<>();
+        String previousHome = System.getProperty("user.home");
+        java.io.File emptyHome = Files.createTempDirectory("empty-home").toFile();
+        try {
+            System.setProperty("user.home", emptyHome.getAbsolutePath());
+            ProcessRunner.setInstalled(new ProcessRunner.RunnerTransport() {
+                @Override
+                public ProcessRunner.Result run(ProcessBuilder starter, long timeoutMs) {
+                    commands.add(String.join(" ", starter.command()));
+                    return new ProcessRunner.Result(1, false, new byte[0]);
+                }
+            });
+            TerminalCapabilities.setProbeTransport(transport);
+            TerminalCapabilities.invalidate();
+            TerminalCapabilities caps = TerminalCapabilities.detectFull();
+            assertArrayEquals(new int[] { 0, 0, 0 }, caps.backgroundRGB());
+            assertEquals(TerminalTheme.DARK, caps.theme());
+            assertTrue("measured RGB must make the IDE/OS fallback unnecessary: " + commands,
+                    commands.isEmpty());
+        } finally {
+            System.setProperty("user.home", previousHome);
+            ProcessRunner.setInstalled(null);
+            TerminalCapabilities.setProbeTransport(null);
+            TerminalCapabilities.setInstance(saved);
+        }
+    }
+
+    @Test
+    public void testFullRunsPlatformFallbackWhenProbeSilent() throws Exception {
+        Assume.assumeFalse("live query skipped in multiplexer",
+                new TerminalDetector().isInMultiplexer());
+        Assume.assumeTrue("fallback only applies when env theme is unknown",
+                new TerminalDetector().theme == TerminalTheme.UNKNOWN);
+        TerminalCapabilities saved = TerminalCapabilities.getInstance();
+        final List<String> commands = new ArrayList<>();
+        String previousHome = System.getProperty("user.home");
+        java.io.File emptyHome = Files.createTempDirectory("empty-home").toFile();
+        try {
+            System.setProperty("user.home", emptyHome.getAbsolutePath());
+            ProcessRunner.setInstalled(new ProcessRunner.RunnerTransport() {
+                @Override
+                public ProcessRunner.Result run(ProcessBuilder starter, long timeoutMs) {
+                    commands.add(String.join(" ", starter.command()));
+                    return new ProcessRunner.Result(1, false, new byte[0]);
+                }
+            });
+            TerminalCapabilities.setProbeTransport(new TerminalProbeTransport() {
+                @Override
+                public boolean isAvailable() {
+                    return false;
+                }
+
+                @Override
+                public TerminalProbeSession open() throws IOException {
+                    throw new IOException("unavailable");
+                }
+            });
+            TerminalCapabilities.invalidate();
+            TerminalCapabilities caps = TerminalCapabilities.detectFull();
+            assertNull(caps.backgroundRGB());
+            assertFalse("silent probe must still fall back to platform theme",
+                    commands.isEmpty());
+        } finally {
+            System.setProperty("user.home", previousHome);
+            ProcessRunner.setInstalled(null);
             TerminalCapabilities.setProbeTransport(null);
             TerminalCapabilities.setInstance(saved);
         }
