@@ -99,13 +99,19 @@ public class TerminalCapabilitiesTest {
     }
 
     @Test
-    public void testDetectAsyncSharesInstance() {
+    public void testDetectAsyncSharesInstance() throws Exception {
         TerminalCapabilities saved = TerminalCapabilities.getInstance();
         try {
             TerminalCapabilities.invalidate();
             TerminalCapabilities a = TerminalCapabilities.detectAsync();
             TerminalCapabilities b = TerminalCapabilities.detectAsync();
             assertSame("Repeat detectAsync must share one background query", a, b);
+            // Let the shared background query finish before this test ends:
+            // an orphaned query thread resolving the static probe transport
+            // late inflates later tests' session counts (native-image flake:
+            // "no second color session may open expected:<2> but was:<3>).
+            assertTrue("background query must finish",
+                    a.awaitColors(30, TimeUnit.SECONDS));
         } finally {
             TerminalCapabilities.setInstance(saved);
         }
