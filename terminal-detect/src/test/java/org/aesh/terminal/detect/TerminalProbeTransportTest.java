@@ -381,6 +381,72 @@ public class TerminalProbeTransportTest {
     }
 
     @Test
+    public void testQueryFullRestoresCursorWhenCprReadFails() {
+        // Grapheme gated in (2027 unsupported) but the CPR read throws:
+        // the color result must survive and the cursor-restore bytes must
+        // still go out.
+        final byte[] color = colorResponse();
+        final ByteArrayOutputStream written = new ByteArrayOutputStream();
+        final boolean[] colorServed = { false };
+        final boolean[] closed = { false };
+        InputStream failingAfterColor = new InputStream() {
+            @Override
+            public int read() throws IOException {
+                byte[] one = new byte[1];
+                int n = read(one, 0, 1);
+                return n < 0 ? -1 : one[0] & 0xff;
+            }
+
+            @Override
+            public int read(byte[] b, int off, int len) throws IOException {
+                if (!colorServed[0]) {
+                    colorServed[0] = true;
+                    int count = Math.min(len, color.length);
+                    System.arraycopy(color, 0, b, off, count);
+                    return count;
+                }
+                throw new IOException("broken read");
+            }
+        };
+        final InputStream in = failingAfterColor;
+        TerminalProbeTransport transport = new TerminalProbeTransport() {
+            @Override
+            public boolean isAvailable() {
+                return true;
+            }
+
+            @Override
+            public TerminalProbeSession open() {
+                return new TerminalProbeSession() {
+                    @Override
+                    public void write(byte[] data) {
+                        written.write(data, 0, data.length);
+                    }
+
+                    @Override
+                    public InputStream input() {
+                        return in;
+                    }
+
+                    @Override
+                    public void close() {
+                        closed[0] = true;
+                    }
+                };
+            }
+        };
+        TerminalColorQuery result = TerminalColorQuery.queryFull(transport);
+        assertNotNull("color result must survive a failed grapheme read", result);
+        assertEquals(Boolean.FALSE, result.graphemeClustering);
+        byte[] out = written.toByteArray();
+        byte[] restore = bytes("\0338\033[K");
+        assertTrue("cursor restore must follow a failed CPR read",
+                out.length >= restore.length && Arrays.equals(restore,
+                        Arrays.copyOfRange(out, out.length - restore.length, out.length)));
+        assertTrue(closed[0]);
+    }
+
+    @Test
     public void testColorResponseSplitAcrossReads() {
         StreamProbeTransport transport = new StreamProbeTransport(
                 new ChunkedInputStream(colorResponse(), false));

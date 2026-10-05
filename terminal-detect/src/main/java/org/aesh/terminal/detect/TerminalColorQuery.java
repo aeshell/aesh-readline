@@ -240,17 +240,7 @@ final class TerminalColorQuery {
                 TerminalColorQuery result = parseColorBatch(response);
                 if (result.da1Received && result.mode2027 == ModeSupport.NOT_SUPPORTED) {
                     try {
-                        session.write(buildGraphemeProbe());
-                        String cpr = readCprResponse(session.input());
-                        session.write(RESTORE_CURSOR_AND_ERASE);
-                        boolean clustered = false;
-                        if (cpr != null && !cpr.isEmpty()) {
-                            int[] position = TerminalReplyParser.cursorPosition(cpr);
-                            if (position != null) {
-                                clustered = position[1] <= 3;
-                            }
-                        }
-                        result.graphemeClustering = clustered;
+                        result.graphemeClustering = probeGraphemeInSession(session);
                     } catch (IOException graphemeFailure) {
                         result.graphemeClustering = false;
                     }
@@ -431,27 +421,7 @@ final class TerminalColorQuery {
         }
         synchronized (PROBE_LOCK) {
             try (TerminalProbeSession session = transport.open()) {
-                session.write(buildGraphemeProbe());
-
-                // Read CPR response: ESC [ row ; col R
-                String response = readCprResponse(session.input());
-
-                // Restore cursor and erase the test emoji
-                session.write(RESTORE_CURSOR_AND_ERASE);
-
-                if (response == null || response.isEmpty()) {
-                    return false;
-                }
-
-                // Parse CPR: first complete valid frame wins (stale
-                // garbage never poisons a later well-formed frame).
-                int[] position = TerminalReplyParser.cursorPosition(response);
-                if (position == null) {
-                    return false;
-                }
-                int col = position[1];
-                // Flag emoji: 2 columns if clustered, 4 if not
-                return col <= 3;
+                return probeGraphemeInSession(session);
             } catch (IOException ignored) {
                 return false;
             }
@@ -460,6 +430,44 @@ final class TerminalColorQuery {
 
     /** Restore cursor (DECSC) + erase line after the grapheme probe. ASCII. */
     private static final byte[] RESTORE_CURSOR_AND_ERASE = "\0338\033[K".getBytes(StandardCharsets.US_ASCII);
+
+    /**
+     * Cursor-position grapheme probe on an open session: writes the flag
+     * emoji plus CPR query, reads the position, and always restores the
+     * cursor and erases the emoji — even when the CPR read fails, so no
+     * probe residue stays visible. A failed probe write skips the restore
+     * (nothing was emitted) and propagates.
+     *
+     * @param session the open probe session
+     * @return true when the terminal clusters the flag emoji natively
+     * @throws IOException if the probe cannot be written or read
+     */
+    private static boolean probeGraphemeInSession(TerminalProbeSession session) throws IOException {
+        session.write(buildGraphemeProbe());
+        try {
+            // Read CPR response: ESC [ row ; col R
+            String response = readCprResponse(session.input());
+            if (response == null || response.isEmpty()) {
+                return false;
+            }
+            // Parse CPR: first complete valid frame wins (stale
+            // garbage never poisons a later well-formed frame).
+            int[] position = TerminalReplyParser.cursorPosition(response);
+            if (position == null) {
+                return false;
+            }
+            int col = position[1];
+            // Flag emoji: 2 columns if clustered, 4 if not
+            return col <= 3;
+        } finally {
+            try {
+                session.write(RESTORE_CURSOR_AND_ERASE);
+            } catch (IOException ignored) {
+                // Restore is cosmetic; raw-mode close restores the
+                // terminal itself and the verdict stands.
+            }
+        }
+    }
 
     /**
      * Save cursor, move to column 0, erase line, write flag emoji, query

@@ -77,8 +77,12 @@ public class TerminalColorExample {
         }
 
         try {
+            // Standalone probing first: once a TerminalConnection exists
+            // its input pump competes for the same probe replies.
+            Detection detection = detectAll();
+            SelfCheck selfCheck = runSelfCheck();
             TerminalConnection connection = new TerminalConnection();
-            runExample(connection);
+            runExample(connection, detection, selfCheck);
             connection.close();
         } catch (IOException e) {
             System.err.println("Error creating terminal connection: " + e.getMessage());
@@ -86,32 +90,65 @@ public class TerminalColorExample {
         }
     }
 
+    /** Detection results collected before any terminal reader exists. */
+    private static final class Detection {
+        TerminalCapabilities envCaps;
+        long envTime;
+        TerminalCapabilities asyncCaps;
+        long asyncTime;
+        boolean colorsReady;
+        TerminalCapabilities fullCaps;
+        long fullTime;
+    }
+
+    /**
+     * Runs all standalone detection phases. Must complete before a
+     * TerminalConnection is created: the connection's input pump reads
+     * the same reply stream the probes listen on.
+     *
+     * @return the detection results with timings
+     */
+    private static Detection detectAll() {
+        Detection detection = new Detection();
+        // First, do environment-based detection (fast, no terminal queries)
+        long envStart = System.currentTimeMillis();
+        detection.envCaps = TerminalCapabilities.detect();
+        detection.envTime = System.currentTimeMillis() - envStart;
+
+        // Async detect: heuristics now, real colors in the background
+        long asyncStart = System.currentTimeMillis();
+        detection.asyncCaps = TerminalCapabilities.detectAsync();
+        detection.colorsReady = false;
+        try {
+            detection.colorsReady = detection.asyncCaps.awaitColors(2, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        detection.asyncTime = System.currentTimeMillis() - asyncStart;
+
+        // Full detect (env + platform theme + live terminal queries)
+        long fullStart = System.currentTimeMillis();
+        detection.fullCaps = TerminalCapabilities.detectFull();
+        detection.fullTime = System.currentTimeMillis() - fullStart;
+        return detection;
+    }
+
     /**
      * Runs the terminal color detection example.
      *
      * @param connection the terminal connection to use for output
+     * @param detection the pre-probed detection results
+     * @param selfCheck the pre-probed self-check results
      */
-    private static void runExample(TerminalConnection connection) {
-        // First, do environment-based detection (fast, no terminal queries)
-        long envStart = System.currentTimeMillis();
-        TerminalCapabilities envCaps = TerminalCapabilities.detect();
-        long envTime = System.currentTimeMillis() - envStart;
-
-        // Async detect: heuristics now, real colors in the background
-        long asyncStart = System.currentTimeMillis();
-        TerminalCapabilities asyncCaps = TerminalCapabilities.detectAsync();
-        boolean colorsReady = false;
-        try {
-            colorsReady = asyncCaps.awaitColors(2, TimeUnit.SECONDS);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-        long asyncTime = System.currentTimeMillis() - asyncStart;
-
-        // Full detect (env + platform theme + live terminal queries)
-        long fullStart = System.currentTimeMillis();
-        TerminalCapabilities fullCaps = TerminalCapabilities.detectFull();
-        long fullTime = System.currentTimeMillis() - fullStart;
+    private static void runExample(TerminalConnection connection, Detection detection,
+            SelfCheck selfCheck) {
+        TerminalCapabilities envCaps = detection.envCaps;
+        long envTime = detection.envTime;
+        TerminalCapabilities asyncCaps = detection.asyncCaps;
+        long asyncTime = detection.asyncTime;
+        boolean colorsReady = detection.colorsReady;
+        TerminalCapabilities fullCaps = detection.fullCaps;
+        long fullTime = detection.fullTime;
 
         // Plain ANSI builder for the demo output itself
         ANSIBuilder builder = ANSIBuilder.builder();
@@ -173,9 +210,21 @@ public class TerminalColorExample {
         connection.write(builder.bold("7. Detection Self-Check").toLine());
         connection.write("   Verifies probe paths and instance caching.\n");
         connection.write("\n");
-        checkCaching(connection, builder);
+        printSelfCheck(connection, builder, selfCheck);
 
         connection.write("\n");
+    }
+
+    /** Self-check outcomes collected before any terminal reader exists. */
+    private static final class SelfCheck {
+        boolean asyncShared;
+        boolean colorsReady;
+        boolean fullReusesAsync;
+        boolean freshReprobes;
+        boolean fullCached;
+        long probeTime;
+        Boolean grapheme;
+        boolean measuredTheme;
     }
 
     /**
@@ -183,59 +232,78 @@ public class TerminalColorExample {
      * <p>
      * Exercises the async background probe (single-session color plus
      * grapheme query), the async-to-full upgrade without re-probing, a
-     * fresh full probe after invalidation, and repeat-call caching.
-     * Results print as PASS/FAIL lines so a terminal run shows which
-     * path regressed; a failure never aborts the demo itself.
+     * fresh full probe after invalidation, and repeat-call caching. Must
+     * complete before a TerminalConnection is created, like all
+     * standalone probing.
      *
-     * @param connection the terminal connection to use for output
-     * @param builder the reusable ANSIBuilder instance
+     * @return the self-check outcomes for display
      */
-    private static void checkCaching(TerminalConnection connection, ANSIBuilder builder) {
-        String indent = "   ";
-        builder.reset();
+    private static SelfCheck runSelfCheck() {
+        SelfCheck check = new SelfCheck();
 
         // Async detections share one background query.
         TerminalCapabilities.invalidate();
         TerminalCapabilities firstAsync = TerminalCapabilities.detectAsync();
         TerminalCapabilities secondAsync = TerminalCapabilities.detectAsync();
-        check(connection, indent, "Repeat async shares one query", firstAsync == secondAsync);
-        boolean colorsReady = false;
+        check.asyncShared = firstAsync == secondAsync;
+        check.colorsReady = false;
         try {
-            colorsReady = firstAsync.awaitColors(2, TimeUnit.SECONDS);
+            check.colorsReady = firstAsync.awaitColors(2, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
-        check(connection, indent, "Async background probe finished", colorsReady);
 
         // Full detection upgrades the completed async instance instead
         // of probing a second time.
         TerminalCapabilities upgraded = TerminalCapabilities.detectFull();
-        check(connection, indent, "Full reuses the async result", upgraded == firstAsync);
+        check.fullReusesAsync = upgraded == firstAsync;
 
         // A fresh full probe after invalidation re-probes, then caches.
         TerminalCapabilities.invalidate();
         long probeStart = System.currentTimeMillis();
         TerminalCapabilities fresh = TerminalCapabilities.detectFull();
-        long probeTime = System.currentTimeMillis() - probeStart;
-        check(connection, indent, "Fresh full re-probes after invalidate", fresh != upgraded);
-        check(connection, indent, "Repeat full is cached",
-                TerminalCapabilities.detectFull() == fresh);
-        connection.write(indent + "Fresh full probe time: " + probeTime + "ms\n");
+        check.probeTime = System.currentTimeMillis() - probeStart;
+        check.freshReprobes = fresh != upgraded;
+        check.fullCached = TerminalCapabilities.detectFull() == fresh;
 
         // The grapheme answer is only set when the cursor-position probe
         // runs (DA1 received, Mode 2027 unsupported).
-        Boolean grapheme = fresh.nativeGraphemeClustering();
+        check.grapheme = fresh.nativeGraphemeClustering();
+        check.measuredTheme = fresh.backgroundRGB() != null;
+        return check;
+    }
+
+    /**
+     * Prints self-check outcomes as PASS/FAIL lines so a terminal run
+     * shows which path regressed; a failure never aborts the demo itself.
+     *
+     * @param connection the terminal connection to use for output
+     * @param builder the reusable ANSIBuilder instance
+     * @param selfCheck the pre-probed self-check outcomes
+     */
+    private static void printSelfCheck(TerminalConnection connection, ANSIBuilder builder,
+            SelfCheck selfCheck) {
+        String indent = "   ";
+        builder.reset();
+
+        check(connection, indent, "Repeat async shares one query", selfCheck.asyncShared);
+        check(connection, indent, "Async background probe finished", selfCheck.colorsReady);
+        check(connection, indent, "Full reuses the async result", selfCheck.fullReusesAsync);
+        check(connection, indent, "Fresh full re-probes after invalidate", selfCheck.freshReprobes);
+        check(connection, indent, "Repeat full is cached", selfCheck.fullCached);
+        connection.write(indent + "Fresh full probe time: " + selfCheck.probeTime + "ms\n");
+
         String clustering;
-        if (grapheme == null) {
+        if (selfCheck.grapheme == null) {
             clustering = "not probed";
-        } else if (grapheme) {
+        } else if (selfCheck.grapheme) {
             clustering = "yes";
         } else {
             clustering = "no";
         }
         connection.write(indent + "Native grapheme clustering: " + clustering + "\n");
         connection.write(indent + "Theme source: "
-                + (fresh.backgroundRGB() != null ? "measured RGB" : "environment/platform hints") + "\n");
+                + (selfCheck.measuredTheme ? "measured RGB" : "environment/platform hints") + "\n");
         connection.write("\n");
     }
 
