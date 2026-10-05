@@ -17,30 +17,50 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import org.aesh.terminal.utils.OSUtils;
+import org.aesh.terminal.utils.PlatformContext;
 import org.junit.Test;
 
 /**
- * Tests for terminal provider priority ordering and mutual exclusion.
+ * Tests for terminal provider priority ordering and overlap resolution.
  * <p>
- * Verifies that the priority values and isSupported() logic ensure exactly
- * one provider is selected per platform, and that the Windows providers
- * (WinSys vs Cygwin) are mutually exclusive via IS_CYGWIN.
- * Runs on all platforms.
+ * WinSys and Cygwin may both be eligible under a Cygwin/MSYS shell; the
+ * overlap is resolved by priority (WinSys first) plus the ground-truth
+ * probes in createTerminal (GetConsoleMode vs tty), which fall through
+ * to the next provider on failure. Runs on all platforms.
  */
 public class TerminalProviderPriorityTest {
 
+    private static Map<String, String> env(String... pairs) {
+        Map<String, String> env = new HashMap<>();
+        for (int i = 0; i < pairs.length; i += 2) {
+            env.put(pairs[i], pairs[i + 1]);
+        }
+        return env;
+    }
+
     @Test
-    public void testWinSysAndCygwinMutuallyExclusive() {
+    public void testWinSysAndCygwinOverlapResolvedByPriority() {
         WinSysTerminalProvider winSys = new WinSysTerminalProvider();
         CygwinTerminalProvider cygwin = new CygwinTerminalProvider();
 
-        // At most one can return true — never both
-        if (winSys.isSupported() && cygwin.isSupported()) {
-            // This should never happen — IS_CYGWIN gates Cygwin,
-            // !IS_CYGWIN gates WinSys
-            throw new AssertionError("WinSys and Cygwin cannot both be supported");
-        }
+        // ConPTY-hosted bash: both eligible (TERM must not be dumb for WinSys).
+        PlatformContext msysConsole = new PlatformContext("Windows 11", "amd64",
+                env("MSYSTEM", "MINGW64", "TERM", "xterm-256color"), "/home/test");
+        assertTrue("WinSys eligible with a console under Cygwin (#360)",
+                winSys.isSupported(msysConsole));
+        assertTrue("Cygwin eligible under Cygwin", cygwin.isSupported(msysConsole));
+        assertTrue("WinSys must be tried before Cygwin",
+                winSys.priority() > cygwin.priority());
+
+        // Native Windows without Cygwin indicators: WinSys only.
+        PlatformContext nativeWindows = new PlatformContext("Windows 11", "amd64",
+                env("TERM", "xterm-256color"), "/home/test");
+        assertTrue("WinSys owns native Windows", winSys.isSupported(nativeWindows));
+        assertFalse("Cygwin needs Cygwin indicators", cygwin.isSupported(nativeWindows));
     }
 
     @Test
