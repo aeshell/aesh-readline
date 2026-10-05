@@ -291,7 +291,20 @@ public final class TerminalCapabilities {
     }
 
     private static TerminalCapabilities computeFull() {
-        TerminalCapabilities caps = detect();
+        return computeFull(new TerminalDetector());
+    }
+
+    /**
+     * Full detection over an injected detector. Package-visible so tests
+     * can pin the environment and OS name instead of inheriting the
+     * developer machine (an IDE-owned terminal resolves its own theme
+     * from settings files with zero subprocesses, #363).
+     *
+     * @param detector the environment/OS facts to detect from
+     * @return the detected capabilities
+     */
+    static TerminalCapabilities computeFull(TerminalDetector detector) {
+        TerminalCapabilities caps = new TerminalCapabilities(detector, null);
 
         // Run terminal mode + color queries first, with the grapheme
         // probe in the same raw-mode session: a measured background

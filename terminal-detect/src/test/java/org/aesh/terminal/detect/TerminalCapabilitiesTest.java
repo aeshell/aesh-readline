@@ -3,6 +3,7 @@ package org.aesh.terminal.detect;
 import static org.junit.Assert.*;
 
 import java.io.ByteArrayInputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Field;
@@ -696,16 +697,70 @@ public class TerminalCapabilitiesTest {
         }
     }
 
+    /** Probe transport that never answers, forcing the platform fallback. */
+    private static TerminalProbeTransport silentProbeTransport() {
+        return new TerminalProbeTransport() {
+            @Override
+            public boolean isAvailable() {
+                return false;
+            }
+
+            @Override
+            public TerminalProbeSession open() throws IOException {
+                throw new IOException("unavailable");
+            }
+        };
+    }
+
     @Test
     public void testFullRunsPlatformFallbackWhenProbeSilent() throws Exception {
-        Assume.assumeFalse("live query skipped in multiplexer",
-                new TerminalDetector().isInMultiplexer());
-        Assume.assumeTrue("fallback only applies when env theme is unknown",
-                new TerminalDetector().theme == TerminalTheme.UNKNOWN);
-        TerminalCapabilities saved = TerminalCapabilities.getInstance();
+        // Fixture environment and OS name: no IDE markers, so the
+        // fallback must reach the OS theme query. Fully hermetic —
+        // passes identically inside an IDE-owned terminal (#363).
+        Map<String, String> env = new HashMap<>();
+        env.put("TERM", "xterm");
+        final List<String> commands = new ArrayList<>();
+        try {
+            ProcessRunner.setInstalled(new ProcessRunner.RunnerTransport() {
+                @Override
+                public ProcessRunner.Result run(ProcessBuilder starter, long timeoutMs) {
+                    commands.add(String.join(" ", starter.command()));
+                    String output = "    AppsUseLightTheme    REG_DWORD    0x0\r\n";
+                    return new ProcessRunner.Result(0, false,
+                            output.getBytes(StandardCharsets.US_ASCII));
+                }
+            });
+            TerminalCapabilities.setProbeTransport(silentProbeTransport());
+            TerminalCapabilities caps = TerminalCapabilities.computeFull(new TerminalDetector(env, "Windows 11"));
+            assertNull(caps.backgroundRGB());
+            assertEquals(TerminalTheme.DARK, caps.theme());
+            assertEquals("silent probe must reach the OS theme query: " + commands,
+                    1, commands.size());
+            assertTrue(commands.get(0).endsWith("/v AppsUseLightTheme"));
+        } finally {
+            ProcessRunner.setInstalled(null);
+            TerminalCapabilities.setProbeTransport(null);
+        }
+    }
+
+    @Test
+    public void testFullUsesIdeFileThemeWithoutSubprocesses() throws Exception {
+        // The #363 scenario as a pinned contract: inside a JetBrains
+        // terminal the settings file resolves the theme with zero
+        // subprocesses. That is the correct fallback, not a gap.
+        File appData = Files.createTempDirectory("appdata").toFile();
+        File options = new File(appData, "JetBrains/IntelliJIdea2024.1/options");
+        assertTrue(options.mkdirs());
+        Files.write(new File(options, "laf.xml").toPath(),
+                ("<application><component name=\"LafManager\">"
+                        + "<laf themeId=\"Darcula\" /></component></application>")
+                        .getBytes(StandardCharsets.US_ASCII));
+        Map<String, String> env = new HashMap<>();
+        env.put("TERMINAL_EMULATOR", "JetBrains-JediTerm");
+        env.put("APPDATA", appData.getAbsolutePath());
         final List<String> commands = new ArrayList<>();
         String previousHome = System.getProperty("user.home");
-        java.io.File emptyHome = Files.createTempDirectory("empty-home").toFile();
+        File emptyHome = Files.createTempDirectory("empty-home").toFile();
         try {
             System.setProperty("user.home", emptyHome.getAbsolutePath());
             ProcessRunner.setInstalled(new ProcessRunner.RunnerTransport() {
@@ -715,27 +770,16 @@ public class TerminalCapabilitiesTest {
                     return new ProcessRunner.Result(1, false, new byte[0]);
                 }
             });
-            TerminalCapabilities.setProbeTransport(new TerminalProbeTransport() {
-                @Override
-                public boolean isAvailable() {
-                    return false;
-                }
-
-                @Override
-                public TerminalProbeSession open() throws IOException {
-                    throw new IOException("unavailable");
-                }
-            });
-            TerminalCapabilities.invalidate();
-            TerminalCapabilities caps = TerminalCapabilities.detectFull();
+            TerminalCapabilities.setProbeTransport(silentProbeTransport());
+            TerminalCapabilities caps = TerminalCapabilities.computeFull(new TerminalDetector(env, "Windows 11"));
             assertNull(caps.backgroundRGB());
-            assertFalse("silent probe must still fall back to platform theme",
+            assertEquals(TerminalTheme.DARK, caps.theme());
+            assertTrue("IDE file theme must not spawn subprocesses: " + commands,
                     commands.isEmpty());
         } finally {
             System.setProperty("user.home", previousHome);
             ProcessRunner.setInstalled(null);
             TerminalCapabilities.setProbeTransport(null);
-            TerminalCapabilities.setInstance(saved);
         }
     }
 
