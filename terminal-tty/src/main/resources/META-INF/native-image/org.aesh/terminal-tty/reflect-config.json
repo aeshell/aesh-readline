@@ -48,6 +48,22 @@
     ]
   },
   {
+    "name": "org.aesh.terminal.tty.impl.WinConsoleNative",
+    "fields": [
+      { "name": "GET_STD_HANDLE" },
+      { "name": "GET_CONSOLE_MODE" },
+      { "name": "SET_CONSOLE_MODE" },
+      { "name": "GET_CONSOLE_OUTPUT_CP" },
+      { "name": "GET_CONSOLE_SCREEN_BUFFER_INFO" },
+      { "name": "READ_CONSOLE_INPUT_W" },
+      { "name": "WRITE_CONSOLE_W" },
+      { "name": "WAIT_FOR_SINGLE_OBJECT" },
+      { "name": "GET_NUMBER_OF_CONSOLE_INPUT_EVENTS" },
+      { "name": "ALLOC_CONSOLE" },
+      { "name": "FREE_CONSOLE" }
+    ]
+  },
+  {
     "name": "org.aesh.terminal.detect.TerminalCapabilities",
     "fields": [
       { "name": "mode2026Support" }

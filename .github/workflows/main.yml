@@ -54,7 +54,10 @@ jobs:
         native-image-job-reports: true
     - name: Build and native test terminal-tty and terminal-detect
       shell: bash
-      run: mvn clean verify -pl terminal-tty,terminal-detect -am -Dformat.skip=true
+      # GraalVM is pinned to 25 above, so keep the FFM overlay: deleting it
+      # would force the JNI fallback and neuter the FFM downcall
+      # registration tests. POSIX FFM tests stay platform-gated off.
+      run: mvn clean verify -pl terminal-tty,terminal-detect -am -Dformat.skip=true -Dnative.delete.ffm=false
 
   # Guard against artifact regressions (#209, #211, #218):
   # Build with JDK 25 (activates java22-ffm profile, produces MRJAR).
