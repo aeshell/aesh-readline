@@ -23,6 +23,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
+import java.util.concurrent.Callable;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
 
@@ -170,36 +173,30 @@ public class ExternalTerminalOwnedInputTest {
         ZeroAvailableStream master = new ZeroAvailableStream();
         ExternalTerminal terminal = new ExternalTerminal(
                 "test", "test", master, new ByteArrayOutputStream(), true);
+        FutureTask<byte[]> readToEof = new FutureTask<>(new Callable<byte[]>() {
+            @Override
+            public byte[] call() throws IOException {
+                ByteArrayOutputStream received = new ByteArrayOutputStream();
+                byte[] buf = new byte[16];
+                int read;
+                while ((read = terminal.input().read(buf)) != -1) {
+                    received.write(buf, 0, read);
+                }
+                return received.toByteArray();
+            }
+        });
+        Thread reader = new Thread(readToEof, "owned-terminal EOF test reader");
+        reader.setDaemon(true);
         try {
             master.stage(new byte[] { 'h', 'i' });
             master.finish();
-            ByteArrayOutputStream received = new ByteArrayOutputStream();
-            boolean eof = false;
-            long deadline = System.currentTimeMillis() + 10000;
-            while (!eof && System.currentTimeMillis() < deadline) {
-                int available;
-                try {
-                    available = terminal.input().available();
-                } catch (IOException pipeClosed) {
-                    break;
-                }
-                if (available > 0) {
-                    byte[] buf = new byte[available];
-                    int read = terminal.input().read(buf);
-                    if (read < 0) {
-                        eof = true;
-                    } else {
-                        received.write(buf, 0, read);
-                    }
-                } else {
-                    Thread.sleep(10);
-                }
-            }
-            assertArrayEquals("bytes before EOF must be delivered",
-                    new byte[] { 'h', 'i' }, received.toByteArray());
-            assertEquals("owned pump must observe master EOF promptly",
-                    -1, terminal.input().read());
+            // available() remains zero after pipe EOF. Read through EOF
+            // instead, with a timeout that bounds failures, not success.
+            reader.start();
+            assertArrayEquals("bytes must be delivered and EOF observed promptly",
+                    new byte[] { 'h', 'i' }, readToEof.get(10, TimeUnit.SECONDS));
         } finally {
+            readToEof.cancel(true);
             terminal.close();
         }
     }
