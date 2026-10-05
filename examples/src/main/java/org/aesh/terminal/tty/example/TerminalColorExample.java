@@ -30,6 +30,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.aesh.terminal.Device;
+import org.aesh.terminal.detect.ModeSupport;
 import org.aesh.terminal.detect.TerminalCapabilities;
 import org.aesh.terminal.tty.TerminalConnection;
 import org.aesh.terminal.utils.ANSI;
@@ -45,6 +46,7 @@ import org.aesh.terminal.utils.TerminalEnvironment;
  * <li>Terminal theme (light or dark background)</li>
  * <li>Actual foreground and background RGB colors (if detectable)</li>
  * <li>Suggested color codes for various message types</li>
+ * <li>Detection self-check: probe paths and instance caching</li>
  * </ul>
  * <p>
  * Run with {@code -v} or {@code --verbose} flag to enable debug logging.
@@ -167,6 +169,98 @@ public class TerminalColorExample {
         printEnvironmentVariables(connection, builder);
 
         connection.write("\n");
+        builder.reset();
+        connection.write(builder.bold("7. Detection Self-Check").toLine());
+        connection.write("   Verifies probe paths and instance caching.\n");
+        connection.write("\n");
+        checkCaching(connection, builder);
+
+        connection.write("\n");
+    }
+
+    /**
+     * Verifies the detection probe paths and shared-instance caching.
+     * <p>
+     * Exercises the async background probe (single-session color plus
+     * grapheme query), the async-to-full upgrade without re-probing, a
+     * fresh full probe after invalidation, and repeat-call caching.
+     * Results print as PASS/FAIL lines so a terminal run shows which
+     * path regressed; a failure never aborts the demo itself.
+     *
+     * @param connection the terminal connection to use for output
+     * @param builder the reusable ANSIBuilder instance
+     */
+    private static void checkCaching(TerminalConnection connection, ANSIBuilder builder) {
+        String indent = "   ";
+        builder.reset();
+
+        // Async detections share one background query.
+        TerminalCapabilities.invalidate();
+        TerminalCapabilities firstAsync = TerminalCapabilities.detectAsync();
+        TerminalCapabilities secondAsync = TerminalCapabilities.detectAsync();
+        check(connection, indent, "Repeat async shares one query", firstAsync == secondAsync);
+        boolean colorsReady = false;
+        try {
+            colorsReady = firstAsync.awaitColors(2, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        check(connection, indent, "Async background probe finished", colorsReady);
+
+        // Full detection upgrades the completed async instance instead
+        // of probing a second time.
+        TerminalCapabilities upgraded = TerminalCapabilities.detectFull();
+        check(connection, indent, "Full reuses the async result", upgraded == firstAsync);
+
+        // A fresh full probe after invalidation re-probes, then caches.
+        TerminalCapabilities.invalidate();
+        long probeStart = System.currentTimeMillis();
+        TerminalCapabilities fresh = TerminalCapabilities.detectFull();
+        long probeTime = System.currentTimeMillis() - probeStart;
+        check(connection, indent, "Fresh full re-probes after invalidate", fresh != upgraded);
+        check(connection, indent, "Repeat full is cached",
+                TerminalCapabilities.detectFull() == fresh);
+        connection.write(indent + "Fresh full probe time: " + probeTime + "ms\n");
+
+        // The grapheme answer is only set when the cursor-position probe
+        // runs (DA1 received, Mode 2027 unsupported).
+        Boolean grapheme = fresh.nativeGraphemeClustering();
+        String clustering;
+        if (grapheme == null) {
+            clustering = "not probed";
+        } else if (grapheme) {
+            clustering = "yes";
+        } else {
+            clustering = "no";
+        }
+        connection.write(indent + "Native grapheme clustering: " + clustering + "\n");
+        connection.write(indent + "Theme source: "
+                + (fresh.backgroundRGB() != null ? "measured RGB" : "environment/platform hints") + "\n");
+        connection.write("\n");
+    }
+
+    private static void check(TerminalConnection connection, String indent, String label, boolean ok) {
+        connection.write(indent + (ok ? "PASS: " : "FAIL: ") + label + "\n");
+    }
+
+    /**
+     * Describes a probed mode support value for display.
+     *
+     * @param mode the probed mode support, or null when never queried
+     * @return a human-readable description
+     */
+    private static String describeMode(ModeSupport mode) {
+        if (mode == null) {
+            return "Not queried";
+        }
+        switch (mode) {
+            case SUPPORTED:
+                return "Yes";
+            case NOT_SUPPORTED:
+                return "No";
+            default:
+                return "No response";
+        }
     }
 
     /**
@@ -182,6 +276,8 @@ public class TerminalColorExample {
         connection.write(indent + "256 colors:  " + (caps.supports256Colors() ? "Yes" : "No") + "\n");
         connection.write(indent + "Theme:       " + caps.theme() +
                 (caps.theme().isDark() ? " (using light text colors)" : " (using dark text colors)") + "\n");
+        connection.write(indent + "Mode 2026:   " + describeMode(caps.synchronizedOutputSupport()) + "\n");
+        connection.write(indent + "Mode 2027:   " + describeMode(caps.graphemeClusterSupport()) + "\n");
 
         int[] bg = caps.backgroundRGB();
         if (bg != null) {
