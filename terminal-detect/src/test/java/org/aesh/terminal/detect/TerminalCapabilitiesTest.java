@@ -347,6 +347,79 @@ public class TerminalCapabilitiesTest {
     }
 
     /**
+     * Transport serving the color batch, then the CPR only after the
+     * grapheme probe is written — one session for both phases.
+     */
+    private static final class PhasedTransport
+            implements TerminalProbeTransport, TerminalProbeSession {
+        final byte[] color;
+        final byte[] cpr;
+        int opens;
+        int writes;
+        int colorPos;
+        int cprPos;
+
+        PhasedTransport(byte[] color, byte[] cpr) {
+            this.color = color;
+            this.cpr = cpr;
+        }
+
+        @Override
+        public boolean isAvailable() {
+            return true;
+        }
+
+        @Override
+        public TerminalProbeSession open() {
+            opens++;
+            return this;
+        }
+
+        @Override
+        public void write(byte[] data) {
+            writes++;
+        }
+
+        @Override
+        public InputStream input() {
+            return in;
+        }
+
+        private final InputStream in = new InputStream() {
+            @Override
+            public int read() throws IOException {
+                byte[] one = new byte[1];
+                int n = read(one, 0, 1);
+                return n < 0 ? -1 : one[0] & 0xff;
+            }
+
+            @Override
+            public int read(byte[] b, int off, int len) {
+                if (writes <= 1) {
+                    if (colorPos >= color.length) {
+                        return 0;
+                    }
+                    int count = Math.min(len, color.length - colorPos);
+                    System.arraycopy(color, colorPos, b, off, count);
+                    colorPos += count;
+                    return count;
+                }
+                if (cprPos >= cpr.length) {
+                    return -1;
+                }
+                int count = Math.min(len, cpr.length - cprPos);
+                System.arraycopy(cpr, cprPos, b, off, count);
+                cprPos += count;
+                return count;
+            }
+        };
+
+        @Override
+        public void close() {
+        }
+    }
+
+    /**
      * Stream blocking its first read on a latch (30s cap), then serving
      * the payload. Lets a test hold an async probe mid-flight.
      */
@@ -423,7 +496,7 @@ public class TerminalCapabilitiesTest {
         Assume.assumeFalse("live query skipped in multiplexer",
                 new TerminalDetector().isInMultiplexer());
         TerminalCapabilities saved = TerminalCapabilities.getInstance();
-        CountingTransport transport = new CountingTransport(
+        PhasedTransport transport = new PhasedTransport(
                 probeBatch(true), "\033[1;2R".getBytes(StandardCharsets.US_ASCII));
         try {
             TerminalCapabilities.setProbeTransport(transport);
@@ -434,7 +507,7 @@ public class TerminalCapabilitiesTest {
             TerminalCapabilities full = TerminalCapabilities.detectFull();
             assertSame("full must upgrade the completed async instance, not re-probe",
                     async, full);
-            assertEquals("no second color session may open", 2, transport.opens);
+            assertEquals("color and grapheme must share one session", 1, transport.opens);
             assertArrayEquals(new int[] { 255, 255, 255 }, full.foregroundRGB());
             assertArrayEquals(new int[] { 0, 0, 0 }, full.backgroundRGB());
             assertEquals(ModeSupport.SUPPORTED, full.synchronizedOutputSupport());

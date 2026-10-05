@@ -80,6 +80,12 @@ final class TerminalColorQuery {
     boolean da1Received;
     ModeSupport mode2026 = ModeSupport.NO_RESPONSE;
     ModeSupport mode2027 = ModeSupport.NO_RESPONSE;
+    /**
+     * Native grapheme clustering measured in the same session, or null
+     * when the cursor-position probe did not run (DA1 absent or Mode
+     * 2027 supported). False means the probe ran without clustering.
+     */
+    Boolean graphemeClustering;
 
     TerminalColorQuery() {
     }
@@ -103,26 +109,7 @@ final class TerminalColorQuery {
     }
 
     static TerminalColorQuery query() {
-        TerminalProbeTransport custom = customTransport;
-        if (custom != null) {
-            // An injected transport replaces the built-in one exclusively:
-            // no silent fallback to /dev/tty, which could steal input from
-            // an embedder's own reader loop.
-            return query(custom);
-        }
-        for (BuiltInTransport kind : BUILT_IN_ORDER) {
-            TerminalProbeTransport transport = kind.available();
-            if (transport == null) {
-                continue;
-            }
-            TerminalColorQuery result = query(transport);
-            if (result != null) {
-                return result;
-            }
-            // A missing color response is not definitive: try the next
-            // built-in before giving up.
-        }
-        return null;
+        return queryFirstAvailable(false);
     }
 
     /**
@@ -205,24 +192,101 @@ final class TerminalColorQuery {
                     return null;
                 }
 
-                TerminalColorQuery result = new TerminalColorQuery();
-                parseDA1Response(response, result);
-                parseDECRPMResponses(response, result);
-                result.foreground = parseOscColorResponse(response, 10, -1);
-                result.background = parseOscColorResponse(response, 11, -1);
-                result.palette = new LinkedHashMap<>();
-                for (int i = 0; i <= 15; i++) {
-                    int[] color = parseOscColorResponse(response, 4, i);
-                    if (color != null) {
-                        result.palette.put(i, color);
+                return parseColorBatch(response);
+            } catch (IOException ignored) {
+                return null;
+            }
+        }
+    }
+
+    private static TerminalColorQuery parseColorBatch(String response) {
+        TerminalColorQuery result = new TerminalColorQuery();
+        parseDA1Response(response, result);
+        parseDECRPMResponses(response, result);
+        result.foreground = parseOscColorResponse(response, 10, -1);
+        result.background = parseOscColorResponse(response, 11, -1);
+        result.palette = new LinkedHashMap<>();
+        for (int i = 0; i <= 15; i++) {
+            int[] color = parseOscColorResponse(response, 4, i);
+            if (color != null) {
+                result.palette.put(i, color);
+            }
+        }
+        result.supports256 = parseOscColorResponse(response, 4, 255) != null;
+        return result;
+    }
+
+    /**
+     * Color/mode query plus the cursor-position grapheme probe in one
+     * raw-mode session. The grapheme phase runs under the same gating
+     * as the standalone probe (DA1 received, Mode 2027 unsupported) and
+     * keeps its failure semantics: any failure records false, while a
+     * skipped phase leaves {@link #graphemeClustering} null.
+     *
+     * @param transport the transport to probe through
+     * @return the combined result, or null when the color phase fails
+     */
+    static TerminalColorQuery queryFull(TerminalProbeTransport transport) {
+        if (!transport.isAvailable()) {
+            return null;
+        }
+        synchronized (PROBE_LOCK) {
+            try (TerminalProbeSession session = transport.open()) {
+                session.write(buildColorQuery());
+                String response = readBatchResponse(session.input());
+                if (response == null || response.isEmpty()) {
+                    return null;
+                }
+                TerminalColorQuery result = parseColorBatch(response);
+                if (result.da1Received && result.mode2027 == ModeSupport.NOT_SUPPORTED) {
+                    try {
+                        session.write(buildGraphemeProbe());
+                        String cpr = readCprResponse(session.input());
+                        session.write(RESTORE_CURSOR_AND_ERASE);
+                        boolean clustered = false;
+                        if (cpr != null && !cpr.isEmpty()) {
+                            int[] position = TerminalReplyParser.cursorPosition(cpr);
+                            if (position != null) {
+                                clustered = position[1] <= 3;
+                            }
+                        }
+                        result.graphemeClustering = clustered;
+                    } catch (IOException graphemeFailure) {
+                        result.graphemeClustering = false;
                     }
                 }
-                result.supports256 = parseOscColorResponse(response, 4, 255) != null;
                 return result;
             } catch (IOException ignored) {
                 return null;
             }
         }
+    }
+
+    static TerminalColorQuery queryFull() {
+        return queryFirstAvailable(true);
+    }
+
+    private static TerminalColorQuery queryFirstAvailable(boolean full) {
+        TerminalProbeTransport custom = customTransport;
+        if (custom != null) {
+            // An injected transport replaces the built-in one exclusively:
+            // no silent fallback to /dev/tty, which could steal input from
+            // an embedder's own reader loop.
+            return full ? queryFull(custom) : query(custom);
+        }
+        for (BuiltInTransport kind : BUILT_IN_ORDER) {
+            TerminalProbeTransport transport = kind.available();
+            if (transport == null) {
+                continue;
+            }
+            TerminalColorQuery result = full ? queryFull(transport) : query(transport);
+            if (result != null) {
+                return result;
+            }
+            // A missing color response is not definitive: try the next
+            // built-in before giving up.
+        }
+        return null;
     }
 
     /**

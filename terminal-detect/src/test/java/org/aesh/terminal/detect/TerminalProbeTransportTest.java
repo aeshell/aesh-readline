@@ -257,6 +257,129 @@ public class TerminalProbeTransportTest {
         assertFalse(TerminalColorQuery.probeGraphemeClustering(transport));
     }
 
+    /**
+     * Session serving the color batch first, then the CPR only after the
+     * grapheme probe is written — the honest shape of a terminal answering
+     * each query after receiving it. A bulk-reading color phase must not
+     * consume the CPR early.
+     */
+    private static final class PhasedProbeSession implements TerminalProbeSession {
+        private final byte[] color;
+        private final byte[] cpr;
+        private final ByteArrayOutputStream written = new ByteArrayOutputStream();
+        private final InputStream in = new InputStream() {
+            @Override
+            public int read() {
+                byte[] one = new byte[1];
+                int n = read(one, 0, 1);
+                return n < 0 ? -1 : one[0] & 0xff;
+            }
+
+            @Override
+            public int read(byte[] b, int off, int len) {
+                if (writes <= 1) {
+                    if (colorPos >= color.length) {
+                        return 0;
+                    }
+                    int count = Math.min(len, color.length - colorPos);
+                    System.arraycopy(color, colorPos, b, off, count);
+                    colorPos += count;
+                    return count;
+                }
+                if (cprPos >= cpr.length) {
+                    return -1;
+                }
+                int count = Math.min(len, cpr.length - cprPos);
+                System.arraycopy(cpr, cprPos, b, off, count);
+                cprPos += count;
+                return count;
+            }
+        };
+        private int writes;
+        private int colorPos;
+        private int cprPos;
+        private boolean closed;
+
+        PhasedProbeSession(byte[] color, byte[] cpr) {
+            this.color = color.clone();
+            this.cpr = cpr.clone();
+        }
+
+        @Override
+        public void write(byte[] data) {
+            writes++;
+            written.write(data, 0, data.length);
+        }
+
+        @Override
+        public InputStream input() {
+            return in;
+        }
+
+        @Override
+        public void close() {
+            closed = true;
+        }
+    }
+
+    private static final class PhasedProbeTransport implements TerminalProbeTransport {
+        final PhasedProbeSession session;
+        int opens;
+
+        PhasedProbeTransport(byte[] color, byte[] cpr) {
+            session = new PhasedProbeSession(color, cpr);
+        }
+
+        @Override
+        public boolean isAvailable() {
+            return true;
+        }
+
+        @Override
+        public TerminalProbeSession open() {
+            opens++;
+            return session;
+        }
+    }
+
+    @Test
+    public void testQueryFullRunsBothPhasesInOneSession() {
+        PhasedProbeTransport transport = new PhasedProbeTransport(
+                colorResponse(), bytes("\033[1;2R"));
+        TerminalColorQuery result = TerminalColorQuery.queryFull(transport);
+        assertNotNull(result);
+        assertArrayEquals(new int[] { 0, 0, 0 }, result.background);
+        assertEquals(Boolean.TRUE, result.graphemeClustering);
+        assertEquals("color and grapheme must share one raw-mode session", 1, transport.opens);
+        byte[] written = transport.session.written.toByteArray();
+        byte[] colorQuery = TerminalColorQuery.buildColorQuery();
+        byte[] probe = TerminalColorQuery.buildGraphemeProbe();
+        byte[] restore = bytes("\0338\033[K");
+        assertEquals(colorQuery.length + probe.length + restore.length, written.length);
+        assertTrue(Arrays.equals(colorQuery, Arrays.copyOf(written, colorQuery.length)));
+        assertTrue(Arrays.equals(probe,
+                Arrays.copyOfRange(written, colorQuery.length, colorQuery.length + probe.length)));
+        assertTrue(Arrays.equals(restore,
+                Arrays.copyOfRange(written, colorQuery.length + probe.length, written.length)));
+        assertTrue(transport.session.closed);
+    }
+
+    @Test
+    public void testQueryFullSkipsGraphemeWhenMode2027Supported() {
+        // Same full batch as colorResponse() but with Mode 2027
+        // supported: no cursor-position probe may run.
+        String supported = new String(colorResponse(), StandardCharsets.US_ASCII)
+                .replace("?2027;0$y", "?2027;1$y");
+        FakeProbeTransport transport = new FakeProbeTransport(true, bytes(supported));
+        TerminalColorQuery result = TerminalColorQuery.queryFull(transport);
+        assertNotNull(result);
+        assertNull(result.graphemeClustering);
+        assertEquals(1, transport.opens);
+        assertTrue(Arrays.equals(TerminalColorQuery.buildColorQuery(),
+                transport.lastSession.written.toByteArray()));
+        assertTrue(transport.lastSession.closed);
+    }
+
     @Test
     public void testColorResponseSplitAcrossReads() {
         StreamProbeTransport transport = new StreamProbeTransport(
@@ -357,10 +480,11 @@ public class TerminalProbeTransportTest {
                 new TerminalDetector().isInMultiplexer());
         TerminalCapabilities saved = TerminalCapabilities.getInstance();
         try {
-            // First open serves the color query, second the grapheme probe
-            // (DA1 received + 2027 unsupported triggers it in detectFull).
+            // One session serves the color batch, then the CPR once the
+            // grapheme probe is written (DA1 received + 2027 unsupported
+            // triggers it in detectFull).
             TerminalCapabilities.setProbeTransport(
-                    new FakeProbeTransport(true, colorResponse(), bytes("\033[1;3R")));
+                    new PhasedProbeTransport(colorResponse(), bytes("\033[1;3R")));
             TerminalCapabilities.invalidate();
             TerminalCapabilities caps = TerminalCapabilities.detectFull();
             assertArrayEquals(new int[] { 0, 0, 0 }, caps.backgroundRGB());
@@ -383,10 +507,11 @@ public class TerminalProbeTransportTest {
                 new TerminalDetector().isInMultiplexer());
         TerminalCapabilities saved = TerminalCapabilities.getInstance();
         try {
-            // First open serves the color query, second the grapheme probe
-            // (DA1 received + 2027 unsupported triggers it).
+            // One session serves the color batch, then the CPR once the
+            // grapheme probe is written (DA1 received + 2027 unsupported
+            // triggers it).
             TerminalCapabilities.setProbeTransport(
-                    new FakeProbeTransport(true, colorResponse(), bytes("\033[1;3R")));
+                    new PhasedProbeTransport(colorResponse(), bytes("\033[1;3R")));
             TerminalCapabilities.invalidate();
             TerminalCapabilities async = TerminalCapabilities.detectAsync();
             assertTrue(async.awaitColors(2, TimeUnit.SECONDS));
@@ -423,10 +548,11 @@ public class TerminalProbeTransportTest {
                 new TerminalDetector().isInMultiplexer());
         TerminalCapabilities saved = TerminalCapabilities.getInstance();
         try {
-            // First open serves the color query, second the grapheme probe
-            // (DA1 received + 2027 unsupported triggers it in detectFull).
+            // One session serves the color batch, then the CPR once the
+            // grapheme probe is written (DA1 received + 2027 unsupported
+            // triggers it in detectFull).
             TerminalCapabilities.setProbeTransport(
-                    new FakeProbeTransport(true, whiteBackgroundResponse(), bytes("\033[1;3R")));
+                    new PhasedProbeTransport(whiteBackgroundResponse(), bytes("\033[1;3R")));
             TerminalCapabilities.invalidate();
             TerminalCapabilities full = TerminalCapabilities.detectFull();
             assertArrayEquals(new int[] { 255, 255, 255 }, full.backgroundRGB());

@@ -293,19 +293,16 @@ public final class TerminalCapabilities {
     private static TerminalCapabilities computeFull() {
         TerminalCapabilities caps = detect();
 
-        // Run terminal mode + color queries first: a measured background
+        // Run terminal mode + color queries first, with the grapheme
+        // probe in the same raw-mode session: a measured background
         // outranks IDE/OS hints, so the fallback below only runs when no
         // RGB arrived. Same order as the async background thread.
         if (!caps.detector.isInMultiplexer()) {
-            TerminalColorQuery result = TerminalColorQuery.query();
+            TerminalColorQuery result = TerminalColorQuery.queryFull();
             if (result != null) {
                 caps.applyColorResult(result);
-
-                // Cursor-position grapheme probe: only when DA1 responded
-                // but Mode 2027 is not supported
-                if (result.da1Received && result.mode2027 == ModeSupport.NOT_SUPPORTED) {
-                    boolean nativeGC = TerminalColorQuery.probeGraphemeClustering();
-                    caps.nativeGraphemeClustering = nativeGC;
+                if (result.graphemeClustering != null) {
+                    caps.nativeGraphemeClustering = result.graphemeClustering;
                 }
             }
         }
@@ -357,14 +354,11 @@ public final class TerminalCapabilities {
         Thread queryThread = new Thread(() -> {
             try {
                 if (!detector.isInMultiplexer()) {
-                    TerminalColorQuery result = TerminalColorQuery.query();
+                    TerminalColorQuery result = TerminalColorQuery.queryFull();
                     if (result != null) {
                         caps.applyColorResult(result);
-                        // Cursor-position grapheme probe, same gating as
-                        // detectFull(): only when DA1 responded but Mode
-                        // 2027 is not supported.
-                        if (result.da1Received && result.mode2027 == ModeSupport.NOT_SUPPORTED) {
-                            caps.nativeGraphemeClustering = TerminalColorQuery.probeGraphemeClustering();
+                        if (result.graphemeClustering != null) {
+                            caps.nativeGraphemeClustering = result.graphemeClustering;
                         }
                     }
                 }
