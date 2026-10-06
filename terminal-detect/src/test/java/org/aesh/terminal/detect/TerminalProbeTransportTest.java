@@ -381,6 +381,51 @@ public class TerminalProbeTransportTest {
     }
 
     @Test
+    public void testQueryFullLogsPhaseTiming() {
+        java.util.logging.Logger logger = java.util.logging.Logger.getLogger(TerminalColorQuery.class.getName());
+        final java.util.List<java.util.logging.LogRecord> records = new java.util.ArrayList<java.util.logging.LogRecord>();
+        java.util.logging.Handler handler = new java.util.logging.Handler() {
+            @Override
+            public void publish(java.util.logging.LogRecord record) {
+                records.add(record);
+            }
+
+            @Override
+            public void flush() {
+            }
+
+            @Override
+            public void close() {
+            }
+        };
+        java.util.logging.Level previous = logger.getLevel();
+        logger.setLevel(java.util.logging.Level.FINE);
+        logger.addHandler(handler);
+        try {
+            PhasedProbeTransport transport = new PhasedProbeTransport(
+                    colorResponse(), bytes("\033[1;2R"));
+            assertNotNull(TerminalColorQuery.queryFull(transport));
+            boolean found = false;
+            for (java.util.logging.LogRecord record : records) {
+                if (record.getLevel() == java.util.logging.Level.FINE
+                        && record.getMessage() != null
+                        && record.getMessage().contains("probe-timing")) {
+                    String message = record.getMessage();
+                    assertTrue(message.contains("session-open="));
+                    assertTrue(message.contains("color-write-read="));
+                    assertTrue(message.contains("parse="));
+                    assertTrue(message.contains("grapheme="));
+                    found = true;
+                }
+            }
+            assertTrue("queryFull must log its phase timing at FINE", found);
+        } finally {
+            logger.removeHandler(handler);
+            logger.setLevel(previous);
+        }
+    }
+
+    @Test
     public void testQueryFullRestoresCursorWhenCprReadFails() {
         // Grapheme gated in (2027 unsupported) but the CPR read throws:
         // the color result must survive and the cursor-restore bytes must

@@ -87,6 +87,9 @@ final class TerminalColorQuery {
      */
     Boolean graphemeClustering;
 
+    private static final java.util.logging.Logger LOGGER = java.util.logging.Logger
+            .getLogger(TerminalColorQuery.class.getName());
+
     TerminalColorQuery() {
     }
 
@@ -231,13 +234,17 @@ final class TerminalColorQuery {
             return null;
         }
         synchronized (PROBE_LOCK) {
+            long openStart = System.nanoTime();
             try (TerminalProbeSession session = transport.open()) {
+                long opened = System.nanoTime();
                 session.write(buildColorQuery());
                 String response = readBatchResponse(session.input());
+                long colorRead = System.nanoTime();
                 if (response == null || response.isEmpty()) {
                     return null;
                 }
                 TerminalColorQuery result = parseColorBatch(response);
+                long parsed = System.nanoTime();
                 if (result.da1Received && result.mode2027 == ModeSupport.NOT_SUPPORTED) {
                     try {
                         result.graphemeClustering = probeGraphemeInSession(session);
@@ -245,11 +252,30 @@ final class TerminalColorQuery {
                         result.graphemeClustering = false;
                     }
                 }
+                long done = System.nanoTime();
+                logProbeTiming(transport, opened - openStart, colorRead - opened,
+                        parsed - colorRead, done - parsed, result.graphemeClustering != null);
                 return result;
             } catch (IOException ignored) {
                 return null;
             }
         }
+    }
+
+    private static void logProbeTiming(TerminalProbeTransport transport, long openNanos,
+            long readNanos, long parseNanos, long graphemeNanos, boolean graphemeRan) {
+        if (!LOGGER.isLoggable(java.util.logging.Level.FINE)) {
+            return;
+        }
+        LOGGER.fine("probe-timing transport=" + transport.getClass().getSimpleName()
+                + " session-open=" + toMillis(openNanos) + "ms"
+                + " color-write-read=" + toMillis(readNanos) + "ms"
+                + " parse=" + toMillis(parseNanos) + "ms"
+                + " grapheme=" + (graphemeRan ? toMillis(graphemeNanos) + "ms" : "skipped"));
+    }
+
+    private static String toMillis(long nanos) {
+        return String.format(java.util.Locale.ROOT, "%.3f", nanos / 1000000.0);
     }
 
     static TerminalColorQuery queryFull() {
