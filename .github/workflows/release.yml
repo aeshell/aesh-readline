@@ -38,7 +38,7 @@ jobs:
       - name: Determine versions
         id: versions
         run: |
-          POM_VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+          POM_VERSION=$(./mvnw help:evaluate -Dexpression=project.version -q -DforceStdout)
           echo "POM version: $POM_VERSION"
 
           if [ -n "${{ github.event.inputs.release_version }}" ]; then
@@ -72,11 +72,11 @@ jobs:
 
       - name: Set release version
         run: |
-          mvn versions:set -DnewVersion=${{ steps.versions.outputs.release_version }} -DgenerateBackupPoms=false
+          ./mvnw versions:set -DnewVersion=${{ steps.versions.outputs.release_version }} -DgenerateBackupPoms=false
           git commit -am "Release ${{ steps.versions.outputs.release_version }}"
 
       - name: Build and deploy
-        run: mvn clean deploy -Prelease -DskipTests
+        run: ./mvnw clean deploy -Prelease -DskipTests
         env:
           CENTRAL_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
           CENTRAL_TOKEN: ${{ secrets.CENTRAL_TOKEN }}
@@ -86,7 +86,7 @@ jobs:
       - name: Inspect Central bundle
         if: always()
         run: |
-          mvn -version
+          ./mvnw -version
           echo "=== central-staging contents ==="
           find target/central-staging -type f | sort
           echo "=== central-bundle.zip contents ==="

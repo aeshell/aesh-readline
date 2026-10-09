@@ -17,6 +17,12 @@ updates:
       # Keep on 1.1.5 until a fixed version is released.
       - dependency-name: "org.graalvm.buildtools:native-maven-plugin"
         versions: ["1.1.6"]
+      # Maven 3.10.0 writes maven-metadata-local.xml into the Central
+      # staging repo where central-publishing-maven-plugin 0.11.0 only
+      # cleans maven-metadata-central-staging.xml, failing deployment
+      # validation. Keep the wrapper on 3.9.x until the plugin handles it.
+      - dependency-name: "org.apache.maven:apache-maven"
+        versions: ["[3.10.0,)"]
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
