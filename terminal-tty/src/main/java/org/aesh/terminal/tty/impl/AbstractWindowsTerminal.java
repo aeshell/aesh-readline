@@ -681,6 +681,9 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
         return WinConsoleNative.getNumberOfConsoleInputEvents(handle);
     }
 
+    /**
+     * Pump console input events to the terminal reader until closed.
+     */
     protected void pump() {
         try {
             long inputHandle = inputHandle();

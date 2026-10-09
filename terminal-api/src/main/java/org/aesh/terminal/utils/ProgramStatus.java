@@ -260,37 +260,65 @@ public final class ProgramStatus {
         return !rest.isEmpty() && rest.charAt(0) == '?';
     }
 
-    /** @return the report state */
+    /**
+     * The report state.
+     *
+     * @return the report state
+     */
     public State state() {
         return state;
     }
 
-    /** @return the blocked kind, or null when absent */
+    /**
+     * What a blocked program waits for.
+     *
+     * @return the blocked kind, or null when absent
+     */
     public BlockedKind kind() {
         return kind;
     }
 
-    /** @return the record id, or null for the root record */
+    /**
+     * The addressed record id.
+     *
+     * @return the record id, or null for the root record
+     */
     public String id() {
         return id;
     }
 
-    /** @return the app name, or null when absent */
+    /**
+     * The stable machine-readable program name.
+     *
+     * @return the app name, or null when absent
+     */
     public String app() {
         return app;
     }
 
-    /** @return the plain-text title, or null when absent */
+    /**
+     * The short plain-text label.
+     *
+     * @return the plain-text title, or null when absent
+     */
     public String title() {
         return title;
     }
 
-    /** @return the progress 0 through 100, or null when indeterminate */
+    /**
+     * The completion percentage.
+     *
+     * @return the progress 0 through 100, or null when indeterminate
+     */
     public Integer progress() {
         return progress;
     }
 
-    /** @return the plain-text message, or null when absent */
+    /**
+     * The one plain-text status line.
+     *
+     * @return the plain-text message, or null when absent
+     */
     public String message() {
         return message;
     }
@@ -318,16 +346,24 @@ public final class ProgramStatus {
             this.state = state;
         }
 
-        /** @param kind what a blocked program waits for; blocked state only */
+        /**
+         * Set what a blocked program waits for.
+         *
+         * @param kind what a blocked program waits for; blocked state only
+         * @return this builder
+         */
         public Builder kind(BlockedKind kind) {
             this.kind = kind;
             return this;
         }
 
         /**
+         * Set the addressed record.
+         *
          * @param id hierarchical record id of at most 8 segments from
          *        {@code [A-Za-z0-9_.+-]}, null addresses the root; empty or
          *        malformed ids are rejected, never silently treated as root
+         * @return this builder
          */
         public Builder id(String id) {
             this.id = id;
@@ -335,8 +371,11 @@ public final class ProgramStatus {
         }
 
         /**
+         * Set the reporting program name.
+         *
          * @param app stable machine-readable program name, 1 through 32
          *        characters of {@code [A-Za-z0-9_.+-]}
+         * @return this builder
          */
         public Builder app(String app) {
             this.app = app;
@@ -344,8 +383,11 @@ public final class ProgramStatus {
         }
 
         /**
+         * Set the short record label.
+         *
          * @param title short plain-text label, at most 192 UTF-8 bytes,
          *        no control characters
+         * @return this builder
          */
         public Builder title(String title) {
             this.title = title;
@@ -353,8 +395,11 @@ public final class ProgramStatus {
         }
 
         /**
+         * Set the completion percentage.
+         *
          * @param progress 0 through 100; working and blocked states only.
          *        Absent means indeterminate, never zero.
+         * @return this builder
          */
         public Builder progress(int progress) {
             this.progress = Integer.valueOf(progress);
@@ -362,15 +407,22 @@ public final class ProgramStatus {
         }
 
         /**
+         * Set the one status line.
+         *
          * @param message one plain-text line, at most 2048 UTF-8 bytes,
          *        no control characters
+         * @return this builder
          */
         public Builder message(String message) {
             this.message = message;
             return this;
         }
 
-        /** @return the validated report */
+        /**
+         * Build the validated report.
+         *
+         * @return the validated report
+         */
         public ProgramStatus build() {
             return new ProgramStatus(this);
         }

@@ -199,6 +199,8 @@ public class ReadlineRequest {
 
     /**
      * Returns the ANSI escape to enable ghost text styling, or null for default.
+     *
+     * @return the enable sequence, or null for default styling
      */
     public String ghostTextStyleOn() {
         return ghostTextStyleOn;
@@ -206,6 +208,8 @@ public class ReadlineRequest {
 
     /**
      * Returns the ANSI escape to disable ghost text styling, or null for default.
+     *
+     * @return the disable sequence, or null for default styling
      */
     public String ghostTextStyleOff() {
         return ghostTextStyleOff;

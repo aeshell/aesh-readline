@@ -1469,6 +1469,14 @@ public class ANSI {
         return null;
     }
 
+    /**
+     * Parse a DA1 (Primary Device Attributes) response.
+     * <p>
+     * Expected format: ESC [ ? Ps ; Ps ; ... c
+     *
+     * @param input the input sequence as code points
+     * @return DeviceAttributes parsed from DA1, or null if parsing failed
+     */
     public static DeviceAttributes parseDA1Response(int[] input) {
         if (input == null || input.length < 4) {
             return null;
