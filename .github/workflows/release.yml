@@ -94,7 +94,7 @@ jobs:
 
       - name: Upload Central bundle on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: central-bundle-${{ steps.versions.outputs.release_version }}
           path: target/central-publishing/central-bundle.zip
