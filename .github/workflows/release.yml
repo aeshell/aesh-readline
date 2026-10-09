@@ -83,6 +83,23 @@ jobs:
           MAVEN_GPG_KEY: ${{ secrets.GPG_ARMORED }}
           MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
 
+      - name: Inspect Central bundle
+        if: always()
+        run: |
+          mvn -version
+          echo "=== central-staging contents ==="
+          find target/central-staging -type f | sort
+          echo "=== central-bundle.zip contents ==="
+          unzip -l target/central-publishing/central-bundle.zip
+
+      - name: Upload Central bundle on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: central-bundle-${{ steps.versions.outputs.release_version }}
+          path: target/central-publishing/central-bundle.zip
+          retention-days: 7
+
       - name: Tag release
         run: |
           git tag -a "v${{ steps.versions.outputs.release_version }}" -m "Release ${{ steps.versions.outputs.release_version }}"
