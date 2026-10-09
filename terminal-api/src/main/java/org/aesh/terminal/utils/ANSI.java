@@ -186,6 +186,13 @@ public class ANSI {
         return OSC_START + "133;D;" + exitCode + ST;
     }
 
+    // ==================== OSC 7501 Program Status ====================
+
+    /** OSC code for program status reporting. */
+    public static final int OSC_PROGRAM_STATUS = 7501;
+    /** OSC 7501 feature-detection query. */
+    public static final String OSC_7501_QUERY = OSC_START + "7501;?" + ST;
+
     // ==================== OSC 52 Clipboard ====================
 
     /** OSC code for clipboard access. */

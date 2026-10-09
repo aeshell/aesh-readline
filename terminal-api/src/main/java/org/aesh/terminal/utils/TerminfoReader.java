@@ -333,27 +333,249 @@ final class TerminfoReader {
         // Sections stay separate and each is sorted alphabetically, matching
         // infocmp output. Within-section order is load-bearing: names that
         // map to one Capability (e.g. dl/dl1) overwrite in encounter order.
+        // Extended entries append after their sorted standard section,
+        // matching infocmp -x output.
         List<List<String>> sections = new ArrayList<>();
         List<String> section = new ArrayList<>();
         collectBools(section, bools);
         sortByCapName(section);
+        List<String> extBools = new ArrayList<>();
+        List<String> extNums = new ArrayList<>();
+        List<String> extStrs = new ArrayList<>();
+        // tic pads an odd-length standard string table to an even
+        // boundary before the extended header; verified against tic
+        // output, not assumed from the reader half of ncurses.
+        parseExtended(data, tableBase + strSize + (strSize & 1), extended,
+                extBools, extNums, extStrs);
+        section.addAll(extBools);
         if (!section.isEmpty()) {
             sections.add(section);
         }
         section = new ArrayList<>();
         collectNums(section, nums, extended);
         sortByCapName(section);
+        section.addAll(extNums);
         if (!section.isEmpty()) {
             sections.add(section);
         }
         section = new ArrayList<>();
         collectStrings(section, data, tableBase, strSize, offsets);
         sortByCapName(section);
+        section.addAll(extStrs);
         if (!section.isEmpty()) {
             sections.add(section);
         }
         emitWrapped(out, sections);
         return out.toString();
+    }
+
+    /**
+     * Parse the user-defined extended section that follows the standard
+     * string table, mirroring ncurses {@code _nc_read_termtype}.
+     * <p>
+     * Layout: five shorts (boolean, number, and string counts, a usage
+     * check, and the string table size), boolean values (one byte each,
+     * padded to even), number values (same width as standard numbers),
+     * string value offsets followed by name offsets (one short each), the
+     * string table (values first, names in the remainder), with names in
+     * boolean, number, string order. Anything out of bounds or failing the
+     * usage check leaves the caller's lists untouched: standard output
+     * never depends on extended bytes.
+     *
+     * @param data the terminfo file bytes
+     * @param pos the offset where the extended section may start
+     * @param wideNumbers true for 32-bit number entries
+     * @param bools receives true extended boolean names in file order
+     * @param nums receives extended number tokens in file order
+     * @param strs receives extended string tokens in file order
+     */
+    private static void parseExtended(byte[] data, int pos, boolean wideNumbers,
+            List<String> bools, List<String> nums, List<String> strs) {
+        ExtendedHeader header = readExtHeader(data, pos);
+        if (header == null) {
+            return;
+        }
+        pos += 10;
+        boolean[] boolValues = new boolean[header.bools];
+        pos = readExtBools(data, pos, boolValues);
+        if (pos < 0) {
+            return;
+        }
+        int numStep = wideNumbers ? 4 : 2;
+        long[] numValues = new long[header.nums];
+        pos = readExtNums(data, pos, numStep, wideNumbers, numValues);
+        if (pos < 0) {
+            return;
+        }
+        String[] names = new String[header.totalNames()];
+        String[] strValues = new String[header.strs];
+        if (!readExtStrings(data, pos, header, strValues, names)) {
+            return;
+        }
+        for (int i = 0; i < header.bools; i++) {
+            if (boolValues[i]) {
+                bools.add(names[i]);
+            }
+        }
+        for (int i = 0; i < header.nums; i++) {
+            long value = numValues[i];
+            if (wideNumbers ? (value == ABSENT_32 || value == CANCELLED_32)
+                    : (value == ABSENT_16 || value == CANCELLED_16)) {
+                continue;
+            }
+            nums.add(names[header.bools + i] + "#" + value);
+        }
+        for (int i = 0; i < header.strs; i++) {
+            if (strValues[i] == null) {
+                continue;
+            }
+            StringBuilder escaped = new StringBuilder();
+            appendEscaped(escaped, strValues[i]);
+            strs.add(names[header.bools + header.nums + i] + "=" + escaped);
+        }
+    }
+
+    /**
+     * User-defined extended section counts, in file order.
+     */
+    private static final class ExtendedHeader {
+        final int bools;
+        final int nums;
+        final int strs;
+        final int usage;
+        final int limit;
+
+        ExtendedHeader(int bools, int nums, int strs, int usage, int limit) {
+            this.bools = bools;
+            this.nums = nums;
+            this.strs = strs;
+            this.usage = usage;
+            this.limit = limit;
+        }
+
+        int totalNames() {
+            return bools + nums + strs;
+        }
+    }
+
+    /**
+     * Read the five-short extended header. Null when no extended section
+     * follows or the counts are unusable; standard output never depends on
+     * extended bytes.
+     */
+    private static ExtendedHeader readExtHeader(byte[] data, int pos) {
+        if (pos + 10 > data.length) {
+            return null;
+        }
+        ExtendedHeader header = new ExtendedHeader(u16(data, pos), u16(data, pos + 2),
+                u16(data, pos + 4), u16(data, pos + 6), u16(data, pos + 8));
+        if (header.bools == 0 && header.nums == 0 && header.strs == 0
+                && header.usage == 0 && header.limit == 0) {
+            return null;
+        }
+        if (header.totalNames() <= 0 || header.totalNames() > 4096
+                || header.limit <= 0 || header.limit > (1 << 20)) {
+            return null;
+        }
+        return header;
+    }
+
+    /**
+     * Read extended boolean values including the odd-count pad byte.
+     *
+     * @return the next offset, or -1 when out of bounds
+     */
+    private static int readExtBools(byte[] data, int pos, boolean[] values) {
+        if (pos + values.length > data.length) {
+            return -1;
+        }
+        for (int i = 0; i < values.length; i++) {
+            values[i] = data[pos + i] != 0;
+        }
+        pos += values.length;
+        if ((values.length & 1) == 1) {
+            pos++;
+        }
+        return pos;
+    }
+
+    /**
+     * Read extended number values at standard number width.
+     *
+     * @return the next offset, or -1 when out of bounds
+     */
+    private static int readExtNums(byte[] data, int pos, int numStep, boolean wideNumbers,
+            long[] values) {
+        if (pos + numStep * values.length > data.length) {
+            return -1;
+        }
+        for (int i = 0; i < values.length; i++) {
+            values[i] = wideNumbers ? u32(data, pos + 4 * i) : u16(data, pos + 2 * i);
+        }
+        return pos + numStep * values.length;
+    }
+
+    /**
+     * Read extended string values and the names living in the table
+     * remainder. Fills both arrays only when every offset, bound, and the
+     * usage check hold; otherwise leaves them untouched.
+     *
+     * @return true when values and names decoded cleanly
+     */
+    private static boolean readExtStrings(byte[] data, int pos, ExtendedHeader header,
+            String[] strValues, String[] names) {
+        int nameOffsets = header.strs + header.totalNames();
+        if (pos + 2 * nameOffsets > data.length
+                || pos + 2 * nameOffsets + header.limit > data.length) {
+            return false;
+        }
+        int[] allNameOffsets = new int[header.totalNames()];
+        for (int i = 0; i < header.totalNames(); i++) {
+            allNameOffsets[i] = u16(data, pos + 2 * header.strs + 2 * i);
+        }
+        int[] strOffsets = new int[header.strs];
+        for (int i = 0; i < header.strs; i++) {
+            strOffsets[i] = u16(data, pos + 2 * i);
+        }
+        pos += 2 * nameOffsets;
+        int base = 0;
+        int check = header.totalNames();
+        for (int i = 0; i < header.strs; i++) {
+            int offset = strOffsets[i];
+            if (offset == ABSENT_16 || offset == CANCELLED_16
+                    || offset < 0 || offset >= header.limit) {
+                continue;
+            }
+            int end = offset;
+            while (end < header.limit && data[pos + end] != 0) {
+                end++;
+            }
+            if (end >= header.limit) {
+                return false;
+            }
+            strValues[i] = latin1(data, pos + offset, end - offset);
+            base += end - offset + 1;
+            check++;
+        }
+        if (check != header.usage) {
+            return false;
+        }
+        for (int i = 0; i < header.totalNames(); i++) {
+            int offset = allNameOffsets[i];
+            if (offset < 0 || offset >= header.limit - base) {
+                return false;
+            }
+            int start = base + offset;
+            int end = start;
+            while (end < header.limit && data[pos + end] != 0) {
+                end++;
+            }
+            if (end >= header.limit || end == start) {
+                return false;
+            }
+            names[i] = latin1(data, pos + start, end - start);
+        }
+        return true;
     }
 
     /**

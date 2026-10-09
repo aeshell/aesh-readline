@@ -82,8 +82,18 @@ public final class InfoCmp {
     }
 
     private static String runInfocmp(String terminal) throws InterruptedException {
+        // Extended output carries user-defined caps such as Pst; plain
+        // output is the fallback for ncurses predating -x.
+        String extended = runInfocmpCommand(OSUtils.INFOCMP_COMMAND, "-x", terminal);
+        if (extended != null && !extended.isEmpty()) {
+            return extended;
+        }
+        return runInfocmpCommand(OSUtils.INFOCMP_COMMAND, terminal);
+    }
+
+    private static String runInfocmpCommand(String... command) throws InterruptedException {
         try {
-            ProcessRunner.Result result = ProcessRunner.execute(OSUtils.INFOCMP_COMMAND, terminal);
+            ProcessRunner.Result result = ProcessRunner.execute(command);
             return result.exitCode() == 0
                     ? result.text(java.nio.charset.Charset.defaultCharset())
                     : null;
@@ -95,13 +105,24 @@ public final class InfoCmp {
     /**
      * Get the default built-in terminal capabilities for the specified terminal type.
      * This is used as a fallback when the infocmp command is not available.
+     * <p>
+     * A bundled entry wins when one matches; otherwise the installed
+     * database is consulted so user-defined capabilities such as Pst stay
+     * visible; otherwise generic ANSI applies. No subprocess runs here.
      *
      * @param terminal the terminal type (e.g., "xterm-256color")
      * @return the default capabilities string, or null if not found
      */
     public static String getDefaultInfoCmp(String terminal) {
         String bundledFile = bundledCapsFile(terminal);
-        return readDefaultInfoCmp(bundledFile != null ? bundledFile : "ansi_caps.src");
+        if (bundledFile != null) {
+            return readDefaultInfoCmp(bundledFile);
+        }
+        String database = TerminfoReader.readEntry(terminal);
+        if (database != null && !database.isEmpty()) {
+            return database;
+        }
+        return readDefaultInfoCmp("ansi_caps.src");
     }
 
     private static String bundledCapsFile(String terminal) {
@@ -245,6 +266,11 @@ public final class InfoCmp {
                     // escaped comma -> include literal comma
                     sb.append(',');
                     i++; // skip next
+                } else if (next == '\\') {
+                    // escaped backslash -> keep both so values ending in
+                    // an escaped backslash (OSC ST terminators) stay exact
+                    sb.append("\\\\");
+                    i++; // skip next
                 } else {
                     // keep the backslash for other escapes
                     sb.append(ch);
@@ -265,7 +291,7 @@ public final class InfoCmp {
         // clean tokens: remove trailing commas or dots leftover
         for (int j = 0; j < tokens.size(); j++) {
             String t = tokens.get(j);
-            t = t.replaceAll("[,\\.]$", "").trim();
+            t = t.replaceAll("[,.]$", "").trim();
             tokens.set(j, t);
         }
 

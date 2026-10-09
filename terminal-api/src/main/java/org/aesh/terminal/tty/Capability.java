@@ -961,7 +961,9 @@ public enum Capability {
     /** Set ANSI attributes. */
     set_a_attributes("sgr1", "sA"),
     /** Set page length to #1 inches. */
-    set_pglen_inch("slength", "sL");
+    set_pglen_inch("slength", "sL"),
+    /** Program status report template (OSC 7501); extended hint only. */
+    program_status("Pst", "Pst");
 
     /** The terminfo capability name. */
     private final String name;

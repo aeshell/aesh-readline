@@ -60,12 +60,50 @@ public abstract class AbstractConnection implements Connection {
 
     private TerminalFeatures terminalFeatures;
 
+    /**
+     * Cached OSC 7501 support for this connection. TerminalFeatures reads
+     * and writes it so detection results survive repeated terminal() calls;
+     * the interface default builds a fresh TerminalFeatures per call, which
+     * keeps only instance state.
+     */
+    private volatile Boolean programStatusSupport;
+
     @Override
     public TerminalFeatures terminal() {
         if (terminalFeatures == null) {
             terminalFeatures = new TerminalFeatures(this);
         }
         return terminalFeatures;
+    }
+
+    /**
+     * Cached OSC 7501 support, or null while unqueried or last inconclusive.
+     *
+     * @return the cached support
+     */
+    Boolean programStatusSupport() {
+        return programStatusSupport;
+    }
+
+    /**
+     * Store a conclusive OSC 7501 support answer.
+     *
+     * @param support the support answer, never null here
+     */
+    void setProgramStatusSupport(Boolean support) {
+        programStatusSupport = support;
+    }
+
+    /**
+     * Return leftover query bytes to the decoder queue when no input
+     * handler is installed to receive them.
+     *
+     * @param leftovers the bytes to keep for a later handler
+     */
+    void requeueInput(int[] leftovers) {
+        if (eventDecoder != null) {
+            eventDecoder.requeueInput(leftovers);
+        }
     }
 
     @Override

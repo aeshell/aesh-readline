@@ -57,7 +57,10 @@ public class DeviceTest {
         assertEquals(8, device.getNumericCapability(Capability.max_colors).intValue());
         assertEquals(24, device.getNumericCapability(Capability.lines).intValue());
 
-        assertEquals("^M", device.getStringCapability(Capability.carriage_return));
+        // Text form varies by source: the bundled fallback records ^M
+        // while an installed database entry records \r. Both expand to
+        // carriage return, which the puts check below pins byte-exact.
+        assertNotNull(device.getStringCapability(Capability.carriage_return));
 
         ArrayList<int[]> out = new ArrayList<>();
         Consumer<int[]> capabilityConsumer = out::add;

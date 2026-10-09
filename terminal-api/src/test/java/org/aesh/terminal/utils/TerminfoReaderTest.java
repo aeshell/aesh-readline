@@ -18,9 +18,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
-import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
@@ -33,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.aesh.terminal.detect.ProcessRunner;
 import org.aesh.terminal.tty.Capability;
 import org.junit.Assume;
 import org.junit.Rule;
@@ -55,17 +54,32 @@ public class TerminfoReaderTest {
     }
 
     private static String infocmp(String terminal) throws Exception {
-        Process process = new ProcessBuilder("infocmp", terminal).start();
-        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-        InputStream in = process.getInputStream();
-        byte[] chunk = new byte[4096];
-        int n;
-        while ((n = in.read(chunk)) > 0) {
-            buffer.write(chunk, 0, n);
+        // Extended output keeps user-defined caps (Pst and friends) in the
+        // comparison now that the reader parses them; plain output is the
+        // fallback for ncurses predating -x.
+        String extended = runInfocmp("-x", terminal);
+        if (extended != null) {
+            return extended;
         }
-        int exit = process.waitFor();
-        Assume.assumeTrue("infocmp failed for " + terminal, exit == 0);
-        return new String(buffer.toByteArray(), "ISO-8859-1");
+        String plain = runInfocmp(null, terminal);
+        Assume.assumeTrue("infocmp -x unsupported, extended parity unverifiable", plain == null);
+        Assume.assumeTrue("infocmp failed for " + terminal, false);
+        throw new AssertionError("unreachable");
+    }
+
+    private static String runInfocmp(String flag, String terminal) throws Exception {
+        List<String> command = new ArrayList<>();
+        command.add("infocmp");
+        if (flag != null) {
+            command.add(flag);
+        }
+        command.add(terminal);
+        ProcessRunner.Result result = ProcessRunner.execute(new ProcessBuilder(command),
+                ProcessRunner.DEFAULT_TIMEOUT_MS);
+        if (result.exitCode() != 0) {
+            return null;
+        }
+        return result.text(StandardCharsets.ISO_8859_1);
     }
 
     private static Parsed parse(String text) {
@@ -480,34 +494,98 @@ public class TerminfoReaderTest {
         Assume.assumeTrue("tic not available", hasTic());
         Assume.assumeTrue("infocmp not available", hasInfocmp());
         File work = fixtureDirs.newFolder("ticdb");
-        File src = new File(work, "cancel.src");
-        Files.write(src.toPath(),
-                "testcancel|test cancel,\n\tcolors@,\n\tcols#80,\n"
-                        .getBytes(StandardCharsets.ISO_8859_1));
-        File db = new File(work, "db");
-        assertTrue(db.mkdir());
-        Process tic = new ProcessBuilder("tic", "-o", db.getAbsolutePath(),
-                src.getAbsolutePath()).redirectErrorStream(true).start();
-        Assume.assumeTrue("tic failed", tic.waitFor() == 0);
+        File db = compileEntry(work, "cancel.src",
+                "testcancel|test cancel,\n\tcolors@,\n\tcols#80,\n");
 
         String direct = TerminfoReader.readEntry("testcancel",
                 env("TERMINFO", db.getAbsolutePath()), work.getAbsolutePath());
         assertNotNull(direct);
 
-        ProcessBuilder infocmp = new ProcessBuilder("infocmp", "testcancel");
-        infocmp.environment().put("TERMINFO", db.getAbsolutePath());
-        Process response = infocmp.redirectErrorStream(true).start();
-        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-        InputStream in = response.getInputStream();
-        byte[] chunk = new byte[4096];
-        int n;
-        while ((n = in.read(chunk)) > 0) {
-            buffer.write(chunk, 0, n);
-        }
-        Assume.assumeTrue("infocmp failed", response.waitFor() == 0);
-        Parsed expected = parse(new String(buffer.toByteArray(), "ISO-8859-1"));
+        Parsed expected = parse(infocmpWithDb(db, "testcancel"));
         Parsed actual = parse(direct);
         assertEquals(expected.ints, actual.ints);
         assertEquals(expected.bools, actual.bools);
+    }
+
+    @Test
+    public void testTicExtendedPstRoundTrip() throws Exception {
+        Assume.assumeTrue("tic not available", hasTic());
+        Assume.assumeTrue("infocmp not available", hasInfocmp());
+        File work = fixtureDirs.newFolder("pstdb");
+        File db = compileEntry(work, "pst.src",
+                "pst-test|PST extended fixture,\n\tam, cols#80,\n\tPst=\\E]7501;%p1%s\\E\\\\,\n");
+
+        String home = new File(work, "home").getAbsolutePath();
+        String direct = TerminfoReader.readEntry("pst-test",
+                env("TERMINFO", db.getAbsolutePath()), home);
+        assertNotNull(direct);
+        assertTrue("extended Pst must survive the database read", direct.contains("Pst="));
+
+        Parsed expected = parse(infocmpWithDb(db, "pst-test"));
+        Parsed actual = parse(direct);
+        assertEquals(expected.bools, actual.bools);
+        assertEquals(expected.ints, actual.ints);
+        assertEquals(expected.strings, actual.strings);
+        assertNotNull(actual.strings.get(Capability.program_status));
+    }
+
+    @Test
+    public void testTicExtendedPstOddTable() throws Exception {
+        Assume.assumeTrue("tic not available", hasTic());
+        Assume.assumeTrue("infocmp not available", hasInfocmp());
+        File work = fixtureDirs.newFolder("pstodddb");
+        // A single empty string value leaves a one-byte table; tic pads
+        // to even before the extended header, which the reader must skip.
+        File db = compileEntry(work, "odd.src",
+                "odd-test|PST odd-table fixture,\n\tam, cols#80,\n\tu0=,\n\tPst=\\E]7501;%p1%s\\E\\\\,\n");
+
+        String home = new File(work, "home").getAbsolutePath();
+        String direct = TerminfoReader.readEntry("odd-test",
+                env("TERMINFO", db.getAbsolutePath()), home);
+        assertNotNull(direct);
+        assertTrue("extended Pst must survive an odd-length standard table",
+                direct.contains("Pst="));
+
+        Parsed expected = parse(infocmpWithDb(db, "odd-test"));
+        Parsed actual = parse(direct);
+        assertEquals(expected.bools, actual.bools);
+        assertEquals(expected.ints, actual.ints);
+        assertEquals(expected.strings, actual.strings);
+        assertNotNull(actual.strings.get(Capability.program_status));
+    }
+
+    /**
+     * Compile one terminfo source into a fixture database with tic.
+     *
+     * @param work the test working directory
+     * @param fileName the source file name to create
+     * @param source the terminfo source text
+     * @return the compiled database directory
+     */
+    private static File compileEntry(File work, String fileName, String source) throws Exception {
+        File src = new File(work, fileName);
+        Files.write(src.toPath(), source.getBytes(StandardCharsets.ISO_8859_1));
+        File db = new File(work, "db");
+        assertTrue(db.mkdir());
+        ProcessRunner.Result tic = ProcessRunner.execute(new ProcessBuilder("tic", "-x", "-o",
+                db.getAbsolutePath(), src.getAbsolutePath()), ProcessRunner.DEFAULT_TIMEOUT_MS);
+        Assume.assumeTrue("tic failed", tic.exitCode() == 0);
+        return db;
+    }
+
+    /**
+     * Read extended infocmp output for an entry in a fixture database.
+     *
+     * @param db the terminfo database directory
+     * @param terminal the terminal name
+     * @return the infocmp -x text
+     */
+    private static String infocmpWithDb(File db, String terminal) throws Exception {
+        ProcessBuilder infocmp = new ProcessBuilder("infocmp", "-x", terminal);
+        infocmp.environment().put("TERMINFO", db.getAbsolutePath());
+        ProcessRunner.Result result = ProcessRunner.execute(infocmp,
+                ProcessRunner.DEFAULT_TIMEOUT_MS);
+        Assume.assumeTrue("infocmp -x failed", result.exitCode() == 0);
+        return result.text(StandardCharsets.ISO_8859_1);
     }
 }

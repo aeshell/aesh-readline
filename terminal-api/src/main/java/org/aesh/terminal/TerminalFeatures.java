@@ -34,10 +34,12 @@ import org.aesh.terminal.detect.TerminalReplyFramer;
 import org.aesh.terminal.detect.TerminalReplyFramer.Kind;
 import org.aesh.terminal.detect.TerminalReplyFramer.Span;
 import org.aesh.terminal.detect.TerminalTheme;
+import org.aesh.terminal.tty.Capability;
 import org.aesh.terminal.tty.Point;
 import org.aesh.terminal.utils.ANSI;
 import org.aesh.terminal.utils.CodePointUtils;
 import org.aesh.terminal.utils.ColorDepth;
+import org.aesh.terminal.utils.ProgramStatus;
 import org.aesh.terminal.utils.TerminalColorCapability;
 
 /**
@@ -83,6 +85,36 @@ public class TerminalFeatures {
     private volatile ModeSupport seededMode2027;
     private volatile Boolean seededNativeGraphemeClustering;
     private volatile ColorDepth seededColorDepth;
+    /**
+     * Cached OSC 7501 support fallback for connections without their own
+     * storage. AbstractConnection carries the cache so answers survive
+     * repeated terminal() calls; other Connection implementations keep
+     * instance state, which lasts only while the TerminalFeatures
+     * instance is retained.
+     */
+    private volatile Boolean programStatusSupport;
+    /**
+     * Serializes support queries on this instance so overlapping callers
+     * share one probe instead of interleaving replies: the loser waits,
+     * then reads the winner's cached answer. Never held across user code
+     * except lease teardown; reentrant for nested calls on one thread.
+     */
+    private final Object supportQueryLock = new Object();
+
+    /**
+     * Reply frames this support query owns: the probe acknowledgement and
+     * the fence reply. Everything else caught alongside is unrelated input.
+     */
+    private static final java.util.function.BiPredicate<String, TerminalReplyFramer.Span> SUPPORT_CLAIM = new java.util.function.BiPredicate<String, TerminalReplyFramer.Span>() {
+        @Override
+        public boolean test(String buffer, TerminalReplyFramer.Span span) {
+            if (span.kind == Kind.DEVICE_ATTRIBUTES) {
+                return true;
+            }
+            return span.kind == Kind.OSC
+                    && ProgramStatus.isSupportAck(buffer.substring(span.start, span.end));
+        }
+    };
 
     private static final class CacheOnlyThemeHandler implements Consumer<TerminalTheme> {
         @Override
@@ -156,6 +188,32 @@ public class TerminalFeatures {
      */
     public <T> T queryTerminal(String query, long timeoutMs,
             Function<int[], T> responseParser) {
+        return queryTerminal(query, timeoutMs, responseParser, null);
+    }
+
+    /**
+     * Send a query to the terminal and wait for a response with timeout,
+     * consuming only matched reply frames.
+     * <p>
+     * Behaves like {@link #queryTerminal(String, long, Function)}, except
+     * the success path consumes only reply frames the claim filter accepts:
+     * other reply-shaped input caught in the buffer (cursor reports,
+     * unrelated OSC replies, mode reports) is handed back to the restored
+     * input handler instead of being dropped with the matched frames. A
+     * null filter keeps the legacy behavior of consuming every reply frame.
+     *
+     * @param query the query sequence to send
+     * @param timeoutMs timeout in milliseconds to wait for response
+     * @param responseParser function to parse the response; should return non-null when
+     *        a complete response is received, null to continue waiting
+     * @param claimedReply accepts the accumulated buffer and one reply span,
+     *        returning true when that span belongs to this query
+     * @param <T> the type of the parsed response
+     * @return the parsed response, or null if not reading, timeout, or parsing failed
+     */
+    public <T> T queryTerminal(String query, long timeoutMs,
+            Function<int[], T> responseParser,
+            java.util.function.BiPredicate<String, TerminalReplyFramer.Span> claimedReply) {
         if (!connection.supportsAnsi()) {
             return null;
         }
@@ -170,60 +228,89 @@ public class TerminalFeatures {
         final ReplyAccumulator responses = new ReplyAccumulator(appHandler);
         Attributes savedAttributes = connection.enterRawMode();
 
-        try (StdinLease ignored = connection.captureStdin(new Consumer<int[]>() {
+        StdinLease lease = connection.captureStdin(new Consumer<int[]>() {
             @Override
             public void accept(int[] ints) {
-                if (result[0] != null) {
-                    return;
+                Consumer<int[]> live;
+                synchronized (responses) {
+                    if (!responses.isSettled()) {
+                        responses.append(ints);
+                        if (result[0] == null) {
+                            T parsed = responseParser.apply(responses.snapshot());
+                            if (parsed != null) {
+                                result[0] = parsed;
+                                latch.countDown();
+                            }
+                        }
+                        return;
+                    }
+                    // Superseded by query completion: hand straight to the
+                    // live handler instead of a buffer nobody will read.
+                    live = connection.stdinHandler();
                 }
-                responses.append(ints);
-                T parsed = responseParser.apply(responses.snapshot());
-                if (parsed != null) {
-                    result[0] = parsed;
-                    latch.countDown();
-                }
+                deliverTo(live, ints);
             }
-        })) {
-            try {
-                connection.write(query);
-                latch.await(timeoutMs, TimeUnit.MILLISECONDS);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
+        });
+        int[] leftovers;
+        try {
+            connection.write(query);
+            latch.await(timeoutMs, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         } finally {
+            synchronized (responses) {
+                responses.settle();
+                lease.close();
+            }
             connection.setAttributes(savedAttributes);
         }
 
         @SuppressWarnings("unchecked")
         T typedResult = (T) result[0];
         if (typedResult == null) {
-            redeliverUnmatched(responses.snapshot());
+            synchronized (responses) {
+                leftovers = responses.snapshot();
+            }
         } else {
             // A matched reply consumes its frames; complete non-reply
             // shapes caught in the buffer (arrow keys and friends) still
             // belong to the application.
-            redeliverUnmatched(responses.unmatchedOnSuccess());
+            synchronized (responses) {
+                leftovers = responses.unmatchedOnSuccess(claimedReply);
+            }
         }
+        redeliverUnmatched(leftovers);
         return typedResult;
     }
 
     /**
-     * Hand bytes no parser claimed back to the live input handler.
-     * <p>
-     * Called after the query lease closes (handler restored) when the
-     * query found nothing: the buffered bytes are unrelated input worth
-     * keeping — keystrokes, signals, a partial reply — not response
-     * traffic. Success needs no redelivery: its buffer holds the matched
-     * frame, which must not be re-injected as input.
+     * Hand leftover query bytes to whoever owns input now.
      *
-     * @param responses the accumulated query input
+     * @param leftovers the buffered bytes the query did not consume
      */
     private void redeliverUnmatched(int[] leftovers) {
-        if (leftovers.length > 0) {
-            Consumer<int[]> restored = connection.stdinHandler();
-            if (restored != null) {
-                restored.accept(leftovers);
-            }
+        deliverTo(connection.stdinHandler(), leftovers);
+    }
+
+    /**
+     * Deliver bytes that outlived a query: to the live handler when one
+     * is installed, otherwise back into the decoder queue so later input
+     * handler installs still observe them in order. Direct connections
+     * without decoder access and without a handler cannot keep bytes.
+     *
+     * @param live the handler to receive the bytes, or null
+     * @param ints the bytes to deliver
+     */
+    private void deliverTo(Consumer<int[]> live, int[] ints) {
+        if (ints.length == 0) {
+            return;
+        }
+        if (live != null) {
+            live.accept(ints);
+            return;
+        }
+        if (connection instanceof AbstractConnection) {
+            ((AbstractConnection) connection).requeueInput(ints);
         }
     }
 
@@ -242,17 +329,39 @@ public class TerminalFeatures {
         private final StringBuilder frames = new StringBuilder();
         private String tail = "";
         private final Consumer<int[]> appHandler;
+        private boolean settled;
 
         ReplyAccumulator(Consumer<int[]> appHandler) {
             this.appHandler = appHandler;
         }
 
         /**
-         * Append a chunk; forward provably-non-reply runs promptly.
+         * Mark the query finished: later chunks are no longer claimed and
+         * must travel the settled path instead of accumulating here.
+         */
+        synchronized void settle() {
+            settled = true;
+        }
+
+        /**
+         * Whether the query finished; late arrivals must not accumulate.
+         *
+         * @return true once settled
+         */
+        synchronized boolean isSettled() {
+            return settled;
+        }
+
+        /**
+         * Append a chunk; forward provably-non-reply runs promptly when
+         * nothing earlier is held, otherwise buffer them in arrival order.
+         * Forwarding a printable run ahead of held escape-shaped bytes
+         * would reorder keyboard input, so a run is delivered immediately
+         * only while frames and tail are both empty.
          *
          * @param chunk the arriving code points
          */
-        void append(int[] chunk) {
+        synchronized void append(int[] chunk) {
             String text = tail + new String(chunk, 0, chunk.length);
             tail = "";
             if (appHandler == null) {
@@ -269,7 +378,11 @@ public class TerminalFeatures {
                 }
                 if (span.kind == Kind.PLAIN_TEXT) {
                     frames.append(text, cursor, span.start);
-                    forward(text.substring(span.start, span.end));
+                    if (frames.length() == 0) {
+                        forward(text.substring(span.start, span.end));
+                    } else {
+                        frames.append(text, span.start, span.end);
+                    }
                     cursor = span.end;
                 }
             }
@@ -278,11 +391,12 @@ public class TerminalFeatures {
 
         /**
          * The held bytes for parsing and timeout redelivery: frames plus
-         * the current tail. Plain runs were already delivered and stay out.
+         * the current tail. Already-delivered plain runs stay out while
+         * buffered runs are included in arrival order.
          *
          * @return the buffered code points
          */
-        int[] snapshot() {
+        synchronized int[] snapshot() {
             return toCodePoints(frames.toString() + tail);
         }
 
@@ -290,22 +404,31 @@ public class TerminalFeatures {
          * Held bytes minus consumed reply frames, for success redelivery:
          * complete non-reply shapes (arrow keys and friends) reach the
          * application instead of being dropped with the matched frames.
-         * Partial tails may be reply fragments and stay dropped, as do
-         * already-delivered plain runs.
+         * Already-delivered plain runs stay out. A null claim filter
+         * consumes every reply frame and drops the trailing partial, which
+         * may be a reply fragment. Otherwise only accepted reply frames
+         * are consumed while the trailing partial is redelivered with the
+         * ordinary input: with selective claiming the query owns just its
+         * frames, so an incomplete tail can only be unrelated input.
          *
+         * @param claimed accepts the held buffer and one reply span,
+         *        or null to consume every reply frame
          * @return the redeliverable code points
          */
-        int[] unmatchedOnSuccess() {
+        synchronized int[] unmatchedOnSuccess(java.util.function.BiPredicate<String, Span> claimed) {
             String held = frames.toString();
             StringBuilder out = new StringBuilder();
             int cursor = 0;
             for (Span span : TerminalReplyFramer.split(held)) {
-                if (isReply(span.kind)) {
+                if (isReply(span.kind) && (claimed == null || claimed.test(held, span))) {
                     out.append(held, cursor, span.start);
                     cursor = span.end;
                 }
             }
             out.append(held, cursor, held.length());
+            if (claimed != null) {
+                out.append(tail);
+            }
             return toCodePoints(out.toString());
         }
 
@@ -336,24 +459,33 @@ public class TerminalFeatures {
         final Point[] p = { null };
         final ReplyAccumulator responses = new ReplyAccumulator(connection.stdinHandler());
         Attributes attributes = connection.enterRawMode();
-        // try-with-resources restores the previous handler on every exit
-        // path, including query timeout — the previous hand-rolled version
-        // restored only inside the response callback, leaking the hijack
-        // (and raw mode) when no response arrived. Chunks accumulate so a
-        // CPR split across reads still matches once complete.
-        try (StdinLease ignored = connection.captureStdin(new Consumer<int[]>() {
+        // The lease closes on every exit path, including query timeout —
+        // the previous hand-rolled version restored only inside the
+        // response callback, leaking the hijack (and raw mode) when no
+        // response arrived. Chunks accumulate so a CPR split across reads
+        // still matches once complete.
+        StdinLease lease = connection.captureStdin(new Consumer<int[]>() {
             @Override
             public void accept(int[] ints) {
-                if (p[0] != null) {
-                    return;
+                Consumer<int[]> live;
+                synchronized (responses) {
+                    if (!responses.isSettled()) {
+                        responses.append(ints);
+                        if (p[0] == null) {
+                            p[0] = ANSI.getActualCursor(responses.snapshot());
+                            if (p[0] != null) {
+                                latch.countDown();
+                            }
+                        }
+                        return;
+                    }
+                    live = connection.stdinHandler();
                 }
-                responses.append(ints);
-                p[0] = ANSI.getActualCursor(responses.snapshot());
-                if (p[0] != null) {
-                    latch.countDown();
-                }
+                deliverTo(live, ints);
             }
-        })) {
+        });
+        int[] leftovers;
+        try {
             connection.stdoutHandler().accept(ANSI.CURSOR_POSITION_QUERY);
             try {
                 latch.await(DEFAULT_QUERY_TIMEOUT_MS, TimeUnit.MILLISECONDS);
@@ -361,13 +493,16 @@ public class TerminalFeatures {
                 Thread.currentThread().interrupt();
             }
         } finally {
+            synchronized (responses) {
+                responses.settle();
+                lease.close();
+                leftovers = p[0] == null
+                        ? responses.snapshot()
+                        : responses.unmatchedOnSuccess(null);
+            }
             connection.setAttributes(attributes);
         }
-        if (p[0] == null) {
-            redeliverUnmatched(responses.snapshot());
-        } else {
-            redeliverUnmatched(responses.unmatchedOnSuccess());
-        }
+        redeliverUnmatched(leftovers);
         return p[0];
     }
 
@@ -1065,6 +1200,123 @@ public class TerminalFeatures {
      */
     public Connection writeCommandFinished(int exitCode) {
         return connection.write(ANSI.osc133CommandFinished(exitCode));
+    }
+
+    /**
+     * Write an OSC 7501 program status report to the terminal.
+     * <p>
+     * Every report completely replaces its addressed record, so repeat
+     * metadata the record should keep, including app and title. This call
+     * never probes for support and never starts a reader. Unknown OSCs are
+     * ignored by terminals without support, so reporting without a prior
+     * support query is safe.
+     *
+     * @param status the validated report to send
+     * @return the underlying connection
+     */
+    public Connection writeProgramStatus(ProgramStatus status) {
+        if (status == null)
+            throw new NullPointerException("status is required");
+        return connection.write(status.toSequence());
+    }
+
+    /**
+     * Clear one program status record and every record beneath it.
+     *
+     * @param id the record id to remove, required
+     * @return the underlying connection
+     */
+    public Connection clearProgramStatus(String id) {
+        return connection.write(ProgramStatus.clearSequence(id));
+    }
+
+    /**
+     * Clear every program status record on the terminal.
+     * <p>
+     * This removes records owned by other programs too, not only records
+     * written through this connection. Prefer {@link #clearProgramStatus(String)}
+     * for owned task ids.
+     *
+     * @return the underlying connection
+     */
+    public Connection clearAllProgramStatus() {
+        return connection.write(ProgramStatus.clearAllSequence());
+    }
+
+    /**
+     * Check the terminfo hint for program status support.
+     * <p>
+     * A present {@code Pst} extended capability advertises support, but the
+     * entry may be missing or stale where the program runs, so a missing
+     * hint never means unsupported. The live reply to a support query stays
+     * authoritative, see {@link #queryProgramStatusSupport(long)}.
+     *
+     * @return true when the device carries a Pst capability
+     */
+    public boolean hasProgramStatusHint() {
+        return connection.device() != null
+                && connection.device().getStringCapability(Capability.program_status) != null;
+    }
+
+    /**
+     * Query the terminal for OSC 7501 program status support.
+     * <p>
+     * Sends the {@code 7501;?} probe followed by a device-attributes query
+     * through the existing reader lease. A probe reply before the fence
+     * reply means supported; the fence reply first means unsupported, since
+     * every terminal answers it. No reply in time leaves support unknown.
+     * Conclusive answers are cached on this connection; inconclusive ones
+     * are not, so a later call retries the live query. Overlapping callers
+     * serialize behind one probe and share its answer. A fence reply that
+     * arrives after the lease already closed still surfaces as ordinary
+     * input; both replies normally arrive in one read.
+     *
+     * @param timeoutMs timeout in milliseconds to wait for the replies
+     * @return true when supported, false when the fence won, null when unknown
+     */
+    public Boolean queryProgramStatusSupport(long timeoutMs) {
+        synchronized (supportQueryLock) {
+            Boolean cached = cachedProgramStatusSupport();
+            if (cached != null) {
+                return cached;
+            }
+            Boolean result = queryTerminal(ANSI.OSC_7501_QUERY + ANSI.DA1_QUERY, timeoutMs,
+                    ProgramStatus::parseSupportReply, SUPPORT_CLAIM);
+            if (result != null) {
+                storeProgramStatusSupport(result);
+            }
+            return result;
+        }
+    }
+
+    /**
+     * Cached OSC 7501 support for this connection.
+     * <p>
+     * AbstractConnection transports share one TerminalFeatures per
+     * connection, so the cache holds there. Direct Connection
+     * implementations receive a fresh instance per terminal() call and
+     * must retain it to benefit from caching.
+     *
+     * @return true or false once a support query answered, null while
+     *         unqueried or last inconclusive
+     */
+    public Boolean programStatusSupport() {
+        return cachedProgramStatusSupport();
+    }
+
+    private Boolean cachedProgramStatusSupport() {
+        if (connection instanceof AbstractConnection) {
+            return ((AbstractConnection) connection).programStatusSupport();
+        }
+        return programStatusSupport;
+    }
+
+    private void storeProgramStatusSupport(Boolean support) {
+        if (connection instanceof AbstractConnection) {
+            ((AbstractConnection) connection).setProgramStatusSupport(support);
+        } else {
+            programStatusSupport = support;
+        }
     }
 
     /**

@@ -204,6 +204,20 @@ public class EventDecoder implements Consumer<int[]> {
     }
 
     /**
+     * Return bytes to the handler-absent queue without reprocessing them.
+     * Signals inside already fired while the bytes were observed, so they
+     * must not travel the filter path again. A later handler install
+     * delivers them in queue order.
+     *
+     * @param input the code points to requeue
+     */
+    void requeueInput(int[] input) {
+        if (input != null && input.length > 0) {
+            inputQueue.add(input);
+        }
+    }
+
+    /**
      * Get the current theme change handler.
      *
      * @return the theme change handler, or null if not set

@@ -200,6 +200,47 @@ public class InfoCmpTest {
     }
 
     @Test
+    public void testUnbundledFallsBackToDatabase() {
+        Assume.assumeTrue("no system dumb entry",
+                TerminfoReader.readEntry("dumb", System.getenv(),
+                        System.getProperty("user.home")) != null);
+        Set<Capability> bools = new HashSet<>();
+        Map<Capability, Integer> ints = new HashMap<>();
+        Map<Capability, String> strings = new HashMap<>();
+
+        InfoCmp.parseInfoCmp(InfoCmp.getDefaultInfoCmp("dumb"), bools, ints, strings);
+        assertNull("dumb has no cursor addressing", strings.get(Capability.cursor_address));
+    }
+
+    @Test
+    public void testProgramStatusPstPreserved() {
+        Set<Capability> bools = new HashSet<>();
+        Map<Capability, Integer> ints = new HashMap<>();
+        Map<Capability, String> strings = new HashMap<>();
+
+        InfoCmp.parseInfoCmp("pst-term|Pst fixture,\n\tPst=\\E]7501;%p1%s\\E\\\\,\n",
+                bools, ints, strings);
+        assertEquals("\\E]7501;%p1%s\\E\\\\", strings.get(Capability.byName("Pst")));
+        assertEquals("\\E]7501;%p1%s\\E\\\\", strings.get(Capability.program_status));
+    }
+
+    @Test
+    public void testProgramStatusPstExpands() {
+        Set<Capability> bools = new HashSet<>();
+        Map<Capability, Integer> ints = new HashMap<>();
+        Map<Capability, String> strings = new HashMap<>();
+
+        InfoCmp.parseInfoCmp("pst-term|Pst fixture,\n\tPst=\\E]7501;%p1%s\\E\\\\,\n",
+                bools, ints, strings);
+        String pst = strings.get(Capability.program_status);
+        assertNotNull(pst);
+        StringBuilder expanded = new StringBuilder();
+        Curses.tputs(expanded, pst, "state=working");
+        String esc = Character.toString((char) 27);
+        assertEquals(esc + "]7501;state=working" + esc + "\\", expanded.toString());
+    }
+
+    @Test
     public void testGetInfoCompFallsBackToDefault() throws IOException, InterruptedException {
         // getInfoCmp should return bundled caps even without infocmp binary
         String caps = InfoCmp.getInfoCmp("xterm-256color");
