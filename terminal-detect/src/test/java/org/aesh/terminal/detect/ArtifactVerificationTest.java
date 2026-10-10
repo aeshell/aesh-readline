@@ -121,7 +121,16 @@ public class ArtifactVerificationTest {
             String holder = HOLDERS[i];
             // Load without initializing: proves the name is current without
             // paying Linker init or needing native access.
-            Class<?> clazz = Class.forName(holder, false, getClass().getClassLoader());
+            Class<?> clazz;
+            try {
+                clazz = Class.forName(holder, false, getClass().getClassLoader());
+            } catch (ClassNotFoundException e) {
+                // Closed-world native images drop holders nothing reachable
+                // references (e.g. POSIX holders with FFM tests gated off).
+                // Absence here is legitimate; the JVM suite above is the
+                // strict gate for renames.
+                continue;
+            }
             boolean holdsDowncall = false;
             Field[] fields = clazz.getDeclaredFields();
             for (int j = 0; j < fields.length; j++) {
