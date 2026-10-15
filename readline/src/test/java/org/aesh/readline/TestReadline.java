@@ -19,6 +19,7 @@
  */
 package org.aesh.readline;
 
+import org.aesh.readline.completion.impl.CompletionHandler;
 import org.aesh.readline.editing.EditMode;
 
 /**
@@ -32,6 +33,10 @@ public class TestReadline extends Readline {
 
     public TestReadline(EditMode editMode) {
         super(editMode);
+    }
+
+    public TestReadline(EditMode editMode, CompletionHandler<?> completionHandler) {
+        super(editMode, null, completionHandler);
     }
 
     public String getBuffer() {

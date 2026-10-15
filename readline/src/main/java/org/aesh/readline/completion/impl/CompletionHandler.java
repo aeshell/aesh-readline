@@ -182,7 +182,20 @@ public abstract class CompletionHandler<C extends CompleteOperation> {
         }
     }
 
-    private List<C> createCompletionList(Buffer buffer) {
+    /**
+     * Creates a list of complete operations with completion candidates for
+     * the given buffer.
+     * <p>
+     * Runs every registered {@link Completion} against the buffer and keeps
+     * only operations with non-empty candidates. Subclasses overriding the
+     * display methods normally inherit this unchanged; an override must
+     * preserve the non-empty filter since the single-hit versus multi-hit
+     * dispatch in {@link #complete(InputProcessor)} relies on it.
+     *
+     * @param buffer the input buffer
+     * @return operations with completion candidates, never null
+     */
+    protected List<C> createCompletionList(Buffer buffer) {
         List<C> possibleCompletions = new ArrayList<>();
         for (Completion completion : completionList) {
             final C co;
@@ -199,7 +212,22 @@ public abstract class CompletionHandler<C extends CompleteOperation> {
         return possibleCompletions;
     }
 
-    private void processMultipleCompletions(List<C> possibleCompletions, Buffer buffer, InputProcessor inputProcessor) {
+    /**
+     * Handles more than one matching completion operation.
+     * <p>
+     * Inserts the common prefix when one exists, otherwise collects every
+     * candidate and either asks for confirmation (more candidates than
+     * {@link #getAskCompletionSize()}) or displays them via
+     * {@link #displayCompletions(List, Buffer, InputProcessor)}. An override
+     * that replaces the confirmation flow must preserve the
+     * {@link CompletionStatus} transitions, since a second TAB relies on the
+     * {@code ASKING_FOR_COMPLETIONS} state to confirm.
+     *
+     * @param possibleCompletions the matching operations
+     * @param buffer the input buffer
+     * @param inputProcessor the input processor handling the completion
+     */
+    protected void processMultipleCompletions(List<C> possibleCompletions, Buffer buffer, InputProcessor inputProcessor) {
         String startsWith = "";
 
         if (!possibleCompletions.get(0).isIgnoreStartsWith())
@@ -221,7 +249,7 @@ public abstract class CompletionHandler<C extends CompleteOperation> {
             for (C possibleCompletion : possibleCompletions)
                 completions.addAll(possibleCompletion.getCompletionCandidates());
 
-            if (completions.size() > 100) {
+            if (completions.size() > displayCompletionSize) {
                 if (status == CompletionStatus.ASKING_FOR_COMPLETIONS) {
                     displayCompletions(completions, buffer, inputProcessor);
                     status = CompletionStatus.COMPLETE;
@@ -242,11 +270,18 @@ public abstract class CompletionHandler<C extends CompleteOperation> {
      * Display the completion string in the terminal.
      * If !completion.startsWith(buffer.getLine()) the completion will be added to the line,
      * else it will replace whats at the buffer line.
+     * <p>
+     * Handles single-hit insertion including the separator. An override
+     * must leave the buffer content equivalent, since the pipeline treats
+     * insertion as complete once this returns.
      *
      * @param completion partial completion
+     * @param buffer the input buffer
+     * @param inputProcessor the input processor handling the completion
      * @param appendSpace if its an actual complete
+     * @param separator the separator character to append
      */
-    private void displayCompletion(TerminalString completion, Buffer buffer, InputProcessor inputProcessor,
+    protected void displayCompletion(TerminalString completion, Buffer buffer, InputProcessor inputProcessor,
             boolean appendSpace, char separator) {
         if (completion.getCharacters().startsWith(buffer.asString())) {
             ActionMapper.mapToAction("backward-kill-word").accept(inputProcessor);
@@ -279,10 +314,18 @@ public abstract class CompletionHandler<C extends CompleteOperation> {
 
     /**
      * Display all possible completions
+     * <p>
+     * This is the intended single-override point for custom rendering
+     * (ordering, colours, multi-line docs): the gathering, common-prefix
+     * insertion, single-hit insertion, and ask-flow dispatch are inherited
+     * unchanged. An override replaces the sorted column grid and must redraw
+     * the prompt line itself when it writes output.
      *
      * @param completions all completion items
+     * @param buffer the input buffer
+     * @param inputProcessor the input processor handling the completion
      */
-    private void displayCompletions(List<TerminalString> completions, Buffer buffer,
+    protected void displayCompletions(List<TerminalString> completions, Buffer buffer,
             InputProcessor inputProcessor) {
         completions.sort(new CaseInsensitiveComparator());
 
