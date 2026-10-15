@@ -213,29 +213,25 @@ public class InfoCmpTest {
     }
 
     @Test
-    public void testProgramStatusPstPreserved() {
+    public void testUnknownExtendedCapDropped() {
         Set<Capability> bools = new HashSet<>();
         Map<Capability, Integer> ints = new HashMap<>();
         Map<Capability, String> strings = new HashMap<>();
 
+        // Revision 0.4 removed the terminfo section: Pst is an unknown
+        // user-defined cap and must not leak into the capability maps.
         InfoCmp.parseInfoCmp("pst-term|Pst fixture,\n\tPst=\\E]7501;%p1%s\\E\\\\,\n",
                 bools, ints, strings);
-        assertEquals("\\E]7501;%p1%s\\E\\\\", strings.get(Capability.byName("Pst")));
-        assertEquals("\\E]7501;%p1%s\\E\\\\", strings.get(Capability.program_status));
+        assertNull(Capability.byName("Pst"));
+        assertTrue(strings.isEmpty());
     }
 
     @Test
-    public void testProgramStatusPstExpands() {
-        Set<Capability> bools = new HashSet<>();
-        Map<Capability, Integer> ints = new HashMap<>();
-        Map<Capability, String> strings = new HashMap<>();
-
-        InfoCmp.parseInfoCmp("pst-term|Pst fixture,\n\tPst=\\E]7501;%p1%s\\E\\\\,\n",
-                bools, ints, strings);
-        String pst = strings.get(Capability.program_status);
-        assertNotNull(pst);
+    public void testEscapedBackslashTemplateExpands() {
+        // Escaped backslash pairs in template values must survive parsing
+        // byte-exact so Curses expansion reproduces the ST terminator.
         StringBuilder expanded = new StringBuilder();
-        Curses.tputs(expanded, pst, "state=working");
+        Curses.tputs(expanded, "\\E]7501;%p1%s\\E\\\\", "state=working");
         String esc = Character.toString((char) 27);
         assertEquals(esc + "]7501;state=working" + esc + "\\", expanded.toString());
     }

@@ -98,28 +98,6 @@ public class TerminalFeaturesProgramStatusTest {
         assertEquals(ProgramStatus.clearAllSequence(), connection.written().get(0));
     }
 
-    @Test
-    public void testProgramStatusHintAbsentByDefault() {
-        RecordingConnection connection = new RecordingConnection();
-        assertEquals(null, connection.device().getStringCapability(
-                org.aesh.terminal.tty.Capability.program_status));
-        assertEquals(false, connection.terminal().hasProgramStatusHint());
-    }
-
-    @Test
-    public void testProgramStatusHintPresent() {
-        RecordingConnection connection = new RecordingConnection(new BaseDevice("pst-term") {
-            @Override
-            public String getStringCapability(org.aesh.terminal.tty.Capability capability) {
-                if (capability == org.aesh.terminal.tty.Capability.program_status) {
-                    return "\\E]7501;%p1%s\\E\\\\";
-                }
-                return super.getStringCapability(capability);
-            }
-        });
-        assertEquals(true, connection.terminal().hasProgramStatusHint());
-    }
-
     private static final String ACK_BEL = "" + (char) 27 + "]7501;?" + (char) 7;
     private static final String ACK_ST = "" + (char) 27 + "]7501;?" + (char) 27 + (char) 92;
     private static final String DA1_REPLY = "" + (char) 27 + "[?1;2c";

@@ -76,7 +76,6 @@ public class ProgramStatusExample {
             Thread.sleep(10);
         }
         TerminalFeatures terminal = connection.terminal();
-        System.out.println("terminfo Pst hint: " + terminal.hasProgramStatusHint());
         System.out.println("live support query: " + terminal.queryProgramStatusSupport(500));
 
         terminal.writeProgramStatus(ProgramStatus.builder(ProgramStatus.State.WORKING)

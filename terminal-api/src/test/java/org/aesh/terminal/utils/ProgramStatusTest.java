@@ -302,6 +302,18 @@ public class ProgramStatusTest {
     }
 
     @Test
+    public void testAckWithRevision04ListsMeansSupported() {
+        // Revision 0.4 lets the reply advertise accepted states and kinds.
+        // Baseline lists match our fixed model; unknown future pairs are ignored.
+        String lists = ":states=idle,working,done,blocked,error:kinds=permission,question,auth";
+        String ackBel = "" + (char) 27 + "]7501;?" + lists + (char) 7;
+        String ackSt = "" + (char) 27 + "]7501;?" + lists + (char) 27 + (char) 92;
+        assertEquals(Boolean.TRUE, ProgramStatus.parseSupportReply(codePoints(ackBel + DA1)));
+        assertEquals(Boolean.TRUE, ProgramStatus.parseSupportReply(codePoints(ackSt + DA1)));
+        assertEquals(Boolean.TRUE, ProgramStatus.parseSupportReply(codePoints(ackBel)));
+    }
+
+    @Test
     public void testFragmentedAckWaits() {
         assertEquals(null, ProgramStatus.parseSupportReply(codePoints("" + (char) 27 + "]7501")));
         assertEquals(null, ProgramStatus.parseSupportReply(codePoints("" + (char) 27 + "]7501;?")));

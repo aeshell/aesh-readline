@@ -374,7 +374,8 @@ public final class ProgramStatus {
          * Set the reporting program name.
          *
          * @param app stable machine-readable program name, 1 through 32
-         *        characters of {@code [A-Za-z0-9_.+-]}
+         *        characters of {@code [A-Za-z0-9_.+-]}. This is a grouping
+         *        key, not a label; {@code title} is the label.
          * @return this builder
          */
         public Builder app(String app) {
@@ -409,8 +410,8 @@ public final class ProgramStatus {
         /**
          * Set the one status line.
          *
-         * @param message one plain-text line, at most 2048 UTF-8 bytes,
-         *        no control characters
+         * @param message one single-line plain-text line, at most 2048
+         *        UTF-8 bytes, no control characters
          * @return this builder
          */
         public Builder message(String message) {

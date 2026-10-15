@@ -1244,21 +1244,6 @@ public class TerminalFeatures {
     }
 
     /**
-     * Check the terminfo hint for program status support.
-     * <p>
-     * A present {@code Pst} extended capability advertises support, but the
-     * entry may be missing or stale where the program runs, so a missing
-     * hint never means unsupported. The live reply to a support query stays
-     * authoritative, see {@link #queryProgramStatusSupport(long)}.
-     *
-     * @return true when the device carries a Pst capability
-     */
-    public boolean hasProgramStatusHint() {
-        return connection.device() != null
-                && connection.device().getStringCapability(Capability.program_status) != null;
-    }
-
-    /**
      * Query the terminal for OSC 7501 program status support.
      * <p>
      * Sends the {@code 7501;?} probe followed by a device-attributes query

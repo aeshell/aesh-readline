@@ -82,8 +82,8 @@ public final class InfoCmp {
     }
 
     private static String runInfocmp(String terminal) throws InterruptedException {
-        // Extended output carries user-defined caps such as Pst; plain
-        // output is the fallback for ncurses predating -x.
+        // Extended output carries user-defined caps; plain output is the
+        // fallback for ncurses predating -x.
         String extended = runInfocmpCommand(OSUtils.INFOCMP_COMMAND, "-x", terminal);
         if (extended != null && !extended.isEmpty()) {
             return extended;
@@ -107,8 +107,8 @@ public final class InfoCmp {
      * This is used as a fallback when the infocmp command is not available.
      * <p>
      * A bundled entry wins when one matches; otherwise the installed
-     * database is consulted so user-defined capabilities such as Pst stay
-     * visible; otherwise generic ANSI applies. No subprocess runs here.
+     * database is consulted so user-defined capabilities stay visible;
+     * otherwise generic ANSI applies. No subprocess runs here.
      *
      * @param terminal the terminal type (e.g., "xterm-256color")
      * @return the default capabilities string, or null if not found

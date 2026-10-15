@@ -508,50 +508,48 @@ public class TerminfoReaderTest {
     }
 
     @Test
-    public void testTicExtendedPstRoundTrip() throws Exception {
+    public void testTicExtendedCustomRoundTrip() throws Exception {
         Assume.assumeTrue("tic not available", hasTic());
         Assume.assumeTrue("infocmp not available", hasInfocmp());
-        File work = fixtureDirs.newFolder("pstdb");
-        File db = compileEntry(work, "pst.src",
-                "pst-test|PST extended fixture,\n\tam, cols#80,\n\tPst=\\E]7501;%p1%s\\E\\\\,\n");
+        File work = fixtureDirs.newFolder("tstdb");
+        File db = compileEntry(work, "tst.src",
+                "tst-test|TST extended fixture,\n\tam, cols#80,\n\tTstq=\\E]9;%p1%s\\E\\\\,\n");
 
         String home = new File(work, "home").getAbsolutePath();
-        String direct = TerminfoReader.readEntry("pst-test",
+        String direct = TerminfoReader.readEntry("tst-test",
                 env("TERMINFO", db.getAbsolutePath()), home);
         assertNotNull(direct);
-        assertTrue("extended Pst must survive the database read", direct.contains("Pst="));
+        assertTrue("extended user cap must survive the database read", direct.contains("Tstq="));
 
-        Parsed expected = parse(infocmpWithDb(db, "pst-test"));
+        Parsed expected = parse(infocmpWithDb(db, "tst-test"));
         Parsed actual = parse(direct);
         assertEquals(expected.bools, actual.bools);
         assertEquals(expected.ints, actual.ints);
         assertEquals(expected.strings, actual.strings);
-        assertNotNull(actual.strings.get(Capability.program_status));
     }
 
     @Test
-    public void testTicExtendedPstOddTable() throws Exception {
+    public void testTicExtendedCustomOddTable() throws Exception {
         Assume.assumeTrue("tic not available", hasTic());
         Assume.assumeTrue("infocmp not available", hasInfocmp());
-        File work = fixtureDirs.newFolder("pstodddb");
+        File work = fixtureDirs.newFolder("tstodddb");
         // A single empty string value leaves a one-byte table; tic pads
         // to even before the extended header, which the reader must skip.
         File db = compileEntry(work, "odd.src",
-                "odd-test|PST odd-table fixture,\n\tam, cols#80,\n\tu0=,\n\tPst=\\E]7501;%p1%s\\E\\\\,\n");
+                "odd-test|TST odd-table fixture,\n\tam, cols#80,\n\tu0=,\n\tTstq=\\E]9;%p1%s\\E\\\\,\n");
 
         String home = new File(work, "home").getAbsolutePath();
         String direct = TerminfoReader.readEntry("odd-test",
                 env("TERMINFO", db.getAbsolutePath()), home);
         assertNotNull(direct);
-        assertTrue("extended Pst must survive an odd-length standard table",
-                direct.contains("Pst="));
+        assertTrue("extended user cap must survive an odd-length standard table",
+                direct.contains("Tstq="));
 
         Parsed expected = parse(infocmpWithDb(db, "odd-test"));
         Parsed actual = parse(direct);
         assertEquals(expected.bools, actual.bools);
         assertEquals(expected.ints, actual.ints);
         assertEquals(expected.strings, actual.strings);
-        assertNotNull(actual.strings.get(Capability.program_status));
     }
 
     /**
