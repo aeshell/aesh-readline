@@ -189,3 +189,68 @@ jobs:
         mvn clean test -pl terminal-tty -Dformat.skip=true \
           -Dtest='TerminalProviderEnvTest,TerminalProviderTest,TerminalProviderPriorityTest' \
           -Dsurefire.failIfNoSpecifiedTests=false
+
+  # Mimic the Quarkus forked dev-mode console setup on headless Windows (#375):
+  # bash steps inherit a POSIX-style PWD, which trips the Cygwin/MSYS fallback
+  # in detectCygwinOrMsys, admitting the provider chain with no console
+  # attached — the exact environment of quarkusio/quarkus#57716, where forked
+  # dev-mode JVMs intermittently go silent before the boot banner. Runs a
+  # standalone main (not surefire) for faithful stdin control; every build is
+  # watchdog-guarded and dumps all stacks on timeout.
+  windows-quarkus-mimic:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: msys-inherit
+            setup: export MSYSTEM=MINGW64
+            launch: direct
+          - name: msys-pipe
+            setup: export MSYSTEM=MINGW64
+            launch: piped
+          - name: plain-inherit
+            setup: unset MSYSTEM
+            launch: direct
+          - name: plain-pipe
+            setup: unset MSYSTEM
+            launch: piped
+    name: windows-quarkus-mimic (${{ matrix.name }})
+    timeout-minutes: 30
+
+    steps:
+    - uses: actions/checkout@v7
+    # JDK 21 matches the failing Quarkus leg (Maven Tests - JDK 21 Windows).
+    - name: Set up JDK 21
+      uses: actions/setup-java@v6
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+        cache: maven
+    - name: Install dependencies
+      shell: bash
+      run: mvn clean install -pl terminal-tty -am -DskipTests -Dformat.skip=true
+    - name: Build test classpath
+      shell: bash
+      run: mvn -q -pl terminal-tty dependency:build-classpath -Dmdep.outputFile=target/qm-cp.txt -Dmdep.includeScope=test -Dformat.skip=true
+    - name: Run Quarkus fork mimic
+      shell: bash
+      run: |
+        ${{ matrix.setup }}
+        CP="terminal-tty/target/test-classes;terminal-tty/target/classes;$(cat terminal-tty/target/qm-cp.txt)"
+        run_cell() {
+          if [ "${{ matrix.launch }}" = "piped" ]; then
+            # Never-EOF stdin: models a fork whose stdin stays open but silent.
+            coproc QMPIPE { tail -f /dev/null; }
+            java -cp "$CP" org.aesh.terminal.tty.mimic.QuarkusForkMimic both 20 8 60 <&${QMPIPE[0]}
+            RC=$?
+            kill $QMPIPE_PID 2>/dev/null
+            return $RC
+          else
+            java -cp "$CP" org.aesh.terminal.tty.mimic.QuarkusForkMimic both 20 8 60
+          fi
+        }
+        for i in 1 2 3 4 5; do
+          echo "=== mimic pass $i/5 (${{ matrix.name }}) ==="
+          run_cell || exit 1
+        done
