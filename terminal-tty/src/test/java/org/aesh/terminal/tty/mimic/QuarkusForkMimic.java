@@ -195,19 +195,26 @@ public final class QuarkusForkMimic {
         out.println("MIMIC-ENV IS_WINDOWS=" + OSUtils.IS_WINDOWS + " IS_CYGWIN=" + OSUtils.IS_CYGWIN);
         // The TTY probes themselves spawn subprocesses on some platforms, so
         // guard them like everything else: a stuck probe is a finding, not a hang.
+        // Timings are printed: a 5000ms probe proves the deadline engaged
+        // instead of hanging (quarkusio/quarkus#57716 shape).
+        long probeStart = System.nanoTime();
         Boolean stdinTty = runGuarded(new Callable<Boolean>() {
             @Override
             public Boolean call() {
                 return Boolean.valueOf(TtyDetect.isStdinTty());
             }
         }, 60, "isStdinTty probe");
+        long stdinMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - probeStart);
+        probeStart = System.nanoTime();
         Boolean stdoutTty = runGuarded(new Callable<Boolean>() {
             @Override
             public Boolean call() {
                 return Boolean.valueOf(TtyDetect.isStdoutTty());
             }
         }, 60, "isStdoutTty probe");
-        out.println("MIMIC-ENV stdinTty=" + stdinTty + " stdoutTty=" + stdoutTty);
+        long stdoutMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - probeStart);
+        out.println("MIMIC-ENV stdinTty=" + stdinTty + " (" + stdinMs + "ms)"
+                + " stdoutTty=" + stdoutTty + " (" + stdoutMs + "ms)");
     }
 
     static void dumpAllStacks(PrintStream out) {
