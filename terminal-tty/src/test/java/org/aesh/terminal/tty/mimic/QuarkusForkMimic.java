@@ -232,8 +232,13 @@ public final class QuarkusForkMimic {
     }
 
     private static void enableFineLogging() {
+        // Scope to our packages only: enabling ALL on the root logger also
+        // unleashes the JDK's own FINER tracing, notably a full synthetic
+        // stack per ProcessBuilder.start() that buries the log. The handler
+        // level still gates emission, so org.aesh FINE (e.g. which provider
+        // won the chain) flows while java.* stays at its default level.
+        Logger.getLogger("org.aesh").setLevel(Level.ALL);
         Logger root = Logger.getLogger("");
-        root.setLevel(Level.ALL);
         for (Handler handler : root.getHandlers()) {
             handler.setLevel(Level.ALL);
         }

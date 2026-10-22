@@ -227,6 +227,7 @@ jobs:
         java-version: '21'
         distribution: 'temurin'
         cache: maven
+    - uses: ilammy/msvc-dev-cmd@v1
     - name: Install dependencies
       shell: bash
       run: mvn clean install -pl terminal-tty -am -DskipTests -Dformat.skip=true
