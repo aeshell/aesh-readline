@@ -238,19 +238,21 @@ jobs:
       run: |
         ${{ matrix.setup }}
         CP="terminal-tty/target/test-classes;terminal-tty/target/classes;$(cat terminal-tty/target/qm-cp.txt)"
-        run_cell() {
-          if [ "${{ matrix.launch }}" = "piped" ]; then
-            # Never-EOF stdin: models a fork whose stdin stays open but silent.
-            coproc QMPIPE { tail -f /dev/null; }
-            java -cp "$CP" org.aesh.terminal.tty.mimic.QuarkusForkMimic both 20 8 60 <&${QMPIPE[0]}
-            RC=$?
-            kill $QMPIPE_PID 2>/dev/null
-            return $RC
-          else
-            java -cp "$CP" org.aesh.terminal.tty.mimic.QuarkusForkMimic both 20 8 60
-          fi
-        }
+        if [ "${{ matrix.launch }}" = "piped" ]; then
+          # Never-EOF stdin: models a fork whose stdin stays open but silent.
+          # Single coproc for the whole step: re-creating it per pass leaves
+          # the name bound to the previous pass's open fds, so pass 2+ dies
+          # with "ambiguous redirect". Created once here, shared by all passes.
+          coproc QMPIPE { tail -f /dev/null; }
+        fi
         for i in 1 2 3 4 5; do
           echo "=== mimic pass $i/5 (${{ matrix.name }}) ==="
-          run_cell || exit 1
+          if [ "${{ matrix.launch }}" = "piped" ]; then
+            java -cp "$CP" org.aesh.terminal.tty.mimic.QuarkusForkMimic both 20 8 60 <&${QMPIPE[0]} || exit 1
+          else
+            java -cp "$CP" org.aesh.terminal.tty.mimic.QuarkusForkMimic both 20 8 60 || exit 1
+          fi
         done
+        if [ "${{ matrix.launch }}" = "piped" ]; then
+          kill $QMPIPE_PID 2>/dev/null || true
+        fi
