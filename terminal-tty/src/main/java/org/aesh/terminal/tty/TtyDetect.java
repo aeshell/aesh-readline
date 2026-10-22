@@ -21,9 +21,11 @@ package org.aesh.terminal.tty;
 
 import java.io.Console;
 import java.lang.reflect.Method;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.aesh.terminal.detect.ProcessRunner;
 import org.aesh.terminal.tty.impl.WinConsoleNative;
 import org.aesh.terminal.utils.PlatformContext;
 
@@ -154,6 +156,16 @@ public final class TtyDetect {
     }
 
     /**
+     * Builds the {@code test -t} probe subprocess for one fd.
+     * Separated so tests can substitute hanging or scripted children.
+     * Production binds the tested fd to INHERIT (the child must answer
+     * for OUR descriptor) and pipes the rest.
+     */
+    interface ProbeBuilder {
+        ProcessBuilder build(int fd);
+    }
+
+    /**
      * Probe one descriptor with {@code test -t}, i.e. isatty(fd).
      * <p>
      * The tested descriptor must be inherited: the child answers for its
@@ -161,51 +173,111 @@ public final class TtyDetect {
      * parent's (INHERIT) while the other two stay piped and drained.
      * Default-PIPE stdio would make stdout/stderr probes test the pipe
      * instead of the terminal — always false, including for consoles.
+     * <p>
+     * The probe runs under a bounded deadline: a child that never exits
+     * (seen headless on Windows, where it wedged augmentation behind this
+     * call) degrades to unknown instead of hanging the caller. Streams are
+     * never merged: an INHERIT binding is ground truth under test.
      *
      * @param fd the file descriptor (non-negative)
      * @return TRUE/FALSE from the exit status, or null when sh is unavailable
+     *         or the probe exceeds its deadline
      */
     private static Boolean tryTestT(int fd) {
-        Process process = null;
+        return tryTestT(fd, TtyDetect::defaultProbeBuilder);
+    }
+
+    static Boolean tryTestT(int fd, ProbeBuilder starter) {
+        final ProcessBuilder builder;
         try {
-            ProcessBuilder builder = new ProcessBuilder("sh", "-c", "test -t " + fd);
-            if (fd == FD_STDIN) {
-                builder.redirectInput(ProcessBuilder.Redirect.INHERIT);
-            }
-            if (fd == FD_STDOUT) {
-                builder.redirectOutput(ProcessBuilder.Redirect.INHERIT);
-            }
-            if (fd == FD_STDERR) {
-                builder.redirectError(ProcessBuilder.Redirect.INHERIT);
-            }
-            process = builder.start();
-            // Drain piped streams (error text for bogus fds is tiny;
-            // inherited ones read EOF instantly). Never merged: stray
-            // text must not leak into an inherited user stream.
-            drainQuietly(process.getInputStream());
-            drainQuietly(process.getErrorStream());
-            process.waitFor();
-            return process.exitValue() == 0;
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return null;
+            builder = starter.build(fd);
         } catch (Exception e) {
             return null;
-        } finally {
-            if (process != null) {
-                process.destroy();
-            }
+        }
+        // Bounded drain + wait + reap. An exiting child resolves in
+        // milliseconds; a stuck one (seen headless on Windows, wedging
+        // augmentation behind this call) degrades to unknown instead of
+        // hanging the caller the way the old unbounded drain-then-waitFor
+        // did. No stream merging: every INHERIT binding is ground truth
+        // under test (merging stderr into a piped stdout would probe the
+        // pipe, not the descriptor).
+        final Process process;
+        try {
+            process = builder.start();
+        } catch (Exception e) {
+            return null;
+        }
+        Thread outDrainer = drainAsync(process.getInputStream());
+        Thread errDrainer = drainAsync(process.getErrorStream());
+        final boolean finished;
+        try {
+            finished = process.waitFor(ProcessRunner.DEFAULT_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            process.destroyForcibly();
+            return null;
+        }
+        if (!finished) {
+            process.destroyForcibly();
+            closeQuietly(process.getInputStream());
+            closeQuietly(process.getErrorStream());
+            return null;
+        }
+        joinQuietly(outDrainer);
+        joinQuietly(errDrainer);
+        try {
+            return process.exitValue() == 0;
+        } catch (Exception e) {
+            return null;
         }
     }
 
-    private static void drainQuietly(java.io.InputStream in) {
-        try {
-            byte[] buf = new byte[64];
-            while (in.read(buf) != -1) {
-                // Discard; tiny.
+    private static Thread drainAsync(final java.io.InputStream in) {
+        Thread drainer = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                byte[] buf = new byte[8192];
+                try {
+                    while (in.read(buf) != -1) {
+                        // Discard; the probe answers by exit status only.
+                    }
+                } catch (java.io.IOException ignored) {
+                    // Destroyed or closed: partial output stands.
+                }
             }
+        }, "tty-probe-drain");
+        drainer.setDaemon(true);
+        drainer.start();
+        return drainer;
+    }
+
+    private static void joinQuietly(Thread drainer) {
+        try {
+            drainer.join(5000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    private static void closeQuietly(java.io.InputStream in) {
+        try {
+            in.close();
         } catch (Exception ignored) {
         }
+    }
+
+    private static ProcessBuilder defaultProbeBuilder(int fd) {
+        ProcessBuilder builder = new ProcessBuilder("sh", "-c", "test -t " + fd);
+        if (fd == FD_STDIN) {
+            builder.redirectInput(ProcessBuilder.Redirect.INHERIT);
+        }
+        if (fd == FD_STDOUT) {
+            builder.redirectOutput(ProcessBuilder.Redirect.INHERIT);
+        }
+        if (fd == FD_STDERR) {
+            builder.redirectError(ProcessBuilder.Redirect.INHERIT);
+        }
+        return builder;
     }
 
     /**
