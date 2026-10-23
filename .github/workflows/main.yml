@@ -244,7 +244,8 @@ jobs:
           # Single coproc for the whole step: re-creating it per pass leaves
           # the name bound to the previous pass's open fds, so pass 2+ dies
           # with "ambiguous redirect". Created once here, shared by all passes.
-          coproc QMPIPE { tail -f /dev/null; }
+          coproc QMPIPE { exec tail -f /dev/null; }
+          trap 'kill "$QMPIPE_PID" 2>/dev/null || true' EXIT
         fi
         for i in 1 2 3 4 5; do
           echo "=== mimic pass $i/5 (${{ matrix.name }}) ==="
@@ -254,17 +255,14 @@ jobs:
             java -cp "$CP" org.aesh.terminal.tty.mimic.QuarkusForkMimic both 20 8 60 || exit 1
           fi
         done
-        if [ "${{ matrix.launch }}" = "piped" ]; then
-          kill $QMPIPE_PID 2>/dev/null || true
-        fi
 
   # End-to-end guard for #376: run the Quarkus fork mimic with a fixture
   # `sh` that stalls `test -t` probes exactly like the stuck child that
   # wedged Quarkus augmentation (quarkusio/quarkus#57716). Pre-fix code
   # hangs here past the watchdog; bounded probes degrade to unknown in
-  # ~5s per fd, so every build completes at ~10s and the job stays green.
-  # The fixture delegates everything else to the real sh, and the canary
-  # fails the step if shadowing did not take effect.
+  # ~5s per cold fd. Compile a real sh.exe so Java's Windows executable
+  # lookup can launch it. JVM-verified markers for both descriptors prove
+  # the fixture ran; a shell-only PATH check is not sufficient (#379).
   windows-quarkus-mimic-hanging-sh:
     runs-on: windows-latest
     name: windows-quarkus-mimic (hanging-sh)
@@ -286,30 +284,37 @@ jobs:
     - name: Build test classpath
       shell: bash
       run: mvn -q -pl terminal-tty dependency:build-classpath -Dmdep.outputFile=target/qm-cp.txt -Dmdep.includeScope=test -Dformat.skip=true
+    - name: Build stalled probe executable
+      shell: pwsh
+      run: |
+        $fixture = Join-Path $env:RUNNER_TEMP "aesh-tty-probe"
+        New-Item -ItemType Directory -Force $fixture | Out-Null
+        cl.exe /nologo /W4 /WX /D_CRT_SECURE_NO_WARNINGS /TC `
+          terminal-tty/src/test/native/stalled-tty-probe.c `
+          "/Fo$fixture\stalled-tty-probe.obj" "/Fe$fixture\sh.exe"
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     - name: Run mimic against a stalling probe
       shell: bash
       run: |
-        rm -rf .mimic-fixture
-        mkdir -p .mimic-fixture
-        cat > .mimic-fixture/sh <<'FIXTURE_EOF'
-        #!/bin/bash
-        # Stall `sh -c "test -t N"` probes like the stuck child in
-        # quarkusio/quarkus#57716; delegate everything else to the real sh.
-        if [ "$1" = "-c" ]; then
-          case "$2" in
-            "test -t "*) exec sleep 300 ;;
-          esac
-        fi
-        exec /bin/sh "$@"
-        FIXTURE_EOF
-        chmod +x .mimic-fixture/sh
-        export PATH="$PWD/.mimic-fixture:$PATH"
-        test "$(command -v sh)" = "$PWD/.mimic-fixture/sh"
+        fixture="$(cygpath -u "$RUNNER_TEMP")/aesh-tty-probe"
+        test -f "$fixture/sh.exe"
+        export PATH="$fixture:$PATH"
+        export MSYSTEM=MINGW64
         CP="terminal-tty/target/test-classes;terminal-tty/target/classes;$(cat terminal-tty/target/qm-cp.txt)"
         # Never-EOF stdin: the Quarkus fork shape (maven-invoker pipe).
-        coproc QMPIPE { tail -f /dev/null; }
+        coproc QMPIPE { exec tail -f /dev/null; }
+        trap 'kill "$QMPIPE_PID" 2>/dev/null || true' EXIT
         for i in 1 2 3; do
+          markers=$(mktemp -d "$fixture/markers.XXXXXX")
+          export AESH_TTY_PROBE_MARKER_DIR="$(cygpath -w "$markers")"
           echo "=== mimic pass $i/3 (hanging-sh) ==="
           java -cp "$CP" org.aesh.terminal.tty.mimic.QuarkusForkMimic both 5 8 60 <&${QMPIPE[0]} || exit 1
         done
-        kill $QMPIPE_PID 2>/dev/null || true
+    - name: Clean up stalled fixture processes
+      if: always()
+      shell: pwsh
+      run: |
+        $fixture = Join-Path $env:RUNNER_TEMP "aesh-tty-probe\sh.exe"
+        Get-Process -Name sh -ErrorAction SilentlyContinue |
+          Where-Object { $_.Path -eq $fixture } |
+          Stop-Process -Force -ErrorAction SilentlyContinue

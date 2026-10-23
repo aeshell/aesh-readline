@@ -1,12 +1,17 @@
 package org.aesh.terminal.tty.mimic;
 
+import java.io.File;
+import java.io.IOException;
 import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -40,9 +45,10 @@ import org.aesh.terminal.utils.OSUtils;
  * <p>
  * This program replays exactly that synchronous surface —
  * {@code supportsAnsi()}, {@code size()}, {@code openNonBlocking()} —
- * sequentially and from several threads in parallel (parallel augmentation),
- * each attempt guarded by a watchdog. On timeout it prints every stack trace
- * and exits nonzero, so a hanging run names the culprit in the CI log.
+ * from several threads in parallel before any TTY status checks, followed
+ * by sequential warm attempts. Each parallel round starts behind a barrier
+ * and has one watchdog deadline. On timeout the watchdog dumps stacks before
+ * interrupting anything and halts the child JVM, bypassing stuck shutdown hooks.
  * <p>
  * Not a surefire test: it runs as a standalone {@code main()} so the CI job
  * controls stdin precisely (inherited vs never-EOF pipe). See
@@ -68,23 +74,37 @@ public final class QuarkusForkMimic {
         int iterations = args.length > 1 ? Integer.parseInt(args[1]) : 20;
         int threads = args.length > 2 ? Integer.parseInt(args[2]) : 8;
         long perBuildTimeoutSec = args.length > 3 ? Long.parseLong(args[3]) : 60;
+        if (!"sequential".equals(mode) && !"parallel".equals(mode) && !"both".equals(mode)) {
+            throw new IllegalArgumentException("mode must be sequential, parallel, or both");
+        }
+        if (iterations <= 0 || threads <= 0 || perBuildTimeoutSec < 0) {
+            throw new IllegalArgumentException("iterations/threads must be positive and timeout nonnegative");
+        }
         enableFineLogging();
         printEnvironment(System.out);
-        if ("sequential".equals(mode) || "both".equals(mode)) {
-            runSequential(iterations, perBuildTimeoutSec);
-        }
         if ("parallel".equals(mode) || "both".equals(mode)) {
+            System.out.println("MIMIC-PHASE parallel-cold-first");
             runParallel(threads, 10, perBuildTimeoutSec);
         }
+        if ("sequential".equals(mode) || "both".equals(mode)) {
+            System.out.println("MIMIC-PHASE sequential-" + ("both".equals(mode) ? "warm" : "cold-first"));
+            runSequential(iterations, perBuildTimeoutSec);
+        }
+        String markers = System.getenv("AESH_TTY_PROBE_MARKER_DIR");
+        if (markers != null) {
+            verifyProbeMarkers(new File(markers));
+        }
+        System.out.println("MIMIC-PHASE cached-tty-status");
+        printTtyStatus(System.out);
         System.out.println("MIMIC-OK all builds completed within their watchdog");
     }
 
     /**
      * One Quarkus-style console setup: build a connection on the system
      * streams, run the capability check, the synchronous size query and the
-     * reader start that {@code AeshConsole} performs. Deliberately never
-     * closed: Quarkus never closes the dev-mode console until JVM death, and
-     * the reader threads are daemon.
+     * reader start that {@code AeshConsole} performs. Close afterwards so
+     * repeated attempts do not accumulate reader workers. Setup time is
+     * reported separately from close; the watchdog bounds both.
      *
      * @param id sequential build number for log correlation
      * @return one-line description of the resulting connection
@@ -93,7 +113,7 @@ public final class QuarkusForkMimic {
     static String buildOnce(int id) throws Exception {
         long start = System.nanoTime();
         final String[] outcome = new String[1];
-        new TerminalConnection(new Consumer<Connection>() {
+        TerminalConnection connection = new TerminalConnection(new Consumer<Connection>() {
             @Override
             public void accept(Connection connection) {
                 boolean ansi = connection.supportsAnsi();
@@ -102,8 +122,12 @@ public final class QuarkusForkMimic {
                 outcome[0] = "ansi=" + ansi + " size=" + size;
             }
         });
-        long ms = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
-        return "build " + id + " took " + ms + "ms " + outcome[0];
+        try {
+            long ms = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
+            return "build " + id + " took " + ms + "ms " + outcome[0];
+        } finally {
+            connection.close();
+        }
     }
 
     private static void runSequential(int iterations, long perBuildTimeoutSec) throws Exception {
@@ -119,38 +143,43 @@ public final class QuarkusForkMimic {
         }
     }
 
-    private static void runParallel(int threads, int perThread, long perBuildTimeoutSec) throws Exception {
-        ExecutorService pool = Executors.newFixedThreadPool(threads, daemonThreads("mimic-build"));
-        List<Callable<String>> tasks = new ArrayList<Callable<String>>();
-        for (int t = 0; t < threads; t++) {
-            for (int i = 0; i < perThread; i++) {
-                final int id = t * perThread + i;
-                tasks.add(new Callable<String>() {
+    private static void runParallel(final int threads, int perThread, long perBuildTimeoutSec) throws Exception {
+        final ExecutorService pool = Executors.newFixedThreadPool(threads, daemonThreads("mimic-build"));
+        try {
+            for (int round = 0; round < perThread; round++) {
+                final int firstId = round * threads;
+                List<String> outcomes = runGuarded(new Callable<List<String>>() {
                     @Override
-                    public String call() throws Exception {
-                        return buildOnce(id);
+                    public List<String> call() throws Exception {
+                        final CountDownLatch ready = new CountDownLatch(threads);
+                        final CountDownLatch start = new CountDownLatch(1);
+                        List<Future<String>> futures = new ArrayList<Future<String>>();
+                        for (int t = 0; t < threads; t++) {
+                            final int id = firstId + t;
+                            futures.add(pool.submit(new Callable<String>() {
+                                @Override
+                                public String call() throws Exception {
+                                    ready.countDown();
+                                    start.await();
+                                    return buildOnce(id);
+                                }
+                            }));
+                        }
+                        ready.await();
+                        start.countDown();
+                        List<String> results = new ArrayList<String>();
+                        for (Future<String> future : futures) {
+                            results.add(future.get());
+                        }
+                        return results;
                     }
-                });
+                }, perBuildTimeoutSec, "parallel round " + round);
+                for (String outcome : outcomes) {
+                    System.out.println("MIMIC-OK parallel " + outcome);
+                }
             }
-        }
-        // Generous global deadline: healthy parallel runs finish in seconds.
-        // A hang trips here, dumps threads and exits nonzero.
-        long globalTimeoutSec = Math.max(180, perThread * perBuildTimeoutSec);
-        List<Future<String>> futures = pool.invokeAll(tasks, globalTimeoutSec, TimeUnit.SECONDS);
-        pool.shutdownNow();
-        int done = 0;
-        for (Future<String> future : futures) {
-            if (future.isDone() && !future.isCancelled()) {
-                System.out.println("MIMIC-OK parallel " + future.get());
-                done++;
-            }
-        }
-        if (done < tasks.size()) {
-            System.out.println("MIMIC-TIMEOUT parallel phase: " + done + " of " + tasks.size()
-                    + " builds finished within " + globalTimeoutSec + "s; dumping threads");
-            dumpAllStacks(System.out);
-            System.out.flush();
-            System.exit(EXIT_TIMEOUT);
+        } finally {
+            pool.shutdownNow();
         }
     }
 
@@ -169,22 +198,19 @@ public final class QuarkusForkMimic {
         ExecutorService guard = Executors.newSingleThreadExecutor(daemonThreads("mimic-guard"));
         Future<T> future = guard.submit(work);
         try {
-            try {
-                return future.get(timeoutSec, TimeUnit.SECONDS);
-            } catch (TimeoutException e) {
-                future.cancel(true);
-                System.out.println("MIMIC-TIMEOUT " + label + " exceeded " + timeoutSec + "s; dumping threads");
-                dumpAllStacks(System.out);
-                System.out.flush();
-                System.exit(EXIT_TIMEOUT);
-                throw new AssertionError("unreachable");
-            }
+            return future.get(timeoutSec, TimeUnit.SECONDS);
+        } catch (TimeoutException e) {
+            System.out.println("MIMIC-TIMEOUT " + label + " exceeded " + timeoutSec + "s; dumping threads");
+            dumpAllStacks(System.out);
+            System.out.flush();
+            Runtime.getRuntime().halt(EXIT_TIMEOUT);
+            throw new AssertionError("unreachable");
         } finally {
             guard.shutdownNow();
         }
     }
 
-    static void printEnvironment(final PrintStream out) throws Exception {
+    static void printEnvironment(PrintStream out) {
         out.println("MIMIC-ENV os.name=" + System.getProperty("os.name")
                 + " java.version=" + System.getProperty("java.version"));
         out.println("MIMIC-ENV PWD=" + System.getenv("PWD")
@@ -192,29 +218,37 @@ public final class QuarkusForkMimic {
                 + " TERM=" + System.getenv("TERM")
                 + " TERM_PROGRAM=" + System.getenv("TERM_PROGRAM")
                 + " CYGWIN=" + System.getenv("CYGWIN"));
+    }
+
+    private static void printTtyStatus(PrintStream out) {
         out.println("MIMIC-ENV IS_WINDOWS=" + OSUtils.IS_WINDOWS + " IS_CYGWIN=" + OSUtils.IS_CYGWIN);
-        // The TTY probes themselves spawn subprocesses on some platforms, so
-        // guard them like everything else: a stuck probe is a finding, not a hang.
-        // Timings are printed: a 5000ms probe proves the deadline engaged
-        // instead of hanging (quarkusio/quarkus#57716 shape).
-        long probeStart = System.nanoTime();
-        Boolean stdinTty = runGuarded(new Callable<Boolean>() {
-            @Override
-            public Boolean call() {
-                return Boolean.valueOf(TtyDetect.isStdinTty());
+        // Construction must reach the probes with cold caches. Only inspect
+        // the cached answers afterwards, never as an environment preflight.
+        out.println("MIMIC-ENV stdinTty=" + TtyDetect.isStdinTty() + " stdoutTty=" + TtyDetect.isStdoutTty());
+    }
+
+    static void verifyProbeMarkers(File directory) throws IOException {
+        File[] markers = directory.listFiles();
+        if (markers == null) {
+            throw new IOException("probe fixture marker directory is unavailable: " + directory);
+        }
+        for (int fd = 0; fd <= 1; fd++) {
+            int launches = 0;
+            for (File marker : markers) {
+                if (!marker.getName().endsWith("-" + fd + ".started")) {
+                    continue;
+                }
+                String text = new String(Files.readAllBytes(marker.toPath()), StandardCharsets.US_ASCII);
+                if (!text.equals("fd=" + fd + "\n")) {
+                    throw new IllegalStateException("invalid probe fixture marker: " + marker);
+                }
+                launches++;
             }
-        }, 60, "isStdinTty probe");
-        long stdinMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - probeStart);
-        probeStart = System.nanoTime();
-        Boolean stdoutTty = runGuarded(new Callable<Boolean>() {
-            @Override
-            public Boolean call() {
-                return Boolean.valueOf(TtyDetect.isStdoutTty());
+            if (launches == 0) {
+                throw new IllegalStateException("probe fixture did not execute for fd " + fd + " in " + directory);
             }
-        }, 60, "isStdoutTty probe");
-        long stdoutMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - probeStart);
-        out.println("MIMIC-ENV stdinTty=" + stdinTty + " (" + stdinMs + "ms)"
-                + " stdoutTty=" + stdoutTty + " (" + stdoutMs + "ms)");
+            System.out.println("MIMIC-FIXTURE fd=" + fd + " launches=" + launches);
+        }
     }
 
     static void dumpAllStacks(PrintStream out) {

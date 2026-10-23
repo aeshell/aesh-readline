@@ -129,6 +129,53 @@ the probe still creates its downcall handles on first use. Repeat these
 measurements on the deployment JVM rather than treating this machine's
 numbers as a startup budget for another process.
 
+### Detection baseline coverage (#379)
+
+The transport measurements above are not a baseline for complete terminal
+detection or Quarkus startup. Before changing detection defaults, measure
+the following operations separately. This inventory describes production
+behavior at `3b08cc207`; the initial #379 changes only strengthen tests and CI.
+
+| Operation | Current work to account for |
+|-----------|-----------------------------|
+| `TerminalCapabilities.detect()` | A new environment scan on each call; no terminal session or background worker. |
+| `TerminalCapabilities.getInstance()` | Creates an environment-only instance when missing; a cold lookup can wait for the publication monitor. A warm lookup reads the shared reference. The singleton is scoped to its defining class loader. |
+| `TerminalCapabilities.detectAsync()` | Publication/locking and environment construction on the calling thread; terminal discovery and IDE/OS fallback on a daemon worker. Measure return latency and completion separately. |
+| `TerminalCapabilities.detectFull()` | May compute synchronously or join an async round. A completed shared result is reused. Terminal I/O, fallback, and time waiting for the publication monitor all belong in the measurement. |
+| Capability value access | Scalar reads do not query the terminal. RGB getters clone arrays; the palette getter deep-copies entries. Measure those allocations separately from scalar access. |
+| `TtyDetect.isStdinTty()` / `isStdoutTty()` | Cached per descriptor. Cold checks can perform native calls or subprocess probing. Direct `isTty(fd)` is a fresh check, not a cache lookup. |
+| `TerminalConnection` construction | TTY checks, provider/device setup, transport-owned pumps, and possible PTY/terminfo work. Starting the connection reader is a separate operation, performed by the mimic callback. |
+| `TerminalFeatures.getImageProtocol()` | Device heuristics can fall back to a DA1 query through an active reader. Do not classify it as an unconditional cache-only getter. |
+
+Existing full/async session-count tests in `TerminalCapabilitiesTest` remain
+the starting point for reuse checks. Do not add duplicate discovery merely
+to prepare a benchmark state. Cases that need the future policy, scoped
+source, or subscription interfaces stay separate until those interfaces exist.
+
+#### Regression fixture requirements
+
+- `TtyDetectTimeoutTest` launches a child JVM that records startup and holds
+  a file lock. A missing process cannot satisfy the timeout test, and the lock
+  must be released before a result is accepted. These child-JVM cases run in
+  the JVM suites and explicitly skip in the native test binary.
+- `QuarkusForkMimic` starts parallel construction behind a barrier before any
+  TTY preflight. Sequential attempts are warm. Each round has one watchdog,
+  and connections close after setup rather than accumulating reader workers.
+- The Windows stalled-probe job compiles a test-only `sh.exe`. Markers written
+  by that executable prove the JVM exercised fd 0 and fd 1. A Bash
+  `command -v sh` check cannot prove Java used the same executable.
+- Fixture checks and timeout mutations establish coverage, not performance
+  numbers. The mimic's setup timings exclude close, while its watchdog covers
+  both. Keep complete process startup, discovery completion, and cleanup costs
+  distinct in subsequent baseline reports.
+
+Regular CI should gate execution counts and bounded failure behavior.
+Cold-process and warm JMH reports should retain revision/runtime/backend,
+environment and fd layout, raw results, and allocation data. Set numerical
+budgets from those results instead of applying small wall-clock thresholds
+to shared runners. JVM tests and cross-compilation do not substitute for
+Windows execution or native-image measurements.
+
 ### FfmSyscallBenchmark (per-syscall wrapper cost, #348)
 
 Measures the FFM PTY wrappers through the public `Pty` API: idle
