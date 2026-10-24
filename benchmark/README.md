@@ -176,6 +176,81 @@ budgets from those results instead of applying small wall-clock thresholds
 to shared runners. JVM tests and cross-compilation do not substitute for
 Windows execution or native-image measurements.
 
+#### Running the local detection baselines
+
+Build the measurement-only module without changing the production artifact's
+dependencies:
+
+```bash
+./mvnw -Pbenchmark -pl benchmark -am package -DskipTests -Dmaven.javadoc.skip=true
+python3 benchmark/scripts/detection_baseline.py --samples 20 \
+  --output /tmp/opencode/detection-jvm-baseline
+```
+
+Use `--java /path/to/jdk/bin/java` to collect another JVM into a new output
+directory. The collector scrubs terminal identity/multiplexer variables and
+sets `TERM=xterm-256color` and `COLORFGBG=15;0`. It randomizes scenario order
+with a recorded seed. Stdin is null, stdout/stderr are pipes, and POSIX
+children have a new session, so these runs cannot query the user's terminal.
+Results include runtime/CPU metadata, the JAR hash, raw samples, and separate
+medians/minima/maxima. Existing output directories are not overwritten.
+
+The scenarios separate environment detection, the first shared lookup,
+synthetic full/async detection, an unavailable injected transport, builtin
+headless detection, and connection setup/reader submission/close. Synthetic
+reply setup has its own timer. It excludes real raw-mode and terminal I/O.
+The synthetic cases assert one open/write/close and a populated palette and
+modes; the unavailable case asserts zero. Counts of `-1` are uninstrumented,
+not evidence of zero external operations.
+
+Factory timers include a volatile publication of the result to prevent an
+unused result being eliminated. Async return and subsequent full completion
+are distinct. Reader submission does not mean the reader has started running.
+The parent measures the complete helper process, including verification and
+output. A `noop` process control is recorded; do not subtract independent
+medians and call the difference library startup time.
+
+Run warm CPU/allocation benchmarks with the same terminal environment:
+
+```bash
+python3 - <<'PY'
+import runpy
+import subprocess
+
+environment = runpy.run_path('benchmark/scripts/detection_baseline.py')['controlled_environment']()
+subprocess.run(['java', '-jar', 'benchmark/target/benchmarks.jar',
+                'TerminalDetectionBenchmark', '-t', '1', '-prof', 'gc',
+                '-foe', 'true', '-rf', 'json', '-rff', '/tmp/opencode/detection-warm.json'],
+               env=environment, check=True)
+PY
+```
+
+The defaults use three forks, five warmup iterations, ten measurement
+iterations, and 256 MB heaps. Returned values or Blackhole consumption keep
+the work observable. `scalarFacts` is a block of seven getters, not a per-field
+latency. RGB/palette copies and conversion to `TerminalColorCapability` are
+separate benchmarks. Each trial verifies that discovery ran once and was not
+repeated by the timed reads.
+
+For native process measurements, compile the same named-package helper from
+the packaged JAR, then pass `--native /path/to/executable` to the collector.
+Use `--java /path/to/build-jdk/bin/java` to record the corresponding build JDK.
+Native results have their own executable hash and must be reported separately
+from JVM runs, including any different heap settings or unavailable backends.
+These measurements are not complete Quarkus startup measurements.
+
+```bash
+"$GRAALVM_HOME/bin/native-image" --no-fallback --parallelism=4 \
+  -R:MaxHeapSize=134217728 -cp benchmark/target/benchmarks.jar \
+  org.aesh.readline.benchmark.DetectionBaseline /tmp/opencode/detection-native
+python3 benchmark/scripts/detection_baseline.py \
+  --java "$GRAALVM_HOME/bin/java" --native /tmp/opencode/detection-native \
+  --samples 20 --output /tmp/opencode/detection-native-baseline
+```
+
+The [2026-10-24 local report](results/detection-local-2026-10-24.md) records the
+first JVM/native results, allocation profiles, limitations, and artifact paths.
+
 ### FfmSyscallBenchmark (per-syscall wrapper cost, #348)
 
 Measures the FFM PTY wrappers through the public `Pty` API: idle
