@@ -209,7 +209,10 @@ public final class TerminalCapabilities {
 
     /**
      * Detect terminal capabilities from environment variables only.
-     * Fast (~1-2ms), no subprocess calls on Linux/macOS.
+     * Does not run terminal queries, read IDE settings, launch subprocesses,
+     * initialize native transports, or create background workers on any OS.
+     * Creates an independent result without waiting for shared discovery or
+     * publishing it as the shared instance.
      *
      * @return the detected capabilities
      */
