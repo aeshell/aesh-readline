@@ -174,7 +174,8 @@ public abstract class CompletionHandler<C extends CompleteOperation> {
                     possibleCompletions.get(0).getFormattedCompletionCandidatesTerminalString().get(0),
                     buffer, inputProcessor,
                     possibleCompletions.get(0).isAppendSeparator(),
-                    possibleCompletions.get(0).getSeparator());
+                    possibleCompletions.get(0).getSeparator(),
+                    possibleCompletions.get(0).isReplacingCurrentWord());
         }
         // more than one hit...
         else {
@@ -230,7 +231,8 @@ public abstract class CompletionHandler<C extends CompleteOperation> {
     protected void processMultipleCompletions(List<C> possibleCompletions, Buffer buffer, InputProcessor inputProcessor) {
         String startsWith = "";
 
-        if (!possibleCompletions.get(0).isIgnoreStartsWith())
+        if (!possibleCompletions.get(0).isIgnoreStartsWith()
+                && !possibleCompletions.get(0).isReplacingCurrentWord())
             startsWith = findStartsWithOperation(possibleCompletions);
 
         if (!startsWith.isEmpty()) {
@@ -276,14 +278,36 @@ public abstract class CompletionHandler<C extends CompleteOperation> {
      * insertion as complete once this returns.
      *
      * @param completion partial completion
-     * @param buffer the input buffer
+     * @param buffer the buffer
      * @param inputProcessor the input processor handling the completion
      * @param appendSpace if its an actual complete
      * @param separator the separator character to append
      */
     protected void displayCompletion(TerminalString completion, Buffer buffer, InputProcessor inputProcessor,
             boolean appendSpace, char separator) {
-        if (completion.getCharacters().startsWith(buffer.asString())) {
+        displayCompletion(completion, buffer, inputProcessor, appendSpace, separator, false);
+    }
+
+    /**
+     * Display the completion string in the terminal, optionally replacing the
+     * current word. When {@code replacingCurrentWord} is true the whole current
+     * word, dashes included, is removed before the completion is written, for
+     * candidates that extend the typed word by something other than a shared
+     * prefix (e.g. fuzzy matches).
+     *
+     * @param completion partial completion
+     * @param buffer the buffer
+     * @param inputProcessor the input processor handling the completion
+     * @param appendSpace if its an actual complete
+     * @param separator the separator character to append
+     * @param replacingCurrentWord true to remove the current word before writing
+     */
+    protected void displayCompletion(TerminalString completion, Buffer buffer, InputProcessor inputProcessor,
+            boolean appendSpace, char separator, boolean replacingCurrentWord) {
+        if (replacingCurrentWord) {
+            ActionMapper.mapToAction("unix-word-rubout").accept(inputProcessor);
+            inputProcessor.buffer().writeString(completion.toString());
+        } else if (completion.getCharacters().startsWith(buffer.asString())) {
             ActionMapper.mapToAction("backward-kill-word").accept(inputProcessor);
             inputProcessor.buffer().writeString(completion.toString());
         } else {

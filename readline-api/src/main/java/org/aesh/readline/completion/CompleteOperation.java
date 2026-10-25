@@ -187,9 +187,34 @@ public interface CompleteOperation {
     boolean isIgnoreNonEscapedSpace();
 
     /**
-     * Set whether to ignore non-escaped spaces.
+     * Set whether non-escaped spaces should be ignored.
      *
      * @param ignoreNonEscapedSpace true to ignore non-escaped spaces
      */
     void setIgnoreNonEscapedSpace(boolean ignoreNonEscapedSpace);
+
+    /**
+     * Check whether the current word should be replaced by the completion
+     * candidates instead of being extended by them.
+     * <p>
+     * When true, a single candidate removes the current word before the
+     * full candidate is written, and common-prefix insertion is skipped in
+     * favour of listing the candidates. This supports completion styles
+     * where the typed word is not a prefix of the candidates, such as
+     * fuzzy matching.
+     *
+     * @return true if the current word should be replaced
+     */
+    default boolean isReplacingCurrentWord() {
+        return false;
+    }
+
+    /**
+     * Set whether the current word should be replaced by the completion
+     * candidates instead of being extended by them.
+     *
+     * @param replacingCurrentWord true to replace the current word
+     */
+    default void setReplacingCurrentWord(boolean replacingCurrentWord) {
+    }
 }

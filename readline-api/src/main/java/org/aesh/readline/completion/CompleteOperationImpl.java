@@ -43,6 +43,7 @@ public class CompleteOperationImpl implements CompleteOperation {
     private char separator = ' ';
     private boolean appendSeparator = true;
     private boolean ignoreOffset = false;
+    private boolean replacingCurrentWord = false;
 
     /**
      * Creates a new CompleteOperationImpl with the given buffer and cursor position.
@@ -295,6 +296,16 @@ public class CompleteOperationImpl implements CompleteOperation {
     @Override
     public void setIgnoreNonEscapedSpace(boolean ignoreNonEscapedSpace) {
         this.ignoreNonEscapedSpace = ignoreNonEscapedSpace;
+    }
+
+    @Override
+    public boolean isReplacingCurrentWord() {
+        return replacingCurrentWord;
+    }
+
+    @Override
+    public void setReplacingCurrentWord(boolean replacingCurrentWord) {
+        this.replacingCurrentWord = replacingCurrentWord;
     }
 
     @Override
