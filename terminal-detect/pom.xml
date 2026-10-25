@@ -55,6 +55,13 @@
             <version>${junit.version}</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <!-- Isolated test-only call-site spies, not a runtime agent. -->
+            <groupId>org.ow2.asm</groupId>
+            <artifactId>asm</artifactId>
+            <version>9.9.1</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>

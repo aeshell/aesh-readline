@@ -251,6 +251,21 @@ python3 benchmark/scripts/detection_baseline.py \
 The [2026-10-24 local report](results/detection-local-2026-10-24.md) records the
 first JVM/native results, allocation profiles, limitations, and artifact paths.
 
+The collector also includes `environment-owner`, `managed-owner`, and
+`managed-empty` for the passive `TerminalDetection` core. `managed-owner`
+prepares its supplied environment result under the separate setup timer.
+Its first-call timer measures attachment, not the producer's startup cost.
+For these cases, `cachedNanos` measures the subsequent `capabilities()` read
+and volatile publication. Session counts remain `-1` because this collector
+does not instrument optional operations; the ordinary tests enforce those
+budgets separately.
+
+Warm `environmentOwner`, `managedOwner`, `emptyManagedOwner`, and `scopedRead`
+benchmarks separate scope creation from repeated reads. The existing
+environment/shared-lookup benchmarks remain controls with unchanged meanings.
+The [passive core report](results/detection-scoped-2026-10-24.md) records their
+JVM/native measurements, operation-budget proof, and remaining scope.
+
 ### FfmSyscallBenchmark (per-syscall wrapper cost, #348)
 
 Measures the FFM PTY wrappers through the public `Pty` API: idle

@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import org.aesh.terminal.detect.TerminalCapabilities;
+import org.aesh.terminal.detect.TerminalDetection;
 import org.aesh.terminal.utils.TerminalColorCapability;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
@@ -43,6 +44,7 @@ public class TerminalDetectionBenchmark {
     @State(Scope.Benchmark)
     public static class CapabilitiesState {
         TerminalCapabilities caps;
+        TerminalDetection owner;
         DetectionProbeFixture fixture;
 
         @Setup(Level.Trial)
@@ -51,6 +53,7 @@ public class TerminalDetectionBenchmark {
             TerminalCapabilities.setProbeTransport(fixture);
             TerminalCapabilities.invalidate();
             caps = TerminalCapabilities.detectFull();
+            owner = TerminalDetection.managed(caps);
             fixture.verify(1, caps);
         }
 
@@ -73,6 +76,26 @@ public class TerminalDetectionBenchmark {
     @Benchmark
     public TerminalCapabilities sharedInstance(CapabilitiesState state) {
         return TerminalCapabilities.getInstance();
+    }
+
+    @Benchmark
+    public void environmentOwner(CapabilitiesState state, Blackhole blackhole) {
+        blackhole.consume(TerminalDetection.environmentOnly());
+    }
+
+    @Benchmark
+    public void managedOwner(CapabilitiesState state, Blackhole blackhole) {
+        blackhole.consume(TerminalDetection.managed(state.caps));
+    }
+
+    @Benchmark
+    public void emptyManagedOwner(CapabilitiesState state, Blackhole blackhole) {
+        blackhole.consume(TerminalDetection.managed(null));
+    }
+
+    @Benchmark
+    public void scopedRead(CapabilitiesState state, Blackhole blackhole) {
+        blackhole.consume(state.owner.capabilities());
     }
 
     /** One consumer reading seven scalar facts, not nanoseconds per fact. */

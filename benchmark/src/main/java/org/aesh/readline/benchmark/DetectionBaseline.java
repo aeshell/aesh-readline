@@ -14,6 +14,8 @@
 package org.aesh.readline.benchmark;
 
 import org.aesh.terminal.detect.TerminalCapabilities;
+import org.aesh.terminal.detect.TerminalDetection;
+import org.aesh.terminal.detect.TerminalTheme;
 import org.aesh.terminal.tty.TerminalConnection;
 
 /**
@@ -43,6 +45,11 @@ public final class DetectionBaseline {
             case "detect":
             case "shared":
                 environment(sample);
+                break;
+            case "environment-owner":
+            case "managed-owner":
+            case "managed-empty":
+                scoped(sample);
                 break;
             case "full-canned":
             case "async-canned":
@@ -110,6 +117,32 @@ public final class DetectionBaseline {
         sample.opens = fixture.opens;
         sample.writes = fixture.writes;
         sample.closes = fixture.closes;
+    }
+
+    private static void scoped(Sample sample) {
+        TerminalCapabilities supplied = null;
+        if ("managed-owner".equals(sample.scenario)) {
+            long setup = System.nanoTime();
+            supplied = TerminalCapabilities.detect();
+            sample.setupNanos = System.nanoTime() - setup;
+        }
+        long start = System.nanoTime();
+        TerminalDetection owner = "environment-owner".equals(sample.scenario)
+                ? TerminalDetection.environmentOnly() : TerminalDetection.managed(supplied);
+        observed = owner;
+        sample.firstNanos = System.nanoTime() - start;
+        start = System.nanoTime();
+        TerminalCapabilities caps = owner.capabilities();
+        observed = caps;
+        sample.cachedNanos = System.nanoTime() - start;
+        if (supplied != null && caps != supplied) {
+            throw new IllegalStateException("managed owner replaced the supplied result");
+        }
+        if ("managed-empty".equals(sample.scenario) && (caps.supportsColor()
+                || caps.theme() != TerminalTheme.UNKNOWN
+                || !"unknown".equals(caps.terminalName()))) {
+            throw new IllegalStateException("missing managed result borrowed process hints");
+        }
     }
 
     private static void connection(Sample sample) throws Exception {

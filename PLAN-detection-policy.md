@@ -1,8 +1,10 @@
 # Detection policy and ownership, #378
 
-Status: first-slice proposal, not an implemented policy interface. Standalone
-defaults remain unchanged. The baseline prerequisite #379 is closed; continuing
-platform and integration checks remain in #377.
+Status: passive core owner implemented; bounded enrichment and connection
+wiring remain proposals. The agreed first production slice is core-only, with
+public factories and passive reads as its test seams. Standalone defaults and
+connection behavior remain unchanged. The baseline prerequisite #379 is closed;
+continuing platform and integration checks remain in #377.
 
 Production baseline: `782160ca`, with measurements of `c779c1e6` in
 [`benchmark/results/detection-local-2026-10-24.md`](benchmark/results/detection-local-2026-10-24.md).
@@ -69,6 +71,48 @@ builtin fallback. `CI`, missing/dumb `TERM`, `MSYSTEM`, and POSIX `PWD` are
 heuristics, never authoritative proof of absent TTYs. Standalone mintty must
 continue to work without a Win32 console. Real fd 0/1/2 checks stay independent.
 
+## Implemented passive core
+
+`TerminalDetection` captures one result for a caller's terminal/session scope:
+
+- `environmentOnly()` captures process hints using the existing fast detector,
+  independently of shared discovery.
+- `environmentOnly(map)` captures only the supplied map. It does not borrow
+  process environment or properties, and later map changes do not affect it.
+- `managed(result)` retains that exact reference. A pending producer may fill
+  values later, but consumption never joins it or starts another round.
+- `managed(null)` creates unknown facts from an empty environment. Null colors,
+  empty palette, unknown theme and unqueried modes do not authorize fallback.
+- `capabilities()` returns the stable reference in O(1), without allocation or
+  I/O. Individual RGB/palette getters keep their existing defensive-copy costs.
+
+Owners do not publish into, replace, or consult the default cache. They create
+no scheduler, source/revision framework, subscription, or transport. A supplied
+producer retains responsibility for its own work; capturing its result does not
+grant input access or make several field reads an atomic revision snapshot.
+
+Tests exercise the public factories and reads, including independent owners,
+default replacement, pending-result consumption, and unrelated synchronous
+full discovery held behind a gated read. The active fixture must execute and
+finish exactly one availability check, session open, query write, and close.
+
+Isolated test copies use ASM call-site spies for the operation catalog used by
+the library: filesystem and resource access, subprocesses, terminal/session
+I/O, native transport initialization, worker creation, waits, shared-default
+access, and ambient metadata. Executable canaries verify each kind and confirm
+that a caught exception cannot hide a request. No production bytecode is
+rewritten; ASM is test-scoped and there is no runtime agent. JVM class loading
+and the harness's own class-resource reads are outside that operation budget.
+This is not an OS-wide syscall trace or a sandbox for arbitrary application code.
+
+The JVM instrumentation tests explicitly abort in a native image. Separate
+portable fail-on-use process/probe collaborators and the behavioral/concurrency
+tests run there. Do not count the instrumentation aborts as native operation
+coverage. Connection attachment/getter wiring stays in #381 as agreed.
+
+Results and reproduction are in the
+[passive core report](benchmark/results/detection-scoped-2026-10-24.md).
+
 ## One owned round
 
 Reuse the current full/async computation and result application rules. Move
@@ -132,10 +176,10 @@ cleanup budgets need backend measurements, not an arbitrary universal timeout.
 The local 49.5 ms headless FFM result is a reason to gate selection early, not
 permission to change automatic backend preference from one Linux result.
 
-## First slice and next implementation gates
+## Initial guard slice and next implementation gates
 
-This slice adds a JVM regression guard for the existing environment-only
-module split. An isolated loader allows only the facade, environment detector,
+The initial slice in `f7e80402` added a JVM regression guard for the existing
+environment-only module split. An isolated loader allows only the facade, environment detector,
 and values. It rejects optional discovery module requests even if production
 catches the error. Literal Linux/macOS/Windows detector fixtures include
 `TERM=xterm-256color` and Git-Bash/CI markers. Public facade and passive reads
@@ -157,17 +201,17 @@ classes pass all four tests on each JDK. Sources, classes, commands, and logs
 are retained under `/tmp/opencode/378-guard-proof/`; repository production
 methods were not replaced for these checks.
 
-The detection module passed 185 tests on JDK 21 and 25. GraalVM CE 25.0.1
+That initial slice passed 185 detection tests on JDK 21 and 25. GraalVM CE 25.0.1
 verification passed 181 tests and explicitly aborted the four JVM loader
 guards. The packaged MRJAR also passed `jar --validate`. Native guard skips
 are not evidence for the proposed native no-I/O policy.
 
 Next independently testable changes, in order:
 
-1. Review owner attachment and unknown-result semantics with #381/#382. Settle
-   the deadline-aware transport contract before adding public policy factories.
-2. Add scoped fail-on-use collaborators for file/process/native/worker operations
-   and test known-headless and consume-only requests before wiring consumers.
+1. Review connection attachment with #381/#382, reusing the passive core above.
+   Settle the deadline-aware transport contract before adding bounded enrichment.
+2. Preserve the scoped no-I/O spies and extend native operation coverage and
+   known-headless/consume-only integration tests when wiring consumers.
 3. Refactor shared publication and coalescing without changing standalone
    results. Re-run cold barrier tests, async/full reuse, and invalidation races.
 4. Implement one deadline through the allowed transports and subprocess paths.
@@ -178,5 +222,6 @@ Next independently testable changes, in order:
 6. Repeat the packaged JVM/native baselines and actual Quarkus integration.
    Keep native runtime hints unfrozen and count executed fixture/backend paths.
 
-No new production factory, scheduler, global policy, or backend default is
-introduced by this proposal.
+Only passive owner factories are implemented here. There is no enrichment
+factory, connection wiring, new scheduler, global policy, or backend-default
+change.

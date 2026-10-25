@@ -220,6 +220,11 @@ public final class TerminalCapabilities {
         return new TerminalCapabilities(new TerminalDetector(), null);
     }
 
+    /** Passive scoped hints have no platform fallback or OS-property lookup. */
+    static TerminalCapabilities fromEnvironment(Map<String, String> environment) {
+        return new TerminalCapabilities(new TerminalDetector(Objects.requireNonNull(environment, "environment"), ""), null);
+    }
+
     /**
      * Detect terminal capabilities with full platform theme probing.
      * <p>

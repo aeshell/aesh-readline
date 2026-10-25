@@ -204,6 +204,32 @@ if (cap.getColorDepth().supportsTrueColor()) {
 }
 ```
 
+### Scoped passive detection
+
+`terminal-detect` also provides a passive owner for one terminal/session:
+
+```java
+import org.aesh.terminal.detect.TerminalCapabilities;
+import org.aesh.terminal.detect.TerminalDetection;
+
+TerminalDetection hints = TerminalDetection.environmentOnly();
+TerminalCapabilities caps = hints.capabilities();
+
+// Retain an existing result. No discovery starts or waits here.
+TerminalDetection managed = TerminalDetection.managed(caps);
+TerminalCapabilities current = managed.capabilities();
+```
+
+Use `environmentOnly(map)` for explicitly supplied environment hints.
+`managed(null)` returns unknown facts without consulting the environment or
+process default. Missing RGB, palette or mode results never trigger a probe.
+Capture the owner once, then reuse it for reads.
+
+A supplied result stays attached even if the process default changes. Its
+producer may still fill pending values; passive reads never wait for that work.
+This does not establish a live TTY or grant input ownership. Connection getters,
+legacy factories and bounded enrichment are not changed by this core interface.
+
 ### ANSIBuilder
 
 Use `ANSIBuilder` for fluent, theme-aware terminal styling:

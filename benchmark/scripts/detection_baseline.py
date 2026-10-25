@@ -15,7 +15,8 @@ import time
 
 
 SCENARIOS = ("noop", "detect", "shared", "full-canned", "async-canned",
-             "unavailable", "full-auto", "connection")
+             "unavailable", "full-auto", "connection", "environment-owner",
+             "managed-owner", "managed-empty")
 TERMINAL_KEYS = ("TERM", "TERM_PROGRAM", "TERM_PROGRAM_VERSION", "TERMINAL_EMULATOR",
                  "COLORTERM", "KITTY_WINDOW_ID", "GHOSTTY_RESOURCES_DIR", "WEZTERM_PANE",
                  "ITERM_SESSION_ID", "WT_SESSION", "WT_PROFILE_ID", "ALACRITTY_SOCKET",
