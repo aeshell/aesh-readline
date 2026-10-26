@@ -56,14 +56,16 @@ import java.util.concurrent.TimeUnit;
  * other facts.
  * <p>
  * Lifecycle: {@code detect()} scans the environment only;
- * {@code detectAsync()} returns immediately and fills colors in the
- * background; {@code detectFull()} awaits an in-flight async query and
- * upgrades the completed instance instead of re-probing, or computes
- * fresh when nothing shareable exists. {@code invalidate()} drops the
- * shared instance so the next access re-detects; previously returned
- * instances stay usable. Publication and upgrade follow this one rule;
- * see {@code detectFull()} for the retry loop that keeps it atomic
- * against concurrent invalidation.
+ * shared full/async discovery publishes environment hints before I/O;
+ * {@code getInstance()} reads that result without joining discovery.
+ * {@code detectAsync()} starts a daemon only for a newly claimed round,
+ * while {@code detectFull()} computes or joins the same round until it
+ * completes. I/O and completion waits never hold the publication monitor.
+ * {@code invalidate()} drops the shared reference, not the producer;
+ * previously captured results stay usable. A retired producer cannot
+ * overwrite a replacement default. Full callers recheck generation identity
+ * after joining, and restore interruption without starting a replacement
+ * probe merely because the join was interrupted.
  */
 public final class TerminalCapabilities {
 
@@ -79,23 +81,35 @@ public final class TerminalCapabilities {
     private volatile ModeSupport mode2026Support;
     private volatile ModeSupport mode2027Support;
     private volatile Boolean nativeGraphemeClustering;
-    private final CountDownLatch colorQueryLatch;
+    /** Present only for an explicitly started shared discovery round. */
+    private final Discovery discovery;
     /**
-     * True once synchronous full detection completed on this instance.
+     * True once a full caller observed successful discovery completion.
      * Guards the shared-instance cache in {@link #detectFull()}.
      */
     private volatile boolean fullyDetected;
-    /**
-     * True once a background query started on this instance. Guards
-     * against starting one thread per {@link #detectAsync()} caller.
-     */
-    private volatile boolean asyncStarted;
     /** Guarded by this instance's monitor against a late async query. */
     private boolean themeEventSeen;
 
-    private TerminalCapabilities(TerminalDetector detector, CountDownLatch latch) {
+    private TerminalCapabilities(TerminalDetector detector, Discovery discovery) {
         this.detector = detector;
-        this.colorQueryLatch = latch;
+        this.discovery = discovery;
+    }
+
+    /** Completion/failure belongs to one result, never a replacement default. */
+    private static final class Discovery {
+        final CountDownLatch completed = new CountDownLatch(1);
+        volatile Throwable failure;
+
+        void rethrowFailure() {
+            Throwable cause = failure;
+            if (cause instanceof RuntimeException) {
+                throw (RuntimeException) cause;
+            }
+            if (cause instanceof Error) {
+                throw (Error) cause;
+            }
+        }
     }
 
     /**
@@ -110,6 +124,8 @@ public final class TerminalCapabilities {
      * {@link #invalidate()} cannot clear it between the check and the
      * return. A returned instance stays usable even if later replaced;
      * replacement only affects subsequent lookups.
+     * During shared discovery this returns its pending environment hints;
+     * it does not wait for colors or start a second round.
      *
      * @return the shared capabilities instance
      */
@@ -135,7 +151,9 @@ public final class TerminalCapabilities {
      * @param caps the pre-detected capabilities
      */
     public static void setInstance(TerminalCapabilities caps) {
-        instance = caps;
+        synchronized (TerminalCapabilities.class) {
+            instance = caps;
+        }
     }
 
     /**
@@ -146,6 +164,8 @@ public final class TerminalCapabilities {
      * the next {@code detect()}, {@code detectFull()} or
      * {@code detectAsync()} call after invalidation rebuilds from scratch.
      * Previously returned instances remain usable.
+     * An in-flight producer may finish its captured result, but it cannot
+     * publish it over a replacement default. Invalidation does not cancel I/O.
      *
      * @since 3.18.3
      */
@@ -245,61 +265,85 @@ public final class TerminalCapabilities {
      * The result populates the shared instance: repeat calls return the
      * cached capabilities instead of re-probing. Call {@link #invalidate()}
      * first to force a fresh probe.
+     * <p>
+     * Concurrent full/async callers share one round. This legacy method
+     * blocks until completion; an interrupted join finishes waiting and
+     * restores the interrupt flag before returning, without launching a
+     * second probe. A failed producer is not treated as cached success:
+     * full callers observe the same unchecked failure until invalidation.
+     * Use {@link #awaitColors(long, TimeUnit)} for an explicitly bounded wait
+     * on an existing result; a wait timeout does not cancel its producer.
      *
      * @return the detected capabilities with resolved theme
+     * @throws RuntimeException if the shared producer failed with a runtime exception
+     * @throws Error if the shared producer failed with an error
      */
     public static TerminalCapabilities detectFull() {
-        while (true) {
-            TerminalCapabilities current = instance;
-            if (current != null && current.fullyDetected) {
-                return current;
-            }
-            if (current != null && current.asyncStarted && current.colorQueryLatch != null) {
-                // An async detection is in flight (or finished): join it
-                // instead of starting a second raw-mode session, then flip
-                // the completed instance to full. The async background work
-                // performs everything full detection needs (env scan, color
-                // and mode queries, grapheme probe under the same gating),
-                // so awaiting the latch leaves no missing work behind.
-                // The wait happens outside the class monitor, which the
-                // background thread never needs.
-                boolean completed;
-                try {
-                    current.awaitColors(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
-                    completed = true;
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    completed = false;
+        boolean interrupted = false;
+        try {
+            while (true) {
+                TerminalCapabilities current = instance;
+                if (current != null && current.fullyDetected) {
+                    return current;
+                }
+                boolean producer = false;
+                synchronized (TerminalCapabilities.class) {
+                    current = instance;
+                    if (current != null && current.fullyDetected) {
+                        return current;
+                    }
+                    if (current == null || current.discovery == null) {
+                        current = newDiscovery();
+                        instance = current;
+                        producer = true;
+                    }
+                }
+                if (producer) {
+                    current.runDiscovery();
+                } else {
+                    interrupted |= current.joinDiscovery();
                 }
                 synchronized (TerminalCapabilities.class) {
                     if (instance == current) {
-                        if (completed) {
-                            current.fullyDetected = true;
-                            return current;
-                        }
-                        TerminalCapabilities caps = computeFull();
-                        caps.fullyDetected = true;
-                        instance = caps;
-                        return caps;
+                        current.discovery.rethrowFailure();
+                        current.fullyDetected = true;
+                        return current;
                     }
                 }
-                continue;
             }
-            synchronized (TerminalCapabilities.class) {
-                current = instance;
-                if (current != null && (current.fullyDetected || current.asyncStarted)) {
-                    continue;
-                }
-                TerminalCapabilities caps = computeFull();
-                caps.fullyDetected = true;
-                instance = caps;
-                return caps;
+        } finally {
+            if (interrupted) {
+                Thread.currentThread().interrupt();
             }
         }
     }
 
-    private static TerminalCapabilities computeFull() {
-        return computeFull(new TerminalDetector());
+    private static TerminalCapabilities newDiscovery() {
+        return new TerminalCapabilities(new TerminalDetector(), new Discovery());
+    }
+
+    /** Legacy full detection completes its join, then restores interruption. */
+    private boolean joinDiscovery() {
+        boolean interrupted = false;
+        while (true) {
+            try {
+                discovery.completed.await();
+                return interrupted;
+            } catch (InterruptedException e) {
+                interrupted = true;
+            }
+        }
+    }
+
+    private void runDiscovery() {
+        try {
+            enrich();
+        } catch (RuntimeException | Error e) {
+            discovery.failure = e;
+            throw e;
+        } finally {
+            discovery.completed.countDown();
+        }
     }
 
     /**
@@ -313,24 +357,31 @@ public final class TerminalCapabilities {
      */
     static TerminalCapabilities computeFull(TerminalDetector detector) {
         TerminalCapabilities caps = new TerminalCapabilities(detector, null);
+        caps.enrich();
+        return caps;
+    }
 
-        // Run terminal mode + color queries first, with the grapheme
-        // probe in the same raw-mode session: a measured background
-        // outranks IDE/OS hints, so the fallback below only runs when no
-        // RGB arrived. Same order as the async background thread.
-        if (!caps.detector.isInMultiplexer()) {
+    /** Shared full/async computation; never called under the publication lock. */
+    private void enrich() {
+        // One computation for full/async: measured RGB outranks hints, and
+        // grapheme probing remains in the same raw-mode session.
+        if (!detector.isInMultiplexer()) {
             TerminalColorQuery result = TerminalColorQuery.queryFull();
             if (result != null) {
-                caps.applyColorResult(result);
+                applyColorResult(result);
                 if (result.graphemeClustering != null) {
-                    caps.nativeGraphemeClustering = result.graphemeClustering;
+                    nativeGraphemeClustering = result.graphemeClustering;
                 }
             }
         }
-        if (caps.resolvedTheme == null && caps.detector.theme == TerminalTheme.UNKNOWN) {
-            caps.resolvedTheme = caps.detector.detectIdeOrPlatformTheme();
+        if (resolvedTheme == null && detector.theme == TerminalTheme.UNKNOWN) {
+            TerminalTheme platform = detector.detectIdeOrPlatformTheme();
+            synchronized (this) {
+                if (!themeEventSeen && resolvedTheme == null) {
+                    resolvedTheme = platform;
+                }
+            }
         }
-        return caps;
     }
 
     /**
@@ -347,58 +398,47 @@ public final class TerminalCapabilities {
      * immediately with no results and falls back to platform theme detection.
      * To probe from such platforms anyway, inject a platform-native transport
      * first via {@link #setProbeTransport(TerminalProbeTransport)}.
+     * <p>
+     * A synchronous round already in progress is reused immediately, without
+     * another worker or session. The newly claimed round is published before
+     * its worker starts, and worker creation happens outside the publication
+     * monitor. Full callers can observe an unchecked producer/startup failure;
+     * passive reads retain available hints without retrying it.
      *
      * @return the detected capabilities with background color query running
      */
     public static TerminalCapabilities detectAsync() {
         TerminalCapabilities current = instance;
-        if (current != null && (current.fullyDetected || current.asyncStarted)) {
+        if (current != null && (current.fullyDetected || current.discovery != null)) {
             return current;
         }
         synchronized (TerminalCapabilities.class) {
             current = instance;
-            if (current != null && (current.fullyDetected || current.asyncStarted)) {
+            if (current != null && (current.fullyDetected || current.discovery != null)) {
                 return current;
             }
-            TerminalCapabilities caps = computeAsync();
-            caps.asyncStarted = true;
-            instance = caps;
-            return caps;
+            current = newDiscovery();
+            instance = current;
         }
+        startAsync(current);
+        return current;
     }
 
-    private static TerminalCapabilities computeAsync() {
-        TerminalDetector detector = new TerminalDetector();
-        CountDownLatch latch = new CountDownLatch(1);
-        TerminalCapabilities caps = new TerminalCapabilities(detector, latch);
-
-        Thread queryThread = new Thread(() -> {
-            try {
-                if (!detector.isInMultiplexer()) {
-                    TerminalColorQuery result = TerminalColorQuery.queryFull();
-                    if (result != null) {
-                        caps.applyColorResult(result);
-                        if (result.graphemeClustering != null) {
-                            caps.nativeGraphemeClustering = result.graphemeClustering;
-                        }
-                    }
+    private static void startAsync(final TerminalCapabilities caps) {
+        try {
+            Thread queryThread = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    caps.runDiscovery();
                 }
-                if (caps.resolvedTheme == null && detector.theme == TerminalTheme.UNKNOWN) {
-                    TerminalTheme platform = detector.detectIdeOrPlatformTheme();
-                    synchronized (caps) {
-                        if (!caps.themeEventSeen && caps.resolvedTheme == null) {
-                            caps.resolvedTheme = platform;
-                        }
-                    }
-                }
-            } finally {
-                latch.countDown();
-            }
-        }, "terminal-detect-color-query");
-        queryThread.setDaemon(true);
-        queryThread.start();
-
-        return caps;
+            }, "terminal-detect-color-query");
+            queryThread.setDaemon(true);
+            queryThread.start();
+        } catch (RuntimeException | Error e) {
+            caps.discovery.failure = e;
+            caps.discovery.completed.countDown();
+            throw e;
+        }
     }
 
     /**
@@ -428,10 +468,12 @@ public final class TerminalCapabilities {
     }
 
     /**
-     * Wait for the background color query to complete.
+     * Wait for an explicitly started shared discovery attempt to finish.
      * <p>
-     * Only relevant when created via {@link #detectAsync()}. For other
-     * factory methods, this returns {@code true} immediately.
+     * Relevant to async results and pending synchronous results obtained via
+     * {@link #getInstance()}. Environment-only results return immediately.
+     * A completed attempt does not imply that every fact was discovered;
+     * {@link #detectFull()} also propagates a producer's unchecked failure.
      *
      * @param timeout the maximum time to wait
      * @param unit the time unit
@@ -439,10 +481,10 @@ public final class TerminalCapabilities {
      * @throws InterruptedException if interrupted while waiting
      */
     public boolean awaitColors(long timeout, TimeUnit unit) throws InterruptedException {
-        if (colorQueryLatch == null) {
+        if (discovery == null) {
             return true;
         }
-        return colorQueryLatch.await(timeout, unit);
+        return discovery.completed.await(timeout, unit);
     }
 
     /**

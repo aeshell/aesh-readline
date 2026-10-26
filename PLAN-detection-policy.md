@@ -1,10 +1,12 @@
 # Detection policy and ownership, #378
 
-Status: passive core owner implemented; bounded enrichment and connection
-wiring remain proposals. The agreed first production slice is core-only, with
-public factories and passive reads as its test seams. Standalone defaults and
-connection behavior remain unchanged. The baseline prerequisite #379 is closed;
-continuing platform and integration checks remain in #377.
+Status: passive core owner, subprocess lifecycle foundation, and shared-round
+publication/coalescing are implemented. Bounded enrichment and connection wiring
+remain proposals. The public factories/passive reads are the agreed test seams.
+Backend selection, source precedence, and connection behavior remain unchanged;
+shared pending-result visibility and interrupted-join behavior change as described
+below. The baseline prerequisite #379 is closed; continuing platform and
+integration checks remain in #377.
 
 Production baseline: `782160ca`, with measurements of `c779c1e6` in
 [`benchmark/results/detection-local-2026-10-24.md`](benchmark/results/detection-local-2026-10-24.md).
@@ -15,12 +17,12 @@ Keep Java 8 support and zero runtime dependencies in `terminal-detect`.
 | Entry or read | Work reachable today | Consequence for policy |
 | --- | --- | --- |
 | `TerminalCapabilities.detect()` | Environment/property reads and value construction. No terminal, file, process, native transport, or worker. Does not publish into the shared instance. | Retain as the independent no-I/O path on every OS. Environment hints do not prove an endpoint is interactive. |
-| `getInstance()` | Returns the cached reference; on a miss, enters the class monitor and calls `detect()`. | A cold lookup can wait behind synchronous full detection holding that monitor. Do not promise nonblocking managed access through this miss path. |
-| `invalidate()` / shared theme notification | Updates shared state under the class monitor; theme notification also locks the selected result. | These transitions can wait behind full detection too. Keep publication/update transitions separate from the I/O lifetime. |
+| `getInstance()` | Returns the published reference, including pending full/async hints. A miss briefly enters the publication monitor for environment-only construction. | Does not join active discovery. Metadata construction and JVM class initialization still have costs; this is not a lock-free API promise. |
+| `setInstance()` / `invalidate()` / shared theme notification | Serializes publication transitions briefly; theme notification also locks the selected result. | No transport/file/process I/O or discovery completion wait holds this monitor. Retired work cannot overwrite a replacement default. |
 | Capability scalar/RGB/palette getters | Reads captured fields; RGB/palette getters make defensive copies. | Missing facts must remain missing, never trigger an upgrade. Keep scalar reads O(1), and avoid repeated whole-model conversion. |
 | `TerminalColorCapability.from(caps)` | Reads supplied capability values and copies/converts RGB/palette data. | No discovery, but not allocation-free. Reuse the converted value per revision rather than per log line. |
-| `detectFull()` | Shares completed detection, joins async completion without a timeout, or computes full detection under the class monitor. | Publication must not own the I/O wait. A caller wait and a discovery deadline are different contracts. |
-| `detectAsync()` | Environment scan, latch, and one daemon worker per shared async round. Worker runs terminal queries and optional IDE/OS fallback. | Quick return is not zero work or bounded completion. Preserve async-to-full reuse, not a second scheduler. |
+| `detectFull()` | Claims or joins one shared round, computing outside the publication monitor. Blocking joins restore interruption afterward without a replacement probe. | Still a legacy unbounded completion method. It does not implement the future overall enrichment deadline. |
+| `detectAsync()` | Reuses an existing full/async round immediately, or publishes one environment-backed result and starts its daemon outside the publication monitor. | Quick return is not zero work or bounded completion. One existing scheduler is reused; passive reads create no worker. |
 | `TerminalColorQuery.queryFull()` | Selects an exclusive custom transport, or FFM, Win32, then stty. Availability/selection can perform filesystem checks and native binding initialization. Serializes the session under `PROBE_LOCK`. | Check permissions before loading or constructing transports, including before `isAvailable()`. The monitor acquisition has no deadline today. |
 | Probe session | Opens an endpoint, saves/changes raw mode, writes mode/DA1/color queries, reads replies, possibly probes grapheme width, restores cursor/state, closes. | One round needs one deadline and one I/O owner. Current stream timeouts are not an overall deadline. |
 | `TerminalDetector.detectIdeOrPlatformTheme()` | IDE/config filesystem lookups and reads, then platform subprocesses if unresolved. Linux can try two commands. | Permissions and remaining budget must cover fallback too. Unknown or a missing RGB value is not permission to try another source. |
@@ -115,15 +117,29 @@ Results and reproduction are in the
 
 ## One owned round
 
-Reuse the current full/async computation and result application rules. Move
-publication transitions outside I/O, with one in-flight round reference per
-owner/generation. Concurrent requests join that round rather than selecting a
-second transport or starting a worker for every caller.
+The shared default now claims one round under a short publication monitor and
+publishes its environment-backed result before transport I/O. A synchronous
+producer executes inline, while a newly claimed async producer uses the existing
+daemon pattern. Both use one computation and one completion/failure record.
+Other full callers join outside the monitor; async callers and `getInstance()`
+return the published result immediately.
 
-The owner captures its transport and permissions when starting the round;
-later changes to the legacy static transport setter cannot change that round
-mid-flight. Existing static factories remain the simple standalone entry points.
-Do not silently apply a caller's stricter policy to another owner's work.
+The approved legacy `detectFull()` contract is blocking completion with interrupt
+restoration. It no longer performs a fresh probe when its join is interrupted.
+Unchecked producer/startup failure completes waiters and is propagated by full
+callers, not cached as success or silently retried. Invalidate explicitly to
+request another generation. Theme events outrank late RGB/fallback publication.
+
+Default replacement and invalidation can proceed during I/O. Full callers check
+reference identity again after completion and join the current generation when
+theirs was retired. An old producer only fills its own captured result; it cannot
+publish over a replacement. Invalidation does not cancel already owned I/O.
+
+For future permission-aware enrichment, the scoped owner must capture its
+transport and permissions at round creation. The legacy static query path still
+selects its transport at query entry; this slice does not turn that global setter
+into an endpoint-scoped permission mechanism. Do not silently apply a stricter
+consumer's policy to another owner's work.
 
 A passive read never awaits a round. A bounded waiter can stop waiting without
 cancelling a round owned by someone else. Refresh/replacement cancels through
@@ -135,6 +151,9 @@ Preserve measured-RGB precedence, theme-event precedence, defensive array
 ownership, and remote isolation. Do not introduce revision/subscription types
 ahead of #381/#380. A static default belongs to its defining class loader; it
 is not a cross-class-loader sharing mechanism.
+
+Behavioral proof, cold parallel-first coverage, and local JVM/native costs are
+in the [shared discovery report](benchmark/results/detection-shared-2026-10-26.md).
 
 ## Subprocess lifecycle foundation
 
@@ -159,9 +178,9 @@ The deadline/cancellation-aware transport contract remains a separate step.
 Real child-JVM fixtures prove startup, output completion, direct-child lifetime,
 and drainer termination. A deliberately surviving descendant holds inherited
 pipes and a lifetime lock. The test explicitly stops that descendant afterward;
-it does not claim the runner killed it. The JVM cases run on Windows as well
-as POSIX, while a shell-only finite-over-cap regression also executes in the
-POSIX native test image. Per-fd TTY probes remain on their independent path;
+it does not claim the runner killed it. The JVM cases are portable to Windows
+and POSIX; local runs here are Linux. A shell-only finite-over-cap case also
+executes in the POSIX native test image. Per-fd TTY probes remain independent;
 this runner's stderr merging must not be used to replace them.
 
 Execution proof, limits, and local before/after command costs are in the
@@ -243,8 +262,9 @@ Next independently testable changes, in order:
    Settle the deadline-aware transport contract before adding bounded enrichment.
 2. Preserve the scoped no-I/O spies and extend native operation coverage and
    known-headless/consume-only integration tests when wiring consumers.
-3. Refactor shared publication and coalescing without changing standalone
-   results. Re-run cold barrier tests, async/full reuse, and invalidation races.
+3. Preserve the implemented publication/coalescing guards, cold parallel-first
+   child, full/async reuse, and invalidation/theme/failure races when integrating
+   scoped enrichment. Do not reintroduce I/O under publication locks.
 4. Implement one deadline through the allowed transports and subprocess paths.
    Prove stalled/filled/descendant-held pipe cleanup and no accumulated workers,
    including behavioral tests that fail with the deadline removed.
@@ -253,6 +273,6 @@ Next independently testable changes, in order:
 6. Repeat the packaged JVM/native baselines and actual Quarkus integration.
    Keep native runtime hints unfrozen and count executed fixture/backend paths.
 
-Only passive owner factories are implemented here. There is no enrichment
-factory, connection wiring, new scheduler, global policy, or backend-default
-change.
+Implemented scope is the passive core plus shared-default and subprocess
+foundations. There is no permission-aware enrichment factory, connection wiring,
+new scheduler, global policy, or backend-default change.

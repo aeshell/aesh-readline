@@ -227,8 +227,16 @@ Capture the owner once, then reuse it for reads.
 
 A supplied result stays attached even if the process default changes. Its
 producer may still fill pending values; passive reads never wait for that work.
-This does not establish a live TTY or grant input ownership. Connection getters,
-legacy factories and bounded enrichment are not changed by this core interface.
+This does not establish a live TTY or grant input ownership. The passive core
+adds no bounded enrichment or connection-getter wiring.
+
+Shared full/async detection publishes pending hints before terminal I/O.
+`TerminalCapabilities.getInstance()` reads that result without joining it;
+`detectAsync()` reuses a synchronous round already in progress. `detectFull()`
+still waits for completion. If its join is interrupted, it finishes the same
+round and restores the flag instead of starting a second probe. An unchecked
+producer failure is propagated by full callers until explicit invalidation.
+These shared factories do not implement a hard overall enrichment deadline.
 
 ### ANSIBuilder
 

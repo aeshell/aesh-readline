@@ -263,8 +263,13 @@ budgets separately.
 Warm `environmentOwner`, `managedOwner`, `emptyManagedOwner`, and `scopedRead`
 benchmarks separate scope creation from repeated reads. The existing
 environment/shared-lookup benchmarks remain controls with unchanged meanings.
+`cachedFull` and `cachedAsync` measure completed shared-round factory lookups;
+trial teardown still verifies there was only one discovery session.
 The [passive core report](results/detection-scoped-2026-10-24.md) records their
 JVM/native measurements, operation-budget proof, and remaining scope.
+The [shared discovery report](results/detection-shared-2026-10-26.md) compares
+publication/coalescing costs against `7073fb85`, with baseline behavioral
+failures, cold facade races, warm cached lookups, and separate native results.
 
 #### Shared subprocess wall time
 

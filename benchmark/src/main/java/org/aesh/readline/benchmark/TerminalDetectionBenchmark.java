@@ -79,6 +79,16 @@ public class TerminalDetectionBenchmark {
     }
 
     @Benchmark
+    public TerminalCapabilities cachedFull(CapabilitiesState state) {
+        return TerminalCapabilities.detectFull();
+    }
+
+    @Benchmark
+    public TerminalCapabilities cachedAsync(CapabilitiesState state) {
+        return TerminalCapabilities.detectAsync();
+    }
+
+    @Benchmark
     public void environmentOwner(CapabilitiesState state, Blackhole blackhole) {
         blackhole.consume(TerminalDetection.environmentOnly());
     }

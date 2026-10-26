@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.Assume;
@@ -602,7 +603,11 @@ public class TerminalCapabilitiesTest {
                 new TerminalDetector().isInMultiplexer());
         TerminalCapabilities saved = TerminalCapabilities.getInstance();
         CountDownLatch release = new CountDownLatch(1);
-        final int[] opens = new int[1];
+        final CountDownLatch entered = new CountDownLatch(1);
+        final CountDownLatch joining = new CountDownLatch(1);
+        final AtomicInteger opens = new AtomicInteger();
+        TerminalCapabilities pending = null;
+        Thread joiner = null;
         try {
             TerminalCapabilities.setProbeTransport(new TerminalProbeTransport() {
                 @Override
@@ -612,25 +617,26 @@ public class TerminalCapabilitiesTest {
 
                 @Override
                 public TerminalProbeSession open() {
-                    opens[0]++;
-                    // First session stays gated so the joiner blocks in the
-                    // upgrade wait; the interrupt fallback re-opens for a
-                    // fresh instant probe.
-                    InputStream in = opens[0] == 1
-                            ? new GatedStream(release, probeBatch(false))
-                            : new ByteArrayInputStream(probeBatch(false));
-                    return sessionOf(in);
+                    opens.incrementAndGet();
+                    entered.countDown();
+                    return sessionOf(new GatedStream(release, probeBatch(false)));
                 }
             });
             TerminalCapabilities.invalidate();
-            final TerminalCapabilities async = TerminalCapabilities.detectAsync();
+            pending = TerminalCapabilities.detectAsync();
+            final TerminalCapabilities async = pending;
+            assertTrue("background fixture must open", entered.await(5, TimeUnit.SECONDS));
             final AtomicReference<TerminalCapabilities> result = new AtomicReference<>();
+            final AtomicReference<Throwable> failure = new AtomicReference<>();
             final AtomicBoolean interruptedSeen = new AtomicBoolean();
-            Thread joiner = new Thread(new Runnable() {
+            joiner = new Thread(new Runnable() {
                 @Override
                 public void run() {
                     try {
+                        joining.countDown();
                         result.set(TerminalCapabilities.detectFull());
+                    } catch (Throwable e) {
+                        failure.set(e);
                     } finally {
                         interruptedSeen.set(Thread.currentThread().isInterrupted());
                     }
@@ -638,25 +644,34 @@ public class TerminalCapabilitiesTest {
             }, "full-joiner");
             joiner.setDaemon(true);
             joiner.start();
-            Thread.sleep(500);
-            // Interrupt first: the background probe is still gated, so the
-            // latch cannot have fired and the wait must throw. Release
-            // second so both the background drain and the fallback fresh
-            // probe (which needs the session lock) proceed instantly.
+            assertTrue("full joiner must start", joining.await(5, TimeUnit.SECONDS));
+            // The producer stays gated until after interruption. Whether the
+            // flag arrives just before await or during it, no new round starts.
             joiner.interrupt();
             release.countDown();
             joiner.join(10000);
             assertFalse("joining full must return", joiner.isAlive());
+            assertNull("joining full must not fail", failure.get());
             assertNotNull(result.get());
-            assertNotSame("interrupted join must fall back to fresh compute",
-                    async, result.get());
-            assertEquals("fallback performs exactly one fresh probe", 2, opens[0]);
+            assertSame("interruption must not replace the owned round", async, result.get());
+            assertEquals("interruption must not authorize another probe", 1, opens.get());
+            assertArrayEquals(new int[] { 0, 0, 0 }, result.get().backgroundRGB());
             assertTrue("interrupt status must survive detectFull", interruptedSeen.get());
-            assertSame("fallback must cache as full", result.get(), TerminalCapabilities.detectFull());
+            assertSame("joined result must cache as full", result.get(), TerminalCapabilities.detectFull());
         } finally {
             release.countDown();
-            TerminalCapabilities.setProbeTransport(null);
-            TerminalCapabilities.setInstance(saved);
+            try {
+                if (pending != null) {
+                    assertTrue("producer must finish before teardown", pending.awaitColors(10, TimeUnit.SECONDS));
+                }
+                if (joiner != null) {
+                    joiner.join(10000);
+                    assertFalse("joiner must finish before teardown", joiner.isAlive());
+                }
+            } finally {
+                TerminalCapabilities.setProbeTransport(null);
+                TerminalCapabilities.setInstance(saved);
+            }
         }
     }
 
