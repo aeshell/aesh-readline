@@ -38,6 +38,57 @@ public class TestBase {
         }
     }
 
+    /**
+     * Count live threads whose name starts with the given prefix.
+     * Sizes the sample from the live count and retries on truncation:
+     * {@code enumerate} fills silently up to the array length, so a
+     * fixed small array can miss threads created in a burst.
+     *
+     * @param prefix the thread-name prefix to count
+     * @return the number of live matching threads
+     */
+    public static int countThreadsByPrefix(String prefix) {
+        Thread[] threads = new Thread[Thread.activeCount() + 64];
+        int seen = Thread.enumerate(threads);
+        while (seen == threads.length) {
+            threads = new Thread[threads.length * 2];
+            seen = Thread.enumerate(threads);
+        }
+        int count = 0;
+        for (int i = 0; i < seen; i++) {
+            if (threads[i].isAlive() && threads[i].getName().startsWith(prefix)) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    /**
+     * Wait until at most {@code expected} threads match the prefix.
+     * Daemon reader threads stop asynchronously after close, so poll
+     * with a deadline instead of asserting the count immediately.
+     * The {@code <=} comparison tolerates unrelated threads winding
+     * down mid-test; use exact equality at the call site when the
+     * precise count is the assertion.
+     *
+     * @param prefix the thread-name prefix to count
+     * @param expected the maximum acceptable matching threads
+     * @param timeoutMs the deadline for returning to baseline
+     * @throws InterruptedException if the waiting thread is interrupted
+     */
+    public static void awaitThreadsByPrefix(String prefix, int expected, long timeoutMs)
+            throws InterruptedException {
+        long deadline = System.currentTimeMillis() + timeoutMs;
+        while (System.currentTimeMillis() < deadline) {
+            if (countThreadsByPrefix(prefix) <= expected) {
+                return;
+            }
+            Thread.sleep(50);
+        }
+        Assert.assertEquals("reader threads must return to baseline",
+                expected, countThreadsByPrefix(prefix));
+    }
+
     private static int ctrl(char c) {
         return c - 64;
     }

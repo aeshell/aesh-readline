@@ -40,6 +40,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.aesh.terminal.Attributes;
 import org.aesh.terminal.Terminal;
+import org.aesh.terminal.TestBase;
 import org.aesh.terminal.utils.ANSI;
 import org.junit.Test;
 
@@ -254,16 +255,7 @@ public class TerminalConnectionCloseTest {
     }
 
     private static int countReaderThreads() {
-        Thread[] threads = new Thread[Thread.activeCount() + 16];
-        int n = Thread.enumerate(threads);
-        int count = 0;
-        for (int i = 0; i < n; i++) {
-            if ("Aesh InputStream Reader".equals(threads[i].getName())
-                    && threads[i].isAlive()) {
-                count++;
-            }
-        }
-        return count;
+        return TestBase.countThreadsByPrefix("Aesh InputStream Reader");
     }
 
     private static void awaitReaderCount(int expected, long timeoutMs) throws InterruptedException {

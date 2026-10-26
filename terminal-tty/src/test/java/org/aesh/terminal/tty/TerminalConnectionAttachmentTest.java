@@ -16,6 +16,7 @@ package org.aesh.terminal.tty;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 
 import java.io.ByteArrayInputStream;
 import java.util.HashMap;
@@ -76,6 +77,27 @@ public class TerminalConnectionAttachmentTest {
             connection.terminal();
             assertSame("the captured owner must not follow global replacement",
                     first, connection.attachedDetection().capabilities());
+        } finally {
+            connection.close();
+            TerminalCapabilities.setInstance(saved);
+        }
+    }
+
+    @Test
+    public void testLateAttachWinsOverCapturedDefault() {
+        TerminalCapabilities saved = TerminalCapabilities.getInstance();
+        TerminalCapabilities.setInstance(TerminalCapabilities.detect());
+        LocalTestConnection connection = new LocalTestConnection(stubTerminal(new BaseDevice("xterm-256color")));
+        try {
+            connection.terminal();
+            assertTrue("first access captures the shared default",
+                    connection.attachedDetection() != null);
+            Map<String, String> env = new HashMap<>();
+            env.put("TERM", "xterm-256color");
+            env.put("COLORFGBG", "0;15");
+            connection.attachDetection(TerminalDetection.environmentOnly(env));
+            assertEquals(TerminalTheme.LIGHT,
+                    connection.terminal().colorCapability().getTheme());
         } finally {
             connection.close();
             TerminalCapabilities.setInstance(saved);

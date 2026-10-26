@@ -2,10 +2,10 @@
 
 Status: passive core owner, subprocess lifecycle foundation, shared-round
 publication/coalescing, deadline/cancellation-aware transport contract,
-public bounded enrichment factory, and per-connection attachment with
-attached-fact getters are implemented. Connection-setup validation and
-endpoint facts remain. The public factories/passive reads are the agreed
-test seams.
+public bounded enrichment factory, per-connection attachment with
+attached-fact getters, and hermetic connection-setup validation are
+implemented. Real-PTY/Windows field validation and endpoint facts
+remain. The public factories/passive reads are the agreed test seams.
 Backend selection, source precedence, and connection behavior remain unchanged;
 shared pending-result visibility and interrupted-join behavior change as described
 below. The baseline prerequisite #379 is closed; continuing platform and
@@ -301,10 +301,11 @@ are not evidence for the proposed native no-I/O policy.
 
 Next independently testable changes, in order:
 
-1. Review connection setup validation with #381/#382: mixed fd layouts,
-   explicit streams, reader ownership, mintty/native Windows, and real PTYs.
-   Attachment and attached-fact getters are wired; endpoint facts (#382)
-   decide the remaining precedence questions.
+1. Review remaining validation with #381/#382: mintty/native Windows and
+   real PTYs plus actual Quarkus integration. Hermetic JVM setup validation
+   is done (explicit streams, EOF-stdin and held-pipe layouts, reader
+   ownership and thread accounting, attached getters without a terminal);
+   endpoint facts (#382) decide the remaining precedence questions.
 2. Preserve the scoped no-I/O spies and extend native operation coverage and
    known-headless/consume-only integration tests when wiring consumers.
 3. Preserve the implemented publication/coalescing guards, cold parallel-first
@@ -312,14 +313,16 @@ Next independently testable changes, in order:
    contract/factory guards when integrating scoped enrichment. Do not
    reintroduce I/O under publication locks or unbounded opens on the bounded
    path.
-4. Validate mixed fd layouts, explicit streams, reader ownership,
-   mintty/native Windows, and real PTYs against the wired getters.
-   Prove stalled/filled/descendant-held pipe cleanup and no accumulated
-   workers, including behavioral tests that fail with the deadline removed.
+4. Validate attached getters on real PTYs and native Windows/mintty, and
+   repeat the stalled/filled/descendant-held pipe cleanup proofs there.
+   The JVM legs are covered: held-pipe DA1 degradation with a pinned
+   500&nbsp;ms-class wait, suppression with zero queries, close promptly
+   returning on a blocked reader, and 10-cycle open/close runs with
+   thread counts back at baseline — each with a behavioral red proof.
 5. Repeat the packaged JVM/native baselines and actual Quarkus integration.
    Keep native runtime hints unfrozen and count executed fixture/backend paths.
 
 Implemented scope is the passive core plus shared-default, subprocess,
-bounded-transport-contract, bounded-factory, and connection-attachment
-foundations. There is no connection-setup validation, new scheduler,
-global policy, or backend-default change.
+bounded-transport-contract, bounded-factory, connection-attachment, and
+hermetic setup-validation foundations. There is no Windows/PTY field
+validation, new scheduler, global policy, or backend-default change.
