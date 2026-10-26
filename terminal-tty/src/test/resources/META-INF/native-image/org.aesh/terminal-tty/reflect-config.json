@@ -1,0 +1,9 @@
+[
+  {
+    "name": "org.aesh.terminal.detect.TerminalCapabilities",
+    "fields": [
+      { "name": "backgroundRGB" },
+      { "name": "mode2026Support" }
+    ]
+  }
+]

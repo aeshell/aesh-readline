@@ -62,11 +62,5 @@
       { "name": "ALLOC_CONSOLE" },
       { "name": "FREE_CONSOLE" }
     ]
-  },
-  {
-    "name": "org.aesh.terminal.detect.TerminalCapabilities",
-    "fields": [
-      { "name": "mode2026Support" }
-    ]
   }
 ]
