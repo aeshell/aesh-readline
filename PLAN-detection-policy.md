@@ -1,9 +1,10 @@
 # Detection policy and ownership, #378
 
 Status: passive core owner, subprocess lifecycle foundation, shared-round
-publication/coalescing, and the deadline/cancellation-aware transport
-contract are implemented. The bounded enrichment factory and connection wiring
-remain proposals. The public factories/passive reads are the agreed test seams.
+publication/coalescing, deadline/cancellation-aware transport contract, and
+the public bounded enrichment factory are implemented. Connection wiring
+remains the proposal. The public factories/passive reads are the agreed test
+seams.
 Backend selection, source precedence, and connection behavior remain unchanged;
 shared pending-result visibility and interrupted-join behavior change as described
 below. The baseline prerequisite #379 is closed; continuing platform and
@@ -223,15 +224,31 @@ Implemented contract (`ProbeDeadline`, `ProbePermissions`,
   waits to the remaining budget; FFM/Win32 decline an expired deadline before
   touching the terminal. Legacy custom transports stay unbounded-only.
 
-Before exposing the public bounded factory, the remaining items are:
+Public factory (`TerminalCapabilities.detectBounded`, plus package-visible
+`computeBounded` detector seam mirroring `computeFull`):
+
+- The result is independent, like `detect()`: it never consults, joins, or
+  publishes shared discovery. One enrichment attempt runs when deadline and
+  permissions allow: a terminal query (skipped under multiplexers, where
+  live queries cannot see past them) plus IDE/platform theme fallback.
+- Decline, timeout, and transport failure degrade to environment hints, never
+  to null. Null deadline, permissions, or detector fail fast. Interruption
+  restores the flag and returns the hints collected so far.
+- The factory blocks the calling thread up to the deadline plus one read
+  quantum; the existing scoped-owner and connection wiring (#381) will decide
+  which thread that is. It does not implement subscription or revision
+  notifications.
+
+Before connection wiring, the remaining items are:
 
 - ~~Specify a deadline/cancellation-aware transport contract and implement it in
   each allowed backend. Legacy custom transports must not be described as
-  bounded merely because they implement today's interface.~~ Done above; the
-  public bounded factory is still missing.
+  bounded merely because they implement today's interface.~~ Done above.
 - ~~Replace untimed probe-lock acquisition on this path with an interruptible,
   deadline-aware acquisition. Keep process-wide raw-mode exclusion when two
   standalone owners address the same local terminal.~~ Done via `ReentrantLock`.
+- ~~Expose the public bounded factory over the contract.~~ Done via
+  `detectBounded`; scoped-owner and connection wiring stay in #381.
 - Correct subprocess lifetime accounting, including exited children whose
   descendants retain output handles, full stderr, and repeated cancellation.
   A deadline check alone cannot interrupt `ProcessBuilder.start()`.
@@ -284,24 +301,22 @@ are not evidence for the proposed native no-I/O policy.
 Next independently testable changes, in order:
 
 1. Review connection attachment with #381/#382, reusing the passive core above.
-   The deadline-aware transport contract is settled; the public bounded
-   enrichment factory is still missing.
+   The deadline contract and public bounded factory are settled; wire the
+   scoped owner and running-reader mediation next.
 2. Preserve the scoped no-I/O spies and extend native operation coverage and
    known-headless/consume-only integration tests when wiring consumers.
 3. Preserve the implemented publication/coalescing guards, cold parallel-first
    child, full/async reuse, invalidation/theme/failure races, and the bounded
-   contract guards when integrating scoped enrichment. Do not reintroduce I/O
-   under publication locks or unbounded opens on the bounded path.
-4. Implement the public bounded factory over the contract: one deadline through
-   the allowed transports and subprocess paths. Prove stalled/filled/
-   descendant-held pipe cleanup and no accumulated workers, including
-   behavioral tests that fail with the deadline removed.
-5. Wire connection setup and automatic getters, then validate mixed fd layouts,
+   contract/factory guards when integrating scoped enrichment. Do not
+   reintroduce I/O under publication locks or unbounded opens on the bounded
+   path.
+4. Wire connection setup and automatic getters, then validate mixed fd layouts,
    explicit streams, reader ownership, mintty/native Windows, and real PTYs.
-6. Repeat the packaged JVM/native baselines and actual Quarkus integration.
+   Prove stalled/filled/descendant-held pipe cleanup and no accumulated
+   workers, including behavioral tests that fail with the deadline removed.
+5. Repeat the packaged JVM/native baselines and actual Quarkus integration.
    Keep native runtime hints unfrozen and count executed fixture/backend paths.
 
-Implemented scope is the passive core plus shared-default, subprocess, and
-bounded-transport-contract foundations. There is no public bounded enrichment
-factory, connection wiring, new scheduler, global policy, or backend-default
-change.
+Implemented scope is the passive core plus shared-default, subprocess,
+bounded-transport-contract, and bounded-factory foundations. There is no
+connection wiring, new scheduler, global policy, or backend-default change.

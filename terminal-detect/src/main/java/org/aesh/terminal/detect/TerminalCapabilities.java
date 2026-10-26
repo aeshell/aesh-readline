@@ -361,6 +361,91 @@ public final class TerminalCapabilities {
         return caps;
     }
 
+    /**
+     * Detect terminal capabilities with one bounded enrichment attempt.
+     * <p>
+     * Like {@link #detect()}, the result is independent: it never consults,
+     * joins, or publishes shared discovery. Unlike {@code detect()}, one
+     * enrichment round may run when the deadline and permissions allow it:
+     * a terminal query (skipped under multiplexers, where live queries
+     * cannot see past the multiplexer) followed by IDE and platform theme
+     * fallback. Decline, timeout, and transport failure degrade to
+     * environment hints, never to null.
+     * <p>
+     * This call blocks the calling thread up to the deadline, plus one
+     * transport read quantum while a native wait is already in flight.
+     * Keep it off latency-critical caller threads. Interruption restores
+     * the interrupt flag and returns the hints collected so far.
+     *
+     * @param deadline the round deadline, created before transport selection
+     * @param permissions what this round may touch
+     * @return the detected capabilities, never null
+     * @throws NullPointerException if the deadline or permissions are null
+     */
+    public static TerminalCapabilities detectBounded(ProbeDeadline deadline, ProbePermissions permissions) {
+        Objects.requireNonNull(deadline, "deadline");
+        Objects.requireNonNull(permissions, "permissions");
+        return computeBounded(new TerminalDetector(), deadline, permissions);
+    }
+
+    /**
+     * Detect terminal capabilities with one bounded enrichment attempt and
+     * full permissions.
+     * <p>
+     * Convenience for standalone callers: the budget starts now and every
+     * enrichment source is permitted. See
+     * {@link #detectBounded(ProbeDeadline, ProbePermissions)} for the
+     * blocking, independence, and degradation contract.
+     *
+     * @param timeout the enrichment budget from now
+     * @param unit the budget unit
+     * @return the detected capabilities, never null
+     */
+    public static TerminalCapabilities detectBounded(long timeout, TimeUnit unit) {
+        return detectBounded(ProbeDeadline.after(timeout, unit), ProbePermissions.all());
+    }
+
+    /**
+     * Bounded enrichment over an injected detector. Package-visible so tests
+     * can pin the environment and OS name instead of inheriting the
+     * developer machine, mirroring {@link #computeFull(TerminalDetector)}.
+     *
+     * @param detector the environment/OS facts to detect from
+     * @param deadline the round deadline
+     * @param permissions what this round may touch
+     * @return the detected capabilities
+     */
+    static TerminalCapabilities computeBounded(TerminalDetector detector,
+            ProbeDeadline deadline, ProbePermissions permissions) {
+        TerminalCapabilities caps = new TerminalCapabilities(
+                Objects.requireNonNull(detector, "detector"), null);
+        caps.enrichBounded(
+                Objects.requireNonNull(deadline, "deadline"),
+                Objects.requireNonNull(permissions, "permissions"));
+        return caps;
+    }
+
+    /** One bounded enrichment attempt; never joins or publishes discovery. */
+    private void enrichBounded(ProbeDeadline deadline, ProbePermissions permissions) {
+        if (!detector.isInMultiplexer() && permissions.allowTerminalQuery() && !deadline.isExpired()) {
+            TerminalColorQuery result = TerminalColorQuery.queryFirstAvailableBounded(deadline, permissions);
+            if (result != null) {
+                applyColorResult(result);
+                if (result.graphemeClustering != null) {
+                    nativeGraphemeClustering = result.graphemeClustering;
+                }
+            }
+        }
+        if (resolvedTheme == null && detector.theme == TerminalTheme.UNKNOWN
+                && (permissions.allowIdeFiles() || permissions.allowPlatformSubprocess())
+                && !deadline.isExpired()) {
+            TerminalTheme platform = detector.detectIdeOrPlatformTheme(deadline, permissions);
+            if (!themeEventSeen && resolvedTheme == null) {
+                resolvedTheme = platform;
+            }
+        }
+    }
+
     /** Shared full/async computation; never called under the publication lock. */
     private void enrich() {
         // One computation for full/async: measured RGB outranks hints, and
