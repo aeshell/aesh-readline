@@ -35,7 +35,7 @@ import java.io.InputStream;
  * parsing stays in {@link TerminalColorQuery}; this class only owns
  * raw-mode I/O.
  */
-final class SttyProbeTransport implements TerminalProbeTransport {
+final class SttyProbeTransport implements BoundedProbeTransport {
 
     static final SttyProbeTransport INSTANCE = new SttyProbeTransport();
 
@@ -64,6 +64,14 @@ final class SttyProbeTransport implements TerminalProbeTransport {
         return open("stty", DEV_TTY);
     }
 
+    @Override
+    public TerminalProbeSession open(ProbeDeadline deadline) throws IOException {
+        if (deadline == null || deadline.isExpired()) {
+            throw new IOException("probe deadline expired");
+        }
+        return openBounded("stty", DEV_TTY, deadline);
+    }
+
     /**
      * Open a probe session against an explicit command and tty device.
      * Package visible so tests can substitute a fixture command without
@@ -87,6 +95,26 @@ final class SttyProbeTransport implements TerminalProbeTransport {
             throw e;
         }
         return new SttyProbeSession(command, tty, savedState);
+    }
+
+    static TerminalProbeSession openBounded(String command, File tty, ProbeDeadline deadline)
+            throws IOException {
+        String savedState = sttyGet(command, tty, deadline);
+        if (savedState == null) {
+            throw new IOException("stty unavailable or probe deadline expired");
+        }
+        try {
+            sttyRaw(command, tty, deadline);
+        } catch (IOException | RuntimeException e) {
+            sttyRestore(command, tty, savedState);
+            throw e;
+        }
+        try {
+            return new SttyProbeSession(command, tty, savedState);
+        } catch (IOException e) {
+            sttyRestore(command, tty, savedState);
+            throw e;
+        }
     }
 
     private static final class SttyProbeSession implements TerminalProbeSession {
@@ -170,6 +198,40 @@ final class SttyProbeTransport implements TerminalProbeTransport {
         }
     }
 
+    private static String sttyGet(String command, File tty, ProbeDeadline deadline) {
+        if (deadline == null || deadline.isExpired()) {
+            return null;
+        }
+        Process p = null;
+        try {
+            p = new ProcessBuilder(command, "-g")
+                    .redirectInput(tty)
+                    .redirectErrorStream(true)
+                    .start();
+            byte[] buf = new byte[256];
+            StringBuilder sb = new StringBuilder();
+            int n;
+            while ((n = p.getInputStream().read(buf)) != -1) {
+                sb.append(new String(buf, 0, n));
+                if (deadline.isExpired()) {
+                    return null;
+                }
+            }
+            if (!p.waitFor(deadline.remainingNanos(), java.util.concurrent.TimeUnit.NANOSECONDS)) {
+                return null;
+            }
+            return p.exitValue() == 0 ? sb.toString().trim() : null;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return null;
+        } catch (Exception ignored) {
+            return null;
+        } finally {
+            if (p != null)
+                p.destroy();
+        }
+    }
+
     private static void sttyRaw(String command, File tty) throws IOException {
         Process p = null;
         try {
@@ -179,6 +241,32 @@ final class SttyProbeTransport implements TerminalProbeTransport {
                     .redirectErrorStream(true)
                     .start();
             p.waitFor();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("interrupted while setting terminal raw mode", e);
+        } finally {
+            if (p != null)
+                p.destroy();
+        }
+        if (p.exitValue() != 0) {
+            throw new IOException("stty raw mode failed with exit code " + p.exitValue());
+        }
+    }
+
+    private static void sttyRaw(String command, File tty, ProbeDeadline deadline) throws IOException {
+        if (deadline == null || deadline.isExpired()) {
+            throw new IOException("probe deadline expired before raw mode setup");
+        }
+        Process p = null;
+        try {
+            p = new ProcessBuilder(command, "-echo", "-icanon", "-ixon", "min", "0", "time", "5")
+                    .redirectInput(tty)
+                    .redirectOutput(ProcessBuilder.Redirect.INHERIT)
+                    .redirectErrorStream(true)
+                    .start();
+            if (!p.waitFor(deadline.remainingNanos(), java.util.concurrent.TimeUnit.NANOSECONDS)) {
+                throw new IOException("probe deadline expired while setting terminal raw mode");
+            }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IOException("interrupted while setting terminal raw mode", e);

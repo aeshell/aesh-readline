@@ -43,7 +43,7 @@ import java.lang.foreign.ValueLayout;
  * {@code /dev/tty} opens are unreliable there; on Linux it opens
  * {@code /dev/tty} directly to bypass stdin/stdout redirection.
  */
-final class FfmProbeTransport implements TerminalProbeTransport {
+final class FfmProbeTransport implements BoundedProbeTransport {
 
     private static final File DEV_TTY = new File("/dev/tty");
 
@@ -63,6 +63,14 @@ final class FfmProbeTransport implements TerminalProbeTransport {
 
     @Override
     public TerminalProbeSession open() throws IOException {
+        return new FfmProbeSession();
+    }
+
+    @Override
+    public TerminalProbeSession open(ProbeDeadline deadline) throws IOException {
+        if (deadline == null || deadline.isExpired()) {
+            throw new IOException("probe deadline expired");
+        }
         return new FfmProbeSession();
     }
 

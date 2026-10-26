@@ -27,6 +27,8 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Direct terminal color queries via OSC escape sequences.
@@ -41,7 +43,9 @@ final class TerminalColorQuery {
     // All built-in probe sessions change process-wide tty/console mode.
     // Serialize raw-mode capture and restore across synchronous, async,
     // color, and grapheme probes so their saved states cannot overlap.
-    private static final Object PROBE_LOCK = new Object();
+    // A ReentrantLock keeps the legacy exclusion while letting bounded
+    // rounds decline instead of waiting past their deadline.
+    private static final ReentrantLock PROBE_LOCK = new ReentrantLock();
 
     // OSC 10/11: foreground/background
     // OSC 4;N: palette color N
@@ -65,6 +69,11 @@ final class TerminalColorQuery {
                 default:
                     throw new AssertionError(this);
             }
+        }
+
+        TerminalProbeTransport availableBounded() {
+            TerminalProbeTransport transport = available();
+            return transport instanceof BoundedProbeTransport ? transport : null;
         }
     }
 
@@ -182,7 +191,8 @@ final class TerminalColorQuery {
         if (!transport.isAvailable()) {
             return null;
         }
-        synchronized (PROBE_LOCK) {
+        PROBE_LOCK.lock();
+        try {
             try (TerminalProbeSession session = transport.open()) {
                 session.write(buildColorQuery());
 
@@ -199,6 +209,8 @@ final class TerminalColorQuery {
             } catch (IOException ignored) {
                 return null;
             }
+        } finally {
+            PROBE_LOCK.unlock();
         }
     }
 
@@ -233,7 +245,8 @@ final class TerminalColorQuery {
         if (!transport.isAvailable()) {
             return null;
         }
-        synchronized (PROBE_LOCK) {
+        PROBE_LOCK.lock();
+        try {
             long openStart = System.nanoTime();
             try (TerminalProbeSession session = transport.open()) {
                 long opened = System.nanoTime();
@@ -259,6 +272,8 @@ final class TerminalColorQuery {
             } catch (IOException ignored) {
                 return null;
             }
+        } finally {
+            PROBE_LOCK.unlock();
         }
     }
 
@@ -306,6 +321,109 @@ final class TerminalColorQuery {
     }
 
     /**
+     * Bounded color/mode query against one deadline-aware transport.
+     * Declines before any I/O when the terminal-query permission is
+     * missing or the deadline already expired. A legacy transport cannot
+     * satisfy this overload; use {@link #queryFirstAvailableBounded} so
+     * the decline is explicit at the selection site.
+     *
+     * @param transport the deadline-aware transport to probe through
+     * @param deadline the round deadline
+     * @param permissions what this round may touch
+     * @return the combined result, or null when declined or incomplete
+     */
+    static TerminalColorQuery queryFullBounded(BoundedProbeTransport transport,
+            ProbeDeadline deadline, ProbePermissions permissions) {
+        if (transport == null || deadline == null || permissions == null) {
+            return null;
+        }
+        if (!permissions.allowTerminalQuery() || deadline.isExpired()) {
+            return null;
+        }
+        if (!transport.isAvailable() || deadline.isExpired()) {
+            return null;
+        }
+        boolean locked = false;
+        try {
+            locked = PROBE_LOCK.tryLock(deadline.remainingNanos(), TimeUnit.NANOSECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return null;
+        }
+        if (!locked) {
+            return null;
+        }
+        try {
+            if (deadline.isExpired()) {
+                return null;
+            }
+            try (TerminalProbeSession session = transport.open(deadline)) {
+                session.write(buildColorQuery());
+                String response = readBatchResponse(session.input(), deadline);
+                if (response == null || response.isEmpty()) {
+                    return null;
+                }
+                TerminalColorQuery result = parseColorBatch(response);
+                if (result.da1Received && result.mode2027 == ModeSupport.NOT_SUPPORTED
+                        && !deadline.isExpired()) {
+                    try {
+                        result.graphemeClustering = probeGraphemeInSession(session, deadline);
+                    } catch (IOException graphemeFailure) {
+                        result.graphemeClustering = false;
+                    }
+                }
+                return result;
+            } catch (IOException ignored) {
+                return null;
+            }
+        } finally {
+            PROBE_LOCK.unlock();
+        }
+    }
+
+    /**
+     * Bounded selection across the allowed transports. An injected legacy
+     * transport is declined without opening it; built-ins that cannot open
+     * against a deadline are skipped the same way. No fallback runs past
+     * an expired deadline.
+     *
+     * @param deadline the round deadline
+     * @param permissions what this round may touch
+     * @return the first complete result, or null when declined
+     */
+    static TerminalColorQuery queryFirstAvailableBounded(ProbeDeadline deadline,
+            ProbePermissions permissions) {
+        if (deadline == null || permissions == null) {
+            return null;
+        }
+        if (!permissions.allowTerminalQuery() || deadline.isExpired()) {
+            return null;
+        }
+        TerminalProbeTransport custom = customTransport;
+        if (custom != null) {
+            if (!(custom instanceof BoundedProbeTransport)) {
+                return null;
+            }
+            return queryFullBounded((BoundedProbeTransport) custom, deadline, permissions);
+        }
+        for (BuiltInTransport kind : BUILT_IN_ORDER) {
+            if (deadline.isExpired()) {
+                return null;
+            }
+            TerminalProbeTransport transport = kind.availableBounded();
+            if (transport == null) {
+                continue;
+            }
+            TerminalColorQuery result = queryFullBounded(
+                    (BoundedProbeTransport) transport, deadline, permissions);
+            if (result != null) {
+                return result;
+            }
+        }
+        return null;
+    }
+
+    /**
      * The batched color/mode query: DECRQM probes + DA1 fence + OSC colors.
      * All ASCII, so US-ASCII encoding is exact.
      *
@@ -346,6 +464,28 @@ final class TerminalColorQuery {
         return sb.toString();
     }
 
+    private static String readBatchResponse(InputStream in, ProbeDeadline deadline) throws IOException {
+        byte[] buf = new byte[4096];
+        StringBuilder sb = new StringBuilder();
+        int n;
+        while (!deadline.isExpired() && (n = in.read(buf)) > 0) {
+            sb.append(new String(buf, 0, n));
+            FrameCount count = countFrames(sb);
+            int expected = count.da1Seen ? count.decrpm + 20 : 22;
+            if (count.total >= expected) {
+                break;
+            }
+        }
+        if (deadline.isExpired()) {
+            FrameCount count = countFrames(sb);
+            int expected = count.da1Seen ? count.decrpm + 20 : 22;
+            if (count.total < expected) {
+                return null;
+            }
+        }
+        return sb.toString();
+    }
+
     private static String readCprResponse(InputStream in) throws IOException {
         byte[] buf = new byte[4096];
         StringBuilder sb = new StringBuilder();
@@ -355,6 +495,22 @@ final class TerminalColorQuery {
             if (countFrames(sb).cprSeen) {
                 break;
             }
+        }
+        return sb.toString();
+    }
+
+    private static String readCprResponse(InputStream in, ProbeDeadline deadline) throws IOException {
+        byte[] buf = new byte[4096];
+        StringBuilder sb = new StringBuilder();
+        int n;
+        while (!deadline.isExpired() && (n = in.read(buf)) > 0) {
+            sb.append(new String(buf, 0, n));
+            if (countFrames(sb).cprSeen) {
+                break;
+            }
+        }
+        if (deadline.isExpired() && !countFrames(sb).cprSeen) {
+            return null;
         }
         return sb.toString();
     }
@@ -445,12 +601,15 @@ final class TerminalColorQuery {
         if (!transport.isAvailable()) {
             return false;
         }
-        synchronized (PROBE_LOCK) {
+        PROBE_LOCK.lock();
+        try {
             try (TerminalProbeSession session = transport.open()) {
                 return probeGraphemeInSession(session);
             } catch (IOException ignored) {
                 return false;
             }
+        } finally {
+            PROBE_LOCK.unlock();
         }
     }
 
@@ -485,6 +644,29 @@ final class TerminalColorQuery {
             int col = position[1];
             // Flag emoji: 2 columns if clustered, 4 if not
             return col <= 3;
+        } finally {
+            try {
+                session.write(RESTORE_CURSOR_AND_ERASE);
+            } catch (IOException ignored) {
+                // Restore is cosmetic; raw-mode close restores the
+                // terminal itself and the verdict stands.
+            }
+        }
+    }
+
+    private static boolean probeGraphemeInSession(TerminalProbeSession session,
+            ProbeDeadline deadline) throws IOException {
+        session.write(buildGraphemeProbe());
+        try {
+            String response = readCprResponse(session.input(), deadline);
+            if (response == null || response.isEmpty()) {
+                return false;
+            }
+            int[] position = TerminalReplyParser.cursorPosition(response);
+            if (position == null) {
+                return false;
+            }
+            return position[1] <= 3;
         } finally {
             try {
                 session.write(RESTORE_CURSOR_AND_ERASE);

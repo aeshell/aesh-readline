@@ -362,6 +362,36 @@ final class TerminalDetector {
     }
 
     /**
+     * Bounded platform fallback for one enrichment round.
+     * Suppressed sources perform no I/O: without IDE permission no
+     * settings files are read, without subprocess permission no command
+     * runs, and an expired deadline skips everything. Subprocess waits
+     * share the remaining budget instead of restarting a timeout.
+     *
+     * @param deadline the round deadline
+     * @param permissions what this round may touch
+     * @return the detected theme, or UNKNOWN when declined or undetermined
+     */
+    TerminalTheme detectIdeOrPlatformTheme(ProbeDeadline deadline, ProbePermissions permissions) {
+        if (deadline == null || permissions == null) {
+            return TerminalTheme.UNKNOWN;
+        }
+        if (deadline.isExpired()) {
+            return TerminalTheme.UNKNOWN;
+        }
+        if (permissions.allowIdeFiles() && !deadline.isExpired()) {
+            TerminalTheme ide = IdeThemeDetector.detect(terminalName, env, osName);
+            if (ide != TerminalTheme.UNKNOWN) {
+                return ide;
+            }
+        }
+        if (deadline.isExpired() || !permissions.allowPlatformSubprocess()) {
+            return TerminalTheme.UNKNOWN;
+        }
+        return detectOsPlatformTheme(osName, deadline);
+    }
+
+    /**
      * OS-level theme checks dispatched on the captured OS name.
      *
      * @param osName the operating system name
@@ -382,6 +412,21 @@ final class TerminalDetector {
         }
     }
 
+    private static TerminalTheme detectOsPlatformTheme(String osName, ProbeDeadline deadline) {
+        String os = osName == null ? "" : osName.toLowerCase();
+        try {
+            if (os.contains("mac")) {
+                return detectMacOsTheme(deadline);
+            } else if (os.contains("windows")) {
+                return detectWindowsTheme(deadline);
+            } else {
+                return detectLinuxDesktopTheme(deadline);
+            }
+        } catch (Exception ignored) {
+            return TerminalTheme.UNKNOWN;
+        }
+    }
+
     private static TerminalTheme detectMacOsTheme() {
         String result = execCommand("defaults", "read", "-g", "AppleInterfaceStyle");
         if (result != null && result.trim().toLowerCase().contains("dark")) {
@@ -394,10 +439,31 @@ final class TerminalDetector {
         return TerminalTheme.LIGHT;
     }
 
+    private static TerminalTheme detectMacOsTheme(ProbeDeadline deadline) {
+        String result = execCommand(deadline, "defaults", "read", "-g", "AppleInterfaceStyle");
+        if (result != null && result.trim().toLowerCase().contains("dark")) {
+            return TerminalTheme.DARK;
+        }
+        if (result != null) {
+            return TerminalTheme.LIGHT;
+        }
+        if (deadline.isExpired()) {
+            return TerminalTheme.UNKNOWN;
+        }
+        return TerminalTheme.LIGHT;
+    }
+
     private static TerminalTheme detectWindowsTheme() {
         Integer value = regQueryDword(
                 "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
                 "AppsUseLightTheme");
+        return themeFromDword(value);
+    }
+
+    private static TerminalTheme detectWindowsTheme(ProbeDeadline deadline) {
+        Integer value = regQueryDword(
+                "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
+                "AppsUseLightTheme", deadline);
         return themeFromDword(value);
     }
 
@@ -440,6 +506,31 @@ final class TerminalDetector {
         return TerminalTheme.UNKNOWN;
     }
 
+    private static TerminalTheme detectLinuxDesktopTheme(ProbeDeadline deadline) {
+        String result = execCommand(deadline, "gsettings", "get",
+                "org.gnome.desktop.interface", "color-scheme");
+        if (result != null) {
+            String lower = result.trim().toLowerCase();
+            if (lower.contains("dark"))
+                return TerminalTheme.DARK;
+            if (lower.contains("light") || lower.contains("default"))
+                return TerminalTheme.LIGHT;
+        }
+        if (deadline.isExpired()) {
+            return TerminalTheme.UNKNOWN;
+        }
+        result = execCommand(deadline, "kreadconfig5", "--group", "General",
+                "--key", "ColorScheme");
+        if (result != null) {
+            String lower = result.trim().toLowerCase();
+            if (lower.contains("dark"))
+                return TerminalTheme.DARK;
+            if (lower.contains("light") || !lower.isEmpty())
+                return TerminalTheme.LIGHT;
+        }
+        return TerminalTheme.UNKNOWN;
+    }
+
     /**
      * Run a command through the shared runner, capturing merged
      * stdout/stderr output.
@@ -467,6 +558,28 @@ final class TerminalDetector {
         }
     }
 
+    private static String execCommand(ProbeDeadline deadline, String... cmd) {
+        if (deadline == null || deadline.isExpired()) {
+            return null;
+        }
+        try {
+            long timeoutMs = deadline.remainingMillis();
+            if (timeoutMs <= 0) {
+                return null;
+            }
+            ProcessRunner.Result result = ProcessRunner.execute(timeoutMs, cmd);
+            if (result.timedOut() || result.exitCode() != 0) {
+                return null;
+            }
+            return result.text(java.nio.charset.Charset.defaultCharset());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return null;
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
     /**
      * Query a REG_DWORD registry value.
      *
@@ -476,6 +589,11 @@ final class TerminalDetector {
      */
     private static Integer regQueryDword(String key, String valueName) {
         String output = execCommand("reg", "query", key, "/v", valueName);
+        return parseRegDword(output, valueName);
+    }
+
+    private static Integer regQueryDword(String key, String valueName, ProbeDeadline deadline) {
+        String output = execCommand(deadline, "reg", "query", key, "/v", valueName);
         return parseRegDword(output, valueName);
     }
 

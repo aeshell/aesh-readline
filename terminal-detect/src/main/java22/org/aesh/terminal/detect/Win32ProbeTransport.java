@@ -44,7 +44,7 @@ import java.nio.charset.StandardCharsets;
  * Windows console on stdin, so this transport reports unavailable and the
  * POSIX {@code stty} path applies instead.
  */
-final class Win32ProbeTransport implements TerminalProbeTransport {
+final class Win32ProbeTransport implements BoundedProbeTransport {
 
     /** Inter-byte response timeout in milliseconds (matches VTIME=5). */
     private static final int RESPONSE_TIMEOUT_MS = 500;
@@ -69,6 +69,14 @@ final class Win32ProbeTransport implements TerminalProbeTransport {
 
     @Override
     public TerminalProbeSession open() throws IOException {
+        return new Win32ProbeSession();
+    }
+
+    @Override
+    public TerminalProbeSession open(ProbeDeadline deadline) throws IOException {
+        if (deadline == null || deadline.isExpired()) {
+            throw new IOException("probe deadline expired");
+        }
         return new Win32ProbeSession();
     }
 

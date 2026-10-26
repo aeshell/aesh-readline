@@ -1,7 +1,8 @@
 # Detection policy and ownership, #378
 
-Status: passive core owner, subprocess lifecycle foundation, and shared-round
-publication/coalescing are implemented. Bounded enrichment and connection wiring
+Status: passive core owner, subprocess lifecycle foundation, shared-round
+publication/coalescing, and the deadline/cancellation-aware transport
+contract are implemented. The bounded enrichment factory and connection wiring
 remain proposals. The public factories/passive reads are the agreed test seams.
 Backend selection, source precedence, and connection behavior remain unchanged;
 shared pending-result visibility and interrupted-join behavior change as described
@@ -194,19 +195,43 @@ and cleanup. Do not restart a timeout at each phase or round up an expired
 budget into another attempt. Preserve interrupt status and always attempt
 necessary restoration after a partial setup failure.
 
-The existing `TerminalProbeTransport.open()` and `InputStream` contract cannot
+The legacy `TerminalProbeTransport.open()` and `InputStream` contract cannot
 express that guarantee. `isAvailable()`, `open()`, reads, and `close()` can each
 block in a supplied implementation. Adding a timeout to `detectFull()` or
 waiting on a future would bound only the caller while leaving work alive.
 
-Before exposing bounded enrichment:
+Implemented contract (`ProbeDeadline`, `ProbePermissions`,
+`BoundedProbeTransport`, all in `terminal-detect`, Java 8, zero dependencies):
 
-- Specify a deadline/cancellation-aware transport contract and implement it in
+- The deadline is monotonic (`System.nanoTime`) and created before transport
+  selection. The query path checks expiry before availability, before lock
+  acquisition, and again after acquiring it; the platform fallback checks
+  expiry between IDE and OS branches and passes remaining millis to every
+  subprocess. No phase restarts a timeout.
+- Permissions gate each source before its I/O: terminal queries, IDE/config
+  file reads, and platform subprocesses are independent. A suppressed source
+  performs no I/O of its kind; an injected legacy transport is declined
+  without opening it, never wrapped in a racing future.
+- The raw-mode lock is a `ReentrantLock`: legacy paths hold it identically,
+  bounded paths `tryLock` the remaining budget and decline on contention
+  instead of waiting past the deadline. Cleanup (session close, terminal
+  restore) always runs, even past expiry, and may exceed the budget.
+- One transport read may overrun the deadline by its quantum (500 ms on the
+  built-ins). The contract bounds when new work starts, not a mid-flight
+  native wait; keep this path off latency-critical caller threads.
+- All built-ins implement the bounded open: stty bounds its setup subprocess
+  waits to the remaining budget; FFM/Win32 decline an expired deadline before
+  touching the terminal. Legacy custom transports stay unbounded-only.
+
+Before exposing the public bounded factory, the remaining items are:
+
+- ~~Specify a deadline/cancellation-aware transport contract and implement it in
   each allowed backend. Legacy custom transports must not be described as
-  bounded merely because they implement today's interface.
-- Replace untimed probe-lock acquisition on this path with an interruptible,
+  bounded merely because they implement today's interface.~~ Done above; the
+  public bounded factory is still missing.
+- ~~Replace untimed probe-lock acquisition on this path with an interruptible,
   deadline-aware acquisition. Keep process-wide raw-mode exclusion when two
-  standalone owners address the same local terminal.
+  standalone owners address the same local terminal.~~ Done via `ReentrantLock`.
 - Correct subprocess lifetime accounting, including exited children whose
   descendants retain output handles, full stderr, and repeated cancellation.
   A deadline check alone cannot interrupt `ProcessBuilder.start()`.
@@ -259,20 +284,24 @@ are not evidence for the proposed native no-I/O policy.
 Next independently testable changes, in order:
 
 1. Review connection attachment with #381/#382, reusing the passive core above.
-   Settle the deadline-aware transport contract before adding bounded enrichment.
+   The deadline-aware transport contract is settled; the public bounded
+   enrichment factory is still missing.
 2. Preserve the scoped no-I/O spies and extend native operation coverage and
    known-headless/consume-only integration tests when wiring consumers.
 3. Preserve the implemented publication/coalescing guards, cold parallel-first
-   child, full/async reuse, and invalidation/theme/failure races when integrating
-   scoped enrichment. Do not reintroduce I/O under publication locks.
-4. Implement one deadline through the allowed transports and subprocess paths.
-   Prove stalled/filled/descendant-held pipe cleanup and no accumulated workers,
-   including behavioral tests that fail with the deadline removed.
+   child, full/async reuse, invalidation/theme/failure races, and the bounded
+   contract guards when integrating scoped enrichment. Do not reintroduce I/O
+   under publication locks or unbounded opens on the bounded path.
+4. Implement the public bounded factory over the contract: one deadline through
+   the allowed transports and subprocess paths. Prove stalled/filled/
+   descendant-held pipe cleanup and no accumulated workers, including
+   behavioral tests that fail with the deadline removed.
 5. Wire connection setup and automatic getters, then validate mixed fd layouts,
    explicit streams, reader ownership, mintty/native Windows, and real PTYs.
 6. Repeat the packaged JVM/native baselines and actual Quarkus integration.
    Keep native runtime hints unfrozen and count executed fixture/backend paths.
 
-Implemented scope is the passive core plus shared-default and subprocess
-foundations. There is no permission-aware enrichment factory, connection wiring,
-new scheduler, global policy, or backend-default change.
+Implemented scope is the passive core plus shared-default, subprocess, and
+bounded-transport-contract foundations. There is no public bounded enrichment
+factory, connection wiring, new scheduler, global policy, or backend-default
+change.
