@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 
+import org.aesh.terminal.detect.TerminalDetection;
 import org.aesh.terminal.detect.TerminalTheme;
 import org.aesh.terminal.tty.Signal;
 import org.aesh.terminal.tty.Size;
@@ -92,6 +93,35 @@ public abstract class AbstractConnection implements Connection {
      */
     void setProgramStatusSupport(Boolean support) {
         programStatusSupport = support;
+    }
+
+    /**
+     * Endpoint-scoped detection owner attached to this connection, or null
+     * when unattached. {@link TerminalFeatures} prefers attached facts over
+     * process-global defaults and declines live queries the attached source
+     * leaves unknown. Null preserves the legacy answers bit for bit.
+     */
+    private volatile TerminalDetection detection;
+
+    /**
+     * Attach an endpoint-scoped detection owner to this connection.
+     * The owner is retained by reference; a pending producer keeps
+     * filling it. Passing null clears the attachment and restores
+     * the legacy process-global answers.
+     *
+     * @param detection the owner to attach, or null to clear
+     */
+    public void attachDetection(TerminalDetection detection) {
+        this.detection = detection;
+    }
+
+    /**
+     * The attached detection owner, or null when unattached.
+     *
+     * @return the attached owner, or null
+     */
+    public TerminalDetection attachedDetection() {
+        return detection;
     }
 
     /**

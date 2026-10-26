@@ -1,10 +1,11 @@
 # Detection policy and ownership, #378
 
 Status: passive core owner, subprocess lifecycle foundation, shared-round
-publication/coalescing, deadline/cancellation-aware transport contract, and
-the public bounded enrichment factory are implemented. Connection wiring
-remains the proposal. The public factories/passive reads are the agreed test
-seams.
+publication/coalescing, deadline/cancellation-aware transport contract,
+public bounded enrichment factory, and per-connection attachment with
+attached-fact getters are implemented. Connection-setup validation and
+endpoint facts remain. The public factories/passive reads are the agreed
+test seams.
 Backend selection, source precedence, and connection behavior remain unchanged;
 shared pending-result visibility and interrupted-join behavior change as described
 below. The baseline prerequisite #379 is closed; continuing platform and
@@ -32,10 +33,10 @@ Keep Java 8 support and zero runtime dependencies in `terminal-detect`.
 | `SttyProbeTransport` | Device checks, save/setup/restore subprocesses, and terminal file streams. | Each command currently has its own wait. Restoration is necessary cleanup, not permission to begin a new enrichment attempt. |
 | `TerminalConnection` / `TerminalBuilder` | Live fd/handle checks, provider admission, PTY/console creation, attributes, device/size setup; explicit open starts the reader. | Necessary connection setup is not optional appearance discovery. A no-probe capability policy cannot promise that an explicitly requested interactive connection performs no transport work. |
 | Device / `InfoCmp` initialization | Bundled resources, direct terminfo database reads, and an `infocmp` subprocess fallback on the full lookup path. Even `getDefaultInfoCmp()` can read an installed database for unbundled names. | Do not construct a device or load terminfo merely to consume supplied capability facts. |
-| `TerminalConnection.terminal()` | Seeds shared modes and color depth into its existing `TerminalFeatures`. | Reuse the seeding. #381 must attach consumption to the selected owner rather than repeatedly consult a mutable process default. |
+| `TerminalConnection.terminal()` | Seeds shared modes and color depth into its existing `TerminalFeatures`, from the attached owner (captured once; explicit attach overrides). | Attached consumption replaces the per-access global re-read; a pending producer still fills the captured reference. |
 | `TerminalEnvironment` singleton | Captures startup color depth from the shared capability lookup. Injected environments use their own map. | Managed consumption must avoid a cold global lookup or environment reconstruction for missing supplied facts. |
-| `TerminalFeatures.colorCapability()` | Converts color depth and environment appearance to a color model. | Finish supplied appearance/RGB/palette consumption in #381; conversion should occur once per revision. |
-| `TerminalFeatures.getImageProtocol()` | Consults the device and can issue a DA1 query automatically. | This automatic fallback must obey managed suppression. Explicit `query*` remains a live query when permitted, never silently a cached answer. |
+| `TerminalFeatures.colorCapability()` | Converts depth and environment appearance to a color model, preferring attached theme/RGB/palette with depth merged by max-never-downgrade. | Conversion reads already-published facts; consumer reads never trigger discovery. |
+| `TerminalFeatures.getImageProtocol()` | Consults the device and can issue a DA1 query automatically, unless an attached source answers or suppresses it. | Attached-but-unknown declines the automatic fallback. Explicit `query*` remains a live query when permitted, never silently a cached answer. |
 | `TerminalFeatures.query*()` | Uses the running connection reader, handler leases/theme handlers, query writes, waits, and raw-mode/restoration where needed. | Mediate through the current I/O owner or decline. Never respond to an owned reader by opening another standalone reader. |
 
 This inventory covers the entry paths, not every syscall. Keep exact operation
@@ -300,9 +301,10 @@ are not evidence for the proposed native no-I/O policy.
 
 Next independently testable changes, in order:
 
-1. Review connection attachment with #381/#382, reusing the passive core above.
-   The deadline contract and public bounded factory are settled; wire the
-   scoped owner and running-reader mediation next.
+1. Review connection setup validation with #381/#382: mixed fd layouts,
+   explicit streams, reader ownership, mintty/native Windows, and real PTYs.
+   Attachment and attached-fact getters are wired; endpoint facts (#382)
+   decide the remaining precedence questions.
 2. Preserve the scoped no-I/O spies and extend native operation coverage and
    known-headless/consume-only integration tests when wiring consumers.
 3. Preserve the implemented publication/coalescing guards, cold parallel-first
@@ -310,13 +312,14 @@ Next independently testable changes, in order:
    contract/factory guards when integrating scoped enrichment. Do not
    reintroduce I/O under publication locks or unbounded opens on the bounded
    path.
-4. Wire connection setup and automatic getters, then validate mixed fd layouts,
-   explicit streams, reader ownership, mintty/native Windows, and real PTYs.
+4. Validate mixed fd layouts, explicit streams, reader ownership,
+   mintty/native Windows, and real PTYs against the wired getters.
    Prove stalled/filled/descendant-held pipe cleanup and no accumulated
    workers, including behavioral tests that fail with the deadline removed.
 5. Repeat the packaged JVM/native baselines and actual Quarkus integration.
    Keep native runtime hints unfrozen and count executed fixture/backend paths.
 
 Implemented scope is the passive core plus shared-default, subprocess,
-bounded-transport-contract, and bounded-factory foundations. There is no
-connection wiring, new scheduler, global policy, or backend-default change.
+bounded-transport-contract, bounded-factory, and connection-attachment
+foundations. There is no connection-setup validation, new scheduler,
+global policy, or backend-default change.

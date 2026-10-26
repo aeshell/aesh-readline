@@ -230,6 +230,14 @@ producer may still fill pending values; passive reads never wait for that work.
 This does not establish a live TTY or grant input ownership. The passive core
 adds no connection-getter wiring.
 
+Attach an owner to a connection with `attachDetection(owner)`; passing null
+clears back to the legacy answers. Attached getters prefer endpoint facts:
+`colorCapability()` takes the attached theme and measured colors with depth
+merged by max-never-downgrade, and `getImageProtocol()` answers from an
+attached result or declines its live DA1 fallback when the attached source
+is unknown. `TerminalConnection` captures the shared default once on first
+use; explicit attachment overrides it.
+
 Shared full/async detection publishes pending hints before terminal I/O.
 `TerminalCapabilities.getInstance()` reads that result without joining it;
 `detectAsync()` reuses a synchronous round already in progress. `detectFull()`

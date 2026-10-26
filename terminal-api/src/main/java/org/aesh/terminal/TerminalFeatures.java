@@ -30,6 +30,7 @@ import java.util.logging.Logger;
 
 import org.aesh.terminal.detect.ImageProtocol;
 import org.aesh.terminal.detect.ModeSupport;
+import org.aesh.terminal.detect.TerminalDetection;
 import org.aesh.terminal.detect.TerminalReplyFramer;
 import org.aesh.terminal.detect.TerminalReplyFramer.Kind;
 import org.aesh.terminal.detect.TerminalReplyFramer.Span;
@@ -831,6 +832,22 @@ public class TerminalFeatures {
     }
 
     /**
+     * The endpoint-scoped detection owner attached to this connection,
+     * or null when unattached. Reads consult the owner per access so a
+     * late attachment applies without rebuilding this object; the
+     * owner's own reference stays stable while a pending producer
+     * fills it.
+     *
+     * @return the attached owner, or null
+     */
+    private TerminalDetection attachedDetection() {
+        if (connection instanceof AbstractConnection) {
+            return ((AbstractConnection) connection).attachedDetection();
+        }
+        return null;
+    }
+
+    /**
      * Detect the image protocol using heuristics first, falling back to a DA1
      * query when heuristic detection returns NONE and the connection is reading.
      * <p>
@@ -846,6 +863,13 @@ public class TerminalFeatures {
                 : ImageProtocol.NONE;
         if (protocol != ImageProtocol.NONE) {
             return protocol;
+        }
+        TerminalDetection attached = attachedDetection();
+        if (attached != null) {
+            // Attached facts fill an unknown-device gap: a measured result
+            // and endpoint hints alike. Attached-but-unknown declines the
+            // live DA1 fallback instead of probing a suppressed endpoint.
+            return attached.capabilities().imageProtocol();
         }
         return queryImageProtocol(DEFAULT_QUERY_TIMEOUT_MS);
     }
@@ -971,12 +995,27 @@ public class TerminalFeatures {
 
     /**
      * Get the color capabilities of this terminal connection.
+     * <p>
+     * An attached detection owner supplies the theme and measured colors;
+     * the depth is the higher of the device baseline and the attached
+     * result, so attached facts upgrade but never downgrade an explicit
+     * baseline. Without an attachment the theme comes from the process
+     * environment, as before.
      *
      * @return the detected color capabilities
      */
     public TerminalColorCapability colorCapability() {
         ColorDepth depth = colorDepth();
-        return new TerminalColorCapability(depth, TerminalColorCapability.detectThemeFromEnvironment());
+        TerminalDetection attached = attachedDetection();
+        if (attached == null) {
+            return new TerminalColorCapability(depth, TerminalColorCapability.detectThemeFromEnvironment());
+        }
+        TerminalColorCapability measured = TerminalColorCapability.from(attached.capabilities());
+        if (measured.getColorDepth().getColorCount() <= depth.getColorCount()) {
+            // The device baseline wins; keep the attached theme and colors.
+            return TerminalColorCapability.builder(measured).colorDepth(depth).build();
+        }
+        return measured;
     }
 
     /**

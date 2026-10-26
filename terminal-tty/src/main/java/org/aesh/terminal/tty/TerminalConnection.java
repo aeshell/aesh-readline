@@ -43,6 +43,7 @@ import org.aesh.terminal.EventDecoder;
 import org.aesh.terminal.Terminal;
 import org.aesh.terminal.TerminalFeatures;
 import org.aesh.terminal.detect.TerminalCapabilities;
+import org.aesh.terminal.detect.TerminalDetection;
 import org.aesh.terminal.detect.TerminalTheme;
 import org.aesh.terminal.io.Decoder;
 import org.aesh.terminal.io.Encoder;
@@ -556,10 +557,19 @@ public class TerminalConnection extends AbstractConnection {
     @Override
     public TerminalFeatures terminal() {
         TerminalFeatures features = super.terminal();
-        // Seed once per access from the shared startup probe: the values
+        TerminalDetection attached = attachedDetection();
+        if (attached == null) {
+            // Capture the local default once instead of re-reading the
+            // mutable global on every access: the reference is stable,
+            // while a pending producer still fills its values. An explicit
+            // attachDetection call overrides this captured default.
+            attached = TerminalDetection.managed(TerminalCapabilities.getInstance());
+            attachDetection(attached);
+        }
+        // Seed once per access from the attached owner: the values
         // are a snapshot copy, so later global replacement cannot corrupt
         // this connection — and a completed late probe still flows in.
-        TerminalCapabilities caps = TerminalCapabilities.getInstance();
+        TerminalCapabilities caps = attached.capabilities();
         features.seedProbedModes(caps.synchronizedOutputSupport(),
                 caps.graphemeClusterSupport(), caps.nativeGraphemeClustering());
         features.seedColorDepth(caps.supportsTrueColor() ? ColorDepth.TRUE_COLOR
