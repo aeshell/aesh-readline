@@ -55,6 +55,41 @@ public abstract class AbstractConnection implements Connection {
     /** Field. */
     protected volatile boolean reading;
 
+    private volatile EndpointContext endpointContext;
+    /** Guarded by this monitor; context reads use only the volatile snapshot. */
+    private boolean endpointContextClosed;
+
+    @Override
+    public EndpointContext endpointContext() {
+        EndpointContext current = endpointContext;
+        return current == null ? EndpointContext.unknown() : current;
+    }
+
+    /**
+     * Replace this endpoint's creator-supplied facts without discovery.
+     * This does not attach capabilities or grant query permissions.
+     *
+     * Updates after endpoint invalidation are ignored.
+     *
+     * @param context the immutable facts, or null to restore unknown facts
+     * @since 3.18.8
+     */
+    public synchronized void setEndpointContext(EndpointContext context) {
+        if (!endpointContextClosed) {
+            endpointContext = context;
+        }
+    }
+
+    /**
+     * Invalidate live endpoint facts during transport close. This does not
+     * signal that input ownership or native cleanup has been released.
+     * Previously captured snapshots remain historical values.
+     */
+    protected final synchronized void closeEndpointContext() {
+        endpointContextClosed = true;
+        endpointContext = null;
+    }
+
     /** Constructor. */
     protected AbstractConnection() {
     }

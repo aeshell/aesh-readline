@@ -90,6 +90,23 @@ public interface Connection extends Appendable, AutoCloseable {
      */
     Size size();
 
+    /**
+     * Read the current creator-supplied endpoint facts without probing.
+     * <p>
+     * The default preserves unknown origin for custom connections. Metadata
+     * does not grant input ownership or replace concrete transport validation.
+     * Delegating connections should forward this method to their endpoint.
+     * Context-aware transports invalidate live metadata on close. Previously
+     * captured snapshots remain historical values, not permission to reuse the
+     * endpoint.
+     *
+     * @return the current immutable context, never null
+     * @since 3.18.8
+     */
+    default EndpointContext endpointContext() {
+        return EndpointContext.unknown();
+    }
+
     // ==================== Input ====================
 
     /**

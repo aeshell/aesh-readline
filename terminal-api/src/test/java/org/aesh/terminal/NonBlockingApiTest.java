@@ -2,6 +2,7 @@ package org.aesh.terminal;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -102,6 +103,14 @@ public class NonBlockingApiTest {
     public void testConnectionDefaultPeekThrows() throws IOException {
         Connection conn = createMinimalConnection();
         conn.peek(100);
+    }
+
+    @Test
+    public void testCustomConnectionDefaultsToUnknownEndpointFacts() {
+        Connection connection = createMinimalConnection();
+        assertSame(EndpointContext.unknown(), connection.endpointContext());
+        assertEquals(EndpointContext.Locality.UNKNOWN, connection.endpointContext().locality());
+        assertEquals(EndpointContext.Truth.UNKNOWN, connection.endpointContext().output().terminal());
     }
 
     // =========================================================================

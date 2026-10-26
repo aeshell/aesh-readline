@@ -29,6 +29,7 @@ import org.aesh.terminal.Terminal;
 import org.aesh.terminal.TerminalFeatures;
 import org.aesh.terminal.detect.ModeSupport;
 import org.aesh.terminal.detect.TerminalCapabilities;
+import org.aesh.terminal.detect.TerminalDetection;
 import org.aesh.terminal.detect.TerminalTheme;
 import org.aesh.terminal.utils.ColorDepth;
 import org.junit.Test;
@@ -113,6 +114,7 @@ public class TerminalConnectionThemeTest {
         LocalTestConnection connection = new LocalTestConnection(stubTerminal(syncDevice()));
         try {
             TerminalCapabilities.setInstance(caps);
+            connection.attachDetection(TerminalDetection.managed(caps));
             assertTrue("local connection must answer from the seeded probe result",
                     connection.terminal().supportsSynchronizedOutput());
         } finally {
@@ -133,6 +135,7 @@ public class TerminalConnectionThemeTest {
         LocalTestConnection connection = new LocalTestConnection(stubTerminal(device));
         try {
             TerminalCapabilities.setInstance(caps);
+            connection.attachDetection(TerminalDetection.managed(caps));
             assertTrue("The probe fixture must establish true color", caps.supportsTrueColor());
             TerminalFeatures features = connection.terminal();
             assertEquals("Legacy terminfo must not downgrade detection", ColorDepth.TRUE_COLOR,

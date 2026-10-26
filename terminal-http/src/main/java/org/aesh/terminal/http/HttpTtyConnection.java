@@ -410,6 +410,7 @@ public abstract class HttpTtyConnection extends AbstractConnection {
         if (closed)
             return;
         closed = true;
+        closeEndpointContext();
         reading = false;
         readlineExecutor.shutdownNow();
         try {

@@ -325,6 +325,7 @@ public final class TelnetTtyConnection extends AbstractConnection implements Tel
         if (closed)
             return;
         closed = true;
+        closeEndpointContext();
         reading = false;
         if (readlineExecutor != null) {
             readlineExecutor.shutdownNow();
@@ -340,6 +341,7 @@ public final class TelnetTtyConnection extends AbstractConnection implements Tel
 
     @Override
     public void close() {
+        closeEndpointContext();
         conn.close();
     }
 

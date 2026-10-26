@@ -63,13 +63,14 @@ public class TerminalConnectionAttachmentTest {
     }
 
     @Test
-    public void testLocalConnectionCapturesSharedDefaultOnce() {
+    public void testExplicitAttachCapturesSharedDefaultOnce() {
         TerminalCapabilities saved = TerminalCapabilities.getInstance();
         TerminalCapabilities first = TerminalCapabilities.detect();
         TerminalCapabilities.setInstance(first);
         LocalTestConnection connection = new LocalTestConnection(stubTerminal(new BaseDevice("xterm-256color")));
         try {
             assertNull(connection.attachedDetection());
+            connection.attachDetection(TerminalDetection.managed(first));
             connection.terminal();
             assertSame(first, connection.attachedDetection().capabilities());
             TerminalCapabilities second = TerminalCapabilities.detect();

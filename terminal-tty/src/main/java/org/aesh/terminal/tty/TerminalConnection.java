@@ -554,16 +554,34 @@ public class TerminalConnection extends AbstractConnection {
         return installed;
     }
 
+    /**
+     * Choose the default owner from process stdin/stdout terminal facts.
+     * Package-visible so tests can pin the mapping with literals instead
+     * of depending on the developer machine's descriptors or fd caches.
+     *
+     * @param stdinTty true if file descriptor 0 is a terminal
+     * @param stdoutTty true if file descriptor 1 is a terminal
+     * @return a view of existing shared capabilities when either fd is a
+     *         terminal, otherwise independent environment hints; neither
+     *         branch starts discovery or establishes arbitrary-stream locality
+     */
+    static TerminalDetection autoAttachOwner(boolean stdinTty, boolean stdoutTty) {
+        if (stdinTty || stdoutTty) {
+            return TerminalDetection.managed(TerminalCapabilities.getInstance());
+        }
+        return TerminalDetection.environmentOnly();
+    }
+
     @Override
     public TerminalFeatures terminal() {
         TerminalFeatures features = super.terminal();
         TerminalDetection attached = attachedDetection();
         if (attached == null) {
-            // Capture the local default once instead of re-reading the
-            // mutable global on every access: the reference is stable,
-            // while a pending producer still fills its values. An explicit
-            // attachDetection call overrides this captured default.
-            attached = TerminalDetection.managed(TerminalCapabilities.getInstance());
+            // Only adopt the shared result when process stdin or stdout is
+            // a terminal. Fully redirected stdio gets independent hints.
+            // getInstance() itself is passive: neither branch starts probing.
+            // Arbitrary streams still need creator-supplied endpoint metadata.
+            attached = autoAttachOwner(TtyDetect.isStdinTty(), TtyDetect.isStdoutTty());
             attachDetection(attached);
         }
         // Seed once per access from the attached owner: the values
@@ -805,6 +823,7 @@ public class TerminalConnection extends AbstractConnection {
             return;
         }
         closed = true;
+        closeEndpointContext();
         reading = false;
         // Release the owned reader worker, if any. No await: close() runs
         // on the worker itself on the EOF path, so joining would self-join.

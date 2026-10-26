@@ -19,6 +19,8 @@
  */
 package org.aesh.terminal.tty;
 
+import static org.junit.Assert.assertSame;
+
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -26,9 +28,12 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
+import org.aesh.terminal.AbstractConnection;
 import org.aesh.terminal.Connection;
+import org.aesh.terminal.EndpointContext;
 import org.aesh.terminal.TestBase;
 import org.junit.Test;
 
@@ -262,6 +267,62 @@ public abstract class TtyTestBase extends TestBase {
         assertConnect();
         assertWrite("bye");
         await();
+    }
+
+    @Test
+    public void testEndpointContextClosesWithConnection() throws Exception {
+        assertEndpointContextCloses(false);
+    }
+
+    @Test
+    public void testEndpointContextClosesOnPeerDisconnect() throws Exception {
+        assertEndpointContextCloses(true);
+    }
+
+    private void assertEndpointContextCloses(boolean peerDisconnect) throws Exception {
+        final EndpointContext supplied = EndpointContext.builder()
+                .locality(EndpointContext.Locality.REMOTE)
+                .dimensions(new Size(160, 50), EndpointContext.Source.CALLER).build();
+        final AtomicReference<AbstractConnection> endpoint = new AtomicReference<>();
+        final CountDownLatch connected = new CountDownLatch(1);
+        final CountDownLatch closed = new CountDownLatch(1);
+        server(new Consumer<Connection>() {
+            @Override
+            public void accept(final Connection connection) {
+                // The built-in creator fixture supplies facts explicitly. Consumers
+                // still read Connection.endpointContext(), not implementation type.
+                AbstractConnection created = (AbstractConnection) connection;
+                created.setEndpointContext(supplied);
+                endpoint.set(created);
+                connection.setCloseHandler(new Consumer<Void>() {
+                    @Override
+                    public void accept(Void ignored) {
+                        closed.countDown();
+                    }
+                });
+                connection.setStdinHandler(new Consumer<int[]>() {
+                    @Override
+                    public void accept(int[] input) {
+                        connection.close();
+                    }
+                });
+                connected.countDown();
+            }
+        });
+        assertConnect();
+        assertTrue("accepted endpoint must execute the fixture", connected.await(10, TimeUnit.SECONDS));
+        assertSame(supplied, endpoint.get().endpointContext());
+        if (peerDisconnect) {
+            assertDisconnect(false);
+        } else {
+            assertWrite("close");
+        }
+        assertTrue("transport must deliver close", closed.await(10, TimeUnit.SECONDS));
+        assertSame("closed transport must invalidate live endpoint facts",
+                EndpointContext.unknown(), endpoint.get().endpointContext());
+        endpoint.get().setEndpointContext(supplied);
+        assertSame("late creator updates cannot revive a closed transport",
+                EndpointContext.unknown(), endpoint.get().endpointContext());
     }
 
     /**

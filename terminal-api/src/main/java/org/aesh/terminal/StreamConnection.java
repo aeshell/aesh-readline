@@ -204,6 +204,7 @@ public class StreamConnection extends AbstractConnection {
     @Override
     public void close() {
         if (closed.compareAndSet(false, true)) {
+            closeEndpointContext();
             reading = false;
             if (readerThread != null) {
                 readerThread.interrupt();

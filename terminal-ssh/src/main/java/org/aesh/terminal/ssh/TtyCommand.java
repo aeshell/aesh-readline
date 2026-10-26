@@ -296,6 +296,7 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
 
     private void close(int exit) {
         if (conn != null) {
+            conn.closeEndpointFacts();
             conn.setReading(false);
         }
         if (readlineExecutor != null) {
@@ -322,6 +323,9 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
      */
     private void invokeCloseHandler() {
         if (closed.compareAndSet(false, true)) {
+            if (conn != null) {
+                conn.closeEndpointFacts();
+            }
             if (conn != null && conn.closeHandler() != null) {
                 try {
                     conn.closeHandler().accept(null);
@@ -374,6 +378,10 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
 
         void setReading(boolean reading) {
             this.reading = reading;
+        }
+
+        private void closeEndpointFacts() {
+            closeEndpointContext();
         }
 
         @Override

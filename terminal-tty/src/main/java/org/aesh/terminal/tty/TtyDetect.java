@@ -300,6 +300,46 @@ public final class TtyDetect {
     }
 
     /**
+     * Read the cached stdin result without probing. Package-visible so tests
+     * pin fd facts without reflection (native-image needs no registration).
+     *
+     * @return -1 when uncomputed, 0 when not a terminal, 1 when a terminal
+     */
+    static int cachedStdinForTests() {
+        return cachedStdin;
+    }
+
+    /**
+     * Pin the cached stdin result. Package-visible so tests pin fd facts
+     * without reflection (native-image needs no registration).
+     *
+     * @param value -1 to restore uncomputed, 0 for not a terminal, 1 for a terminal
+     */
+    static void cachedStdinForTests(int value) {
+        cachedStdin = value;
+    }
+
+    /**
+     * Read the cached stdout result without probing. Package-visible so tests
+     * pin fd facts without reflection (native-image needs no registration).
+     *
+     * @return -1 when uncomputed, 0 when not a terminal, 1 when a terminal
+     */
+    static int cachedStdoutForTests() {
+        return cachedStdout;
+    }
+
+    /**
+     * Pin the cached stdout result. Package-visible so tests pin fd facts
+     * without reflection (native-image needs no registration).
+     *
+     * @param value -1 to restore uncomputed, 0 for not a terminal, 1 for a terminal
+     */
+    static void cachedStdoutForTests(int value) {
+        cachedStdout = value;
+    }
+
+    /**
      * Check if standard input is connected to a terminal.
      * Result is cached after the first call.
      *

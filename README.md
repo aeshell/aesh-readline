@@ -235,8 +235,13 @@ clears back to the legacy answers. Attached getters prefer endpoint facts:
 `colorCapability()` takes the attached theme and measured colors with depth
 merged by max-never-downgrade, and `getImageProtocol()` answers from an
 attached result or declines its live DA1 fallback when the attached source
-is unknown. `TerminalConnection` captures the shared default once on first
-use; explicit attachment overrides it.
+is unknown. `TerminalConnection` captures its default once on first use.
+When process stdin or stdout is a TTY, it retains the shared capabilities;
+otherwise it captures independent environment hints. Neither path starts
+discovery. Explicit attachment overrides either default. Process fd facts
+do not establish the origin of arbitrary caller-owned streams.
+Unattached theme helpers and the connectionless `SixelImage` encoder retain
+their legacy process-environment behavior.
 
 Shared full/async detection publishes pending hints before terminal I/O.
 `TerminalCapabilities.getInstance()` reads that result without joining it;
@@ -252,6 +257,44 @@ or publishes shared discovery. Decline, timeout, and transport failure
 degrade to environment hints, never to null. The call blocks up to the
 deadline plus one transport read quantum, so keep it off
 latency-critical threads.
+
+### Endpoint facts
+
+`Connection.endpointContext()` returns an immutable metadata snapshot without
+probing. Unconfigured and custom connections default to UNKNOWN origin, unknown
+stream facts and no dimensions. Environment markers such as `SSH_TTY` do not
+decide locality.
+
+Creators can supply facts on built-in connections before handing them to consumers:
+
+```java
+import org.aesh.terminal.EndpointContext;
+import org.aesh.terminal.StreamConnection;
+import org.aesh.terminal.tty.Size;
+
+StreamConnection connection = new StreamConnection(charset, input, output);
+connection.setEndpointContext(EndpointContext.builder()
+        .locality(EndpointContext.Locality.REMOTE)
+        .input(EndpointContext.StreamFacts.supplied(
+                EndpointContext.Truth.YES, EndpointContext.Truth.UNKNOWN))
+        .dimensions(new Size(120, 40), EndpointContext.Source.CALLER)
+        .build());
+
+// Readers use the Connection method, with no casts or discovery.
+EndpointContext context = connection.endpointContext();
+```
+
+Input, output and error-stream terminal status are independent of native-console
+status and ANSI support. Known stream answers require caller or transport
+evidence, never environment hints or a fallback. Missing dimensions are null;
+explicit defaults use FALLBACK provenance. Observed or negotiated size updates
+outrank environment hints. Built-in connections invalidate live metadata on close
+and ignore late metadata writes. Wrappers should forward the getter to their
+endpoint, and custom implementations must manage their own metadata lifecycle.
+
+This metadata does not attach capabilities, grant input ownership, or replace
+handle validation. Built-in setup and resize population, context-aware shared
+attachment, and Quarkus mapping remain work under #382.
 
 ### ANSIBuilder
 

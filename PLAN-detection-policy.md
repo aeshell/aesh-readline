@@ -6,8 +6,8 @@ public bounded enrichment factory, per-connection attachment with
 attached-fact getters, and hermetic connection-setup validation are
 implemented. Real-PTY/Windows field validation and endpoint facts
 remain. The public factories/passive reads are the agreed test seams.
-Backend selection, source precedence, and connection behavior remain unchanged;
-shared pending-result visibility and interrupted-join behavior change as described
+Backend selection remains unchanged. Shared pending-result visibility,
+interrupted joins, attachment and automatic getter behavior change as described
 below. The baseline prerequisite #379 is closed; continuing platform and
 integration checks remain in #377.
 
@@ -304,8 +304,14 @@ Next independently testable changes, in order:
 1. Review remaining validation with #381/#382: mintty/native Windows and
    real PTYs plus actual Quarkus integration. Hermetic JVM setup validation
    is done (explicit streams, EOF-stdin and held-pipe layouts, reader
-   ownership and thread accounting, attached getters without a terminal);
-   endpoint facts (#382) decide the remaining precedence questions.
+   ownership and thread accounting, attached getters without a terminal).
+   The approved default attachment rule uses process stdin/stdout TTY facts:
+   retain shared capabilities when either is a TTY, independent hints otherwise.
+    Neither branch starts discovery. The reviewed EndpointContext foundation now
+    carries creator-supplied locality, separate stream facts and size provenance
+    with UNKNOWN defaults and close invalidation. Built-in setup/resize
+    population and context-aware attachment/forwarding remain unimplemented.
+    See [the #382 contract and staged status](PLAN-endpoint-context.md).
 2. Preserve the scoped no-I/O spies and extend native operation coverage and
    known-headless/consume-only integration tests when wiring consumers.
 3. Preserve the implemented publication/coalescing guards, cold parallel-first
@@ -323,6 +329,6 @@ Next independently testable changes, in order:
    Keep native runtime hints unfrozen and count executed fixture/backend paths.
 
 Implemented scope is the passive core plus shared-default, subprocess,
-bounded-transport-contract, bounded-factory, connection-attachment, and
-hermetic setup-validation foundations. There is no Windows/PTY field
+bounded-transport-contract, bounded-factory, connection-attachment,
+endpoint-context, and hermetic setup-validation foundations. There is no Windows/PTY field
 validation, new scheduler, global policy, or backend-default change.
