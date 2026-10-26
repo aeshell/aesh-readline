@@ -527,6 +527,17 @@ public final class TerminalCapabilities {
     }
 
     /**
+     * Pin a previously resolved theme, simulating an earlier
+     * environment/config hint. Package-visible so tests seed state
+     * without reflection (native-image needs no registration).
+     *
+     * @param theme the theme to retain
+     */
+    void resolvedThemeForTests(TerminalTheme theme) {
+        resolvedTheme = theme;
+    }
+
+    /**
      * Apply a completed probe result under one precedence rule, shared by
      * {@code detectFull()} and {@code detectAsync()}: a measured background
      * overrides earlier environment/config hints, while an absent reply

@@ -6,7 +6,6 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
@@ -202,14 +201,10 @@ public class TerminalCapabilitiesTest {
 
     /**
      * Preset a previously resolved theme, simulating an earlier
-     * environment/config hint. Reflection mirrors the existing
-     * theme-event test: the field has no other injectable seam.
+     * environment/config hint.
      */
-    private static void setResolvedTheme(TerminalCapabilities caps, TerminalTheme theme)
-            throws Exception {
-        Field field = TerminalCapabilities.class.getDeclaredField("resolvedTheme");
-        field.setAccessible(true);
-        field.set(caps, theme);
+    private static void setResolvedTheme(TerminalCapabilities caps, TerminalTheme theme) {
+        caps.resolvedThemeForTests(theme);
     }
 
     @Test
@@ -798,22 +793,16 @@ public class TerminalCapabilitiesTest {
         }
     }
 
-    // ==================== Snapshot value semantics (#354) ====================
-
-    private static void setField(Object target, String name, Object value) throws Exception {
-        Field field = TerminalCapabilities.class.getDeclaredField(name);
-        field.setAccessible(true);
-        field.set(target, value);
-    }
-
     @Test
-    public void testReturnedValuesAreCopies() throws Exception {
+    public void testReturnedValuesAreCopies() {
         TerminalCapabilities caps = TerminalCapabilities.detect();
-        setField(caps, "foregroundRGB", new int[] { 1, 2, 3 });
-        setField(caps, "backgroundRGB", new int[] { 4, 5, 6 });
+        TerminalColorQuery measured = new TerminalColorQuery();
+        measured.foreground = new int[] { 1, 2, 3 };
+        measured.background = new int[] { 4, 5, 6 };
         Map<Integer, int[]> palette = new HashMap<>();
         palette.put(0, new int[] { 7, 8, 9 });
-        setField(caps, "paletteColors", palette);
+        measured.palette = palette;
+        caps.applyColorResult(measured);
 
         caps.foregroundRGB()[0] = 99;
         caps.backgroundRGB()[0] = 99;

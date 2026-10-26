@@ -396,7 +396,7 @@ public final class TtyDetect {
      * @return TRUE if a valid console handle exists, FALSE if piped/redirected,
      *         null if the native library is not available
      */
-    private static Boolean tryWindowsConsoleHandle() {
+    static Boolean tryWindowsConsoleHandle() {
         return tryWindowsConsoleHandle(FD_STDIN);
     }
 

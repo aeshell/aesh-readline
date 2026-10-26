@@ -14,10 +14,7 @@
 package org.aesh.terminal.tty;
 
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
-
-import java.lang.reflect.Method;
 
 import org.aesh.terminal.utils.OSUtils;
 import org.junit.Test;
@@ -25,7 +22,6 @@ import org.junit.Test;
 /**
  * Tests for TtyDetect Windows console handle probe (#276, #277).
  * <p>
- * The tryWindowsConsoleHandle() method is tested via reflection since it's private.
  * On non-Windows platforms, it should return null (WinConsoleNative not loadable).
  * On Windows CI (piped stdin), it should return false (valid handle but pipe mode).
  * On Windows with a real console, it should return true.
@@ -33,13 +29,11 @@ import org.junit.Test;
 public class TtyDetectWindowsTest {
 
     @Test
-    public void testTryWindowsConsoleHandleReturnsNullOnNonWindows() throws Exception {
+    public void testTryWindowsConsoleHandleReturnsNullOnNonWindows() {
         if (OSUtils.IS_WINDOWS) {
             return; // This test is only meaningful on non-Windows
         }
-        Method m = TtyDetect.class.getDeclaredMethod("tryWindowsConsoleHandle");
-        m.setAccessible(true);
-        Boolean result = (Boolean) m.invoke(null);
+        Boolean result = TtyDetect.tryWindowsConsoleHandle();
         // On non-Windows, WinConsoleNative class doesn't exist or init fails
         // → tryWindowsConsoleHandle returns null
         // (the null case triggers the deny-by-default fallback)
@@ -70,13 +64,5 @@ public class TtyDetectWindowsTest {
         boolean first = TtyDetect.isStdoutTty();
         boolean second = TtyDetect.isStdoutTty();
         assertTrue("Cached results should be consistent", first == second);
-    }
-
-    @Test
-    public void testNoSystemConsoleCalledOnWindows() throws Exception {
-        // Verify that tryWindowsConsoleHandle exists and is callable
-        // (compile-time verification that the method signature is correct)
-        Method m = TtyDetect.class.getDeclaredMethod("tryWindowsConsoleHandle");
-        assertNotNull("tryWindowsConsoleHandle should exist", m);
     }
 }
