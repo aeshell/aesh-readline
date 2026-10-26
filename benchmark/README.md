@@ -266,6 +266,25 @@ environment/shared-lookup benchmarks remain controls with unchanged meanings.
 The [passive core report](results/detection-scoped-2026-10-24.md) records their
 JVM/native measurements, operation-budget proof, and remaining scope.
 
+#### Shared subprocess wall time
+
+`ProcessRunnerBaseline` measures real child launch/capture wall time, separately
+from CPU-only JMH benchmarks. It validates exact output after timing and prints
+raw samples only after all commands finish:
+
+```bash
+java -cp benchmark/target/benchmarks.jar \
+  org.aesh.readline.benchmark.ProcessRunnerBaseline \
+  100 200 runner-sample /bin/sh -c 'printf runner-sample'
+```
+
+Arguments are warmup count, sample count, expected UTF-8 output, then the command
+and its arguments. Use several fresh parent JVMs, alternate baseline/candidate
+order, and retain their JSON plus the runtime/command metadata. These numbers
+include OS process costs; they are not scalar API latency or portable CI gates.
+The [subprocess lifecycle report](results/process-runner-2026-10-25.md) records
+the regression proofs, cleanup limits, and local before/after costs.
+
 ### FfmSyscallBenchmark (per-syscall wrapper cost, #348)
 
 Measures the FFM PTY wrappers through the public `Pty` API: idle

@@ -30,10 +30,11 @@ import org.junit.Test;
 /**
  * Lifecycle tests for the shared subprocess runner (#357).
  * <p>
- * One deadline covers start, drain, and wait; slow commands time out
- * and are reaped, stderr merges without pipe deadlock, output is
- * bounded, and interruption survives. Fixture-gated on POSIX
- * {@code /bin/sh} like the stty fixtures.
+ * Normal work has one budget; owned cleanup has its separate safety
+ * allowance. Stderr merges without pipe deadlock, capture is bounded
+ * without stopping drainage, and interruption survives. These shell
+ * cases run on POSIX JVM/native tests; ProcessRunnerLifecycleTest adds
+ * cross-platform child-JVM execution and lifetime markers.
  */
 public class ProcessRunnerTest {
 
@@ -65,6 +66,19 @@ public class ProcessRunnerTest {
         assertTrue("infinite output must hit the deadline", result.timedOut());
         assertTrue("output must stay bounded, got " + result.output().length,
                 result.output().length <= ProcessRunner.DEFAULT_MAX_OUTPUT_BYTES);
+    }
+
+    @Test
+    public void testFiniteOutputBeyondCapIsDrained() throws Exception {
+        Assume.assumeTrue("needs POSIX sh", hasSh());
+        ProcessRunner.Result result = ProcessRunner.execute(10000, "/bin/sh", "-c",
+                "printf 'runner-started\\n'; i=0; while [ $i -lt 3072 ]; do "
+                        + "printf '%01024d' 0 >&2; i=$((i+1)); done");
+        assertTrue("fixture must execute before capture fills",
+                result.text(StandardCharsets.US_ASCII).startsWith("runner-started\n"));
+        assertFalse("finite output must finish even after the capture cap", result.timedOut());
+        assertEquals(0, result.exitCode());
+        assertEquals(ProcessRunner.DEFAULT_MAX_OUTPUT_BYTES, result.output().length);
     }
 
     @Test

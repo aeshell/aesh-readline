@@ -24,7 +24,7 @@ Keep Java 8 support and zero runtime dependencies in `terminal-detect`.
 | `TerminalColorQuery.queryFull()` | Selects an exclusive custom transport, or FFM, Win32, then stty. Availability/selection can perform filesystem checks and native binding initialization. Serializes the session under `PROBE_LOCK`. | Check permissions before loading or constructing transports, including before `isAvailable()`. The monitor acquisition has no deadline today. |
 | Probe session | Opens an endpoint, saves/changes raw mode, writes mode/DA1/color queries, reads replies, possibly probes grapheme width, restores cursor/state, closes. | One round needs one deadline and one I/O owner. Current stream timeouts are not an overall deadline. |
 | `TerminalDetector.detectIdeOrPlatformTheme()` | IDE/config filesystem lookups and reads, then platform subprocesses if unresolved. Linux can try two commands. | Permissions and remaining budget must cover fallback too. Unknown or a missing RGB value is not permission to try another source. |
-| `ProcessRunner.execute()` | Starts the child, starts a drainer, waits for the command timeout, then uses separate drain/reap waits. Merges stderr. | Despite its current Javadoc, it has no single overall deadline. `start()` happens before the timed wait. Drain/reap can add five seconds each on cancellation; descendant-held pipes can outlive the direct child. |
+| `ProcessRunner.execute()` | Charges launch, execution, and drain completion to one normal-work budget. Excess output is discarded while draining; the owned drainer does not wait for descendant EOF. Merges stderr. | A separate existing five-second cleanup allowance is shared by drain/reap. OS launch and pipe operations are not forcibly interruptible. This is not yet the hard overall enrichment budget. |
 | `SttyProbeTransport` | Device checks, save/setup/restore subprocesses, and terminal file streams. | Each command currently has its own wait. Restoration is necessary cleanup, not permission to begin a new enrichment attempt. |
 | `TerminalConnection` / `TerminalBuilder` | Live fd/handle checks, provider admission, PTY/console creation, attributes, device/size setup; explicit open starts the reader. | Necessary connection setup is not optional appearance discovery. A no-probe capability policy cannot promise that an explicitly requested interactive connection performs no transport work. |
 | Device / `InfoCmp` initialization | Bundled resources, direct terminfo database reads, and an `infocmp` subprocess fallback on the full lookup path. Even `getDefaultInfoCmp()` can read an installed database for unbundled names. | Do not construct a device or load terminfo merely to consume supplied capability facts. |
@@ -36,9 +36,9 @@ Keep Java 8 support and zero runtime dependencies in `terminal-detect`.
 
 This inventory covers the entry paths, not every syscall. Keep exact operation
 counts in tests and keep required transport setup separate from discovery.
-The runner also stops draining when its capture cap is reached, although its
-Javadoc says excess output is discarded. A bounded runner must keep draining
-without growing the capture buffer, or explicitly terminate the child.
+The runner's capture-cap and descendant-held-pipe defects are fixed in the
+subprocess foundation below. Permission-aware round budgeting still must account
+for its cleanup separately; a timeout on the work phase is not round completion.
 
 ## Smallest useful contract
 
@@ -135,6 +135,37 @@ Preserve measured-RGB precedence, theme-event precedence, defensive array
 ownership, and remote isolation. Do not introduce revision/subscription types
 ahead of #381/#380. A static default belongs to its defining class loader; it
 is not a cross-class-loader sharing mechanism.
+
+## Subprocess lifecycle foundation
+
+The existing `ProcessRunner.execute(...)` interface now keeps draining after
+capture fills, discarding bytes beyond the cap instead of blocking a finite
+child. Its drainer reads only reported-available bytes, excludes the JVM's
+exit-time pipe drain between readiness and read, and stops after the direct
+child exits without waiting for a descendant's EOF.
+
+Launch elapsed time, child waiting, and drain completion share one monotonic
+normal-work budget. Timeout/interruption retains the existing five-second
+cleanup safety allowance, but drainer join and child reap share that allowance
+rather than renewing it per phase. Unconfirmed cleanup throws instead of
+reporting success. Interrupt status survives cleanup.
+
+This is deliberately not presented as a hard end-to-end deadline. Java 8
+cannot forcibly interrupt arbitrary OS launch/pipe operations or portably kill
+an arbitrary grandchild tree. Permitted enrichment must run this work off the
+latency-critical caller and retain ownership until actual cleanup completes.
+The deadline/cancellation-aware transport contract remains a separate step.
+
+Real child-JVM fixtures prove startup, output completion, direct-child lifetime,
+and drainer termination. A deliberately surviving descendant holds inherited
+pipes and a lifetime lock. The test explicitly stops that descendant afterward;
+it does not claim the runner killed it. The JVM cases run on Windows as well
+as POSIX, while a shell-only finite-over-cap regression also executes in the
+POSIX native test image. Per-fd TTY probes remain on their independent path;
+this runner's stderr merging must not be used to replace them.
+
+Execution proof, limits, and local before/after command costs are in the
+[subprocess report](benchmark/results/process-runner-2026-10-25.md).
 
 ## Budget requirements before adding a bounded factory
 

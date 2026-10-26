@@ -18,25 +18,34 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.LockSupport;
 
 /**
- * Subprocess execution with a single deadline covering process start,
- * output drain, and wait.
+ * Subprocess capture with one normal-work budget for launch, execution,
+ * and output draining.
  * <p>
- * Every probe subprocess (theme and registry queries, stty, infocmp)
- * funnels through here instead of hand-rolled start/drain/wait loops,
- * which could block draining stdout before a timed wait or deadlock on
- * a full stderr pipe. Standard error merges into standard output, so
- * one drainer thread always keeps the pipe flowing; output past the
- * cap is discarded rather than accumulated. On timeout or interruption
- * the process is destroyed forcibly and reaped before returning.
+ * Used by theme, terminfo, and PTY helper commands. Standard error merges
+ * into standard output. Output past the capture cap is discarded while
+ * the child is running. The owned drainer does not wait for EOF after
+ * the child exits: a descendant may still hold the pipe open.
+ * <p>
+ * Timeout and interruption request forcible termination, with a separate
+ * cleanup allowance of at most five seconds for the drainer and child
+ * together. This preserves the existing cleanup safety allowance; it is
+ * not a hard end-to-end enrichment deadline. Process creation and platform
+ * pipe operations cannot be forcibly interrupted by this Java 8 interface.
+ * Run permitted subprocess work off latency-critical caller threads.
  * <p>
  * Java 8, zero dependencies beyond {@code java.base}.
  */
 public final class ProcessRunner {
 
-    /** Default deadline (ms) for start, drain, and wait combined. */
+    /** Default normal-work budget (ms) for launch, drain, and wait combined. */
     public static final long DEFAULT_TIMEOUT_MS = 5000;
+
+    private static final long CLEANUP_NANOS = TimeUnit.SECONDS.toNanos(5);
+    private static final long DRAIN_POLL_NANOS = TimeUnit.MILLISECONDS.toNanos(1);
 
     /**
      * Maximum captured output bytes. Larger outputs are truncated;
@@ -59,8 +68,8 @@ public final class ProcessRunner {
          * Create a result. The output array is retained as passed.
          *
          * @param exitCode the process exit code, or -1 when the process
-         *        never exited normally
-         * @param timedOut true when the deadline expired first
+         *        did not produce a complete normal-work result
+         * @param timedOut true when the normal-work budget expired first
          * @param output the captured merged output bytes
          */
         public Result(int exitCode, boolean timedOut, byte[] output) {
@@ -72,14 +81,14 @@ public final class ProcessRunner {
         /**
          * Get the process exit code.
          *
-         * @return the exit code, or -1 when the process never exited normally
+         * @return the exit code, or -1 when no complete result is available
          */
         public int exitCode() {
             return exitCode;
         }
 
         /**
-         * Check whether the deadline expired before the process exited.
+         * Check whether the normal-work budget expired before capture completed.
          *
          * @return true on timeout
          */
@@ -127,7 +136,7 @@ public final class ProcessRunner {
     }
 
     /**
-     * Execute a command with the default deadline.
+     * Execute a command with the default normal-work budget.
      *
      * @param command the command and arguments
      * @return the result
@@ -139,9 +148,9 @@ public final class ProcessRunner {
     }
 
     /**
-     * Execute a command with a deadline.
+     * Execute a command with a normal-work budget and bounded cleanup.
      *
-     * @param timeoutMs the deadline in milliseconds for start, drain, and wait combined
+     * @param timeoutMs the normal-work budget in milliseconds; see class-level cleanup limits
      * @param command the command and arguments
      * @return the result
      * @throws IOException if the process cannot start or I/O fails
@@ -153,14 +162,15 @@ public final class ProcessRunner {
     }
 
     /**
-     * Execute a preconfigured process builder with a deadline.
+     * Execute a preconfigured process builder with a normal-work budget.
      * <p>
      * Callers keep builder customization (environment, redirections);
-     * this method owns the lifecycle: start, drain, bounded wait, and
-     * forcible destroy plus reap on timeout or interruption.
+     * this method owns launch, capture, and cleanup. Launch time is charged
+     * once it returns. Timeout or interruption uses the separate cleanup
+     * allowance described on this class, not a fresh allowance per phase.
      *
      * @param starter the configured process builder
-     * @param timeoutMs the deadline in milliseconds for start, drain, and wait combined
+     * @param timeoutMs the normal-work budget in milliseconds; see class-level cleanup limits
      * @return the result
      * @throws IOException if the process cannot start or I/O fails
      * @throws InterruptedException if interrupted while waiting
@@ -171,64 +181,130 @@ public final class ProcessRunner {
         if (transport != null) {
             return transport.run(starter, timeoutMs);
         }
+        long started = System.nanoTime();
+        long budget = TimeUnit.MILLISECONDS.toNanos(timeoutMs);
+        ByteArrayOutputStream captured = new ByteArrayOutputStream();
+        AtomicBoolean stop = new AtomicBoolean();
         starter.redirectErrorStream(true);
         Process process = starter.start();
-        ByteArrayOutputStream captured = new ByteArrayOutputStream();
-        Thread drainer = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    InputStream in = process.getInputStream();
-                    byte[] buf = new byte[8192];
-                    int n;
-                    while ((n = in.read(buf)) != -1) {
-                        int room = DEFAULT_MAX_OUTPUT_BYTES - captured.size();
-                        if (room <= 0) {
-                            break;
-                        }
-                        captured.write(buf, 0, Math.min(n, room));
-                    }
-                } catch (IOException ignored) {
-                    // Stream closed by destroy: partial output stands.
-                }
-            }
-        }, "process-runner-drain");
-        drainer.setDaemon(true);
-        drainer.start();
-        boolean finished;
+        Thread drainer = null;
         try {
-            finished = process.waitFor(timeoutMs, TimeUnit.MILLISECONDS);
-        } catch (InterruptedException e) {
-            process.destroyForcibly();
-            joinDrainer(drainer);
-            try {
-                process.waitFor(5, TimeUnit.SECONDS);
-            } catch (InterruptedException nested) {
-                Thread.currentThread().interrupt();
+            drainer = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    drain(process, captured, stop);
+                }
+            }, "process-runner-drain");
+            drainer.setDaemon(true);
+            drainer.start();
+            boolean finished = process.waitFor(remaining(started, budget), TimeUnit.NANOSECONDS);
+            stop.set(true);
+            drainer.interrupt();
+            if (finished && joinWithin(drainer, started, budget)) {
+                return new Result(process.exitValue(), false, captured.toByteArray());
             }
-            Thread.currentThread().interrupt();
-            throw e;
-        }
-        if (!finished) {
-            process.destroyForcibly();
-            joinDrainer(drainer);
-            try {
-                process.waitFor(5, TimeUnit.SECONDS);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw e;
+            cleanup(process, drainer, stop);
+            if (Thread.currentThread().isInterrupted()) {
+                throw new InterruptedException("interrupted during subprocess cleanup");
             }
             return new Result(-1, true, captured.toByteArray());
+        } catch (InterruptedException e) {
+            cleanupAfterFailure(process, drainer, stop, e);
+            Thread.currentThread().interrupt();
+            throw e;
+        } catch (RuntimeException | Error e) {
+            cleanupAfterFailure(process, drainer, stop, e);
+            throw e;
         }
-        joinDrainer(drainer);
-        return new Result(process.exitValue(), false, captured.toByteArray());
     }
 
-    private static void joinDrainer(Thread drainer) {
+    private static void drain(Process process, ByteArrayOutputStream captured, AtomicBoolean stop) {
         try {
-            drainer.join(5000);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+            InputStream input = process.getInputStream();
+            byte[] buffer = new byte[8192];
+            while (!stop.get() || captured.size() < DEFAULT_MAX_OUTPUT_BYTES) {
+                // Observe exit before checking readiness, so a child's final
+                // write cannot land between an empty read and the exit check.
+                boolean ending = stop.get();
+                int count = readAvailable(input, buffer);
+                if (count > 0) {
+                    int room = DEFAULT_MAX_OUTPUT_BYTES - captured.size();
+                    if (room > 0) {
+                        captured.write(buffer, 0, Math.min(count, room));
+                    }
+                } else if (ending) {
+                    return;
+                } else {
+                    LockSupport.parkNanos(DRAIN_POLL_NANOS);
+                }
+            }
+        } catch (IOException ignored) {
+            // The process/JVM may close a pipe concurrently. Keep partial output.
+        }
+    }
+
+    private static int readAvailable(InputStream input, byte[] buffer) throws IOException {
+        // Exclude the JVM's exit-time pipe drain between readiness and read.
+        // No other reader can consume these bytes while this monitor is held.
+        synchronized (input) {
+            int available = input.available();
+            return available > 0 ? input.read(buffer, 0, Math.min(available, buffer.length)) : 0;
+        }
+    }
+
+    private static long remaining(long started, long budget) {
+        long elapsed = System.nanoTime() - started;
+        return budget <= 0 || elapsed >= budget ? 0 : budget - elapsed;
+    }
+
+    private static boolean joinWithin(Thread thread, long started, long budget) throws InterruptedException {
+        while (thread != null && thread.isAlive()) {
+            long left = remaining(started, budget);
+            if (left == 0) {
+                return false;
+            }
+            thread.join(TimeUnit.NANOSECONDS.toMillis(left), (int) (left % 1000000));
+        }
+        return true;
+    }
+
+    private static void cleanup(Process process, Thread drainer, AtomicBoolean stop) throws IOException {
+        long started = System.nanoTime();
+        boolean interrupted = Thread.interrupted();
+        stop.set(true);
+        if (drainer != null) {
+            drainer.interrupt();
+        }
+        try {
+            if (process.isAlive()) {
+                process.destroyForcibly();
+            }
+            while (true) {
+                try {
+                    if (!joinWithin(drainer, started, CLEANUP_NANOS)
+                            || !process.waitFor(remaining(started, CLEANUP_NANOS), TimeUnit.NANOSECONDS)) {
+                        throw new IOException("subprocess cleanup did not finish within its allowance");
+                    }
+                    return;
+                } catch (InterruptedException e) {
+                    // Finish this owned cleanup attempt without resetting its budget.
+                    interrupted = true;
+                }
+            }
+        } finally {
+            if (interrupted) {
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+
+    private static void cleanupAfterFailure(Process process, Thread drainer, AtomicBoolean stop, Throwable primary) {
+        try {
+            cleanup(process, drainer, stop);
+        } catch (IOException | RuntimeException | Error cleanupFailure) {
+            if (cleanupFailure != primary) {
+                primary.addSuppressed(cleanupFailure);
+            }
         }
     }
 }
