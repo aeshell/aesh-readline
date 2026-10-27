@@ -33,6 +33,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.junit.Assume;
 import org.junit.Test;
 
 /**
@@ -205,6 +206,13 @@ public class BoundedEnrichmentTest {
 
     @Test(timeout = 45000)
     public void testBoundedDoesNotJoinBlockedSharedRound() throws Exception {
+        Map<String, String> ambient = System.getenv();
+        String tmux = ambient.get("TMUX");
+        String term = ambient.get("TERM");
+        Assume.assumeFalse("live query skipped in multiplexer",
+                (tmux != null && !tmux.isEmpty())
+                        || (term != null && (term.toLowerCase(java.util.Locale.ROOT).startsWith("tmux")
+                                || term.toLowerCase(java.util.Locale.ROOT).startsWith("screen"))));
         final CountDownLatch readEntered = new CountDownLatch(1);
         final CountDownLatch release = new CountDownLatch(1);
         TerminalProbeTransport gated = new TerminalProbeTransport() {
@@ -300,6 +308,21 @@ public class BoundedEnrichmentTest {
     public void testBoundedPlatformBudgetPassedThrough() {
         final List<String> commands = new ArrayList<>();
         final List<Long> budgets = new ArrayList<>();
+        // Decline the live terminal query outright: its result depends on
+        // whether the fork owns a live controlling terminal, while this test
+        // covers only the platform fallback's share of the budget. A custom
+        // legacy transport is declined without consulting it.
+        TerminalCapabilities.setProbeTransport(new TerminalProbeTransport() {
+            @Override
+            public boolean isAvailable() {
+                throw new AssertionError("declined custom transport must not be consulted");
+            }
+
+            @Override
+            public TerminalProbeSession open() throws IOException {
+                throw new AssertionError("declined custom transport must not be opened");
+            }
+        });
         ProcessRunner.setInstalled(new ProcessRunner.RunnerTransport() {
             @Override
             public ProcessRunner.Result run(ProcessBuilder starter, long timeoutMs) {
@@ -319,6 +342,7 @@ public class BoundedEnrichmentTest {
             assertTrue("subprocess must share the remaining budget, got " + budgets,
                     budgets.get(0) > 0 && budgets.get(0) <= 5000);
         } finally {
+            TerminalCapabilities.setProbeTransport(null);
             ProcessRunner.setInstalled(null);
         }
     }
