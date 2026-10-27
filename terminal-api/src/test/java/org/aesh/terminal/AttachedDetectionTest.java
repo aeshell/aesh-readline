@@ -131,6 +131,16 @@ public class AttachedDetectionTest {
         Assume.assumeFalse("live query skipped in multiplexer", multiplexed);
     }
 
+    /** Device identity reporting KITTY, for precedence tests. */
+    private static Device kittyDevice() {
+        return new BaseDevice("linux") {
+            @Override
+            public ImageProtocol getImageProtocol() {
+                return ImageProtocol.KITTY;
+            }
+        };
+    }
+
     @Test
     public void testAttachedMeasuredRgbFlowsIntoColorCapability() {
         assumeNoMultiplexer();
@@ -214,6 +224,54 @@ public class AttachedDetectionTest {
             connection.close();
             previous.close();
             replacement.close();
+        }
+    }
+
+    @Test
+    public void testMeasuredImageProtocolOutranksDevice() {
+        assumeNoMultiplexer();
+        TerminalCapabilities saved = TerminalCapabilities.getInstance();
+        final byte[] reply = measuredBatch();
+        final MeasuredSession[] session = new MeasuredSession[1];
+        TerminalCapabilities.setProbeTransport(new TerminalProbeTransport() {
+            @Override
+            public boolean isAvailable() {
+                return true;
+            }
+
+            @Override
+            public TerminalProbeSession open() {
+                session[0] = new MeasuredSession(reply);
+                return session[0];
+            }
+        });
+        TerminalCapabilities.invalidate();
+        StreamConnection connection = remote(kittyDevice());
+        try {
+            TerminalCapabilities measured = TerminalCapabilities.detectFull();
+            assertEquals(ImageProtocol.SIXEL, measured.measuredImageProtocol());
+            assertEquals(1, session[0].closes);
+            connection.attachDetection(TerminalDetection.managed(measured));
+            assertEquals("a live DA1 reply outranks the device identity",
+                    ImageProtocol.SIXEL, connection.terminal().getImageProtocol());
+        } finally {
+            connection.close();
+            TerminalCapabilities.setProbeTransport(null);
+            TerminalCapabilities.setInstance(saved);
+        }
+    }
+
+    @Test
+    public void testDeviceBeatsAttachedUnknownWithoutLiveQuery() {
+        StreamConnection connection = remote(kittyDevice());
+        CountingFeatures features = new CountingFeatures(connection);
+        try {
+            connection.attachDetection(TerminalDetection.managed(null));
+            assertEquals(ImageProtocol.KITTY, features.getImageProtocol());
+            assertEquals("an attached unknown keeps the device answer without probing",
+                    0, features.imageQueries);
+        } finally {
+            connection.close();
         }
     }
 

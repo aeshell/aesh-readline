@@ -48,6 +48,22 @@ public class ConnectionOscQueryTest {
      * Test that queryOsc correctly builds and sends OSC queries.
      */
     @Test
+    public void testDirectImplementationInheritsUnknownDefault() {
+        // MockConnection implements Connection directly, without
+        // AbstractConnection: third-party connections keep working with an
+        // unknown origin and no probing unless they declare otherwise.
+        MockConnection connection = new MockConnection();
+        try {
+            assertSame(EndpointContext.unknown(), connection.endpointContext());
+        } finally {
+            connection.close();
+        }
+    }
+
+    /**
+     * Test that queryOsc correctly builds and sends OSC queries.
+     */
+    @Test
     public void testQueryOscBuildsCorrectQuery() {
         List<String> sentQueries = new ArrayList<>();
         MockConnection connection = new MockConnection() {

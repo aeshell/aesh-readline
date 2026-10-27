@@ -854,17 +854,28 @@ public class TerminalFeatures {
      * This is the recommended entry point for image protocol detection when a
      * {@link Connection} is available. It avoids the DA1 query cost when
      * the connection's own device already identifies the protocol.
+     * <p>
+     * Precedence is measured reply first, then device identity, then attached
+     * endpoint hints. A measured DA1 reply outranks a conflicting device
+     * answer; a device answer outranks hints. Attached-but-unknown declines
+     * the live DA1 fallback instead of probing a suppressed endpoint.
      *
      * @return the detected image protocol, or NONE
      */
     public ImageProtocol getImageProtocol() {
+        TerminalDetection attached = attachedDetection();
+        if (attached != null) {
+            ImageProtocol measured = attached.capabilities().measuredImageProtocol();
+            if (measured != null && measured != ImageProtocol.NONE) {
+                return measured;
+            }
+        }
         ImageProtocol protocol = connection.device() != null
                 ? connection.device().getImageProtocol()
                 : ImageProtocol.NONE;
         if (protocol != ImageProtocol.NONE) {
             return protocol;
         }
-        TerminalDetection attached = attachedDetection();
         if (attached != null) {
             // Attached facts fill an unknown-device gap: a measured result
             // and endpoint hints alike. Attached-but-unknown declines the

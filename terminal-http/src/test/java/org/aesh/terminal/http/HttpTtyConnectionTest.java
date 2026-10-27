@@ -32,6 +32,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.aesh.terminal.EndpointContext;
 import org.aesh.terminal.tty.Size;
 import org.junit.Test;
 
@@ -143,6 +144,56 @@ public class HttpTtyConnectionTest {
         conn.writeToDecoder("{\"action\":\"resize\",\"cols\":-1,\"rows\":0}");
         assertEquals(80, conn.size().getWidth());
         assertEquals(24, conn.size().getHeight());
+    }
+
+    @Test
+    public void testDefaultsAreNotMeasurements() {
+        HttpTtyConnection conn = createConnection();
+        try {
+            assertEquals(80, conn.size().getWidth());
+            assertNull("the built-in default size is a fallback, not a measurement",
+                    conn.endpointContext().dimensions());
+            assertEquals(EndpointContext.Source.UNKNOWN, conn.endpointContext().dimensionsSource());
+        } finally {
+            conn.close();
+        }
+    }
+
+    @Test
+    public void testResizeStaysPerConnection() throws Exception {
+        HttpTtyConnection first = createConnection();
+        HttpTtyConnection second = createConnection();
+        CountDownLatch resized = new CountDownLatch(1);
+        first.setSizeHandler(size -> resized.countDown());
+        try {
+            first.writeToDecoder("{\"action\":\"resize\",\"cols\":132,\"rows\":50}");
+            assertTrue("resize must dispatch", resized.await(5, TimeUnit.SECONDS));
+            assertEquals(new Size(132, 50), first.endpointContext().dimensions());
+            assertEquals(EndpointContext.Source.NEGOTIATED, first.endpointContext().dimensionsSource());
+            assertNull("another client's snapshot is unaffected",
+                    second.endpointContext().dimensions());
+        } finally {
+            first.close();
+            second.close();
+        }
+    }
+
+    @Test
+    public void testReconnectStartsWithoutDimensions() throws Exception {
+        HttpTtyConnection conn = createConnection();
+        CountDownLatch resized = new CountDownLatch(1);
+        conn.setSizeHandler(size -> resized.countDown());
+        conn.writeToDecoder("{\"action\":\"resize\",\"cols\":132,\"rows\":50}");
+        assertTrue("resize must dispatch", resized.await(5, TimeUnit.SECONDS));
+        conn.close();
+
+        HttpTtyConnection next = createConnection();
+        try {
+            assertNull("a replacement connection keeps no previous size",
+                    next.endpointContext().dimensions());
+        } finally {
+            next.close();
+        }
     }
 
     @Test

@@ -35,8 +35,9 @@ connections therefore keep working without inventing authoritative facts.
 
 Creators build a context and supply it with `AbstractConnection.setEndpointContext`.
 This is available on all concrete built-in connections. Passing null restores
-unknown facts, and writes after close are ignored. Constructor/provider
-configuration that accepts these facts before setup remains a later stage.
+unknown facts, and writes after close are ignored. Stream-backed constructors
+also accept facts before setup so the handler observes them; the accepting
+transports observe their own remote origin and need no creator parameter.
 Consumers use the `Connection` getter rather than casts or reflection. A custom
 connection may override it; a delegate forwards its wrapped connection's current
 context instead of caching a snapshot.
@@ -125,9 +126,10 @@ on creation or resize, never once per render.
    with observed per-fd facts (native console only when a console transport
    demonstrably owns the endpoint), while accepted SSH/Telnet/HTTP connections
    declare REMOTE with negotiated input/output facts. Stream-backed and
-   externally supplied terminals stay unknown. Constructor/provider
-   configuration remains a later stage, as does wrapper forwarding beyond the
-   covered delegate shape.
+   externally supplied terminals stay unknown; stream-backed constructors
+   accept creator facts before setup when the endpoint is known locally.
+   Wrapper forwarding is covered for the delegating-override shape and the
+   interface default inherited by direct Connection implementations.
 4. Use the reviewed context for startup attachment and local-only theme
    forwarding. Declared LOCAL shares the startup default even fully
    redirected; declared REMOTE never does; unknown origins keep the
@@ -249,6 +251,29 @@ four remote-origin tests also pass on JDK 11.0.30 and 21.0.6 with no skips.
 Structural review reports 2 gated findings: constructor-delegation shape and
 test try/finally idiom duplication. Neither is a contract change, and the
 `edit_check` pass reports no incompatible callers.
+
+## Verification of the remaining contract items
+
+Image precedence, dimension lifecycle, constructor supply, and wrapper-default
+slices build on the baseline above. New coverage: a measured DA1 sixel reply
+outranks a conflicting device identity while device hints still beat attached
+unknowns without triggering a live query; defaults are never recorded as
+measurements, resizes stay per-connection, and reconnects start dimension-free;
+stream-backed constructors accept creator facts visible to the handler; direct
+Connection implementations inherit the unknown default. The capture gate that
+dropped measured sixel against non-NONE hints is removed: measured replies now
+outrank hints by design, verified hermetically in this Ghostty-polluted shell
+where the old gate discarded the fake reply.
+
+Isolated mutations (image-precedence reorder, size-update no-op, constructor
+drop, interface-default null) fail the matching tests. The full JDK 25 reactor
+reports 2122 tests with no failures/errors and 50 existing platform skips; the
+attachment/image/osc suites pass on JDK 11.0.30 and 21.0.6 with no skips.
+`edit_check` reports no incompatible callers. `quality_delta` reports only
+new-symbol test entry points, house device-mock and close-lifecycle
+duplication idioms, and expected verbosity/churn — no complexity, public
+parameter, or error-masking finding. This is not a clean structural-quality
+report.
 
 ## Verification of the context-aware attachment and forwarding slice
 

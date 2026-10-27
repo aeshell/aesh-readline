@@ -896,7 +896,11 @@ public final class TerminalCapabilities {
             // Grapheme clustering is probed separately per mode (cursor
             // position), never copied: an unprobed result must stay null,
             // not become a fabricated negative.
-            if (result.supportsSixel && detector.imageProtocol == ImageProtocol.NONE) {
+            // A live device-attributes reply outranks terminal-identity hints:
+            // record the measurement whenever the probe establishes it, even
+            // against differing hints. Consumers apply the measured-first
+            // precedence; hint-only results keep reporting null here.
+            if (result.supportsSixel) {
                 queriedImageProtocol = ImageProtocol.SIXEL;
             }
             batch = capturePublishLocked();
@@ -973,6 +977,19 @@ public final class TerminalCapabilities {
      */
     public ImageProtocol imageProtocol() {
         return queriedImageProtocol != null ? queriedImageProtocol : detector.imageProtocol;
+    }
+
+    /**
+     * Get the image protocol established by a measured device-attributes
+     * reply, distinct from environment and terminal-identity hints.
+     * Only a live DA1 reply establishes this; hint-only results report null
+     * even when {@link #imageProtocol()} answers from hints.
+     *
+     * @return the measured protocol, or null when no live reply established one
+     * @since 3.18.8
+     */
+    public ImageProtocol measuredImageProtocol() {
+        return queriedImageProtocol;
     }
 
     /**

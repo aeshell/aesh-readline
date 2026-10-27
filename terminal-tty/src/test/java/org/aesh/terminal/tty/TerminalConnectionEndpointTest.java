@@ -27,6 +27,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -307,6 +309,28 @@ public class TerminalConnectionEndpointTest {
                 new ByteArrayInputStream(new byte[0]), new ByteArrayOutputStream());
         try {
             assertEquals(EndpointContext.Locality.UNKNOWN, connection.endpointContext().locality());
+        } finally {
+            connection.close();
+        }
+    }
+
+    @Test
+    public void testConstructorFactsAreVisibleBeforeHandlerRuns() throws Exception {
+        EndpointContext declared = EndpointContext.builder()
+                .locality(EndpointContext.Locality.LOCAL)
+                .build();
+        List<EndpointContext> observed = new ArrayList<>();
+        TerminalConnection connection = new TerminalConnection(StandardCharsets.UTF_8,
+                StandardCharsets.UTF_8, new ByteArrayInputStream(new byte[0]),
+                new ByteArrayOutputStream(),
+                conn -> {
+                    observed.add(conn.endpointContext());
+                }, declared);
+        try {
+            assertEquals("the handler must see the supplied facts, not unknown",
+                    1, observed.size());
+            assertSame(declared, observed.get(0));
+            assertSame(declared, connection.endpointContext());
         } finally {
             connection.close();
         }

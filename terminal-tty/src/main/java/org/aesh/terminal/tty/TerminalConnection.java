@@ -99,17 +99,40 @@ public class TerminalConnection extends AbstractConnection {
      */
     public TerminalConnection(Charset inputCharset, Charset outputCharset, InputStream inputStream,
             OutputStream outputStream, Consumer<Connection> handler) throws IOException {
-        this(inputCharset, outputCharset, inputStream, outputStream, handler, false);
+        this(inputCharset, outputCharset, inputStream, outputStream, handler, false, null);
+    }
+
+    /**
+     * Creates a new TerminalConnection with the specified charsets, streams,
+     * handler, and creator-supplied endpoint facts.
+     * <p>
+     * The supplied facts are applied before the handler runs, unlike a later
+     * {@code setEndpointContext} call. A null context leaves the endpoint
+     * unknown.
+     *
+     * @param inputCharset the charset for input encoding, or null to use the default charset
+     * @param outputCharset the charset for output encoding, or null to use the default charset
+     * @param inputStream the input stream for the terminal
+     * @param outputStream the output stream for the terminal
+     * @param handler the connection handler to be called when the connection is initialized
+     * @param endpointContext the creator-supplied endpoint facts, or null for unknown
+     * @throws IOException if an I/O error occurs
+     */
+    public TerminalConnection(Charset inputCharset, Charset outputCharset, InputStream inputStream,
+            OutputStream outputStream, Consumer<Connection> handler, EndpointContext endpointContext)
+            throws IOException {
+        this(inputCharset, outputCharset, inputStream, outputStream, handler, false, endpointContext);
     }
 
     /**
      * Shared stream-backed setup. Only the standard-stdio constructors pass
      * {@code true}: arbitrary caller streams and externally supplied
      * terminals cannot be claimed as the local process endpoint.
+     * An explicitly supplied context wins over the local flag.
      */
     private TerminalConnection(Charset inputCharset, Charset outputCharset, InputStream inputStream,
-            OutputStream outputStream, Consumer<Connection> handler, boolean localEndpoint)
-            throws IOException {
+            OutputStream outputStream, Consumer<Connection> handler, boolean localEndpoint,
+            EndpointContext endpointContext) throws IOException {
         this.handler = handler;
         Terminal terminal = TerminalBuilder.builder()
                 .input(inputStream)
@@ -119,7 +142,7 @@ public class TerminalConnection extends AbstractConnection {
                 .build();
         this.inputCharset = resolveCharset(inputCharset, terminal, OSUtils.IS_CYGWIN);
         this.outputCharset = resolveCharset(outputCharset, terminal, OSUtils.IS_CYGWIN);
-        init(terminal, localEndpoint);
+        init(terminal, localEndpoint, endpointContext);
     }
 
     /**
@@ -155,7 +178,7 @@ public class TerminalConnection extends AbstractConnection {
      * @throws IOException if an I/O error occurs
      */
     public TerminalConnection() throws IOException {
-        this(null, null, System.in, System.out, null, true);
+        this(null, null, System.in, System.out, null, true, null);
     }
 
     /**
@@ -167,7 +190,7 @@ public class TerminalConnection extends AbstractConnection {
      * @throws IOException if an I/O error occurs
      */
     public TerminalConnection(Consumer<Connection> handler) throws IOException {
-        this(null, null, System.in, System.out, handler, true);
+        this(null, null, System.in, System.out, handler, true, null);
     }
 
     /**
@@ -178,10 +201,10 @@ public class TerminalConnection extends AbstractConnection {
     public TerminalConnection(Terminal terminal) {
         this.inputCharset = resolveCharset(null, terminal, OSUtils.IS_CYGWIN);
         this.outputCharset = resolveCharset(null, terminal, OSUtils.IS_CYGWIN);
-        init(terminal, false);
+        init(terminal, false, null);
     }
 
-    private void init(Terminal term, boolean localEndpoint) {
+    private void init(Terminal term, boolean localEndpoint, EndpointContext supplied) {
         this.terminal = term;
         attributes = this.terminal.getAttributes();
         //interrupt signal
@@ -240,17 +263,36 @@ public class TerminalConnection extends AbstractConnection {
         if (!TtyDetect.isStdoutTty())
             ansi = false;
 
-        if (localEndpoint) {
-            // The process opened its own terminal from its standard streams:
-            // this is the local endpoint even inside an SSH login. Reuse the
-            // cached fd observations; perform no size query here, the first
-            // WINCH report fills dimensions. A console transport that won
-            // provider admission demonstrably owns the native console.
-            declareLocalEndpoint(TtyDetect.isStdinTty(), TtyDetect.isStdoutTty(),
-                    TtyDetect.isStderrTty(), terminal instanceof WinSysTerminal);
-        }
+        declareSetupEndpoint(localEndpoint, supplied);
         if (handler != null)
             handler.accept(this);
+    }
+
+    /**
+     * Declare the endpoint this setup observed, before the handler runs.
+     * An explicitly supplied context wins over the local flag; neither
+     * branch probes or queries the terminal for more facts. Does nothing
+     * when the endpoint stays unknown.
+     *
+     * @param localEndpoint true only for the standard-stdio constructors
+     * @param supplied creator-supplied facts, or null for unknown
+     */
+    private void declareSetupEndpoint(boolean localEndpoint, EndpointContext supplied) {
+        if (supplied != null) {
+            // Creator-supplied facts are visible before the handler runs.
+            setEndpointContext(supplied);
+            return;
+        }
+        if (!localEndpoint) {
+            return;
+        }
+        // The process opened its own terminal from its standard streams:
+        // this is the local endpoint even inside an SSH login. Reuse the
+        // cached fd observations; perform no size query here, the first
+        // WINCH report fills dimensions. A console transport that won
+        // provider admission demonstrably owns the native console.
+        declareLocalEndpoint(TtyDetect.isStdinTty(), TtyDetect.isStdoutTty(),
+                TtyDetect.isStderrTty(), terminal instanceof WinSysTerminal);
     }
 
     @Override
