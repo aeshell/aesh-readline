@@ -147,7 +147,12 @@ on creation or resize, never once per render.
 6. Preserve the per-fd matrix from #329 and Windows/mintty provider behavior.
    Add packaged JVM/native checks with runtime hints changed after image build.
    Record native aborts and field-only Windows cases rather than counting them
-   as executed coverage.
+   as executed coverage. `WindowsEndpointLiveCheck` is the packaged-jar field
+   harness colleagues run on real consoles (conhost, Windows Terminal, Git Bash,
+   mintty, each plain and piped): per-fd TTY plus console-handle facts, provider
+   pick, declared endpoint, attached theme/depth/image/size, a bounded full
+   detection, a 30s theme-toggle observation, and a resize observation. Packaged
+   jars are required — exploded classes hide the Java 22 FFM/Win32 overlays.
 
 Measure added per-connection memory and construction cost against #377's
 baseline once the representation exists. The fd-gating tests alone neither
