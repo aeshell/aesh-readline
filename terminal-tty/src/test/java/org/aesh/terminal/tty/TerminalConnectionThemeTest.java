@@ -24,10 +24,13 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.aesh.terminal.BaseDevice;
 import org.aesh.terminal.Device;
+import org.aesh.terminal.EndpointContext;
 import org.aesh.terminal.Terminal;
 import org.aesh.terminal.TerminalFeatures;
 import org.aesh.terminal.detect.ModeSupport;
@@ -85,6 +88,64 @@ public class TerminalConnectionThemeTest {
         };
     }
 
+    private static EndpointContext localContext() {
+        return EndpointContext.builder()
+                .locality(EndpointContext.Locality.LOCAL)
+                .build();
+    }
+
+    @Test
+    public void testUnknownOriginDoesNotForwardToSharedCache() {
+        Map<String, String> env = new HashMap<>();
+        env.put("TERM", "xterm-256color");
+        env.put("COLORFGBG", "0;15");
+        TerminalCapabilities saved = TerminalCapabilities.getInstance();
+        TerminalCapabilities caps = TerminalDetection.environmentOnly(env).capabilities();
+        List<TerminalTheme> received = new ArrayList<>();
+        // A stub-wrapped terminal is externally supplied: its origin stays
+        // unknown unless the creator declares it.
+        LocalTestConnection connection = new LocalTestConnection(stubTerminal(syncDevice()));
+        try {
+            TerminalCapabilities.setInstance(caps);
+            assertEquals(EndpointContext.Locality.UNKNOWN, connection.endpointContext().locality());
+            connection.setThemeChangeHandler(received::add);
+            connection.feed(DSR_DARK);
+
+            assertEquals("the application callback still runs",
+                    Collections.singletonList(TerminalTheme.DARK), received);
+            assertEquals("an unknown origin must not rewrite the shared default",
+                    TerminalTheme.LIGHT, caps.theme());
+        } finally {
+            connection.close();
+            TerminalCapabilities.setInstance(saved);
+        }
+    }
+
+    @Test
+    public void testRemoteThemeEventNeverRewritesLocalResult() {
+        Map<String, String> env = new HashMap<>();
+        env.put("TERM", "xterm-256color");
+        env.put("COLORFGBG", "0;15");
+        TerminalCapabilities saved = TerminalCapabilities.getInstance();
+        TerminalCapabilities local = TerminalDetection.environmentOnly(env).capabilities();
+        TerminalCapabilities remote = TerminalCapabilities.detect();
+        List<TerminalSnapshot> remoteReceived = new ArrayList<>();
+        TerminalSubscription remoteSubscription = remote.subscribe(remoteReceived::add);
+        try {
+            TerminalCapabilities.setInstance(local);
+            remote.applyThemeChange(TerminalTheme.DARK);
+
+            assertEquals("a remote theme event stays on its own result",
+                    TerminalTheme.LIGHT, local.theme());
+            assertEquals(2, remoteReceived.size());
+            assertEquals(TerminalTheme.DARK, remoteReceived.get(1).theme());
+            assertSame(local, TerminalCapabilities.getInstance());
+        } finally {
+            remoteSubscription.close();
+            TerminalCapabilities.setInstance(saved);
+        }
+    }
+
     @Test
     public void testLocalThemeNotificationUpdatesSharedCache() {
         TerminalCapabilities saved = TerminalCapabilities.getInstance();
@@ -93,6 +154,7 @@ public class TerminalConnectionThemeTest {
         LocalTestConnection connection = new LocalTestConnection(stubTerminal(syncDevice()));
         try {
             TerminalCapabilities.setInstance(caps);
+            connection.setEndpointContext(localContext());
             connection.setThemeChangeHandler(received::add);
             connection.feed(DSR_DARK);
 
@@ -122,6 +184,7 @@ public class TerminalConnectionThemeTest {
         LocalTestConnection connection = new LocalTestConnection(stubTerminal(syncDevice()));
         try {
             TerminalCapabilities.setInstance(caps);
+            connection.setEndpointContext(localContext());
             connection.setThemeChangeHandler(legacy::add);
             connection.setStdinHandler(input -> {
                 for (int codePoint : input) {

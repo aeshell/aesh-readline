@@ -24,6 +24,7 @@ import java.util.Map;
 
 import org.aesh.terminal.BaseDevice;
 import org.aesh.terminal.Device;
+import org.aesh.terminal.EndpointContext;
 import org.aesh.terminal.Terminal;
 import org.aesh.terminal.detect.TerminalCapabilities;
 import org.aesh.terminal.detect.TerminalDetection;
@@ -60,6 +61,63 @@ public class TerminalConnectionAttachmentTest {
                 return device;
             }
         };
+    }
+
+    private static EndpointContext localContext() {
+        return EndpointContext.builder()
+                .locality(EndpointContext.Locality.LOCAL)
+                .build();
+    }
+
+    private static EndpointContext remoteContext() {
+        return EndpointContext.builder()
+                .locality(EndpointContext.Locality.REMOTE)
+                .build();
+    }
+
+    @Test
+    public void testDeclaredLocalSharesGlobalDespiteRedirectedStdio() throws Exception {
+        int savedStdin = TtyDetect.cachedStdinForTests();
+        int savedStdout = TtyDetect.cachedStdoutForTests();
+        TerminalCapabilities saved = TerminalCapabilities.getInstance();
+        try {
+            TtyDetect.cachedStdinForTests(0);
+            TtyDetect.cachedStdoutForTests(0);
+            TerminalCapabilities first = TerminalCapabilities.detect();
+            TerminalCapabilities.setInstance(first);
+            TerminalConnection connection = new TerminalConnection();
+            try {
+                assertEquals(EndpointContext.Locality.LOCAL, connection.endpointContext().locality());
+                connection.terminal();
+                assertSame("a declared-local endpoint shares the startup default",
+                        first, connection.attachedDetection().capabilities());
+            } finally {
+                connection.close();
+            }
+        } finally {
+            TtyDetect.cachedStdinForTests(savedStdin);
+            TtyDetect.cachedStdoutForTests(savedStdout);
+            TerminalCapabilities.setInstance(saved);
+        }
+    }
+
+    @Test
+    public void testDeclaredContextOutranksFdGate() {
+        TerminalCapabilities saved = TerminalCapabilities.getInstance();
+        try {
+            TerminalCapabilities first = TerminalCapabilities.detect();
+            TerminalCapabilities.setInstance(first);
+            assertSame(first, TerminalConnection
+                    .autoAttachOwner(localContext(), false, false).capabilities());
+            assertSame(first, TerminalConnection
+                    .autoAttachOwner(localContext(), true, true).capabilities());
+            TerminalDetection remote = TerminalConnection
+                    .autoAttachOwner(remoteContext(), true, true);
+            assertTrue("a declared-remote endpoint never shares the local default",
+                    remote.capabilities() != first);
+        } finally {
+            TerminalCapabilities.setInstance(saved);
+        }
     }
 
     @Test

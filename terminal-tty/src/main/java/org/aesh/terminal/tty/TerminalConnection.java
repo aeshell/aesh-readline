@@ -537,6 +537,9 @@ public class TerminalConnection extends AbstractConnection {
 
     /**
      * Forwards local theme notifications to the shared startup cache.
+     * Only a declared-local endpoint forwards: a report arriving on an
+     * unknown or remote endpoint still reaches the application handler
+     * but never rewrites the process default.
      * <p>
      * Installed around the application handler by
      * {@link #setThemeChangeHandler}: the decoder itself stays neutral
@@ -547,15 +550,19 @@ public class TerminalConnection extends AbstractConnection {
      * with a directly installed handler.
      */
     private static final class GlobalThemeForwarder implements Consumer<TerminalTheme> {
+        private final TerminalConnection owner;
         private final Consumer<TerminalTheme> downstream;
 
-        GlobalThemeForwarder(Consumer<TerminalTheme> downstream) {
+        GlobalThemeForwarder(TerminalConnection owner, Consumer<TerminalTheme> downstream) {
+            this.owner = owner;
             this.downstream = downstream;
         }
 
         @Override
         public void accept(TerminalTheme theme) {
-            TerminalCapabilities.onThemeChanged(theme);
+            if (owner.endpointContext().locality() == EndpointContext.Locality.LOCAL) {
+                TerminalCapabilities.onThemeChanged(theme);
+            }
             if (downstream != null) {
                 downstream.accept(theme);
             }
@@ -564,7 +571,7 @@ public class TerminalConnection extends AbstractConnection {
 
     @Override
     public void setThemeChangeHandler(Consumer<TerminalTheme> handler) {
-        super.setThemeChangeHandler(handler == null ? null : new GlobalThemeForwarder(handler));
+        super.setThemeChangeHandler(handler == null ? null : new GlobalThemeForwarder(this, handler));
     }
 
     @Override
@@ -588,6 +595,29 @@ public class TerminalConnection extends AbstractConnection {
      *         branch starts discovery or establishes arbitrary-stream locality
      */
     static TerminalDetection autoAttachOwner(boolean stdinTty, boolean stdoutTty) {
+        return autoAttachOwner(EndpointContext.unknown(), stdinTty, stdoutTty);
+    }
+
+    /**
+     * Choose the default owner with the declared endpoint known.
+     * A declared-local endpoint shares the startup default even when its
+     * standard streams are redirected: locality and interactivity are
+     * separate facts. A declared-remote endpoint never shares the local
+     * default. Unknown origins fall back to the fd gate above.
+     *
+     * @param endpoint the connection's declared endpoint facts, never null
+     * @param stdinTty true if file descriptor 0 is a terminal
+     * @param stdoutTty true if file descriptor 1 is a terminal
+     * @return the default owner for this endpoint; never starts discovery
+     */
+    static TerminalDetection autoAttachOwner(EndpointContext endpoint,
+            boolean stdinTty, boolean stdoutTty) {
+        if (endpoint.locality() == EndpointContext.Locality.LOCAL) {
+            return TerminalDetection.managed(TerminalCapabilities.getInstance());
+        }
+        if (endpoint.locality() == EndpointContext.Locality.REMOTE) {
+            return TerminalDetection.environmentOnly();
+        }
         if (stdinTty || stdoutTty) {
             return TerminalDetection.managed(TerminalCapabilities.getInstance());
         }
@@ -599,11 +629,13 @@ public class TerminalConnection extends AbstractConnection {
         TerminalFeatures features = super.terminal();
         TerminalDetection attached = attachedDetection();
         if (attached == null) {
-            // Only adopt the shared result when process stdin or stdout is
-            // a terminal. Fully redirected stdio gets independent hints.
+            // A declared endpoint outranks fd inference: local shares the
+            // startup default even fully redirected, remote never does,
+            // and unknown origins keep the stdin-or-stdout gate.
             // getInstance() itself is passive: neither branch starts probing.
             // Arbitrary streams still need creator-supplied endpoint metadata.
-            attached = autoAttachOwner(TtyDetect.isStdinTty(), TtyDetect.isStdoutTty());
+            attached = autoAttachOwner(endpointContext(),
+                    TtyDetect.isStdinTty(), TtyDetect.isStdoutTty());
             attachDetection(attached);
         }
         // Seed once per access from the attached owner: the values

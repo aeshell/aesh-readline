@@ -129,8 +129,12 @@ on creation or resize, never once per render.
    configuration remains a later stage, as does wrapper forwarding beyond the
    covered delegate shape.
 4. Use the reviewed context for startup attachment and local-only theme
-   forwarding. Test one local endpoint and two clients with conflicting
-   color/theme/mode facts. No remote event may rewrite the local result.
+   forwarding. Declared LOCAL shares the startup default even fully
+   redirected; declared REMOTE never does; unknown origins keep the
+   fd gate. Only LOCAL endpoints forward theme reports to the shared
+   default — unknown and remote reports still reach the application
+   handler. Tested with conflicting local/remote facts; no remote event
+   rewrites the local result.
 5. Size provenance and snapshot replacement are implemented. Existing local
    WINCH and SSH/Telnet/WebSocket resize paths now publish observed or negotiated
    dimensions before the legacy callback. Initialization is specified, not
@@ -245,6 +249,19 @@ four remote-origin tests also pass on JDK 11.0.30 and 21.0.6 with no skips.
 Structural review reports 2 gated findings: constructor-delegation shape and
 test try/finally idiom duplication. Neither is a contract change, and the
 `edit_check` pass reports no incompatible callers.
+
+## Verification of the context-aware attachment and forwarding slice
+
+Baseline is `decee4cd`. The packaged JDK 25 reactor reports 2113 tests with no
+failures/errors and 50 existing platform skips. New coverage: declared LOCAL
+shares the startup default even with both stdio fds pinned non-terminal, the
+declared-context mapping outranks the fd gate in both directions, unknown
+origins never rewrite the shared default while the application callback still
+runs, and remote instance theme events stay off the process default. Existing
+local-forwarding tests declare LOCAL explicitly under the new contract.
+Isolated mutations (forward-regardless, fd-gate-only attachment) fail the
+matching tests. The attachment, theme, and endpoint suites (19 tests) also pass
+on JDK 11.0.30 and 21.0.6 with no skips.
 
 Structural review reports 18 gated findings on the current tree: small
 duplication groups in test setups, reflection helpers and the new immutable
