@@ -255,6 +255,21 @@ public abstract class TtyTestBase extends TestBase {
     }
 
     @Test
+    public void testAcceptDeclaresRemoteOrigin() throws Exception {
+        server(conn -> {
+            EndpointContext context = conn.endpointContext();
+            assertEquals(EndpointContext.Locality.REMOTE, context.locality());
+            assertEquals(EndpointContext.Truth.YES, context.input().terminal());
+            assertEquals(EndpointContext.Source.NEGOTIATED, context.input().terminalSource());
+            assertEquals(EndpointContext.Truth.YES, context.output().terminal());
+            assertEquals(EndpointContext.Source.NEGOTIATED, context.output().terminalSource());
+            testComplete();
+        });
+        assertConnect();
+        await();
+    }
+
+    @Test
     public void testConnectionClose() throws Exception {
         AtomicInteger closeCount = new AtomicInteger();
         server(conn -> {

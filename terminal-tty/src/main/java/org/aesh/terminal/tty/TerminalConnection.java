@@ -99,6 +99,17 @@ public class TerminalConnection extends AbstractConnection {
      */
     public TerminalConnection(Charset inputCharset, Charset outputCharset, InputStream inputStream,
             OutputStream outputStream, Consumer<Connection> handler) throws IOException {
+        this(inputCharset, outputCharset, inputStream, outputStream, handler, false);
+    }
+
+    /**
+     * Shared stream-backed setup. Only the standard-stdio constructors pass
+     * {@code true}: arbitrary caller streams and externally supplied
+     * terminals cannot be claimed as the local process endpoint.
+     */
+    private TerminalConnection(Charset inputCharset, Charset outputCharset, InputStream inputStream,
+            OutputStream outputStream, Consumer<Connection> handler, boolean localEndpoint)
+            throws IOException {
         this.handler = handler;
         Terminal terminal = TerminalBuilder.builder()
                 .input(inputStream)
@@ -108,7 +119,7 @@ public class TerminalConnection extends AbstractConnection {
                 .build();
         this.inputCharset = resolveCharset(inputCharset, terminal, OSUtils.IS_CYGWIN);
         this.outputCharset = resolveCharset(outputCharset, terminal, OSUtils.IS_CYGWIN);
-        init(terminal);
+        init(terminal, localEndpoint);
     }
 
     /**
@@ -144,7 +155,7 @@ public class TerminalConnection extends AbstractConnection {
      * @throws IOException if an I/O error occurs
      */
     public TerminalConnection() throws IOException {
-        this(null, System.in, System.out);
+        this(null, null, System.in, System.out, null, true);
     }
 
     /**
@@ -156,7 +167,7 @@ public class TerminalConnection extends AbstractConnection {
      * @throws IOException if an I/O error occurs
      */
     public TerminalConnection(Consumer<Connection> handler) throws IOException {
-        this(null, null, System.in, System.out, handler);
+        this(null, null, System.in, System.out, handler, true);
     }
 
     /**
@@ -167,10 +178,10 @@ public class TerminalConnection extends AbstractConnection {
     public TerminalConnection(Terminal terminal) {
         this.inputCharset = resolveCharset(null, terminal, OSUtils.IS_CYGWIN);
         this.outputCharset = resolveCharset(null, terminal, OSUtils.IS_CYGWIN);
-        init(terminal);
+        init(terminal, false);
     }
 
-    private void init(Terminal term) {
+    private void init(Terminal term, boolean localEndpoint) {
         this.terminal = term;
         attributes = this.terminal.getAttributes();
         //interrupt signal
@@ -229,6 +240,15 @@ public class TerminalConnection extends AbstractConnection {
         if (!TtyDetect.isStdoutTty())
             ansi = false;
 
+        if (localEndpoint) {
+            // The process opened its own terminal from its standard streams:
+            // this is the local endpoint even inside an SSH login. Reuse the
+            // cached fd observations; perform no size query here, the first
+            // WINCH report fills dimensions. A console transport that won
+            // provider admission demonstrably owns the native console.
+            declareLocalEndpoint(TtyDetect.isStdinTty(), TtyDetect.isStdoutTty(),
+                    TtyDetect.isStderrTty(), terminal instanceof WinSysTerminal);
+        }
         if (handler != null)
             handler.accept(this);
     }

@@ -340,6 +340,26 @@ public final class TtyDetect {
     }
 
     /**
+     * Read the cached stderr result without probing. Package-visible so tests
+     * pin fd facts without reflection (native-image needs no registration).
+     *
+     * @return -1 when uncomputed, 0 when not a terminal, 1 when a terminal
+     */
+    static int cachedStderrForTests() {
+        return cachedStderr;
+    }
+
+    /**
+     * Pin the cached stderr result. Package-visible so tests pin fd facts
+     * without reflection (native-image needs no registration).
+     *
+     * @param value -1 to restore uncomputed, 0 for not a terminal, 1 for a terminal
+     */
+    static void cachedStderrForTests(int value) {
+        cachedStderr = value;
+    }
+
+    /**
      * Check if standard input is connected to a terminal.
      * Result is cached after the first call.
      *

@@ -1,9 +1,10 @@
 # Endpoint context contract, #382
 
 Status: interface approved on 2026-10-26. The creator-supplied context foundation,
-the earlier stdin-or-stdout auto-attach rule, and existing local/remote resize
-population are implemented. Built-in setup population and context-aware selection
-are still pending. This does not complete
+the earlier stdin-or-stdout auto-attach rule, existing local/remote resize
+population, and setup/accept-time population are implemented. Constructor and
+provider configuration plus context-aware selection are still pending.
+This does not complete
 https://github.com/aeshell/aesh-readline/issues/382.
 
 ## Automatic attachment rule
@@ -119,15 +120,23 @@ on creation or resize, never once per render.
    wrapper forwarding, immutable snapshots and close invalidation. Supplying
    context remains separate from attaching capabilities or query permissions.
 3. Close invalidation is wired in local, SSH, Telnet and HTTP connections and
-   verified through each module's existing transport tests. Supplied-fact
-   population at setup/accept time is still pending, as is wrapper forwarding
-   beyond the covered delegate shape.
+   verified through each module's existing transport tests. Setup/accept-time
+   population is implemented: stdio-built local connections declare LOCAL
+   with observed per-fd facts (native console only when a console transport
+   demonstrably owns the endpoint), while accepted SSH/Telnet/HTTP connections
+   declare REMOTE with negotiated input/output facts. Stream-backed and
+   externally supplied terminals stay unknown. Constructor/provider
+   configuration remains a later stage, as does wrapper forwarding beyond the
+   covered delegate shape.
 4. Use the reviewed context for startup attachment and local-only theme
    forwarding. Test one local endpoint and two clients with conflicting
    color/theme/mode facts. No remote event may rewrite the local result.
 5. Size provenance and snapshot replacement are implemented. Existing local
    WINCH and SSH/Telnet/WebSocket resize paths now publish observed or negotiated
-   dimensions before the legacy callback. Still test unknown versus fallback,
+   dimensions before the legacy callback. Initialization is specified, not
+   queried: setup performs no size query (a local `getSize` can spawn subprocesses),
+   so dimensions stay absent until the first size report; defaults such as 80x24
+   are never recorded as measurements. Still test unknown versus fallback,
    independent client resize, and fresh dimensions after reconnect.
 6. Preserve the per-fd matrix from #329 and Windows/mintty provider behavior.
    Add packaged JVM/native checks with runtime hints changed after image build.
@@ -217,6 +226,25 @@ combined, clean-detect, and clean-tty native logs are
 `/tmp/opencode/382-endpoint-native.log`, `/tmp/opencode/382-clean-native.log`,
 and `/tmp/opencode/382-clean-tty-native.log`. The control worktree is
 `/tmp/opencode/382-clean`.
+
+## Verification of the setup/accept population slice
+
+Baseline is `159e992f`. The packaged JDK 25 reactor reports 2109 tests with no
+failures/errors and 50 existing platform skips. New coverage: local stdio setup
+declares LOCAL with observed per-fd facts, stream-backed construction stays
+unknown, and all four remote transports (SSH, both Telnet modes, WebSocket)
+declare REMOTE with negotiated input/output facts through the shared
+`TtyTestBase` assertion. Setup performs no size query, so fresh contexts carry
+no dimensions until the first size report; local `getSize` can spawn
+subprocesses, and transport defaults are not measurements.
+
+Isolated mutations (declare-remote no-op, local-declaration no-op) fail the
+matching tests while the stream-backed pin still passes; repository production
+sources are never replaced for these controls. The endpoint suites and all
+four remote-origin tests also pass on JDK 11.0.30 and 21.0.6 with no skips.
+Structural review reports 2 gated findings: constructor-delegation shape and
+test try/finally idiom duplication. Neither is a contract change, and the
+`edit_check` pass reports no incompatible callers.
 
 Structural review reports 18 gated findings on the current tree: small
 duplication groups in test setups, reflection helpers and the new immutable

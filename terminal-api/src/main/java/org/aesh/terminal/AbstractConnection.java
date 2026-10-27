@@ -95,6 +95,57 @@ public abstract class AbstractConnection implements Connection {
     }
 
     /**
+     * Declare a locally opened endpoint with already-observed stream facts.
+     * Only the local system-terminal setup calls this: arbitrary supplied
+     * streams and externally provided terminals stay unknown unless their
+     * creator declares them. Performs no probing; the fd facts must come
+     * from observations already available during setup. Dimensions are left
+     * absent: setup performs no size query, the first resize report fills
+     * them. Updates after endpoint invalidation are ignored.
+     *
+     * @param stdinTerminal observed stdin terminal status
+     * @param stdoutTerminal observed stdout terminal status
+     * @param stderrTerminal observed stderr terminal status
+     * @param consoleObserved true only when the opened native-console
+     *        transport demonstrably owns this endpoint
+     */
+    public final void declareLocalEndpoint(boolean stdinTerminal, boolean stdoutTerminal,
+            boolean stderrTerminal, boolean consoleObserved) {
+        setEndpointContext(EndpointContext.builder()
+                .locality(EndpointContext.Locality.LOCAL)
+                .input(observedTerminal(stdinTerminal, consoleObserved))
+                .output(observedTerminal(stdoutTerminal, consoleObserved))
+                .error(observedTerminal(stderrTerminal, consoleObserved))
+                .build());
+    }
+
+    /**
+     * Declare an accepted remote endpoint. The negotiated channel is a
+     * terminal for input and output; error-stream and native-console facts
+     * stay unknown. Performs no probing. Updates after endpoint
+     * invalidation are ignored.
+     */
+    public final void declareRemoteEndpoint() {
+        EndpointContext.StreamFacts negotiated = EndpointContext.StreamFacts.of(
+                EndpointContext.Truth.YES, EndpointContext.Source.NEGOTIATED,
+                EndpointContext.Truth.UNKNOWN, EndpointContext.Source.UNKNOWN);
+        setEndpointContext(EndpointContext.builder()
+                .locality(EndpointContext.Locality.REMOTE)
+                .input(negotiated)
+                .output(negotiated)
+                .build());
+    }
+
+    private static EndpointContext.StreamFacts observedTerminal(boolean terminal,
+            boolean consoleObserved) {
+        return EndpointContext.StreamFacts.of(
+                terminal ? EndpointContext.Truth.YES : EndpointContext.Truth.NO,
+                EndpointContext.Source.OBSERVED,
+                consoleObserved ? EndpointContext.Truth.YES : EndpointContext.Truth.UNKNOWN,
+                consoleObserved ? EndpointContext.Source.OBSERVED : EndpointContext.Source.UNKNOWN);
+    }
+
+    /**
      * Invalidate live endpoint facts and dispose attached subscriptions during
      * transport close. This does not signal that input ownership or native
      * cleanup has been released. Previously captured endpoint and capability

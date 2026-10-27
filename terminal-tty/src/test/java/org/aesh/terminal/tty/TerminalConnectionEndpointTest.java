@@ -18,10 +18,12 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -264,6 +266,47 @@ public class TerminalConnectionEndpointTest {
 
             assertEquals(1, callbacks.get());
             assertEquals(new Size(132, 43), connection.endpointContext().dimensions());
+        } finally {
+            connection.close();
+        }
+    }
+
+    @Test
+    public void testLocalSetupDeclaresLocalEndpoint() throws Exception {
+        int savedStdin = TtyDetect.cachedStdinForTests();
+        int savedStdout = TtyDetect.cachedStdoutForTests();
+        int savedStderr = TtyDetect.cachedStderrForTests();
+        try {
+            TtyDetect.cachedStdinForTests(1);
+            TtyDetect.cachedStdoutForTests(1);
+            TtyDetect.cachedStderrForTests(0);
+            TerminalConnection connection = new TerminalConnection();
+            try {
+                EndpointContext context = connection.endpointContext();
+                assertEquals(EndpointContext.Locality.LOCAL, context.locality());
+                assertEquals(EndpointContext.Truth.YES, context.input().terminal());
+                assertEquals(EndpointContext.Source.OBSERVED, context.input().terminalSource());
+                assertEquals(EndpointContext.Truth.YES, context.output().terminal());
+                assertEquals(EndpointContext.Source.OBSERVED, context.output().terminalSource());
+                assertEquals(EndpointContext.Truth.NO, context.error().terminal());
+                assertEquals(EndpointContext.Source.OBSERVED, context.error().terminalSource());
+                assertNull("setup performs no size query", context.dimensions());
+            } finally {
+                connection.close();
+            }
+        } finally {
+            TtyDetect.cachedStdinForTests(savedStdin);
+            TtyDetect.cachedStdoutForTests(savedStdout);
+            TtyDetect.cachedStderrForTests(savedStderr);
+        }
+    }
+
+    @Test
+    public void testStreamBackedConnectionStaysUnknown() throws Exception {
+        TerminalConnection connection = new TerminalConnection(StandardCharsets.UTF_8,
+                new ByteArrayInputStream(new byte[0]), new ByteArrayOutputStream());
+        try {
+            assertEquals(EndpointContext.Locality.UNKNOWN, connection.endpointContext().locality());
         } finally {
             connection.close();
         }

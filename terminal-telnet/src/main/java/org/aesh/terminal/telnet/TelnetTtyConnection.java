@@ -281,6 +281,7 @@ public final class TelnetTtyConnection extends AbstractConnection implements Tel
                     accepted = true;
                     reading = true;
                     readBuffer.setReadHandler(eventDecoder);
+                    declareRemoteEndpoint();
                     handler.accept(this);
                 }
             }

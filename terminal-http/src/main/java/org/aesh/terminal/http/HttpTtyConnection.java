@@ -154,6 +154,7 @@ public abstract class HttpTtyConnection extends AbstractConnection {
             t.setDaemon(true);
             return t;
         });
+        declareRemoteEndpoint();
     }
 
     /**

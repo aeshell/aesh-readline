@@ -259,6 +259,7 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
 
         session.setDataReceiver(this);
         conn.setReading(true);
+        conn.declareRemoteEndpoint();
         handler.accept(conn);
     }
 
