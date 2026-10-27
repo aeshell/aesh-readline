@@ -22,11 +22,13 @@ import static org.junit.Assert.assertTrue;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
@@ -361,8 +363,7 @@ public class TerminalSubscriptionTest {
         final List<Thread> deliveryThreads = new CopyOnWriteArrayList<Thread>();
         final CountDownLatch delivered = new CountDownLatch(2);
         final List<TerminalSnapshot> received = received();
-        java.util.concurrent.ExecutorService executor =
-                java.util.concurrent.Executors.newSingleThreadExecutor();
+        java.util.concurrent.ExecutorService executor = java.util.concurrent.Executors.newSingleThreadExecutor();
         try {
             TerminalSubscription subscription = caps.subscribe(new Consumer<TerminalSnapshot>() {
                 @Override
@@ -396,8 +397,7 @@ public class TerminalSubscriptionTest {
     @Test
     public void testBurstsCoalesceToNewest() throws Exception {
         TerminalCapabilities caps = TerminalCapabilities.detect();
-        final java.util.concurrent.atomic.AtomicInteger executions =
-                new java.util.concurrent.atomic.AtomicInteger();
+        final java.util.concurrent.atomic.AtomicInteger executions = new java.util.concurrent.atomic.AtomicInteger();
         final List<Runnable> queued = new CopyOnWriteArrayList<Runnable>();
         final List<TerminalSnapshot> received = received();
         java.util.concurrent.Executor gating = new java.util.concurrent.Executor() {
@@ -473,6 +473,213 @@ public class TerminalSubscriptionTest {
             assertEquals(1L, received.get(1).revision());
         } finally {
             subscription.close();
+        }
+    }
+
+    @Test
+    public void testProducerBetweenCaptureAndReplayIsNotLost() throws Exception {
+        final TerminalCapabilities caps = TerminalCapabilities.detect();
+        final List<TerminalSnapshot> received = received();
+        final List<Runnable> queued = new CopyOnWriteArrayList<Runnable>();
+        final CountDownLatch captured = new CountDownLatch(1);
+        final CountDownLatch release = new CountDownLatch(1);
+        java.util.concurrent.Executor gating = new java.util.concurrent.Executor() {
+            @Override
+            public void execute(Runnable command) {
+                queued.add(command);
+            }
+        };
+        FutureTask<TerminalSubscription> registration = new FutureTask<TerminalSubscription>(
+                new Callable<TerminalSubscription>() {
+                    @Override
+                    public TerminalSubscription call() {
+                        return caps.subscribeWithReplayBarrierForTests(recordInto(received), gating,
+                                new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        captured.countDown();
+                                        try {
+                                            if (!release.await(30, TimeUnit.SECONDS)) {
+                                                throw new AssertionError("registration release timed out");
+                                            }
+                                        } catch (InterruptedException e) {
+                                            Thread.currentThread().interrupt();
+                                            throw new RuntimeException(e);
+                                        }
+                                    }
+                                });
+                    }
+                });
+        Thread registering = new Thread(registration, "subscription-registration-test");
+        registering.setDaemon(true);
+        TerminalSubscription subscription = null;
+        try {
+            registering.start();
+            assertTrue("registration must reach the replay barrier",
+                    captured.await(30, TimeUnit.SECONDS));
+            TerminalColorQuery measured = new TerminalColorQuery();
+            measured.background = new int[] { 10, 10, 10 };
+            caps.applyColorResult(measured);
+            release.countDown();
+            subscription = registration.get(30, TimeUnit.SECONDS);
+
+            assertEquals("the synchronous replay is not suppressed", 1, received.size());
+            assertEquals(0L, received.get(0).revision());
+            assertEquals("the later revision remains queued", 1, queued.size());
+            queued.get(0).run();
+            assertEquals("the later revision is not overwritten by replay", 2, received.size());
+            assertEquals(0L, received.get(0).revision());
+            assertEquals(1L, received.get(1).revision());
+        } finally {
+            release.countDown();
+            if (subscription != null) {
+                subscription.close();
+            }
+        }
+    }
+
+    @Test
+    public void testMutationDuringReplayUsesSuppliedExecutor() throws Exception {
+        final TerminalCapabilities caps = TerminalCapabilities.detect();
+        final List<TerminalSnapshot> received = received();
+        final List<Thread> deliveryThreads = new CopyOnWriteArrayList<Thread>();
+        final CountDownLatch later = new CountDownLatch(1);
+        java.util.concurrent.ExecutorService executor = java.util.concurrent.Executors.newSingleThreadExecutor();
+        final TerminalSubscription subscription = caps.subscribe(new Consumer<TerminalSnapshot>() {
+            @Override
+            public void accept(TerminalSnapshot snapshot) {
+                received.add(snapshot);
+                deliveryThreads.add(Thread.currentThread());
+                if (snapshot.revision() == 0) {
+                    caps.applyThemeChange(TerminalTheme.DARK);
+                } else {
+                    later.countDown();
+                }
+            }
+        }, executor);
+        try {
+            assertTrue("the later event must leave the replay thread",
+                    later.await(30, TimeUnit.SECONDS));
+            assertEquals(2, received.size());
+            assertSame(Thread.currentThread(), deliveryThreads.get(0));
+            assertTrue("a post-replay event must use the supplied executor",
+                    deliveryThreads.get(1) != Thread.currentThread());
+            assertEquals(0L, received.get(0).revision());
+            assertEquals(1L, received.get(1).revision());
+        } finally {
+            subscription.close();
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    public void testCloseWaitsForRunningCallback() throws Exception {
+        final TerminalCapabilities caps = TerminalCapabilities.detect();
+        final CountDownLatch entered = new CountDownLatch(1);
+        final CountDownLatch release = new CountDownLatch(1);
+        final CountDownLatch finished = new CountDownLatch(1);
+        final CountDownLatch closeReturned = new CountDownLatch(1);
+        java.util.concurrent.ExecutorService executor = java.util.concurrent.Executors.newSingleThreadExecutor();
+        final TerminalSubscription subscription = caps.subscribe(new Consumer<TerminalSnapshot>() {
+            @Override
+            public void accept(TerminalSnapshot snapshot) {
+                if (snapshot.revision() == 0) {
+                    return;
+                }
+                entered.countDown();
+                try {
+                    if (!release.await(30, TimeUnit.SECONDS)) {
+                        throw new AssertionError("callback release timed out");
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                } finally {
+                    finished.countDown();
+                }
+            }
+        }, executor);
+        Thread closer = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                subscription.close();
+                closeReturned.countDown();
+            }
+        }, "subscription-close-test");
+        closer.setDaemon(true);
+        try {
+            TerminalColorQuery measured = new TerminalColorQuery();
+            measured.background = new int[] { 10, 10, 10 };
+            caps.applyColorResult(measured);
+            assertTrue("callback must start before close",
+                    entered.await(30, TimeUnit.SECONDS));
+            closer.start();
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(30);
+            while (closer.isAlive() && closer.getState() != Thread.State.WAITING
+                    && System.nanoTime() < deadline) {
+                Thread.yield();
+            }
+            assertTrue("close must wait for the selected callback", closer.isAlive());
+            assertEquals("close has not returned while the callback is blocked",
+                    1L, closeReturned.getCount());
+            release.countDown();
+            closer.join(30000);
+            assertTrue("close must return after callback completion", !closer.isAlive());
+            assertEquals(0L, finished.getCount());
+            assertEquals(0L, closeReturned.getCount());
+        } finally {
+            release.countDown();
+            closer.join(30000);
+            subscription.close();
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    public void testCloseDropsQueuedDelivery() {
+        TerminalCapabilities caps = TerminalCapabilities.detect();
+        final List<Runnable> queued = new CopyOnWriteArrayList<Runnable>();
+        List<TerminalSnapshot> received = received();
+        java.util.concurrent.Executor gating = new java.util.concurrent.Executor() {
+            @Override
+            public void execute(Runnable command) {
+                queued.add(command);
+            }
+        };
+        TerminalSubscription subscription = caps.subscribe(recordInto(received), gating);
+        TerminalColorQuery measured = new TerminalColorQuery();
+        measured.background = new int[] { 10, 10, 10 };
+        caps.applyColorResult(measured);
+        assertEquals(1, queued.size());
+
+        subscription.close();
+        queued.get(0).run();
+
+        assertEquals("a closed subscription delivers no queued snapshot",
+                1, received.size());
+    }
+
+    @Test
+    public void testPaletteSnapshotDefendsSharedValues() {
+        TerminalCapabilities caps = TerminalCapabilities.detect();
+        List<TerminalSnapshot> first = received();
+        List<TerminalSnapshot> second = received();
+        TerminalSubscription one = caps.subscribe(recordInto(first));
+        TerminalSubscription two = caps.subscribe(recordInto(second));
+        try {
+            Map<Integer, int[]> palette = new HashMap<Integer, int[]>();
+            palette.put(0, new int[] { 1, 2, 3 });
+            TerminalColorQuery measured = new TerminalColorQuery();
+            measured.palette = palette;
+            caps.applyColorResult(measured);
+
+            TerminalSnapshot update = first.get(1);
+            assertSame(update, second.get(1));
+            update.paletteColors().get(0)[0] = 99;
+            assertArrayEquals("one reader cannot mutate another reader's palette",
+                    new int[] { 1, 2, 3 }, second.get(1).paletteColors().get(0));
+        } finally {
+            one.close();
+            two.close();
         }
     }
 

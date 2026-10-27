@@ -100,10 +100,19 @@ public final class TerminalSnapshot {
     }
 
     /**
-     * @return unmodifiable palette view, or null when unknown
+     * @return an unmodifiable palette with defensive array copies, or null
+     *         when unknown
      */
     public Map<Integer, int[]> paletteColors() {
-        return paletteColors;
+        if (paletteColors == null) {
+            return null;
+        }
+        Map<Integer, int[]> copy = new HashMap<Integer, int[]>();
+        for (Map.Entry<Integer, int[]> entry : paletteColors.entrySet()) {
+            int[] value = entry.getValue();
+            copy.put(entry.getKey(), value == null ? null : value.clone());
+        }
+        return Collections.unmodifiableMap(copy);
     }
 
     /**

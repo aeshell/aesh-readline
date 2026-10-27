@@ -622,6 +622,15 @@ public final class TerminalCapabilities {
      * @since 3.18.8
      */
     public TerminalSubscription subscribe(Consumer<TerminalSnapshot> listener, Executor executor) {
+        return subscribeWithReplayBarrierForTests(listener, executor, null);
+    }
+
+    /**
+     * Package-visible registration barrier for deterministic race tests.
+     * Production callers use the public overloads, which pass no barrier.
+     */
+    TerminalSubscription subscribeWithReplayBarrierForTests(Consumer<TerminalSnapshot> listener,
+            Executor executor, Runnable beforeReplay) {
         Objects.requireNonNull(listener, "listener");
         Subscription subscription = new Subscription(this,
                 listener, executor == null ? DIRECT : executor);
@@ -629,6 +638,9 @@ public final class TerminalCapabilities {
         synchronized (this) {
             subscribers.add(subscription);
             replay = captureLocked();
+        }
+        if (beforeReplay != null) {
+            beforeReplay.run();
         }
         subscription.replay(replay);
         return subscription;
@@ -700,13 +712,16 @@ public final class TerminalCapabilities {
      */
     private static final class Subscription implements TerminalSubscription {
         private final TerminalCapabilities owner;
-        private final Consumer<TerminalSnapshot> listener;
+        private Consumer<TerminalSnapshot> listener;
         private final Executor executor;
         private final Object monitor = new Object();
         private long lastDelivered = -1;
         private long pendingRevision = -1;
         private TerminalSnapshot pendingSnapshot;
+        private boolean replaying = true;
         private boolean inFlight;
+        private boolean callbackActive;
+        private Thread callbackThread;
         private boolean closed;
 
         Subscription(TerminalCapabilities owner,
@@ -716,17 +731,47 @@ public final class TerminalCapabilities {
             this.executor = executor;
         }
 
-        /** Deliver the registration snapshot before any executor task exists. */
+        /**
+         * Replay only the registration snapshot on the calling thread.
+         * Producers may queue newer revisions meanwhile, but cannot run them
+         * before replay or overwrite them with the older replay snapshot.
+         */
         private void replay(TerminalSnapshot snapshot) {
+            Consumer<TerminalSnapshot> callback;
             synchronized (monitor) {
                 if (closed) {
+                    replaying = false;
                     return;
                 }
-                pendingRevision = snapshot.revision();
-                pendingSnapshot = snapshot;
-                inFlight = true;
+                callback = listener;
+                callbackActive = true;
+                callbackThread = Thread.currentThread();
             }
-            drain();
+            try {
+                invoke(callback, snapshot);
+            } finally {
+                finishReplay(snapshot.revision());
+            }
+        }
+
+        private void finishReplay(long replayRevision) {
+            boolean schedule = false;
+            synchronized (monitor) {
+                if (replayRevision > lastDelivered) {
+                    lastDelivered = replayRevision;
+                }
+                callbackActive = false;
+                callbackThread = null;
+                replaying = false;
+                if (!closed && !inFlight && pendingRevision > lastDelivered) {
+                    inFlight = true;
+                    schedule = true;
+                }
+                monitor.notifyAll();
+            }
+            if (schedule) {
+                executeDrain();
+            }
         }
 
         /** Queue the newest revision; older queued revisions are dropped. */
@@ -740,24 +785,29 @@ public final class TerminalCapabilities {
                     pendingRevision = revision;
                     pendingSnapshot = snapshot;
                 }
-                schedule = !inFlight && pendingRevision > lastDelivered;
+                schedule = !replaying && !inFlight && pendingRevision > lastDelivered;
                 if (schedule) {
                     inFlight = true;
                 }
             }
             if (schedule) {
-                executor.execute(new Runnable() {
-                    @Override
-                    public void run() {
-                        drain();
-                    }
-                });
+                executeDrain();
             }
+        }
+
+        private void executeDrain() {
+            executor.execute(new Runnable() {
+                @Override
+                public void run() {
+                    drain();
+                }
+            });
         }
 
         private void drain() {
             while (true) {
                 TerminalSnapshot snapshot;
+                Consumer<TerminalSnapshot> callback;
                 long revision;
                 synchronized (monitor) {
                     if (closed || pendingRevision <= lastDelivered) {
@@ -766,27 +816,55 @@ public final class TerminalCapabilities {
                     }
                     revision = pendingRevision;
                     snapshot = pendingSnapshot;
+                    callback = listener;
+                    callbackActive = true;
+                    callbackThread = Thread.currentThread();
                 }
                 try {
-                    listener.accept(snapshot);
-                } catch (RuntimeException | Error e) {
-                    LOG.fine("Capability subscriber threw; delivering to the rest: " + e);
-                }
-                synchronized (monitor) {
-                    if (revision > lastDelivered) {
-                        lastDelivered = revision;
+                    invoke(callback, snapshot);
+                } finally {
+                    synchronized (monitor) {
+                        if (revision > lastDelivered) {
+                            lastDelivered = revision;
+                        }
+                        callbackActive = false;
+                        callbackThread = null;
+                        monitor.notifyAll();
                     }
                 }
+            }
+        }
+
+        private void invoke(Consumer<TerminalSnapshot> callback, TerminalSnapshot snapshot) {
+            try {
+                callback.accept(snapshot);
+            } catch (RuntimeException | Error e) {
+                LOG.fine("Capability subscriber threw; delivering to the rest: " + e);
             }
         }
 
         @Override
         public void close() {
             synchronized (owner) {
+                synchronized (monitor) {
+                    closed = true;
+                    pendingSnapshot = null;
+                    listener = null;
+                }
                 owner.removeSubscription(this);
             }
+            boolean interrupted = false;
             synchronized (monitor) {
-                closed = true;
+                while (callbackActive && callbackThread != Thread.currentThread()) {
+                    try {
+                        monitor.wait();
+                    } catch (InterruptedException e) {
+                        interrupted = true;
+                    }
+                }
+            }
+            if (interrupted) {
+                Thread.currentThread().interrupt();
             }
         }
     }

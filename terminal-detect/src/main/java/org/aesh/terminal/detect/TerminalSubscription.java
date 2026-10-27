@@ -26,9 +26,12 @@ package org.aesh.terminal.detect;
 public interface TerminalSubscription {
 
     /**
-     * Stop delivery to this subscriber and release it. May be called
-     * reentrantly from inside a listener callback. Calling more than once
-     * has no effect.
+     * Stop delivery to this subscriber and release its listener and queued
+     * snapshot. After this method returns, no new callback begins. A callback
+     * already selected for delivery finishes first, so closing from another
+     * thread waits for it. Reentrant close from inside that callback does not
+     * wait and suppresses subsequent events. Calling more than once has no
+     * effect.
      */
     void close();
 }
