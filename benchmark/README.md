@@ -271,6 +271,22 @@ The [shared discovery report](results/detection-shared-2026-10-26.md) compares
 publication/coalescing costs against `7073fb85`, with baseline behavioral
 failures, cold facade races, warm cached lookups, and separate native results.
 
+#### Capability subscription publication (#380)
+
+`TerminalSubscriptionBenchmark.publish` measures synchronous theme publication
+with 0, 1, and 4 subscribers. `readerHandoff` includes one caller-supplied
+executor dispatch and its blocking queue rendezvous. Both use existing mutation
+paths and perform no terminal I/O. Run them with the same controls as the other
+warm detection benchmarks:
+
+```bash
+java -jar benchmark/target/benchmarks.jar TerminalSubscriptionBenchmark \
+  -t 1 -prof gc -foe true -rf json -rff /tmp/opencode/subscription-warm.json
+```
+
+See [the subscription contract and evidence](../PLAN-subscriptions.md) for the
+current measurements and their limits.
+
 #### Shared subprocess wall time
 
 `ProcessRunnerBaseline` measures real child launch/capture wall time, separately

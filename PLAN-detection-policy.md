@@ -23,6 +23,7 @@ Keep Java 8 support and zero runtime dependencies in `terminal-detect`.
 | `getInstance()` | Returns the published reference, including pending full/async hints. A miss briefly enters the publication monitor for environment-only construction. | Does not join active discovery. Metadata construction and JVM class initialization still have costs; this is not a lock-free API promise. |
 | `setInstance()` / `invalidate()` / shared theme notification | Serializes publication transitions briefly; theme notification also locks the selected result. | No transport/file/process I/O or discovery completion wait holds this monitor. Retired work cannot overwrite a replacement default. |
 | Capability scalar/RGB/palette getters | Reads captured fields; RGB/palette getters make defensive copies. | Missing facts must remain missing, never trigger an upgrade. Keep scalar reads O(1), and avoid repeated whole-model conversion. |
+| Capability subscriptions | Replays current state at registration, then publishes completion and appearance revisions through existing paths. Optional owner lifetime and caller-supplied execution. | Registration performs no I/O or protocol enablement. Close releases listeners and queued work; no listener runs under publication monitors. See [the #380 contract](PLAN-subscriptions.md). |
 | `TerminalColorCapability.from(caps)` | Reads supplied capability values and copies/converts RGB/palette data. | No discovery, but not allocation-free. Reuse the converted value per revision rather than per log line. |
 | `detectFull()` | Claims or joins one shared round, computing outside the publication monitor. Blocking joins restore interruption afterward without a replacement probe. | Still a legacy unbounded completion method. It does not implement the future overall enrichment deadline. |
 | `detectAsync()` | Reuses an existing full/async round immediately, or publishes one environment-backed result and starts its daemon outside the publication monitor. | Quick return is not zero work or bounded completion. One existing scheduler is reused; passive reads create no worker. |
@@ -91,10 +92,13 @@ continue to work without a Win32 console. Real fd 0/1/2 checks stay independent.
 - `capabilities()` returns the stable reference in O(1), without allocation or
   I/O. Individual RGB/palette getters keep their existing defensive-copy costs.
 
-Owners do not publish into, replace, or consult the default cache. They create
-no scheduler, source/revision framework, subscription, or transport. A supplied
+Owners do not publish into, replace, or consult the default cache. The #378
+passive core created no scheduler, source/revision framework, subscription, or
+transport. #380 adds optional revisioned subscriptions and owner disposal,
+described in [the subscription contract](PLAN-subscriptions.md). A supplied
 producer retains responsibility for its own work; capturing its result does not
-grant input access or make several field reads an atomic revision snapshot.
+grant input access. Subscribers receive coherent snapshots instead of relying
+on several independent field reads.
 
 Tests exercise the public factories and reads, including independent owners,
 default replacement, pending-result consumption, and unrelated synchronous
@@ -309,8 +313,9 @@ Next independently testable changes, in order:
    retain shared capabilities when either is a TTY, independent hints otherwise.
     Neither branch starts discovery. The reviewed EndpointContext foundation now
     carries creator-supplied locality, separate stream facts and size provenance
-    with UNKNOWN defaults and close invalidation. Built-in setup/resize
-    population and context-aware attachment/forwarding remain unimplemented.
+    with UNKNOWN defaults and close invalidation. Built-in setup population and
+    context-aware attachment/forwarding remain unimplemented. Existing local and
+    remote resize paths now publish observed or negotiated dimensions.
     See [the #382 contract and staged status](PLAN-endpoint-context.md).
 2. Preserve the scoped no-I/O spies and extend native operation coverage and
    known-headless/consume-only integration tests when wiring consumers.

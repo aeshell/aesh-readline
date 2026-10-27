@@ -1,9 +1,9 @@
 # Endpoint context contract, #382
 
-Status: interface approved on 2026-10-26. The creator-supplied context foundation
-and the earlier stdin-or-stdout auto-attach rule are implemented locally and
-uncommitted. Built-in setup/resize population and context-aware selection are
-still pending. This does not complete
+Status: interface approved on 2026-10-26. The creator-supplied context foundation,
+the earlier stdin-or-stdout auto-attach rule, and existing local/remote resize
+population are implemented. Built-in setup population and context-aware selection
+are still pending. This does not complete
 https://github.com/aeshell/aesh-readline/issues/382.
 
 ## Automatic attachment rule
@@ -125,9 +125,10 @@ on creation or resize, never once per render.
 4. Use the reviewed context for startup attachment and local-only theme
    forwarding. Test one local endpoint and two clients with conflicting
    color/theme/mode facts. No remote event may rewrite the local result.
-5. Size provenance and snapshot replacement are implemented. Wire existing
-   resize paths next, then test unknown versus fallback, negotiated/observed
-   versus hints, independent client resize, and fresh dimensions after reconnect.
+5. Size provenance and snapshot replacement are implemented. Existing local
+   WINCH and SSH/Telnet/WebSocket resize paths now publish observed or negotiated
+   dimensions before the legacy callback. Still test unknown versus fallback,
+   independent client resize, and fresh dimensions after reconnect.
 6. Preserve the per-fd matrix from #329 and Windows/mintty provider behavior.
    Add packaged JVM/native checks with runtime hints changed after image build.
    Record native aborts and field-only Windows cases rather than counting them
