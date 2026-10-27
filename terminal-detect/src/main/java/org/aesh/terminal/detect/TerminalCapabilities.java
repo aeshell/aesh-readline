@@ -23,8 +23,12 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
+import java.util.logging.Logger;
 
 /**
  * Lightweight terminal capability detection.
@@ -69,6 +73,8 @@ import java.util.concurrent.TimeUnit;
  */
 public final class TerminalCapabilities {
 
+    private static final Logger LOG = Logger.getLogger(TerminalCapabilities.class.getName());
+
     private static volatile TerminalCapabilities instance;
 
     private final TerminalDetector detector;
@@ -90,6 +96,22 @@ public final class TerminalCapabilities {
     private volatile boolean fullyDetected;
     /** Guarded by this instance's monitor against a late async query. */
     private boolean themeEventSeen;
+    /**
+     * Monotonically increasing revision, bumped by every published mutation.
+     * Guarded by this instance's monitor. Restarts at zero for every new
+     * result instance; revisions order one instance's snapshots only.
+     */
+    private long revision;
+    /** Live subscribers, in registration order. Copy-on-write, so delivery never holds a monitor. */
+    private final CopyOnWriteArrayList<Subscription> subscribers = new CopyOnWriteArrayList<Subscription>();
+
+    /** Synchronous delivery on the publisher's thread. */
+    private static final Executor DIRECT = new Executor() {
+        @Override
+        public void execute(Runnable command) {
+            command.run();
+        }
+    };
 
     private TerminalCapabilities(TerminalDetector detector, Discovery discovery) {
         this.detector = detector;
@@ -186,16 +208,43 @@ public final class TerminalCapabilities {
      */
     public static void onThemeChanged(TerminalTheme theme) {
         Objects.requireNonNull(theme, "theme");
+        PublishBatch batch = PublishBatch.NONE;
         synchronized (TerminalCapabilities.class) {
             TerminalCapabilities caps = instance;
             if (caps != null) {
-                synchronized (caps) {
-                    caps.foregroundRGB = null;
-                    caps.backgroundRGB = null;
-                    caps.resolvedTheme = theme;
-                    caps.themeEventSeen = true;
-                }
+                batch = caps.applyThemeChangeInternal(theme);
             }
+        }
+        batch.deliver();
+    }
+
+    /**
+     * Apply an unsolicited theme notification to this result only.
+     * <p>
+     * Unlike {@link #onThemeChanged(TerminalTheme)}, this never reads or
+     * changes the process default. Use it for a scoped remote or embedded
+     * endpoint whose events must stay off the local startup cache. Previously
+     * queried RGB values are cleared in the same revision; modes, palette,
+     * and other unrelated facts remain cached.
+     * <p>
+     * This performs no probing and grants no permission to refresh colors.
+     *
+     * @param theme the newly reported terminal theme
+     * @since 3.18.8
+     */
+    public void applyThemeChange(TerminalTheme theme) {
+        Objects.requireNonNull(theme, "theme");
+        applyThemeChangeInternal(theme).deliver();
+    }
+
+    /** Mutate and capture under the caller's locks; delivery stays outside. */
+    private PublishBatch applyThemeChangeInternal(TerminalTheme theme) {
+        synchronized (this) {
+            foregroundRGB = null;
+            backgroundRGB = null;
+            resolvedTheme = theme;
+            themeEventSeen = true;
+            return capturePublishLocked();
         }
     }
 
@@ -342,7 +391,12 @@ public final class TerminalCapabilities {
             discovery.failure = e;
             throw e;
         } finally {
+            PublishBatch batch;
+            synchronized (this) {
+                batch = capturePublishLocked();
+            }
             discovery.completed.countDown();
+            batch.deliver();
         }
     }
 
@@ -431,9 +485,6 @@ public final class TerminalCapabilities {
             TerminalColorQuery result = TerminalColorQuery.queryFirstAvailableBounded(deadline, permissions);
             if (result != null) {
                 applyColorResult(result);
-                if (result.graphemeClustering != null) {
-                    nativeGraphemeClustering = result.graphemeClustering;
-                }
             }
         }
         if (resolvedTheme == null && detector.theme == TerminalTheme.UNKNOWN
@@ -454,9 +505,6 @@ public final class TerminalCapabilities {
             TerminalColorQuery result = TerminalColorQuery.queryFull();
             if (result != null) {
                 applyColorResult(result);
-                if (result.graphemeClustering != null) {
-                    nativeGraphemeClustering = result.graphemeClustering;
-                }
             }
         }
         if (resolvedTheme == null && detector.theme == TerminalTheme.UNKNOWN) {
@@ -538,29 +586,244 @@ public final class TerminalCapabilities {
     }
 
     /**
+     * Subscribe to completion and change events on this result instance.
+     * <p>
+     * Registration replays the current state synchronously, so a subscriber
+     * cannot miss completion between its first read and registration.
+     * Delivery is synchronous on the publisher's thread. Never call blocking
+     * or slow code here; use {@link #subscribe(Consumer, Executor)} with a
+     * caller-supplied executor instead.
+     * <p>
+     * Subscribing performs no probing, opens nothing, and starts no workers.
+     * With no subscribers, mutations skip snapshot construction entirely.
+     *
+     * @param listener receives one snapshot per revision, never null
+     * @return the subscription; close it to stop delivery
+     * @throws NullPointerException if the listener is null
+     * @since 3.18.8
+     */
+    public TerminalSubscription subscribe(Consumer<TerminalSnapshot> listener) {
+        return subscribe(listener, null);
+    }
+
+    /**
+     * Subscribe with caller-supplied execution.
+     * <p>
+     * Each later event is handed to the executor; a slow listener stalls only its
+     * own queue, never the publisher. Registration still replays the current
+     * state synchronously on the calling thread. Per subscriber only the newest
+     * pending later revision is kept, so bursts cannot grow the queue and never
+     * lose the latest state.
+     *
+     * @param listener receives one snapshot per revision, never null
+     * @param executor runs delivery, or null for synchronous delivery
+     * @return the subscription; close it to stop delivery
+     * @throws NullPointerException if the listener is null
+     * @since 3.18.8
+     */
+    public TerminalSubscription subscribe(Consumer<TerminalSnapshot> listener, Executor executor) {
+        Objects.requireNonNull(listener, "listener");
+        Subscription subscription = new Subscription(this,
+                listener, executor == null ? DIRECT : executor);
+        TerminalSnapshot replay;
+        synchronized (this) {
+            subscribers.add(subscription);
+            replay = captureLocked();
+        }
+        subscription.replay(replay);
+        return subscription;
+    }
+
+    /**
+     * One captured mutation: the shared snapshot plus its recipients.
+     * Built under the instance monitor, delivered outside every monitor.
+     */
+    private static final class PublishBatch {
+        static final PublishBatch NONE = new PublishBatch(null, null);
+
+        final TerminalSnapshot snapshot;
+        final Subscription[] recipients;
+
+        PublishBatch(TerminalSnapshot snapshot, Subscription[] recipients) {
+            this.snapshot = snapshot;
+            this.recipients = recipients;
+        }
+
+        void deliver() {
+            if (snapshot == null) {
+                return;
+            }
+            for (Subscription recipient : recipients) {
+                recipient.deliver(snapshot.revision(), snapshot);
+            }
+        }
+    }
+
+    /**
+     * Capture the current state as a shared snapshot without publishing.
+     * Caller must hold this instance's monitor. Never allocates when no
+     * subscriber is registered.
+     *
+     * @return the current snapshot at the current revision
+     */
+    private TerminalSnapshot captureLocked() {
+        return new TerminalSnapshot(revision,
+                resolvedTheme != null ? resolvedTheme : detector.theme,
+                foregroundRGB, backgroundRGB, paletteColors,
+                mode2026Support, mode2027Support, nativeGraphemeClustering);
+    }
+
+    /**
+     * Bump the revision and capture one snapshot for every subscriber.
+     * Caller must hold this instance's monitor. Skips snapshot
+     * construction entirely when nobody is subscribed.
+     *
+     * @return the batch to deliver outside every monitor
+     */
+    private PublishBatch capturePublishLocked() {
+        if (subscribers.isEmpty()) {
+            return PublishBatch.NONE;
+        }
+        revision++;
+        return new PublishBatch(captureLocked(),
+                subscribers.toArray(new Subscription[subscribers.size()]));
+    }
+
+    private void removeSubscription(Subscription subscription) {
+        subscribers.remove(subscription);
+    }
+
+    /**
+     * One subscriber: newest-revision delivery with bounded coalescing.
+     * Locking order is always owner instance monitor before this
+     * subscription's monitor; listener callbacks hold no monitor.
+     */
+    private static final class Subscription implements TerminalSubscription {
+        private final TerminalCapabilities owner;
+        private final Consumer<TerminalSnapshot> listener;
+        private final Executor executor;
+        private final Object monitor = new Object();
+        private long lastDelivered = -1;
+        private long pendingRevision = -1;
+        private TerminalSnapshot pendingSnapshot;
+        private boolean inFlight;
+        private boolean closed;
+
+        Subscription(TerminalCapabilities owner,
+                Consumer<TerminalSnapshot> listener, Executor executor) {
+            this.owner = owner;
+            this.listener = listener;
+            this.executor = executor;
+        }
+
+        /** Deliver the registration snapshot before any executor task exists. */
+        private void replay(TerminalSnapshot snapshot) {
+            synchronized (monitor) {
+                if (closed) {
+                    return;
+                }
+                pendingRevision = snapshot.revision();
+                pendingSnapshot = snapshot;
+                inFlight = true;
+            }
+            drain();
+        }
+
+        /** Queue the newest revision; older queued revisions are dropped. */
+        void deliver(long revision, TerminalSnapshot snapshot) {
+            boolean schedule;
+            synchronized (monitor) {
+                if (closed) {
+                    return;
+                }
+                if (revision > pendingRevision) {
+                    pendingRevision = revision;
+                    pendingSnapshot = snapshot;
+                }
+                schedule = !inFlight && pendingRevision > lastDelivered;
+                if (schedule) {
+                    inFlight = true;
+                }
+            }
+            if (schedule) {
+                executor.execute(new Runnable() {
+                    @Override
+                    public void run() {
+                        drain();
+                    }
+                });
+            }
+        }
+
+        private void drain() {
+            while (true) {
+                TerminalSnapshot snapshot;
+                long revision;
+                synchronized (monitor) {
+                    if (closed || pendingRevision <= lastDelivered) {
+                        inFlight = false;
+                        return;
+                    }
+                    revision = pendingRevision;
+                    snapshot = pendingSnapshot;
+                }
+                try {
+                    listener.accept(snapshot);
+                } catch (RuntimeException | Error e) {
+                    LOG.fine("Capability subscriber threw; delivering to the rest: " + e);
+                }
+                synchronized (monitor) {
+                    if (revision > lastDelivered) {
+                        lastDelivered = revision;
+                    }
+                }
+            }
+        }
+
+        @Override
+        public void close() {
+            synchronized (owner) {
+                owner.removeSubscription(this);
+            }
+            synchronized (monitor) {
+                closed = true;
+            }
+        }
+    }
+
+    /**
      * Apply a completed probe result under one precedence rule, shared by
      * {@code detectFull()} and {@code detectAsync()}: a measured background
      * overrides earlier environment/config hints, while an absent reply
      * keeps them. Never revives colors invalidated by a theme event.
+     * Every applied result publishes one revision to subscribers.
      */
-    synchronized void applyColorResult(TerminalColorQuery result) {
-        if (!themeEventSeen) {
-            foregroundRGB = result.foreground;
-            backgroundRGB = result.background;
-            if (result.background != null) {
-                resolvedTheme = themeFromRGB(result.background);
+    void applyColorResult(TerminalColorQuery result) {
+        PublishBatch batch;
+        synchronized (this) {
+            if (!themeEventSeen) {
+                foregroundRGB = result.foreground;
+                backgroundRGB = result.background;
+                if (result.background != null) {
+                    resolvedTheme = themeFromRGB(result.background);
+                }
             }
+            paletteColors = result.palette;
+            queried256 = result.supports256;
+            mode2026Support = result.mode2026;
+            mode2027Support = result.mode2027;
+            if (result.graphemeClustering != null) {
+                nativeGraphemeClustering = result.graphemeClustering;
+            }
+            // Grapheme clustering is probed separately per mode (cursor
+            // position), never copied: an unprobed result must stay null,
+            // not become a fabricated negative.
+            if (result.supportsSixel && detector.imageProtocol == ImageProtocol.NONE) {
+                queriedImageProtocol = ImageProtocol.SIXEL;
+            }
+            batch = capturePublishLocked();
         }
-        paletteColors = result.palette;
-        queried256 = result.supports256;
-        mode2026Support = result.mode2026;
-        mode2027Support = result.mode2027;
-        // Grapheme clustering is probed separately per mode (cursor
-        // position), never copied: an unprobed result must stay null,
-        // not become a fabricated negative.
-        if (result.supportsSixel && detector.imageProtocol == ImageProtocol.NONE) {
-            queriedImageProtocol = ImageProtocol.SIXEL;
-        }
+        batch.deliver();
     }
 
     /**

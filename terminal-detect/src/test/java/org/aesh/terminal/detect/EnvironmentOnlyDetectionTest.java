@@ -77,7 +77,9 @@ public class EnvironmentOnlyDetectionTest {
     private static final class DiscoveryGuard extends URLClassLoader {
         private final Set<String> allowed = new HashSet<>(Arrays.asList(
                 PACKAGE + "TerminalCapabilities", PACKAGE + "TerminalDetector", PACKAGE + "TerminalTheme",
-                PACKAGE + "ImageProtocol", PACKAGE + "ModeSupport", ReadOnlyProbe.class.getName()));
+                PACKAGE + "ImageProtocol", PACKAGE + "ModeSupport",
+                PACKAGE + "TerminalSubscription", PACKAGE + "TerminalSnapshot",
+                ReadOnlyProbe.class.getName()));
         private final Set<String> loaded = new HashSet<>();
         private int optionalLoads;
 
@@ -86,6 +88,11 @@ public class EnvironmentOnlyDetectionTest {
                     EnvironmentOnlyDetectionTest.class.getProtectionDomain().getCodeSource().getLocation(),
                     TerminalCapabilities.class.getProtectionDomain().getCodeSource().getLocation()
             }, EnvironmentOnlyDetectionTest.class.getClassLoader());
+        }
+
+        private boolean isInnerOfAllowed(String name) {
+            int dollar = name.indexOf('$');
+            return dollar > 0 && allowed.contains(name.substring(0, dollar));
         }
 
         Runnable probe(String osName, boolean active) throws Exception {
@@ -98,7 +105,7 @@ public class EnvironmentOnlyDetectionTest {
             if (!name.startsWith(PACKAGE)) {
                 return super.loadClass(name, resolve);
             }
-            if (!allowed.contains(name)) {
+            if (!allowed.contains(name) && !isInnerOfAllowed(name)) {
                 optionalLoads++;
                 throw new AssertionError("optional discovery module requested: " + name);
             }
