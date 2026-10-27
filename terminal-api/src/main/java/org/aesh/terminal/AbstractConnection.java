@@ -81,6 +81,20 @@ public abstract class AbstractConnection implements Connection {
     }
 
     /**
+     * Capture a size already reported by this connection's transport.
+     * This performs no size query and calls no application handler.
+     * Updates after endpoint invalidation are ignored.
+     *
+     * @param dimensions the transport's current size
+     * @param source OBSERVED for local resize, NEGOTIATED for remote resize
+     */
+    protected final synchronized void updateEndpointDimensions(Size dimensions, EndpointContext.Source source) {
+        if (!endpointContextClosed) {
+            endpointContext = endpointContext().withDimensions(dimensions, source);
+        }
+    }
+
+    /**
      * Invalidate live endpoint facts during transport close. This does not
      * signal that input ownership or native cleanup has been released.
      * Previously captured snapshots remain historical values.

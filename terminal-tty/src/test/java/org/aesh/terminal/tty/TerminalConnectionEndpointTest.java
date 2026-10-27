@@ -227,6 +227,49 @@ public class TerminalConnectionEndpointTest {
     }
 
     @Test
+    public void testWinchPublishesObservedDimensionsBeforeLegacyCallback() {
+        final Terminal.SignalHandler[] winch = new Terminal.SignalHandler[1];
+        Terminal terminal = new TerminalConnectionLegacyLoopTest.StubTerminal(
+                new ByteArrayInputStream(new byte[0])) {
+            @Override
+            public Terminal.SignalHandler handle(Signal signal, Terminal.SignalHandler handler) {
+                if (signal == Signal.WINCH) {
+                    winch[0] = handler;
+                }
+                return null;
+            }
+
+            @Override
+            public Device device() {
+                return new BaseDevice("xterm-256color");
+            }
+
+            @Override
+            public Size getSize() {
+                return new Size(132, 43);
+            }
+        };
+        final TerminalConnection connection = new TerminalConnection(terminal);
+        AtomicInteger callbacks = new AtomicInteger();
+        try {
+            connection.setSizeHandler(size -> {
+                assertEquals(new Size(132, 43), size);
+                EndpointContext context = connection.endpointContext();
+                assertEquals(new Size(132, 43), context.dimensions());
+                assertEquals(EndpointContext.Source.OBSERVED, context.dimensionsSource());
+                callbacks.incrementAndGet();
+            });
+            assertNotNull(winch[0]);
+            winch[0].handle(Signal.WINCH);
+
+            assertEquals(1, callbacks.get());
+            assertEquals(new Size(132, 43), connection.endpointContext().dimensions());
+        } finally {
+            connection.close();
+        }
+    }
+
+    @Test
     public void testCloseInvalidatesCreatorSuppliedEndpointFacts() {
         TerminalConnection connection = new TerminalConnection(stubTerminal(new BaseDevice("xterm-256color")));
         EndpointContext supplied = EndpointContext.builder()

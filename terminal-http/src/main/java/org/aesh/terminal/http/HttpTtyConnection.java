@@ -34,6 +34,7 @@ import java.util.logging.Logger;
 import org.aesh.terminal.AbstractConnection;
 import org.aesh.terminal.Attributes;
 import org.aesh.terminal.Device;
+import org.aesh.terminal.EndpointContext;
 import org.aesh.terminal.EventDecoder;
 import org.aesh.terminal.io.Decoder;
 import org.aesh.terminal.io.Encoder;
@@ -364,6 +365,7 @@ public abstract class HttpTtyConnection extends AbstractConnection {
                 Size newSize = new Size(cols, rows);
                 if (!newSize.equals(size())) {
                     size = newSize;
+                    updateEndpointDimensions(size, EndpointContext.Source.NEGOTIATED);
                     if (sizeHandler != null) {
                         // Dispatch to readline executor to avoid racing with input processing
                         Size s = newSize;

@@ -244,6 +244,9 @@ public abstract class TtyTestBase extends TestBase {
         server(conn -> conn.setSizeHandler(size -> {
             assertEquals(40, conn.size().getWidth());
             assertEquals(12, conn.size().getHeight());
+            EndpointContext context = conn.endpointContext();
+            assertEquals(new Size(40, 12), context.dimensions());
+            assertEquals(EndpointContext.Source.NEGOTIATED, context.dimensionsSource());
             testComplete();
         }));
         assertConnect();

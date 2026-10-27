@@ -40,6 +40,7 @@ import java.util.regex.Pattern;
 import org.aesh.terminal.AbstractConnection;
 import org.aesh.terminal.Connection;
 import org.aesh.terminal.Device;
+import org.aesh.terminal.EndpointContext;
 import org.aesh.terminal.EventDecoder;
 import org.aesh.terminal.io.Decoder;
 import org.aesh.terminal.io.Encoder;
@@ -280,6 +281,9 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
             }
             if (newSize != null) {
                 this.size = newSize;
+                if (conn != null) {
+                    conn.updateDimensions(newSize);
+                }
                 if (conn != null && conn.sizeHandler() != null) {
                     // Dispatch to readline executor to avoid racing with input processing
                     Size s = newSize;
@@ -382,6 +386,10 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
 
         private void closeEndpointFacts() {
             closeEndpointContext();
+        }
+
+        private void updateDimensions(Size size) {
+            updateEndpointDimensions(size, EndpointContext.Source.NEGOTIATED);
         }
 
         @Override

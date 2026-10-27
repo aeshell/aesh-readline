@@ -34,6 +34,7 @@ import org.aesh.terminal.AbstractConnection;
 import org.aesh.terminal.Attributes;
 import org.aesh.terminal.Connection;
 import org.aesh.terminal.Device;
+import org.aesh.terminal.EndpointContext;
 import org.aesh.terminal.EventDecoder;
 import org.aesh.terminal.io.Decoder;
 import org.aesh.terminal.io.Encoder;
@@ -302,6 +303,7 @@ public final class TelnetTtyConnection extends AbstractConnection implements Tel
     @Override
     public void onSize(int width, int height) {
         this.size = new Size(width, height);
+        updateEndpointDimensions(size, EndpointContext.Source.NEGOTIATED);
         if (sizeHandler != null) {
             Size s = size;
             if (readlineExecutor != null) {

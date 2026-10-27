@@ -39,6 +39,7 @@ import org.aesh.terminal.AbstractConnection;
 import org.aesh.terminal.Attributes;
 import org.aesh.terminal.Connection;
 import org.aesh.terminal.Device;
+import org.aesh.terminal.EndpointContext;
 import org.aesh.terminal.EventDecoder;
 import org.aesh.terminal.Terminal;
 import org.aesh.terminal.TerminalFeatures;
@@ -187,6 +188,7 @@ public class TerminalConnection extends AbstractConnection {
         });
         //window resize signal
         prevWincHandler = this.terminal.handle(Signal.WINCH, s -> {
+            updateEndpointDimensions(terminal.getSize(), EndpointContext.Source.OBSERVED);
             // Resize split screen first (recalculates layout, redraws separator)
             if (splitScreenImpl != null && !splitScreenImpl.isClosed()) {
                 splitScreenImpl.handleResize(terminal.getSize());
