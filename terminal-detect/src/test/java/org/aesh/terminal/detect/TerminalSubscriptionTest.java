@@ -273,6 +273,7 @@ public class TerminalSubscriptionTest {
         TerminalCapabilities saved = TerminalCapabilities.getInstance();
         final CountDownLatch opened = new CountDownLatch(1);
         final CountDownLatch release = new CountDownLatch(1);
+        final CountDownLatch oldCompleted = new CountDownLatch(1);
         final List<TerminalSnapshot> oldReceived = received();
         final List<TerminalSnapshot> newReceived = received();
         TerminalCapabilities.setProbeTransport(new TerminalProbeTransport() {
@@ -311,7 +312,15 @@ public class TerminalSubscriptionTest {
         try {
             TerminalCapabilities.invalidate();
             TerminalCapabilities old = TerminalCapabilities.detectAsync();
-            TerminalSubscription oldSubscription = old.subscribe(recordInto(oldReceived));
+            TerminalSubscription oldSubscription = old.subscribe(new Consumer<TerminalSnapshot>() {
+                @Override
+                public void accept(TerminalSnapshot snapshot) {
+                    oldReceived.add(snapshot);
+                    if (snapshot.revision() > 0) {
+                        oldCompleted.countDown();
+                    }
+                }
+            });
             try {
                 assertTrue("worker must reach the gated open",
                         opened.await(30, TimeUnit.SECONDS));
@@ -320,6 +329,8 @@ public class TerminalSubscriptionTest {
                 TerminalSubscription newSubscription = replacement.subscribe(recordInto(newReceived));
                 try {
                     release.countDown();
+                    assertTrue("late completion must reach the retired owner's subscriber",
+                            oldCompleted.await(30, TimeUnit.SECONDS));
                     assertTrue("retired producer must finish",
                             old.awaitColors(30, TimeUnit.SECONDS));
                     assertTrue("late result still completes its own round",

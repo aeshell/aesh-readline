@@ -95,13 +95,23 @@ public abstract class AbstractConnection implements Connection {
     }
 
     /**
-     * Invalidate live endpoint facts during transport close. This does not
-     * signal that input ownership or native cleanup has been released.
-     * Previously captured snapshots remain historical values.
+     * Invalidate live endpoint facts and dispose attached subscriptions during
+     * transport close. This does not signal that input ownership or native
+     * cleanup has been released. Previously captured endpoint and capability
+     * snapshots remain historical values. Listener close runs outside the
+     * connection monitor.
      */
-    protected final synchronized void closeEndpointContext() {
-        endpointContextClosed = true;
-        endpointContext = null;
+    protected final void closeEndpointContext() {
+        TerminalDetection attached;
+        synchronized (this) {
+            endpointContextClosed = true;
+            endpointContext = null;
+            attached = detection;
+            detection = null;
+        }
+        if (attached != null) {
+            attached.close();
+        }
     }
 
     /** Constructor. */
@@ -156,12 +166,31 @@ public abstract class AbstractConnection implements Connection {
      * Attach an endpoint-scoped detection owner to this connection.
      * The owner is retained by reference; a pending producer keeps
      * filling it. Passing null clears the attachment and restores
-     * the legacy process-global answers.
+     * the legacy process-global answers. Replacing or closing the
+     * attachment closes subscriptions made through the previous owner,
+     * outside the connection monitor. Use a distinct owner for each
+     * independently closed connection.
      *
      * @param detection the owner to attach, or null to clear
      */
     public void attachDetection(TerminalDetection detection) {
-        this.detection = detection;
+        TerminalDetection previous;
+        boolean closeNew = false;
+        synchronized (this) {
+            previous = this.detection;
+            if (endpointContextClosed) {
+                this.detection = null;
+                closeNew = detection != null;
+            } else {
+                this.detection = detection;
+            }
+        }
+        if (previous != null && previous != detection) {
+            previous.close();
+        }
+        if (closeNew) {
+            detection.close();
+        }
     }
 
     /**

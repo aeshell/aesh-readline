@@ -2,8 +2,14 @@ package org.aesh.terminal.detect;
 
 import static org.junit.Assert.*;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Test;
@@ -109,6 +115,114 @@ public class TerminalDetectionTest {
     @Test(expected = NullPointerException.class)
     public void testExplicitEnvironmentMustNotBeNull() {
         TerminalDetection.environmentOnly(null);
+    }
+
+    @Test
+    public void testDetectionOwnerCloseScopesSubscriptions() {
+        TerminalCapabilities caps = TerminalCapabilities.detect();
+        TerminalDetection firstOwner = TerminalDetection.managed(caps);
+        TerminalDetection secondOwner = TerminalDetection.managed(caps);
+        List<TerminalSnapshot> first = new ArrayList<>();
+        List<TerminalSnapshot> second = new ArrayList<>();
+        List<TerminalSnapshot> other = new ArrayList<>();
+        TerminalSubscription one = firstOwner.subscribe(first::add);
+        TerminalSubscription two = firstOwner.subscribe(second::add);
+        TerminalSubscription three = secondOwner.subscribe(other::add);
+        try {
+            firstOwner.close();
+            firstOwner.close();
+            TerminalColorQuery measured = new TerminalColorQuery();
+            measured.background = new int[] { 10, 10, 10 };
+            caps.applyColorResult(measured);
+
+            assertEquals("closing one owner closes its first subscriber", 1, first.size());
+            assertEquals("closing one owner closes its second subscriber", 1, second.size());
+            assertEquals("another owner of the same result is independent", 2, other.size());
+
+            List<TerminalSnapshot> late = new ArrayList<>();
+            TerminalSubscription closed = firstOwner.subscribe(late::add);
+            caps.applyThemeChange(TerminalTheme.DARK);
+            assertEquals("a closed owner accepts no new live subscription", 0, late.size());
+            assertEquals(1, first.size());
+            assertEquals(1, second.size());
+            assertEquals(3, other.size());
+            closed.close();
+        } finally {
+            one.close();
+            two.close();
+            three.close();
+            firstOwner.close();
+            secondOwner.close();
+        }
+    }
+
+    @Test
+    public void testOwnerCloseDuringRegistrationWaitsAndSuppressesReplay() throws Exception {
+        final TerminalCapabilities caps = TerminalCapabilities.detect();
+        final TerminalDetection owner = TerminalDetection.managed(caps);
+        final List<TerminalSnapshot> received = new ArrayList<>();
+        final CountDownLatch captured = new CountDownLatch(1);
+        final CountDownLatch release = new CountDownLatch(1);
+        final CountDownLatch closeReturned = new CountDownLatch(1);
+        FutureTask<TerminalSubscription> registration = new FutureTask<TerminalSubscription>(
+                new Callable<TerminalSubscription>() {
+                    @Override
+                    public TerminalSubscription call() {
+                        return owner.subscribeWithReplayBarrierForTests(received::add, null,
+                                new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        captured.countDown();
+                                        try {
+                                            if (!release.await(30, TimeUnit.SECONDS)) {
+                                                throw new AssertionError("registration release timed out");
+                                            }
+                                        } catch (InterruptedException e) {
+                                            Thread.currentThread().interrupt();
+                                            throw new RuntimeException(e);
+                                        }
+                                    }
+                                });
+                    }
+                });
+        Thread registering = new Thread(registration, "detection-owner-registration-test");
+        registering.setDaemon(true);
+        Thread closer = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                owner.close();
+                closeReturned.countDown();
+            }
+        }, "detection-owner-close-test");
+        closer.setDaemon(true);
+        TerminalSubscription subscription = null;
+        try {
+            registering.start();
+            assertTrue(captured.await(30, TimeUnit.SECONDS));
+            closer.start();
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(30);
+            while (closer.isAlive() && closer.getState() != Thread.State.WAITING
+                    && System.nanoTime() < deadline) {
+                Thread.yield();
+            }
+            assertTrue("owner close waits for registration", closer.isAlive());
+            release.countDown();
+            subscription = registration.get(30, TimeUnit.SECONDS);
+            closer.join(30000);
+            assertTrue(!closer.isAlive());
+            assertEquals(0L, closeReturned.getCount());
+            assertEquals("a concurrently closed owner suppresses replay", 0, received.size());
+
+            caps.applyThemeChange(TerminalTheme.DARK);
+            assertEquals(0, received.size());
+        } finally {
+            release.countDown();
+            closer.join(30000);
+            if (subscription != null) {
+                subscription.close();
+            }
+            owner.close();
+        }
     }
 
     @Test

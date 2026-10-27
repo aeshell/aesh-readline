@@ -23,7 +23,7 @@ package org.aesh.terminal.detect;
  *
  * @since 3.18.8
  */
-public interface TerminalSubscription {
+public interface TerminalSubscription extends AutoCloseable {
 
     /**
      * Stop delivery to this subscriber and release its listener and queued
@@ -33,5 +33,6 @@ public interface TerminalSubscription {
      * wait and suppresses subsequent events. Calling more than once has no
      * effect.
      */
+    @Override
     void close();
 }

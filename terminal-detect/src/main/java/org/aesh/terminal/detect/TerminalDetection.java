@@ -13,8 +13,13 @@
  */
 package org.aesh.terminal.detect;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.Executor;
+import java.util.function.Consumer;
 
 /**
  * Passive capability consumption scoped to one terminal/session.
@@ -30,15 +35,24 @@ import java.util.Map;
  * does not replace a captured reference, and this owner does not cancel work
  * started by another owner. Array/map getters retain their defensive-copy rules.
  * <p>
- * This does not grant terminal I/O ownership, establish live TTY/locality facts,
- * or change existing static factories and connection behavior. Bounded
- * enrichment and connection integration are separate contracts.
+ * Subscriptions made through this owner share its lifetime. Closing the owner
+ * closes only those subscriptions, never subscriptions made through another
+ * owner or directly on {@link TerminalCapabilities}. Use a distinct owner for
+ * each independently closed connection or application. Closing does not
+ * invalidate capability reads or cancel discovery.
+ * <p>
+ * This does not grant terminal I/O ownership or establish live TTY/locality
+ * facts. Bounded enrichment remains a separate contract.
  *
  * @since 3.18.8
  */
-public final class TerminalDetection {
+public final class TerminalDetection implements AutoCloseable {
 
     private final TerminalCapabilities capabilities;
+    /** Guarded by this monitor; allocated on the first subscription. */
+    private List<OwnedSubscription> subscriptions;
+    /** Guarded by this monitor. */
+    private boolean closed;
 
     private TerminalDetection(TerminalCapabilities capabilities) {
         this.capabilities = capabilities;
@@ -89,5 +103,157 @@ public final class TerminalDetection {
      */
     public TerminalCapabilities capabilities() {
         return capabilities;
+    }
+
+    /**
+     * Subscribe through this owner with synchronous later delivery.
+     * Registration replays the current state synchronously. No protocol
+     * notification, reader, raw mode, or discovery is enabled by this call.
+     *
+     * @param listener receives immutable snapshots
+     * @return a handle owned by this detection scope
+     * @since 3.18.8
+     */
+    public TerminalSubscription subscribe(Consumer<TerminalSnapshot> listener) {
+        return subscribe(listener, null);
+    }
+
+    /**
+     * Subscribe through this owner with caller-supplied later delivery.
+     * Registration still replays synchronously on the calling thread.
+     *
+     * @param listener receives immutable snapshots
+     * @param executor runs later events, or null for synchronous delivery
+     * @return a handle owned by this detection scope; if this owner is already
+     *         closed, the returned handle is closed and receives no replay
+     * @since 3.18.8
+     */
+    public TerminalSubscription subscribe(Consumer<TerminalSnapshot> listener, Executor executor) {
+        return subscribeWithReplayBarrierForTests(listener, executor, null);
+    }
+
+    /** Package-visible registration barrier for deterministic lifecycle tests. */
+    TerminalSubscription subscribeWithReplayBarrierForTests(Consumer<TerminalSnapshot> listener,
+            Executor executor, Runnable beforeReplay) {
+        Objects.requireNonNull(listener, "listener");
+        OwnedSubscription owned = new OwnedSubscription(this, listener);
+        synchronized (this) {
+            if (closed) {
+                owned.rejectRegistration();
+                return owned;
+            }
+            if (subscriptions == null) {
+                subscriptions = new ArrayList<OwnedSubscription>();
+            }
+            subscriptions.add(owned);
+        }
+        try {
+            TerminalSubscription delegate = capabilities.subscribeWithReplayBarrierForTests(
+                    owned, executor, beforeReplay);
+            owned.finishRegistration(delegate);
+            return owned;
+        } catch (RuntimeException | Error e) {
+            owned.close();
+            throw e;
+        }
+    }
+
+    private synchronized void remove(OwnedSubscription subscription) {
+        if (subscriptions != null) {
+            subscriptions.remove(subscription);
+        }
+    }
+
+    /**
+     * Close every subscription made through this owner. Capability reads stay
+     * valid and shared discovery is not cancelled. Calling more than once has
+     * no effect.
+     */
+    @Override
+    public void close() {
+        List<OwnedSubscription> close;
+        synchronized (this) {
+            if (closed) {
+                return;
+            }
+            closed = true;
+            if (subscriptions == null) {
+                return;
+            }
+            close = new ArrayList<OwnedSubscription>(subscriptions);
+            subscriptions = null;
+        }
+        for (OwnedSubscription subscription : close) {
+            subscription.close();
+        }
+    }
+
+    /** Connects one owner registration to its underlying result subscription. */
+    private static final class OwnedSubscription implements TerminalSubscription, Consumer<TerminalSnapshot> {
+        private final TerminalDetection owner;
+        private final Consumer<TerminalSnapshot> listener;
+        private final Object monitor = new Object();
+        private final Thread registeringThread;
+        private TerminalSubscription delegate;
+        private boolean registering = true;
+        private volatile boolean closed;
+
+        OwnedSubscription(TerminalDetection owner, Consumer<TerminalSnapshot> listener) {
+            this.owner = owner;
+            this.listener = listener;
+            this.registeringThread = Thread.currentThread();
+        }
+
+        @Override
+        public void accept(TerminalSnapshot snapshot) {
+            if (!closed) {
+                listener.accept(snapshot);
+            }
+        }
+
+        private void rejectRegistration() {
+            synchronized (monitor) {
+                closed = true;
+                registering = false;
+                monitor.notifyAll();
+            }
+        }
+
+        private void finishRegistration(TerminalSubscription subscription) {
+            boolean close;
+            synchronized (monitor) {
+                delegate = subscription;
+                registering = false;
+                close = closed;
+                monitor.notifyAll();
+            }
+            if (close) {
+                subscription.close();
+            }
+        }
+
+        @Override
+        public void close() {
+            TerminalSubscription current;
+            boolean interrupted = false;
+            synchronized (monitor) {
+                closed = true;
+                while (registering && registeringThread != Thread.currentThread()) {
+                    try {
+                        monitor.wait();
+                    } catch (InterruptedException e) {
+                        interrupted = true;
+                    }
+                }
+                current = delegate;
+            }
+            owner.remove(this);
+            if (current != null) {
+                current.close();
+            }
+            if (interrupted) {
+                Thread.currentThread().interrupt();
+            }
+        }
     }
 }

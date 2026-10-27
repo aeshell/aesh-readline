@@ -14,12 +14,15 @@
 package org.aesh.terminal.tty;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import java.io.ByteArrayInputStream;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -30,6 +33,8 @@ import org.aesh.terminal.TerminalFeatures;
 import org.aesh.terminal.detect.ModeSupport;
 import org.aesh.terminal.detect.TerminalCapabilities;
 import org.aesh.terminal.detect.TerminalDetection;
+import org.aesh.terminal.detect.TerminalSnapshot;
+import org.aesh.terminal.detect.TerminalSubscription;
 import org.aesh.terminal.detect.TerminalTheme;
 import org.aesh.terminal.utils.ColorDepth;
 import org.junit.Test;
@@ -102,6 +107,50 @@ public class TerminalConnectionThemeTest {
             TerminalCapabilities.setInstance(saved);
         }
         assertSame("restore must stick", saved, TerminalCapabilities.getInstance());
+    }
+
+    @Test
+    public void testThemeNotificationPublishesWithoutDisplacingLegacyHandler() {
+        TerminalCapabilities saved = TerminalCapabilities.getInstance();
+        TerminalCapabilities caps = TerminalCapabilities.detect();
+        List<TerminalSnapshot> first = new ArrayList<>();
+        List<TerminalSnapshot> second = new ArrayList<>();
+        List<TerminalTheme> legacy = new ArrayList<>();
+        List<Integer> keyboard = new ArrayList<>();
+        TerminalSubscription one = caps.subscribe(first::add);
+        TerminalSubscription two = caps.subscribe(second::add);
+        LocalTestConnection connection = new LocalTestConnection(stubTerminal(syncDevice()));
+        try {
+            TerminalCapabilities.setInstance(caps);
+            connection.setThemeChangeHandler(legacy::add);
+            connection.setStdinHandler(input -> {
+                for (int codePoint : input) {
+                    keyboard.add(codePoint);
+                }
+            });
+            int[] input = Arrays.copyOf(DSR_DARK, DSR_DARK.length + 1);
+            input[input.length - 1] = 'x';
+            connection.feed(input);
+
+            assertEquals(2, first.size());
+            assertEquals(2, second.size());
+            assertSame("one coherent revision reaches both subscribers",
+                    first.get(1), second.get(1));
+            assertEquals(1L, first.get(1).revision());
+            assertEquals(TerminalTheme.DARK, first.get(1).theme());
+            assertNull(first.get(1).backgroundRGB());
+            assertNull(first.get(1).foregroundRGB());
+            assertEquals("the independent legacy callback still runs",
+                    Collections.singletonList(TerminalTheme.DARK), legacy);
+            assertEquals("unrelated keyboard input survives the same chunk",
+                    Collections.singletonList((int) 'x'), keyboard);
+            assertFalse("passive subscription must not start a reader", connection.reading());
+        } finally {
+            one.close();
+            two.close();
+            connection.close();
+            TerminalCapabilities.setInstance(saved);
+        }
     }
 
     @Test

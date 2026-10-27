@@ -21,13 +21,17 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.aesh.terminal.detect.ImageProtocol;
 import org.aesh.terminal.detect.TerminalCapabilities;
 import org.aesh.terminal.detect.TerminalDetection;
 import org.aesh.terminal.detect.TerminalProbeSession;
 import org.aesh.terminal.detect.TerminalProbeTransport;
+import org.aesh.terminal.detect.TerminalSnapshot;
+import org.aesh.terminal.detect.TerminalSubscription;
 import org.aesh.terminal.detect.TerminalTheme;
 import org.aesh.terminal.utils.ColorDepth;
 import org.aesh.terminal.utils.TerminalColorCapability;
@@ -162,6 +166,54 @@ public class AttachedDetectionTest {
             connection.close();
             TerminalCapabilities.setProbeTransport(null);
             TerminalCapabilities.setInstance(saved);
+        }
+    }
+
+    @Test
+    public void testConnectionCloseReleasesAttachedSubscriptions() {
+        TerminalCapabilities caps = TerminalCapabilities.detect();
+        TerminalDetection owner = TerminalDetection.managed(caps);
+        StreamConnection connection = remote(new BaseDevice("linux"));
+        List<Runnable> queued = new CopyOnWriteArrayList<>();
+        List<TerminalSnapshot> received = new CopyOnWriteArrayList<>();
+        connection.attachDetection(owner);
+        TerminalSubscription subscription = owner.subscribe(received::add, queued::add);
+        try {
+            caps.applyThemeChange(TerminalTheme.DARK);
+            assertEquals("one update is waiting in the caller's executor", 1, queued.size());
+            connection.close();
+            assertNull("close detaches the disposed owner", connection.attachedDetection());
+
+            queued.get(0).run();
+            assertEquals("connection close suppresses queued listener work",
+                    1, received.size());
+        } finally {
+            subscription.close();
+            connection.close();
+            owner.close();
+        }
+    }
+
+    @Test
+    public void testReplacingAttachmentClosesPreviousSubscriptions() {
+        TerminalCapabilities caps = TerminalCapabilities.detect();
+        TerminalDetection previous = TerminalDetection.managed(caps);
+        TerminalDetection replacement = TerminalDetection.managed(caps);
+        StreamConnection connection = remote(new BaseDevice("linux"));
+        List<TerminalSnapshot> received = new CopyOnWriteArrayList<>();
+        connection.attachDetection(previous);
+        TerminalSubscription subscription = previous.subscribe(received::add);
+        try {
+            connection.attachDetection(replacement);
+            caps.applyThemeChange(TerminalTheme.DARK);
+
+            assertEquals("the replaced owner no longer publishes", 1, received.size());
+            assertEquals(replacement, connection.attachedDetection());
+        } finally {
+            subscription.close();
+            connection.close();
+            previous.close();
+            replacement.close();
         }
     }
 
