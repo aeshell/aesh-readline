@@ -118,3 +118,20 @@ JDK 11, 21, and 25 (Windows-only legs skip headless as before).
 idioms, and expected verbosity — no new complexity, parameter, or
 error-masking finding beyond the moved code's own shape. `edit_check`
 reports no incompatible callers.
+
+## Slice 2 evidence (lazy split, still no probe)
+
+`isSupported()` answers from OS/arch facts without loading anything;
+`ensureLoaded()` runs once on the first native call behind per-entry
+facade guards, and link errors degrade with guard-first messages
+(`not Windows`, `no shipped binary for arch`). The FFM overlay is
+untouched and keeps its own path. Full reactor green (2129 tests,
+0 failures); the six new decline-matrix tests pass on JDK 11 and 21
+with zero skips (the facade-wiring leg runs there, where the base
+variant serves) and five pass plus one version-gated skip on JDK 25,
+where the overlay shadows the base. Red proofs: dropping the static
+init guard order fails the message pin, and dropping one facade gate
+fails the pre-22 wiring test; both restored clean. `jar --validate`
+passes on the detect jar. `quality_delta` reports only new-symbol
+entry points, test idioms, and verbosity — no complexity, parameter,
+or error-masking finding.

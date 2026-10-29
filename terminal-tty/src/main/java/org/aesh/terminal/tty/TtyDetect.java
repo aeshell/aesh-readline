@@ -408,9 +408,9 @@ public final class TtyDetect {
      * <p>
      * Called directly (no reflection): the base-layer JNI declarations and
      * the Java 22 FFM overlay share the same signatures, so the call
-     * resolves to whichever variant the runtime loads. WinConsoleNative's
-     * static init is side-effect-free (loads JNI DLL or creates FFM
-     * downcall handles — no threads, no pumps); any linkage failure
+     * resolves to whichever variant the runtime loads. Loading is lazy
+     * (first native call, never class touch) and side-effect-free apart
+     * from the load itself (no threads, no pumps); any linkage failure
      * surfaces as an Error caught below.
      *
      * @return TRUE if a valid console handle exists, FALSE if piped/redirected,

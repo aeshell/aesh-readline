@@ -58,13 +58,66 @@ final class WinConsoleNativeJni {
 
     static native boolean freeConsole();
 
-    static {
-        if (System.getProperty("os.name", "").toLowerCase().contains("win")) {
-            loadLibrary();
+    /**
+     * Whether Win32 probing can run here, decided without loading any
+     * native code: Windows plus a shipped binary for this architecture.
+     * Touching this class never loads the library; loading happens only
+     * inside {@link #ensureLoaded()}, on the first native call.
+     *
+     * @return true when the bridge can be loaded on this host
+     */
+    static boolean isSupported() {
+        return isWindowsOs()
+                && resourceDirectoryForArch(System.getProperty("os.arch", "")) != null;
+    }
+
+    /**
+     * Load the native library once, on first native use. Guard failures
+     * precede any loader use and degrade to decline at the call site;
+     * a failed load is retried on the next call rather than poisoning
+     * the class.
+     *
+     * @throws UnsatisfiedLinkError when this host cannot load the bridge
+     */
+    static void ensureLoaded() {
+        if (loaded) {
+            return;
+        }
+        synchronized (WinConsoleNativeJni.class) {
+            if (loaded) {
+                return;
+            }
+            if (!isWindowsOs()) {
+                throw new UnsatisfiedLinkError(
+                        "Win32 console bridge not available: not Windows (os.name="
+                                + System.getProperty("os.name", "") + ")");
+            }
+            String directory = resourceDirectoryForArch(System.getProperty("os.arch", ""));
+            if (directory == null) {
+                throw new UnsatisfiedLinkError(
+                        "Win32 console bridge not available: no shipped binary for arch "
+                                + System.getProperty("os.arch", ""));
+            }
+            loadLibrary(directory);
+            loaded = true;
         }
     }
 
-    private static void loadLibrary() {
+    private static volatile boolean loaded;
+
+    private static boolean isWindowsOs() {
+        String os = System.getProperty("os.name", "");
+        return os.toLowerCase(java.util.Locale.ROOT).contains("win");
+    }
+
+    private static String resourceDirectoryForArch(String arch) {
+        if ("amd64".equals(arch) || "x86_64".equals(arch)) {
+            return "windows-x86_64";
+        }
+        return null;
+    }
+
+    private static void loadLibrary(String directory) {
         try {
             System.loadLibrary("aesh-console");
             return;
@@ -72,11 +125,7 @@ final class WinConsoleNativeJni {
             // Not on system path, try extracting from JAR
         }
 
-        String arch = System.getProperty("os.arch");
-        if ("amd64".equals(arch) || "x86_64".equals(arch)) {
-            arch = "x86_64";
-        }
-        String resourcePath = "/native/windows-" + arch + "/aesh-console.dll";
+        String resourcePath = "/native/" + directory + "/aesh-console.dll";
         try (InputStream in = WinConsoleNativeJni.class.getResourceAsStream(resourcePath)) {
             if (in == null) {
                 throw new UnsatisfiedLinkError("Native library not found in JAR: " + resourcePath);

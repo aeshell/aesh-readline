@@ -48,6 +48,7 @@ public final class WinConsoleNative {
      * @return the device handle
      */
     public static long getStdHandle(int nStdHandle) {
+        WinConsoleNativeJni.ensureLoaded();
         return WinConsoleNativeJni.getStdHandle(nStdHandle);
     }
 
@@ -58,6 +59,7 @@ public final class WinConsoleNative {
      * @return the console mode flags
      */
     public static int getConsoleMode(long handle) {
+        WinConsoleNativeJni.ensureLoaded();
         return WinConsoleNativeJni.getConsoleMode(handle);
     }
 
@@ -69,6 +71,7 @@ public final class WinConsoleNative {
      * @return true if successful
      */
     public static boolean setConsoleMode(long handle, int mode) {
+        WinConsoleNativeJni.ensureLoaded();
         return WinConsoleNativeJni.setConsoleMode(handle, mode);
     }
 
@@ -78,6 +81,7 @@ public final class WinConsoleNative {
      * @return the output code page identifier, or -1 on error/non-Windows
      */
     public static int getConsoleOutputCP() {
+        WinConsoleNativeJni.ensureLoaded();
         return WinConsoleNativeJni.getConsoleOutputCP();
     }
 
@@ -88,6 +92,7 @@ public final class WinConsoleNative {
      * @return array of {columns, rows}
      */
     public static int[] getConsoleSize(long handle) {
+        WinConsoleNativeJni.ensureLoaded();
         return WinConsoleNativeJni.getConsoleSize(handle);
     }
 
@@ -113,6 +118,7 @@ public final class WinConsoleNative {
      * @return the event data array, or null
      */
     public static int[] readConsoleInputEvent(long handle) {
+        WinConsoleNativeJni.ensureLoaded();
         return WinConsoleNativeJni.readConsoleInputEvent(handle);
     }
 
@@ -125,6 +131,7 @@ public final class WinConsoleNative {
      * @return true if all characters were written successfully
      */
     public static boolean writeConsole(long handle, char[] buffer, int length) {
+        WinConsoleNativeJni.ensureLoaded();
         return WinConsoleNativeJni.writeConsole(handle, buffer, length);
     }
 
@@ -144,6 +151,7 @@ public final class WinConsoleNative {
      *         or {@link #WAIT_FAILED} on error
      */
     public static int waitForSingleObject(long handle, int timeoutMs) {
+        WinConsoleNativeJni.ensureLoaded();
         return WinConsoleNativeJni.waitForSingleObject(handle, timeoutMs);
     }
 
@@ -154,6 +162,7 @@ public final class WinConsoleNative {
      * @return the number of pending events, or -1 on error
      */
     public static int getNumberOfConsoleInputEvents(long handle) {
+        WinConsoleNativeJni.ensureLoaded();
         return WinConsoleNativeJni.getNumberOfConsoleInputEvents(handle);
     }
 
@@ -169,6 +178,7 @@ public final class WinConsoleNative {
      * @return true if a console was allocated, false otherwise
      */
     public static boolean allocConsole() {
+        WinConsoleNativeJni.ensureLoaded();
         return WinConsoleNativeJni.allocConsole();
     }
 
@@ -182,6 +192,7 @@ public final class WinConsoleNative {
      * @return true if detached, false otherwise
      */
     public static boolean freeConsole() {
+        WinConsoleNativeJni.ensureLoaded();
         return WinConsoleNativeJni.freeConsole();
     }
 
