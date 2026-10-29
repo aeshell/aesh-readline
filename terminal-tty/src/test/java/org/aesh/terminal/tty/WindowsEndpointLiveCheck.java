@@ -46,10 +46,11 @@ import org.aesh.terminal.utils.OSUtils;
  *   mvn -DskipTests -Dformat.skip=true -pl terminal-tty -am package
  * </pre>
  * <p>
- * Then from the {@code terminal-tty} directory, on JDK 25. The live
- * Win32/FFM probe transports live in the Java 22 MRJAR overlay and do not
- * load on older JDKs, so only JDK 25 exercises real live probing — older
- * runtimes silently cover hints and registry fallbacks instead.
+ * Then from the {@code terminal-tty} directory, on JDK 21 or later. The
+ * FFM/Win32 probe transports live in the Java 22 MRJAR overlay and load
+ * only on JDK 22+; on JDK 21 the JNI console bridge probes instead, so
+ * JDK 21 exercises real live probing too — only runtimes older than 21
+ * silently cover hints and registry fallbacks instead.
  * <p>
  * cmd.exe:
  *
