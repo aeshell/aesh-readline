@@ -31,8 +31,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -40,7 +38,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import org.aesh.terminal.tty.impl.WinConsoleNative;
 import org.junit.Test;
 
 /**
@@ -131,7 +128,8 @@ public class ArtifactVerificationTest {
         assertTrue("native-image.properties must contain --initialize-at-run-time for "
                 + "AbstractWindowsTerminal$ConsoleOutput$OutputHandle",
                 content.contains("AbstractWindowsTerminal$ConsoleOutput$OutputHandle"));
-        assertTrue("native-image.properties must contain --initialize-at-run-time for WinConsoleNative (#218)",
+        assertFalse("native-image.properties must not reference the moved JNI bridge: "
+                + "WinConsoleNative entries live in terminal-detect since #389",
                 content.contains("WinConsoleNative"));
     }
 
@@ -197,20 +195,6 @@ public class ArtifactVerificationTest {
                     + "triggering native calls (#218). Got: " + e);
         } catch (ClassNotFoundException e) {
             // OK — may not be on classpath in some test configurations
-        }
-    }
-
-    @Test
-    public void testWinConsoleNativeClassLoadable() {
-        // WinConsoleNative must be loadable on any platform. Its static
-        // initializer has an OS guard that skips loadLibrary() on non-Windows.
-        try {
-            Class.forName("org.aesh.terminal.tty.impl.WinConsoleNative");
-        } catch (UnsatisfiedLinkError | ExceptionInInitializerError e) {
-            fail("WinConsoleNative class should be loadable on any platform "
-                    + "without errors. Got: " + e);
-        } catch (ClassNotFoundException e) {
-            // OK
         }
     }
 
@@ -348,75 +332,6 @@ public class ArtifactVerificationTest {
         } catch (IOException e) {
             return null;
         }
-    }
-
-    // ========== Guard #342: MRJAR base/overlay API parity ==========
-
-    @Test
-    public void testWinConsoleNativeHasNoNativeMethods() {
-        // jar --validate compares modifiers including native: neither the
-        // base facade nor the Java 22 overlay may declare native methods.
-        // This runs against whichever variant the test JVM loads, so it
-        // pins both sides with one assertion set.
-        for (Method method : WinConsoleNative.class.getDeclaredMethods()) {
-            assertFalse("WinConsoleNative." + method.getName()
-                    + " must not be native (MRJAR parity, #342)",
-                    Modifier.isNative(method.getModifiers()));
-        }
-    }
-
-    @Test
-    public void testWinConsoleNativeJniCoversFacade() throws Exception {
-        // Every public facade method must have a same-signature JNI binding:
-        // the facade delegates unconditionally, so a missing binding is an
-        // UnsatisfiedLinkError on every Windows call.
-        Class<?> jni;
-        try {
-            jni = Class.forName("org.aesh.terminal.tty.impl.WinConsoleNativeJni");
-        } catch (ClassNotFoundException e) {
-            fail("WinConsoleNativeJni must exist as the JNI binding holder (#342)");
-            return;
-        }
-        for (Method facade : WinConsoleNative.class.getDeclaredMethods()) {
-            int modifiers = facade.getModifiers();
-            if (!Modifier.isPublic(modifiers) || !Modifier.isStatic(modifiers)) {
-                continue;
-            }
-            try {
-                jni.getDeclaredMethod(facade.getName(), facade.getParameterTypes());
-            } catch (NoSuchMethodException e) {
-                fail("WinConsoleNativeJni lacks a binding for facade method "
-                        + facade.getName() + " (#342)");
-            }
-        }
-    }
-
-    @Test
-    public void testJniConfigNamesJniBridge() {
-        File configFile = new File("target/classes/META-INF/native-image/org.aesh.terminal-tty/jni-config.json");
-        if (!configFile.isFile()) {
-            return;
-        }
-        String content = readFileContent(configFile);
-        assertNotNull("Could not read jni-config.json", content);
-        assertTrue("jni-config.json must register the JNI bridge class, "
-                + "not the facade (#342)",
-                content.contains("org.aesh.terminal.tty.impl.WinConsoleNativeJni"));
-        assertFalse("jni-config.json must not register native methods on the facade (#342)",
-                content.contains("\"name\": \"org.aesh.terminal.tty.impl.WinConsoleNative\""));
-    }
-
-    @Test
-    public void testNativeImagePropertiesCoversJniBridge() {
-        File configFile = new File("target/classes/META-INF/native-image/org.aesh.terminal-tty/native-image.properties");
-        if (!configFile.isFile()) {
-            return;
-        }
-        String content = readFileContent(configFile);
-        assertNotNull("Could not read native-image.properties", content);
-        assertTrue("native-image.properties must defer the JNI bridge static init "
-                + "(DLL load) to run time (#342)",
-                content.contains("org.aesh.terminal.tty.impl.WinConsoleNativeJni"));
     }
 
     // ========== Helpers ==========

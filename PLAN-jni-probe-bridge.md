@@ -96,3 +96,25 @@ module direction (`terminal-api` → `terminal-detect` ← `terminal-tty`).
   registry-or-measured rule, bounded total time, raw mode restored.
 - Native-image legs per #377; guard failures in #388 stay separate and
   are not skipped to get past them.
+
+## Slice 1 evidence (relocation, zero behavior change)
+
+Same fully qualified names throughout, so no Java, C, or config content
+changed meaning — only the owning module did. Base bridge classes stay
+Java 8 bytecode (major version 52, verified). Packaged jars contain the
+moved pieces exactly once: the detect jar carries base classes, the
+`versions/22` overlay, and `native/windows-x86_64/aesh-console.dll`;
+the tty jar carries none of them. `jar --validate` passes on both
+packaged jars.
+
+Guard relocation replaced path-based assertions in place: removing a
+moved `native-image.properties` entry fails the new detect pin, and
+re-adding one to the tty file fails the tty negative pin; both restored
+clean. Full reactor green (2123 tests, 0 failures); artifact,
+attachment, `TtyDetect`, and `WinConsoleNativeTest` suites green on
+JDK 11, 21, and 25 (Windows-only legs skip headless as before).
+
+`quality_delta` reports only moved-file new-symbol rows, house test
+idioms, and expected verbosity — no new complexity, parameter, or
+error-masking finding beyond the moved code's own shape. `edit_check`
+reports no incompatible callers.
