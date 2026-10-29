@@ -115,6 +115,11 @@ public class Win32JniProbeTransportTest {
         withProperties(spoofed("Linux", "amd64"), new Runnable() {
             @Override
             public void run() {
+                // Reset the sticky load latch: on a Windows host another
+                // test in this fork may have loaded the DLL already, in
+                // which case the native path runs and the headless CI
+                // console check (not the OS guard) produces the decline.
+                WinConsoleNativeJni.resetLoadedForTests();
                 try {
                     new Win32JniProbeTransport().open();
                     fail("expected IOException, not a hang or a linkage leak");

@@ -100,6 +100,11 @@ public class WinConsoleNativeJniTest {
         withProperties(spoof, new Runnable() {
             @Override
             public void run() {
+                // Sticky JVM-global latch: another test in this fork may
+                // have loaded the DLL already (always the case on Windows),
+                // which would skip the guards entirely. Reset first so the
+                // spoofed guard path is what actually runs.
+                WinConsoleNativeJni.resetLoadedForTests();
                 try {
                     WinConsoleNativeJni.ensureLoaded();
                     fail("expected UnsatisfiedLinkError from the OS guard");
@@ -119,6 +124,9 @@ public class WinConsoleNativeJniTest {
         withProperties(spoof, new Runnable() {
             @Override
             public void run() {
+                // Same sticky-latch reset: without it the arch gate never
+                // runs on a host that already loaded the DLL.
+                WinConsoleNativeJni.resetLoadedForTests();
                 try {
                     WinConsoleNativeJni.ensureLoaded();
                     fail("expected UnsatisfiedLinkError for the missing binary");
@@ -134,13 +142,24 @@ public class WinConsoleNativeJniTest {
     public void testFacadeEntryPointsEnforceLoadingGate() {
         Assume.assumeFalse("base facade is shadowed by the FFM overlay on 22+",
                 isJava22OrLater());
-        try {
-            WinConsoleNative.getStdHandle(WinConsoleNative.STD_INPUT_HANDLE);
-            fail("expected UnsatisfiedLinkError from the OS guard");
-        } catch (UnsatisfiedLinkError e) {
-            assertTrue("facade entry points must run the guard first, got: " + e.getMessage(),
-                    e.getMessage() != null && e.getMessage().contains("not Windows"));
-        }
+        // The facade delegates to the same guard, so spoof the OS here as
+        // well: with real Windows properties the native call legitimately
+        // succeeds and there is no guard error to assert.
+        Map<String, String> spoof = new HashMap<String, String>();
+        spoof.put("os.name", "Linux");
+        withProperties(spoof, new Runnable() {
+            @Override
+            public void run() {
+                WinConsoleNativeJni.resetLoadedForTests();
+                try {
+                    WinConsoleNative.getStdHandle(WinConsoleNative.STD_INPUT_HANDLE);
+                    fail("expected UnsatisfiedLinkError from the OS guard");
+                } catch (UnsatisfiedLinkError e) {
+                    assertTrue("facade entry points must run the guard first, got: " + e.getMessage(),
+                            e.getMessage() != null && e.getMessage().contains("not Windows"));
+                }
+            }
+        });
     }
 
     /**

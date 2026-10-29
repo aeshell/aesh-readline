@@ -105,6 +105,21 @@ final class WinConsoleNativeJni {
 
     private static volatile boolean loaded;
 
+    /**
+     * Test-only reset of the load latch. The latch is JVM-global sticky
+     * state: once any test in the fork loads the DLL, later guard tests
+     * that spoof {@code os.name}/{@code os.arch} would silently pass the
+     * already-loaded fast path instead of exercising the guards.
+     * Resetting before a guard assertion makes the test deterministic on
+     * every host; the next real use reloads via the idempotent
+     * {@code System.loadLibrary} fast path.
+     */
+    static void resetLoadedForTests() {
+        synchronized (WinConsoleNativeJni.class) {
+            loaded = false;
+        }
+    }
+
     private static boolean isWindowsOs() {
         String os = System.getProperty("os.name", "");
         return os.toLowerCase(java.util.Locale.ROOT).contains("win");
