@@ -125,13 +125,24 @@ reports no incompatible callers.
 `ensureLoaded()` runs once on the first native call behind per-entry
 facade guards, and link errors degrade with guard-first messages
 (`not Windows`, `no shipped binary for arch`). The FFM overlay is
-untouched and keeps its own path. Full reactor green (2129 tests,
-0 failures); the six new decline-matrix tests pass on JDK 11 and 21
-with zero skips (the facade-wiring leg runs there, where the base
-variant serves) and five pass plus one version-gated skip on JDK 25,
-where the overlay shadows the base. Red proofs: dropping the static
-init guard order fails the message pin, and dropping one facade gate
-fails the pre-22 wiring test; both restored clean. `jar --validate`
-passes on the detect jar. `quality_delta` reports only new-symbol
-entry points, test idioms, and verbosity — no complexity, parameter,
-or error-masking finding.
+untouched and keeps its own path. Full reactor green (2140 tests,
+0 failures); the seventeen new decline-matrix and session tests pass
+on JDK 11 and 21 with zero skips, and fifteen pass plus two
+version-gated skips on JDK 25, where the overlay shadows the base.
+Red proofs: dropping the static-init guard order fails the message
+pin, and dropping one facade gate fails the pre-22 wiring test; both
+restored clean. `quality_delta` reports only new-symbol entry points,
+test idioms, and verbosity — no complexity, parameter, or error-masking
+finding. `edit_check` reports no incompatible callers.
+
+## Slice 3 evidence (JNI probe transport)
+
+`Win32JniProbeTransport` mirrors the FFM session shape over the JNI binding
+(raw input word, VT processing on the output handle, 500 ms
+inter-byte timeout, bounded drain, close restores modes), registered
+after FFM in the built-in order. Full reactor green (2140 tests,
+0 failures); the eleven session tests pass on all runtimes with one
+version-gated skip, plus the six lazy-load tests. Red proofs: loading before the guard fails the message pin, dropping
+one facade gate fails the pre-22 wiring test, and the new tests fail
+to compile without the transport; all restored clean. The Windows field harness plus a JDK 21 console remain the
+live-leg proof.

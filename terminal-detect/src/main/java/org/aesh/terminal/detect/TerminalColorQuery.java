@@ -30,6 +30,8 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
+import org.aesh.terminal.tty.impl.Win32JniProbeTransport;
+
 /**
  * Direct terminal color queries via OSC escape sequences.
  * I/O goes through a {@link TerminalProbeTransport}: FFM raw-mode I/O
@@ -56,6 +58,7 @@ final class TerminalColorQuery {
     private enum BuiltInTransport {
         FFM,
         WIN32,
+        WIN32_JNI,
         STTY;
 
         TerminalProbeTransport available() {
@@ -64,6 +67,8 @@ final class TerminalColorQuery {
                     return loadFfmTransport();
                 case WIN32:
                     return loadWin32Transport();
+                case WIN32_JNI:
+                    return loadJniProbeTransport();
                 case STTY:
                     return SttyProbeTransport.INSTANCE.isAvailable() ? SttyProbeTransport.INSTANCE : null;
                 default:
@@ -185,6 +190,20 @@ final class TerminalColorQuery {
         } catch (LinkageError | Exception ignored) {
             return null;
         }
+    }
+
+    /**
+     * Load the JNI Win32 probe transport (base Java 8 code, always on
+     * the classpath). Unlike the FFM transports above it needs no
+     * reflection: absence is impossible, so unavailability is purely the
+     * host answer (non-Windows, no shipped binary, no console). Any
+     * linkage failure at open time degrades to a declined probe.
+     *
+     * @return an available JNI transport, or null to try the next transport
+     */
+    private static TerminalProbeTransport loadJniProbeTransport() {
+        Win32JniProbeTransport transport = new Win32JniProbeTransport();
+        return transport.isAvailable() ? transport : null;
     }
 
     static TerminalColorQuery query(TerminalProbeTransport transport) {
