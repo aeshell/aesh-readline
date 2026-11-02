@@ -76,6 +76,20 @@ public class ArtifactVerificationTest {
         }
     }
 
+    /**
+     * Whether this suite runs inside a native image (release-8-safe
+     * property read). Member enumeration via reflection is blind there
+     * without test-only reflection metadata: unregistered classes report
+     * no fields and no methods, so enumeration-depth assertions would
+     * fail on every run while naming a different member each time. The
+     * JVM suite stays the strict gate for renames and missing bindings;
+     * in-image runs keep the presence checks, which prove the names are
+     * current and survived closed-world elimination.
+     */
+    private static boolean isNativeImage() {
+        return System.getProperty("org.graalvm.nativeimage.imagecode") != null;
+    }
+
     @Test
     public void testNativeImagePropertiesPinsMovedBridgeInit() {
         String content = readNativeImageProperties();
@@ -167,6 +181,12 @@ public class ArtifactVerificationTest {
                 // strict gate for renames.
                 continue;
             }
+            if (isNativeImage()) {
+                // Presence above is the in-image assertion. Field
+                // enumeration needs test-only reflection metadata the
+                // shipped image deliberately does not carry.
+                continue;
+            }
             boolean holdsDowncall = false;
             Field[] fields = clazz.getDeclaredFields();
             for (int j = 0; j < fields.length; j++) {
@@ -223,6 +243,13 @@ public class ArtifactVerificationTest {
             jni = Class.forName("org.aesh.terminal.tty.impl.WinConsoleNativeJni");
         } catch (ClassNotFoundException e) {
             fail("WinConsoleNativeJni must exist as the JNI binding holder (#342)");
+            return;
+        }
+        if (isNativeImage()) {
+            // Presence above is the in-image assertion. Method lookup
+            // needs test-only reflection metadata the shipped image
+            // deliberately does not carry; the JVM suite is the strict
+            // gate for binding coverage.
             return;
         }
         for (Method facade : WinConsoleNative.class.getDeclaredMethods()) {
