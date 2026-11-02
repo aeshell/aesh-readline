@@ -75,4 +75,44 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <!-- Build a native image of an example application:
+             mvn -Pexamples,native -DskipTests -Dformat.skip=true -pl examples -am package
+             (both profiles: the examples module itself is profile-gated).
+             Override the entry point with -Dexample.main=... for the other
+             examples. Needs GraalVM 25 on PATH. The jars' shipped
+             META-INF/native-image metadata is picked up automatically. -->
+        <profile>
+            <id>native</id>
+            <properties>
+                <example.main>org.aesh.terminal.tty.example.TerminalColorExample</example.main>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.graalvm.buildtools</groupId>
+                        <artifactId>native-maven-plugin</artifactId>
+                        <version>1.1.18</version>
+                        <extensions>true</extensions>
+                        <executions>
+                            <execution>
+                                <id>build-example-image</id>
+                                <goals>
+                                    <goal>build</goal>
+                                </goals>
+                                <phase>package</phase>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <mainClass>${example.main}</mainClass>
+                            <buildArgs>
+                                <buildArg>--no-fallback</buildArg>
+                            </buildArgs>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>
