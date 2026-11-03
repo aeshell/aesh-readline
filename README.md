@@ -89,6 +89,21 @@ To run tests:
 mvn test
 ```
 
+### Native images
+To build a native image of an example application (needs GraalVM 25 on `PATH`):
+```bash
+mvn -Pexamples,native -DskipTests -Dformat.skip=true -pl examples -am package
+```
+Both profiles are required: the `examples` module itself is profile-gated, and `native` wires in the image build. The binary lands at `examples/target/examples`. To image a different example, override the entry point:
+```bash
+mvn -Pexamples,native -DskipTests -Dformat.skip=true -pl examples -am package \
+  -Dexample.main=org.aesh.terminal.tty.example.ShellLocalExample
+```
+The jars' shipped `META-INF/native-image` metadata is picked up automatically, and `--no-fallback` is set so misconfiguration fails loudly instead of producing a JVM-backed binary. Run the result from a real terminal, as the examples perform live terminal detection:
+```bash
+./examples/target/examples
+```
+
 Note: the Windows JNI library `aesh-console.dll` is built with a non-executable stack to avoid JVM stack guard warnings during native-image builds. On Java 22+, the FFM-based implementation is used instead of the JNI DLL.
 
 Troubleshooting: if you still see a stack guard warning mentioning `aesh-console*.dll`, rebuild the DLL or run `execstack -c` on the extracted library in your build image.
