@@ -37,3 +37,6 @@ profile-results/*
 .cachebro/
 
 AGENTS.md
+
+# ignore local planning docs (kept outside this repo)
+PLAN-*.md
