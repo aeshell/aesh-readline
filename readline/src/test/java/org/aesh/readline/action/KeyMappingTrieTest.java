@@ -45,6 +45,24 @@ public class KeyMappingTrieTest {
     }
 
     @Test
+    public void testKeyboardSequencesMatchDisambiguatedKeys() {
+        // CSI u wire forms resolve to the disambiguated keys, never to
+        // the legacy twins, and are complete matches (no prefix wait).
+        assertMatch(Key.ESC_2, 27, 91, 50, 55, 117);
+        assertMatch(Key.CTRL_I_2, 27, 91, 49, 48, 53, 59, 53, 117);
+        assertMatch(Key.CTRL_M_2, 27, 91, 49, 51, 59, 53, 117);
+        assertMatch(Key.CTRL_LEFT_SQUARE_BRACKET, 27, 91, 57, 49, 59, 53, 117);
+        assertMatch(Key.SHIFT_ENTER, 27, 91, 49, 51, 59, 50, 117);
+    }
+
+    private void assertMatch(Key expected, int... input) {
+        KeyMappingTrie.MatchResult result = trie.match(input);
+        assertNotNull(result.action);
+        assertEquals(expected, result.action);
+        assertFalse(result.hasPrefix);
+    }
+
+    @Test
     public void testSingleCharacterMatch() {
         // Test lowercase 'a' (code 97)
         KeyMappingTrie.MatchResult result = trie.match(new int[] { 97 });

@@ -178,6 +178,8 @@ public class EditModeBuilder {
         simpleEmacs.addAction(Key.ENTER_2, "accept-line");
         simpleEmacs.addAction(Key.CTRL_L, "accept-line");
         simpleEmacs.addAction(Key.CTRL_M, "accept-line");
+        simpleEmacs.addAction(Key.CTRL_M_2, "accept-line");
+        simpleEmacs.addAction(Key.SHIFT_ENTER, "accept-line");
 
         return simpleEmacs;
     }
@@ -295,6 +297,14 @@ public class EditModeBuilder {
         emacs.addAction(Key.CTRL_S, "forward-search-history");
         emacs.addAction(Key.CTRL_L, "clear-screen"); //ctrl-l
         emacs.addAction(Key.ESC, "no-action");
+        // Progressive keyboard twins: same actions as the legacy keys,
+        // so behavior is identical until rebound. Only arrive when the
+        // terminal was asked for disambiguated sequences.
+        emacs.addAction(Key.CTRL_I_2, "complete");
+        emacs.addAction(Key.CTRL_M_2, "accept-line");
+        emacs.addAction(Key.SHIFT_ENTER, "accept-line");
+        emacs.addAction(Key.ESC_2, "no-action");
+        emacs.addAction(Key.CTRL_LEFT_SQUARE_BRACKET, "no-action");
         emacs.addAction(Key.CTRL_LEFT, "backward-word"); //ctrl-left
         emacs.addAction(Key.CTRL_RIGHT, "forward-char-or-accept-ghost-char");
         emacs.addAction(Key.META_RIGHT, "forward-word"); //alt-right
@@ -343,6 +353,17 @@ public class EditModeBuilder {
                     new Vi.ActionStatus("accept-line", EditMode.Status.COMMAND, EditMode.Status.EDIT),
                     new Vi.ActionStatus("accept-line", EditMode.Status.DELETE, EditMode.Status.COMMAND),
                     new Vi.ActionStatus("accept-line", EditMode.Status.CHANGE, EditMode.Status.COMMAND) }));
+            // Progressive keyboard twins of Enter: same behavior until rebound.
+            vi.addActionGroup(Key.CTRL_M_2, new Vi.ActionStatusGroup(new Vi.ActionStatus[] {
+                    new Vi.ActionStatus("accept-line", EditMode.Status.EDIT, EditMode.Status.EDIT),
+                    new Vi.ActionStatus("accept-line", EditMode.Status.COMMAND, EditMode.Status.EDIT),
+                    new Vi.ActionStatus("accept-line", EditMode.Status.DELETE, EditMode.Status.COMMAND),
+                    new Vi.ActionStatus("accept-line", EditMode.Status.CHANGE, EditMode.Status.COMMAND) }));
+            vi.addActionGroup(Key.SHIFT_ENTER, new Vi.ActionStatusGroup(new Vi.ActionStatus[] {
+                    new Vi.ActionStatus("accept-line", EditMode.Status.EDIT, EditMode.Status.EDIT),
+                    new Vi.ActionStatus("accept-line", EditMode.Status.COMMAND, EditMode.Status.EDIT),
+                    new Vi.ActionStatus("accept-line", EditMode.Status.DELETE, EditMode.Status.COMMAND),
+                    new Vi.ActionStatus("accept-line", EditMode.Status.CHANGE, EditMode.Status.COMMAND) }));
         } else {
             vi.addActionGroup(Key.ENTER, new Vi.ActionStatusGroup(new Vi.ActionStatus[] {
                     new Vi.ActionStatus("accept-line", EditMode.Status.EDIT, EditMode.Status.EDIT),
@@ -355,6 +376,17 @@ public class EditModeBuilder {
                     new Vi.ActionStatus("accept-line", EditMode.Status.DELETE, EditMode.Status.COMMAND),
                     new Vi.ActionStatus("accept-line", EditMode.Status.CHANGE, EditMode.Status.COMMAND) }));
             vi.addActionGroup(Key.CTRL_M, new Vi.ActionStatusGroup(new Vi.ActionStatus[] {
+                    new Vi.ActionStatus("accept-line", EditMode.Status.EDIT, EditMode.Status.EDIT),
+                    new Vi.ActionStatus("accept-line", EditMode.Status.COMMAND, EditMode.Status.EDIT),
+                    new Vi.ActionStatus("accept-line", EditMode.Status.DELETE, EditMode.Status.COMMAND),
+                    new Vi.ActionStatus("accept-line", EditMode.Status.CHANGE, EditMode.Status.COMMAND) }));
+            // Progressive keyboard twins of Enter: same behavior until rebound.
+            vi.addActionGroup(Key.CTRL_M_2, new Vi.ActionStatusGroup(new Vi.ActionStatus[] {
+                    new Vi.ActionStatus("accept-line", EditMode.Status.EDIT, EditMode.Status.EDIT),
+                    new Vi.ActionStatus("accept-line", EditMode.Status.COMMAND, EditMode.Status.EDIT),
+                    new Vi.ActionStatus("accept-line", EditMode.Status.DELETE, EditMode.Status.COMMAND),
+                    new Vi.ActionStatus("accept-line", EditMode.Status.CHANGE, EditMode.Status.COMMAND) }));
+            vi.addActionGroup(Key.SHIFT_ENTER, new Vi.ActionStatusGroup(new Vi.ActionStatus[] {
                     new Vi.ActionStatus("accept-line", EditMode.Status.EDIT, EditMode.Status.EDIT),
                     new Vi.ActionStatus("accept-line", EditMode.Status.COMMAND, EditMode.Status.EDIT),
                     new Vi.ActionStatus("accept-line", EditMode.Status.DELETE, EditMode.Status.COMMAND),
@@ -372,6 +404,7 @@ public class EditModeBuilder {
         //TODO: change to emacs mode:
         //vi.addAction/Key.CTRL_E, emacs_edit_mode
         vi.addAction(Key.CTRL_I, "complete"); //tab
+        vi.addAction(Key.CTRL_I_2, "complete"); //tab, disambiguated
         vi.addAction(Key.CTRL_L, "clear-screen"); //ctrl-l
         vi.addAction(Key.CTRL_Z, new NoAction());
         vi.addAction(Key.CTRL_J, "accept-line");
@@ -382,6 +415,23 @@ public class EditModeBuilder {
 
         //edit
         vi.addActionGroup(Key.ESC, new Vi.ActionStatusGroup(new Vi.ActionStatus[] {
+                new Vi.ActionStatus(new BackwardChar(), EditMode.Status.EDIT, EditMode.Status.COMMAND),
+                new Vi.ActionStatus(new NoAction(), EditMode.Status.COMMAND, EditMode.Status.COMMAND),
+                new Vi.ActionStatus(new BackwardChar(), EditMode.Status.CHANGE, EditMode.Status.COMMAND),
+                new Vi.ActionStatus(new NoAction(), EditMode.Status.DELETE, EditMode.Status.COMMAND),
+                new Vi.ActionStatus(new NoAction(), EditMode.Status.REPLACE, EditMode.Status.COMMAND),
+                new Vi.ActionStatus(new NoAction(), EditMode.Status.YANK, EditMode.Status.COMMAND),
+        }));
+        // Progressive keyboard twins of ESC: same behavior until rebound.
+        vi.addActionGroup(Key.ESC_2, new Vi.ActionStatusGroup(new Vi.ActionStatus[] {
+                new Vi.ActionStatus(new BackwardChar(), EditMode.Status.EDIT, EditMode.Status.COMMAND),
+                new Vi.ActionStatus(new NoAction(), EditMode.Status.COMMAND, EditMode.Status.COMMAND),
+                new Vi.ActionStatus(new BackwardChar(), EditMode.Status.CHANGE, EditMode.Status.COMMAND),
+                new Vi.ActionStatus(new NoAction(), EditMode.Status.DELETE, EditMode.Status.COMMAND),
+                new Vi.ActionStatus(new NoAction(), EditMode.Status.REPLACE, EditMode.Status.COMMAND),
+                new Vi.ActionStatus(new NoAction(), EditMode.Status.YANK, EditMode.Status.COMMAND),
+        }));
+        vi.addActionGroup(Key.CTRL_LEFT_SQUARE_BRACKET, new Vi.ActionStatusGroup(new Vi.ActionStatus[] {
                 new Vi.ActionStatus(new BackwardChar(), EditMode.Status.EDIT, EditMode.Status.COMMAND),
                 new Vi.ActionStatus(new NoAction(), EditMode.Status.COMMAND, EditMode.Status.COMMAND),
                 new Vi.ActionStatus(new BackwardChar(), EditMode.Status.CHANGE, EditMode.Status.COMMAND),

@@ -382,7 +382,28 @@ public enum Key implements KeyAction {
     /** Enter key. */
     ENTER(Config.isOSPOSIXCompatible() ? new int[] { 10 } : new int[] { 13 }),
     /** Enter key (alternate encoding for Windows CR+LF). */
-    ENTER_2(Config.isOSPOSIXCompatible() ? new int[] { 10 } : new int[] { 13, 10 });
+    ENTER_2(Config.isOSPOSIXCompatible() ? new int[] { 10 } : new int[] { 13, 10 }),
+
+    /**
+     * Progressive keyboard alternates, sent only when the terminal
+     * was asked for disambiguated {@code CSI u} sequences
+     * (see TerminalFeatures.enableProgressiveKeyboard). Naming:
+     * {@code _2} is an alternate wire encoding of the same key,
+     * semantic names are newly distinguishable keys. Bound to the
+     * same actions as their legacy twins, so behavior is identical
+     * until a user rebinds them. Extend by adding the sequence here
+     * plus its twin's action in EditModeBuilder.
+     */
+    /** Escape key, disambiguated ({@code CSI 27 u}). */
+    ESC_2(new int[] { 27, 91, 50, 55, 117 }),
+    /** Ctrl+I, disambiguated ({@code CSI 105 ; 5 u}). */
+    CTRL_I_2(new int[] { 27, 91, 49, 48, 53, 59, 53, 117 }),
+    /** Ctrl+M, disambiguated ({@code CSI 13 ; 5 u}). */
+    CTRL_M_2(new int[] { 27, 91, 49, 51, 59, 53, 117 }),
+    /** Ctrl+[ (left square bracket), disambiguated ({@code CSI 91 ; 5 u}). */
+    CTRL_LEFT_SQUARE_BRACKET(new int[] { 27, 91, 57, 49, 59, 53, 117 }),
+    /** Shift+Enter, only distinguishable with enhancements ({@code CSI 13 ; 2 u}). */
+    SHIFT_ENTER(new int[] { 27, 91, 49, 51, 59, 50, 117 });
 
     private final IntBuffer keyValues;
 

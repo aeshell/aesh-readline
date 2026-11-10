@@ -107,4 +107,34 @@ public class KeyMapperTest {
             assertEquals(builder.build().parse(Key.BACKSPACE).name(), new DeletePrevChar().name());
         }
     }
+
+    @Test
+    public void testProgressiveKeyboardTwinsMatchLegacyActions() {
+        if (Config.isOSPOSIXCompatible()) {
+            // Behavior-preserving defaults: disambiguated keys act exactly
+            // like their legacy twins until rebound.
+            EditMode emacs = EditModeBuilder.builder().build();
+            assertEquals(emacs.parse(Key.CTRL_I).name(), emacs.parse(Key.CTRL_I_2).name());
+            assertEquals(emacs.parse(Key.CTRL_M).name(), emacs.parse(Key.CTRL_M_2).name());
+            assertEquals(emacs.parse(Key.ENTER).name(), emacs.parse(Key.SHIFT_ENTER).name());
+            assertEquals(emacs.parse(Key.ESC).name(), emacs.parse(Key.ESC_2).name());
+            assertEquals(emacs.parse(Key.ESC).name(), emacs.parse(Key.CTRL_LEFT_SQUARE_BRACKET).name());
+            // Concrete expectations pin the defaults, not just the equality.
+            assertEquals("complete", emacs.parse(Key.CTRL_I_2).name());
+            assertEquals("accept-line", emacs.parse(Key.CTRL_M_2).name());
+            assertEquals("accept-line", emacs.parse(Key.SHIFT_ENTER).name());
+
+            // Fresh mode per twin: parsing mutates Vi status, so twins
+            // must be compared from the same starting status.
+            assertEquals(viMode().parse(Key.CTRL_I).name(), viMode().parse(Key.CTRL_I_2).name());
+            assertEquals(viMode().parse(Key.CTRL_M).name(), viMode().parse(Key.CTRL_M_2).name());
+            assertEquals(viMode().parse(Key.ENTER).name(), viMode().parse(Key.SHIFT_ENTER).name());
+            assertEquals(viMode().parse(Key.ESC).name(), viMode().parse(Key.ESC_2).name());
+            assertEquals(viMode().parse(Key.ESC).name(), viMode().parse(Key.CTRL_LEFT_SQUARE_BRACKET).name());
+        }
+    }
+
+    private static EditMode viMode() {
+        return EditModeBuilder.builder(EditMode.Mode.VI).build();
+    }
 }
