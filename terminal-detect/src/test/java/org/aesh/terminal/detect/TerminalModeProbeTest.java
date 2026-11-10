@@ -220,6 +220,79 @@ public class TerminalModeProbeTest {
     }
 
     @Test
+    public void testBatchQueriesKeyboard() {
+        String batch = new String(TerminalColorQuery.buildColorQuery(),
+                StandardCharsets.US_ASCII);
+        assertTrue("batch must ask for keyboard enhancements: " + escape(batch),
+                batch.contains("\033[?u"));
+    }
+
+    @Test
+    public void testKittyFenceDefault() {
+        // DA1 without a keyboard reply: measured absent, not unprobed.
+        String response = "\033[?2026;1$y\033[?64;1c";
+        TerminalColorQuery result = new TerminalColorQuery();
+        TerminalColorQuery.parseDA1Response(response, result);
+        TerminalColorQuery.parseDECRPMResponses(response, result);
+        TerminalColorQuery.parseKittyKeyboardResponse(response, result);
+
+        assertTrue(result.da1Received);
+        assertEquals(0, result.kittyKeyboardFlags);
+    }
+
+    @Test
+    public void testKittyUnprobedWithoutDA1() {
+        // No DA1 response — dumb terminal, keyboard stays unprobed.
+        String response = "";
+        TerminalColorQuery result = new TerminalColorQuery();
+        TerminalColorQuery.parseDA1Response(response, result);
+        TerminalColorQuery.parseDECRPMResponses(response, result);
+        TerminalColorQuery.parseKittyKeyboardResponse(response, result);
+
+        assertEquals(false, result.da1Received);
+        assertEquals(-1, result.kittyKeyboardFlags);
+    }
+
+    @Test
+    public void testKittyReplyOverridesFence() {
+        String response = "\033[?5u\033[?64;1c";
+        TerminalColorQuery result = new TerminalColorQuery();
+        TerminalColorQuery.parseDA1Response(response, result);
+        TerminalColorQuery.parseDECRPMResponses(response, result);
+        TerminalColorQuery.parseKittyKeyboardResponse(response, result);
+
+        assertTrue(result.da1Received);
+        assertEquals(5, result.kittyKeyboardFlags);
+    }
+
+    @Test
+    public void testKittyZeroReplyIsAnswered() {
+        // A zero-bitmask reply is an answer (offers nothing),
+        // distinct from the unprobed state.
+        String response = "\033[?0u\033[?64;1c";
+        TerminalColorQuery result = new TerminalColorQuery();
+        TerminalColorQuery.parseDA1Response(response, result);
+        TerminalColorQuery.parseDECRPMResponses(response, result);
+        TerminalColorQuery.parseKittyKeyboardResponse(response, result);
+
+        assertTrue(result.da1Received);
+        assertEquals(0, result.kittyKeyboardFlags);
+    }
+
+    @Test
+    public void testKittyGarbageKeepsFence() {
+        // Non-numeric u-terminated body is ignored; the fence stands.
+        String response = "\033[?xu\033[?64;1c";
+        TerminalColorQuery result = new TerminalColorQuery();
+        TerminalColorQuery.parseDA1Response(response, result);
+        TerminalColorQuery.parseDECRPMResponses(response, result);
+        TerminalColorQuery.parseKittyKeyboardResponse(response, result);
+
+        assertTrue(result.da1Received);
+        assertEquals(0, result.kittyKeyboardFlags);
+    }
+
+    @Test
     public void testParseDECRPM_2048NoDA1() {
         // No DA1 response — dumb terminal, 2048 stays unprobed.
         String response = "";
@@ -251,32 +324,7 @@ public class TerminalModeProbeTest {
         frames.add("\033[?64;1c");
         final String[] frameArray = frames.toArray(new String[frames.size()]);
 
-        TerminalProbeTransport transport = new TerminalProbeTransport() {
-            @Override
-            public boolean isAvailable() {
-                return true;
-            }
-
-            @Override
-            public TerminalProbeSession open() {
-                return new TerminalProbeSession() {
-                    private final InputStream in = new FrameThenHangStream(frameArray);
-
-                    @Override
-                    public void write(byte[] data) {
-                    }
-
-                    @Override
-                    public InputStream input() {
-                        return in;
-                    }
-
-                    @Override
-                    public void close() {
-                    }
-                };
-            }
-        };
+        TerminalProbeTransport transport = fakeTransport(frameArray);
 
         final AtomicReference<TerminalColorQuery> out = new AtomicReference<>();
         final AtomicReference<Throwable> failure = new AtomicReference<>();
@@ -305,7 +353,96 @@ public class TerminalModeProbeTest {
         assertTrue("fence must be seen even when DA1 rides last", result.da1Received);
         assertEquals(ModeSupport.SUPPORTED, result.mode2048);
         assertTrue(result.supports256);
+        assertEquals("no keyboard reply: fence maps to measured absent",
+                0, result.kittyKeyboardFlags);
     }
+
+    @Test
+    public void testKittyBatchTerminatesAtFrameCount() throws Exception {
+        // 24-frame batch in wire order with the keyboard reply in
+        // place, one frame per read, then the stream hangs: the
+        // post-fence budget needs kittySeen, or the read breaks at 23
+        // and drops the trailing color reply.
+        java.util.List<String> frames = new java.util.ArrayList<String>();
+        frames.add("\033[?2026;1$y");
+        frames.add("\033[?2027;1$y");
+        frames.add("\033[?2048;1$y");
+        frames.add("\033[?5u");
+        frames.add("\033[?64;1c");
+        frames.add("\033]10;rgb:ffff/ffff/ffff\007");
+        frames.add("\033]11;rgb:0000/0000/0000\007");
+        for (int i = 0; i <= 15; i++) {
+            frames.add("\033]4;" + i + ";rgb:0000/0000/0000\007");
+        }
+        frames.add("\033]4;255;rgb:ffff/ffff/ffff\007");
+        final String[] frameArray = frames.toArray(new String[frames.size()]);
+        final AtomicReference<TerminalColorQuery> out = new AtomicReference<>();
+        final AtomicReference<Throwable> failure = new AtomicReference<>();
+        Thread worker = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    out.set(TerminalColorQuery.query(fakeTransport(frameArray)));
+                } catch (Throwable t) {
+                    failure.compareAndSet(null, t);
+                }
+            }
+        }, "kitty-frame-count");
+        worker.setDaemon(true);
+        worker.start();
+        worker.join(10000);
+        try {
+            assertFalse("full batch must terminate at the frame count, not hang",
+                    worker.isAlive());
+        } finally {
+            worker.interrupt();
+        }
+        assertNull("query must not fail: " + failure.get(), failure.get());
+        TerminalColorQuery result = out.get();
+        assertNotNull(result);
+        assertTrue(result.da1Received);
+        assertEquals(5, result.kittyKeyboardFlags);
+        assertTrue("trailing 256-color reply must be read (budget needs kitty)",
+                result.supports256);
+    }
+
+    /**
+     * Fake transport serving canned frames, one per read, then hanging.
+     */
+    private static TerminalProbeTransport fakeTransport(final String[] frameArray) {
+        return new TerminalProbeTransport() {
+            @Override
+            public boolean isAvailable() {
+                return true;
+            }
+
+            @Override
+            public TerminalProbeSession open() {
+                return new TerminalProbeSession() {
+                    private final InputStream in = new FrameThenHangStream(frameArray);
+
+                    @Override
+                    public void write(byte[] data) {
+                    }
+
+                    @Override
+                    public InputStream input() {
+                        return in;
+                    }
+
+                    @Override
+                    public void close() {
+                    }
+                };
+            }
+        };
+    }
+
+    /**
+     * Serves one reply frame per read, then hangs until interrupted.
+     * Proves frame-count termination: with a correct count the query
+     * returns while this stream is still hanging.
+     */
 
     /**
      * Render control characters visibly for assertion messages.

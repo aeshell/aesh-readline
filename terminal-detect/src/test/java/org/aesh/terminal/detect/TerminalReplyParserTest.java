@@ -66,6 +66,29 @@ public class TerminalReplyParserTest {
     }
 
     @Test
+    public void testKeyboardFlags() {
+        assertEquals(5, TerminalReplyParser.keyboardFlags("\033[?5u"));
+        assertEquals(0, TerminalReplyParser.keyboardFlags("\033[?0u"));
+        // Last valid report wins.
+        assertEquals(4, TerminalReplyParser.keyboardFlags("\033[?1u\033[?4u"));
+        // Other frames are invisible to this query.
+        assertEquals(-1, TerminalReplyParser.keyboardFlags("\033[?2026;1$y"));
+        assertEquals(-1, TerminalReplyParser.keyboardFlags("\033[?63;1c"));
+        assertEquals(-1, TerminalReplyParser.keyboardFlags("\033]11;rgb:0000/0000/0000\007"));
+        assertEquals(-1, TerminalReplyParser.keyboardFlags("\033[24;80R"));
+        // Malformed bodies never poison: empty, non-numeric, DECRPM-shaped.
+        assertEquals(-1, TerminalReplyParser.keyboardFlags("\033[?u"));
+        assertEquals(-1, TerminalReplyParser.keyboardFlags("\033[?abu"));
+        assertEquals(-1, TerminalReplyParser.keyboardFlags("\033[?5$u"));
+        assertEquals(-1, TerminalReplyParser.keyboardFlags("no reply here"));
+        assertEquals(-1, TerminalReplyParser.keyboardFlags(null));
+        // Malformed first, valid later: later wins, earlier never poisons.
+        assertEquals(7, TerminalReplyParser.keyboardFlags("\033[?xu\033[?7u"));
+        // DA1 first: the keyboard report still parses.
+        assertEquals(5, TerminalReplyParser.keyboardFlags("\033[?63;1c\033[?5u"));
+    }
+
+    @Test
     public void testDeviceAttributes() {
         TerminalDeviceAttributes attributes = TerminalReplyParser.deviceAttributes("\033[?63;1;2;4c");
         assertEquals(new TerminalDeviceAttributes(63, Arrays.asList(1, 2, 4)), attributes);

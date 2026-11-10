@@ -245,6 +245,61 @@ public final class TerminalReplyParser {
     }
 
     /**
+     * Parse a progressive keyboard enhancement reply
+     * ({@code CSI ? flags u}) out of a possibly batched response.
+     * Each CSI is framed independently: only a digits-only body
+     * terminated by {@code u} is a keyboard report. DECRPM reports
+     * (terminated by {@code $p}), DA1 (terminated by {@code c}),
+     * and CPR (no {@code ?} prefix) are skipped without consuming
+     * a following report. The last valid report wins; anything
+     * else leaves prior state alone.
+     *
+     * @param response the accumulated response text
+     * @return the enhancement bitmask, or {@code -1} when no valid
+     *         report for the query is present
+     */
+    public static int keyboardFlags(String response) {
+        int found = -1;
+        if (response == null) {
+            return found;
+        }
+        String marker = "\033[?";
+        int pos = 0;
+        while (true) {
+            // Find this query's CSI ...
+            int start = response.indexOf(marker, pos);
+            if (start < 0) {
+                return found;
+            }
+            // ... scan to this CSI's own final byte (0x40-0x7E).
+            int end = start + marker.length();
+            while (end < response.length() && !isCsiFinal(response.charAt(end))) {
+                end++;
+            }
+            if (end < response.length() && response.charAt(end) == 'u') {
+                String body = response.substring(start + marker.length(), end);
+                if (!body.isEmpty()) {
+                    boolean digits = true;
+                    for (int i = 0; i < body.length(); i++) {
+                        char c = body.charAt(i);
+                        if (c < '0' || c > '9') {
+                            digits = false;
+                            break;
+                        }
+                    }
+                    if (digits) {
+                        try {
+                            found = Integer.parseInt(body);
+                        } catch (NumberFormatException ignored) {
+                        }
+                    }
+                }
+            }
+            pos = end + 1;
+        }
+    }
+
+    /**
      * Parse a DA1 reply out of a possibly batched response. Only a
      * sequence terminated by {@code c} is DA1: other CSI responses
      * sharing the {@code ESC[?} prefix (DECRPM reports) are skipped

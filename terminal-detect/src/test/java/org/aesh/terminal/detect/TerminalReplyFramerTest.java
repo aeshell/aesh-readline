@@ -75,6 +75,17 @@ public class TerminalReplyFramerTest {
     }
 
     @Test
+    public void testKeyboardReportShapes() {
+        List<Span> spans = split("\033[?5u");
+        assertEquals(1, spans.size());
+        assertSpan(spans.get(0), Kind.KEYBOARD_REPORT, 0, 5);
+
+        // Bare u-final without the private prefix stays opaque.
+        List<Span> bare = split("\033[5u");
+        assertTrue("non-private u-final must not frame", bare.isEmpty());
+    }
+
+    @Test
     public void testCursorPositionStrict() {
         List<Span> spans = split("\033[24;80R");
         assertEquals(1, spans.size());

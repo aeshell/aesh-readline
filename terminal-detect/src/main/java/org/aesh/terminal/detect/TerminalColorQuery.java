@@ -96,6 +96,12 @@ final class TerminalColorQuery {
     ModeSupport mode2027 = ModeSupport.NO_RESPONSE;
     ModeSupport mode2048 = ModeSupport.NO_RESPONSE;
     /**
+     * Progressive keyboard enhancement flags, or -1 when the terminal
+     * never answered the query. A reply stores the bitmask (possibly
+     * 0); the DA1 fence maps silence to 0 (measured absent).
+     */
+    int kittyKeyboardFlags = -1;
+    /**
      * Native grapheme clustering measured in the same session, or null
      * when the cursor-position probe did not run (DA1 absent or Mode
      * 2027 supported). False means the probe ran without clustering.
@@ -216,7 +222,7 @@ final class TerminalColorQuery {
             try (TerminalProbeSession session = transport.open()) {
                 session.write(buildColorQuery());
 
-                // Full batch: 3 DECRPM + 1 DA1 + 19 OSC responses.
+                // Full batch: 3 DECRPM + keyboard + 1 DA1 + 19 OSC responses.
                 // Terminals without DECRQM send no DECRPM; the DA1 fence
                 // finalizes the mode budget so the read ends with the
                 // 19 post-fence OSC replies instead of a timeout.
@@ -238,6 +244,7 @@ final class TerminalColorQuery {
         TerminalColorQuery result = new TerminalColorQuery();
         parseDA1Response(response, result);
         parseDECRPMResponses(response, result);
+        parseKittyKeyboardResponse(response, result);
         result.foreground = parseOscColorResponse(response, 10, -1);
         result.background = parseOscColorResponse(response, 11, -1);
         result.palette = new LinkedHashMap<>();
@@ -456,6 +463,7 @@ final class TerminalColorQuery {
         queries.append("\033[?2026$p"); // DECRQM: Mode 2026 (synchronized output)
         queries.append("\033[?2027$p"); // DECRQM: Mode 2027 (grapheme cluster)
         queries.append("\033[?2048$p"); // DECRQM: Mode 2048 (in-band resize)
+        queries.append("\033[?u"); // keyboard enhancement query
         queries.append("\033[c"); // DA1 query (fence)
         queries.append("\033]10;?").append(BEL);
         queries.append("\033]11;?").append(BEL);
@@ -473,11 +481,11 @@ final class TerminalColorQuery {
         while ((n = in.read(buf)) > 0) {
             sb.append(new String(buf, 0, n));
             FrameCount count = countFrames(sb);
-            // Full batch: 3 DECRPM + DA1 + 19 OSC. Terminals without DECRQM
+            // Full batch: 3 DECRPM + keyboard + DA1 + 19 OSC. Terminals without DECRQM
             // legitimately send no DECRPM, so once the DA1 fence lands the
             // mode budget is final and only the 19 post-fence OSC replies
             // can still be outstanding — never wait the full count past it.
-            int expected = count.da1Seen ? count.decrpm + 20 : 23;
+            int expected = count.da1Seen ? count.decrpm + (count.kittySeen ? 1 : 0) + 20 : 24;
             if (count.total >= expected) {
                 break;
             }
@@ -492,14 +500,14 @@ final class TerminalColorQuery {
         while (!deadline.isExpired() && (n = in.read(buf)) > 0) {
             sb.append(new String(buf, 0, n));
             FrameCount count = countFrames(sb);
-            int expected = count.da1Seen ? count.decrpm + 20 : 23;
+            int expected = count.da1Seen ? count.decrpm + (count.kittySeen ? 1 : 0) + 20 : 24;
             if (count.total >= expected) {
                 break;
             }
         }
         if (deadline.isExpired()) {
             FrameCount count = countFrames(sb);
-            int expected = count.da1Seen ? count.decrpm + 20 : 23;
+            int expected = count.da1Seen ? count.decrpm + (count.kittySeen ? 1 : 0) + 20 : 24;
             if (count.total < expected) {
                 return null;
             }
@@ -542,14 +550,16 @@ final class TerminalColorQuery {
         int decrpm;
         boolean da1Seen;
         boolean cprSeen;
+        boolean kittySeen;
     }
 
     /**
      * Count reply frames through the shared splitter. Totals match the
      * previous hand-rolled scan exactly: every CSI ending in {@code c},
-     * {@code y}, or a CPR-shaped {@code R} counts once, as do BEL/ST
-     * OSC terminators. (A {@code >}-body DA2 never counted and still
-     * does not; it accumulates for parsers without completing reads.)
+     * {@code y}, {@code u} (private query), or a CPR-shaped {@code R}
+     * counts once, as do BEL/ST OSC terminators. (A {@code >}-body
+     * DA2 never counted and still does not; it accumulates for parsers
+     * without completing reads.)
      */
     private static FrameCount countFrames(StringBuilder sb) {
         FrameCount count = new FrameCount();
@@ -565,6 +575,10 @@ final class TerminalColorQuery {
                 case MODE_REPORT:
                     count.total++;
                     count.decrpm++;
+                    break;
+                case KEYBOARD_REPORT:
+                    count.total++;
+                    count.kittySeen = true;
                     break;
                 case CURSOR_POSITION:
                     count.total++;
@@ -748,6 +762,29 @@ final class TerminalColorQuery {
         ModeSupport mode2048 = TerminalReplyParser.modeSupport(response, 2048);
         if (mode2048 != ModeSupport.NO_RESPONSE) {
             result.mode2048 = mode2048;
+        }
+    }
+
+    /**
+     * Parse a progressive keyboard enhancement reply
+     * ({@code CSI ? flags u}) out of a possibly batched response.
+     * Only a digits-only body terminated by {@code u} counts;
+     * DECRPM reports and DA1 share the {@code ESC[?} prefix but
+     * terminate differently and are skipped. The DA1 fence maps
+     * silence to measured-absent (0); without DA1 the field stays
+     * unprobed (-1). A later valid report overrides the fence and
+     * any earlier report.
+     *
+     * @param response the accumulated response text
+     * @param result the result to update
+     */
+    static void parseKittyKeyboardResponse(String response, TerminalColorQuery result) {
+        if (result.da1DeviceClass >= 0 && result.kittyKeyboardFlags < 0) {
+            result.kittyKeyboardFlags = 0;
+        }
+        int flags = TerminalReplyParser.keyboardFlags(response);
+        if (flags >= 0) {
+            result.kittyKeyboardFlags = flags;
         }
     }
 

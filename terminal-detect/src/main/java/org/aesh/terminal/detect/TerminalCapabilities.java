@@ -88,6 +88,11 @@ public final class TerminalCapabilities {
     private volatile ModeSupport mode2026Support;
     private volatile ModeSupport mode2027Support;
     private volatile ModeSupport mode2048Support;
+    /**
+     * Progressive keyboard enhancement flags: -1 unprobed, 0 measured
+     * absent, otherwise the terminal-reported bitmask.
+     */
+    private volatile int kittyKeyboardFlags = -1;
     private volatile Boolean nativeGraphemeClustering;
     /** Present only for an explicitly started shared discovery round. */
     private final Discovery discovery;
@@ -710,7 +715,7 @@ public final class TerminalCapabilities {
                 resolvedTheme != null ? resolvedTheme : detector.theme,
                 foregroundRGB, backgroundRGB, paletteColors,
                 mode2026Support, mode2027Support, mode2048Support,
-                nativeGraphemeClustering);
+                kittyKeyboardFlags, nativeGraphemeClustering);
     }
 
     /**
@@ -919,6 +924,7 @@ public final class TerminalCapabilities {
             mode2026Support = result.mode2026;
             mode2027Support = result.mode2027;
             mode2048Support = result.mode2048;
+            kittyKeyboardFlags = result.kittyKeyboardFlags;
             if (result.graphemeClustering != null) {
                 nativeGraphemeClustering = result.graphemeClustering;
             }
@@ -1277,6 +1283,21 @@ public final class TerminalCapabilities {
      */
     public ModeSupport inBandResizeSupport() {
         return mode2048Support;
+    }
+
+    /**
+     * Progressive keyboard enhancement flags reported by the terminal.
+     * <p>
+     * Only available after a terminal query via {@link #detectAsync()}.
+     * The value is a bitmask (1 disambiguate, 2 event types,
+     * 4 alternate keys, 8 all keys, 16 associated text).
+     *
+     * @return the enhancement bitmask, 0 when measured absent,
+     *         or -1 if not yet queried
+     * @since 3.18.8
+     */
+    public int kittyKeyboardFlags() {
+        return kittyKeyboardFlags;
     }
 
     /**

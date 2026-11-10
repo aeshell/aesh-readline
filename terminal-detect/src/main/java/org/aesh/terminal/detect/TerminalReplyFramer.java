@@ -48,6 +48,8 @@ public final class TerminalReplyFramer {
         DEVICE_ATTRIBUTES,
         /** Mode report ({@code ESC [ ... $y}). */
         MODE_REPORT,
+        /** Keyboard enhancement report ({@code ESC [ ? ... u}). */
+        KEYBOARD_REPORT,
         /** Cursor position report ({@code ESC [ digits ; digits R}). */
         CURSOR_POSITION,
         /** Ordinary input without ESC: safe to deliver immediately. */
@@ -224,6 +226,8 @@ public final class TerminalReplyFramer {
             kind = Kind.DEVICE_ATTRIBUTES;
         } else if (fin == 'y') {
             kind = Kind.MODE_REPORT;
+        } else if (fin == 'u' && isPrivateQueryBody(response, bodyStart, i)) {
+            kind = Kind.KEYBOARD_REPORT;
         } else if (fin == 'R' && isCprBody(response, bodyStart, i)) {
             kind = Kind.CURSOR_POSITION;
         }
@@ -260,6 +264,24 @@ public final class TerminalReplyFramer {
 
     private static boolean isCsiFinal(char c) {
         return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
+    }
+
+    /**
+     * Whether a CSI body holds a private query reply: a leading
+     * {@code ?} like the keyboard enhancement report. Lenient by
+     * design — the response parser validates the body strictly
+     * afterwards, so only well-known private shapes count here.
+     *
+     * @param response the accumulated response
+     * @param bodyStart the body start, or negative when unknown
+     * @param end the final-byte index (exclusive)
+     * @return true if the body starts with {@code ?}
+     */
+    private static boolean isPrivateQueryBody(CharSequence response, int bodyStart, int end) {
+        if (bodyStart < 0 || bodyStart >= end) {
+            return false;
+        }
+        return response.charAt(bodyStart) == '?';
     }
 
     /**
