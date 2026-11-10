@@ -89,7 +89,9 @@ public final class Win32ProbeLiveCheck {
         }
         System.out.println("Win32 probe: mode restored; background="
                 + (colors == null || colors.background == null ? "no OSC response" : "received")
-                + "; grapheme=" + grapheme + "; size=" + size.get());
+                + "; grapheme=" + grapheme + "; size=" + size.get()
+                + "; mode2048=" + (colors == null ? "no-probe" : colors.mode2048)
+                + "; kitty=" + (colors == null ? "no-probe" : colors.kittyKeyboardFlags));
     }
 
     private static int mode(Method getConsoleMode, long handle) throws Exception {
