@@ -507,9 +507,12 @@ public class EventDecoder implements Consumer<int[]> {
 
     /**
      * Checks if any sequence filtering is active (at least one handler is set).
+     * Progressive keyboard counts: its signal translation needs the
+     * parser even with no other handler installed.
      */
     private boolean hasAnyFilter() {
-        return themeChangeHandler != null || mouseHandler != null || focusHandler != null;
+        return themeChangeHandler != null || mouseHandler != null || focusHandler != null
+                || keyboardEnhancements;
     }
 
     /**
@@ -702,8 +705,15 @@ public class EventDecoder implements Consumer<int[]> {
             // subscribed falls through to re-emit, so a waiting query (or
             // plain input) still sees it. Mouse shapes stay consumed
             // handlerless — tracking ownership implies they are noise to
-            // anyone else.
-            if (isDsrThemeResponse(finalChar, params, paramCount,
+            // anyone else. Keyboard signals preempt like the C0 pre-pass:
+            // with enhancements on, Ctrl+C arrives as CSI u, never as
+            // byte 3, so the byte scan alone would go blind.
+            if (isKeyboardEvent(finalChar, params, paramCount,
+                    intermediates, intermediateCount, hasSubParams)
+                    && keyboardEnhancements
+                    && raiseKeyboardSignal(params, paramCount)) {
+                // consumed as a signal
+            } else if (isDsrThemeResponse(finalChar, params, paramCount,
                     intermediates, intermediateCount)
                     && themeChangeHandler != null) {
                 handleDsrTheme(params, paramCount);
@@ -785,6 +795,103 @@ public class EventDecoder implements Consumer<int[]> {
             int[] intermediates, int intermediateCount) {
         return (finalChar == 'M' || finalChar == 'm')
                 && intermediateCount == 1 && intermediates[0] == '<';
+    }
+
+    /**
+     * Checks if a CSI sequence is a progressive keyboard event:
+     * {@code CSI code u} or {@code CSI code ; mods u}, no intermediates,
+     * no sub-params, all params non-negative. The body shape alone
+     * decides; whether it names a signal is decoded separately, so
+     * non-signal key events fall through to the input handler for
+     * trie matching.
+     * <p>
+     * In VtParser terms: finalChar='u', no intermediates,
+     * paramCount 1-2.
+     */
+    private static boolean isKeyboardEvent(int finalChar, int[] params, int paramCount,
+            int[] intermediates, int intermediateCount, boolean hasSubParams) {
+        if (finalChar != 'u' || intermediateCount != 0 || hasSubParams) {
+            return false;
+        }
+        if (params == null || paramCount < 1 || paramCount > 2) {
+            return false;
+        }
+        for (int i = 0; i < paramCount; i++) {
+            if (params[i] < 0) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Raise a signal for a keyboard event naming a control character.
+     * With enhancements on, the four signals arrive as {@code CSI u}
+     * instead of C0 bytes: Ctrl+C is {@code CSI 99 ; 5 u} (mods are
+     * 1-based, so 5 means ctrl). Lock modifiers are tolerated, any
+     * other modifier disqualifies: Shift+Ctrl+C is a distinct key,
+     * not an interrupt. Non-signal key events return false so the
+     * sequence re-emits for trie matching. Remapped control
+     * characters (non-canonical termios) are a documented
+     * limitation: only the canonical combos translate.
+     *
+     * @param params the CSI params (code, optional 1-based mods)
+     * @param paramCount the param count (1-2, non-negative)
+     * @return true when a signal was raised
+     */
+    private boolean raiseKeyboardSignal(int[] params, int paramCount) {
+        Signal event = decodeKeyboardSignal(params, paramCount);
+        if (event != null && signalHandler != null) {
+            signalHandler.accept(event);
+            return true;
+        }
+        return false;
+    }
+
+    private Signal decodeKeyboardSignal(int[] params, int paramCount) {
+        int code = params[0];
+        int mods = paramCount == 2 ? params[1] : 1;
+        if (mods < 1) {
+            return null;
+        }
+        if (((mods - 1) & ~0xC0) != 0x04) {
+            return null;
+        }
+        int legacy = legacyControlByte(code);
+        if (legacy == intr && intr != 0) {
+            return Signal.INT;
+        }
+        if (legacy == quit && quit != 0) {
+            return Signal.QUIT;
+        }
+        if (legacy == susp && susp != 0) {
+            return Signal.SUSP;
+        }
+        if (legacy == eof && eof != 0) {
+            return Signal.EOF;
+        }
+        return null;
+    }
+
+    /**
+     * Reverse the legacy ctrl mapping for a Unicode code point:
+     * letters map to 1-26, {@code @[\\]^_} to 0 and 27-31, space to 0.
+     * Anything else cannot be a control character.
+     *
+     * @param code the Unicode code point
+     * @return the legacy C0 byte, or -1
+     */
+    private static int legacyControlByte(int code) {
+        if (code >= 'a' && code <= 'z') {
+            return code - 96;
+        }
+        if (code >= '@' && code <= '_') {
+            return code - 64;
+        }
+        if (code == ' ') {
+            return 0;
+        }
+        return -1;
     }
 
     /**
