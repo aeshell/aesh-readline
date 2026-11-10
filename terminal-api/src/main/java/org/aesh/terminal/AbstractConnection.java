@@ -340,6 +340,18 @@ public abstract class AbstractConnection implements Connection {
         return eventDecoder.getFocusHandler();
     }
 
+    @Override
+    public void setKeyboardEnhancements(boolean enabled) {
+        if (eventDecoder != null) {
+            eventDecoder.setKeyboardEnhancements(enabled);
+        }
+    }
+
+    @Override
+    public boolean keyboardEnhancements() {
+        return eventDecoder != null && eventDecoder.keyboardEnhancements();
+    }
+
     /** Handler for printAbove requests. */
     private volatile Consumer<String> printAboveHandler;
 

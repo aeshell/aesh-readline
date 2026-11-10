@@ -345,6 +345,30 @@ public interface Connection extends Appendable, AutoCloseable {
         return null;
     }
 
+    /**
+     * Record whether progressive keyboard enhancements were pushed
+     * for this connection. The terminal then sends disambiguated
+     * {@code CSI u} sequences instead of legacy bytes for ambiguous
+     * keys; slice 2 gates signal translation on this flag.
+     *
+     * @param enabled true after pushing, false after popping
+     * @since 3.18.9
+     */
+    default void setKeyboardEnhancements(boolean enabled) {
+        // Default no-op; AbstractConnection delegates to EventDecoder
+    }
+
+    /**
+     * Whether progressive keyboard enhancements were pushed for
+     * this connection.
+     *
+     * @return true after pushing, false after popping or never pushed
+     * @since 3.18.9
+     */
+    default boolean keyboardEnhancements() {
+        return false;
+    }
+
     // ==================== Print Above ====================
 
     /**

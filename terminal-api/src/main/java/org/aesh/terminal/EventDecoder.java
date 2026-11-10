@@ -80,6 +80,15 @@ public class EventDecoder implements Consumer<int[]> {
     private volatile Consumer<TerminalTheme> themeChangeHandler;
     private volatile Consumer<MouseEvent> mouseHandler;
     private volatile Consumer<Boolean> focusHandler;
+    /**
+     * Progressive keyboard enhancements are active for this
+     * connection: the terminal sends disambiguated {@code CSI u}
+     * sequences instead of legacy bytes for ambiguous keys.
+     * Set when the enhancements are pushed, cleared on pop.
+     * Slice 2 reads it for signal translation; until then it
+     * only records the pushed state for close-time restore.
+     */
+    private volatile boolean keyboardEnhancements;
     private volatile InputPeeker inputPeeker;
     private volatile long escapeTimeout = ESCAPE_TIMEOUT_MS;
 
@@ -246,6 +255,29 @@ public class EventDecoder implements Consumer<int[]> {
      */
     public void setMouseHandler(Consumer<MouseEvent> mouseHandler) {
         this.mouseHandler = mouseHandler;
+    }
+
+    /**
+     * Whether progressive keyboard enhancements are active: the
+     * terminal was asked for disambiguated {@code CSI u} sequences.
+     *
+     * @return true when enhancements were pushed for this connection
+     * @since 3.18.9
+     */
+    public boolean keyboardEnhancements() {
+        return keyboardEnhancements;
+    }
+
+    /**
+     * Record whether progressive keyboard enhancements were pushed
+     * for this connection. Slice 2 gates signal translation on it;
+     * until then it records pushed state for close-time restore.
+     *
+     * @param enabled true after pushing, false after popping
+     * @since 3.18.9
+     */
+    public void setKeyboardEnhancements(boolean enabled) {
+        this.keyboardEnhancements = enabled;
     }
 
     /**

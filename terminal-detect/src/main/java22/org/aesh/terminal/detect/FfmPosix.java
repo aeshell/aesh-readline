@@ -335,7 +335,7 @@ final class FfmPosix {
      * @param arg the pointer argument (e.g. a {@code winsize} struct)
      * @return the ioctl return value (0 on success)
      * @throws IOException if the FFM linkage fails
-     * @since 3.18.8
+     * @since 3.18.9
      */
     public static int ioctl(int fd, long request, MemorySegment arg) throws IOException {
         try {

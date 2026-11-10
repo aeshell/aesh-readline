@@ -254,6 +254,16 @@ public class ANSI {
     /** Disable focus tracking ({@code CSI ? 1004 l}). */
     public static final String FOCUS_TRACKING_DISABLE = "\u001B[?1004l";
 
+    /**
+     * Push progressive keyboard enhancements, disambiguate-only,
+     * leaving other pushed flags alone
+     * ({@code CSI = 1 ; 2 u}: mode 2 sets the listed bits).
+     */
+    public static final String KEYBOARD_ENHANCE_PUSH = "\u001B[=1;2u";
+
+    /** Pop one progressive keyboard enhancement entry ({@code CSI < u}). */
+    public static final String KEYBOARD_ENHANCE_POP = "\u001B[<u";
+
     /** DSR response value indicating dark mode: {@code CSI ? 997 ; 1 n}. */
     public static final int THEME_DSR_DARK = 1;
 

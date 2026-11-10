@@ -30,7 +30,7 @@ package org.aesh.terminal.detect;
  * <p>
  * Java 8, zero dependencies.
  *
- * @since 3.18.8
+ * @since 3.18.9
  */
 public final class TerminalSize {
 

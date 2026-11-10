@@ -600,7 +600,7 @@ public final class TerminalCapabilities {
      * the platform path is unavailable, or any failure occurs.
      *
      * @return the terminal size, or empty
-     * @since 3.18.8
+     * @since 3.18.9
      */
     public static Optional<TerminalSize> queryTerminalSize() {
         return TerminalSizeQuery.query();
@@ -1279,7 +1279,7 @@ public final class TerminalCapabilities {
      * Returns {@code null} if not yet queried.
      *
      * @return the mode support status, or null if not queried
-     * @since 3.18.8
+     * @since 3.18.9
      */
     public ModeSupport inBandResizeSupport() {
         return mode2048Support;
@@ -1294,7 +1294,7 @@ public final class TerminalCapabilities {
      *
      * @return the enhancement bitmask, 0 when measured absent,
      *         or -1 if not yet queried
-     * @since 3.18.8
+     * @since 3.18.9
      */
     public int kittyKeyboardFlags() {
         return kittyKeyboardFlags;

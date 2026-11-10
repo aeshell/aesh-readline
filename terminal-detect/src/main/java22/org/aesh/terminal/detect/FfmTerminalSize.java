@@ -38,7 +38,7 @@ import java.lang.foreign.ValueLayout;
  * <p>
  * Requires Java 22+ and {@code --enable-native-access=ALL-UNNAMED}.
  *
- * @since 3.18.8
+ * @since 3.18.9
  */
 final class FfmTerminalSize {
 

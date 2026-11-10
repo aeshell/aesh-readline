@@ -127,7 +127,7 @@ public class TerminalConnectionCloseTest {
 
     @Test
     public void testCloseCleanupSequencesAnsi() {
-        String seq = TerminalConnection.closeCleanupSequences(true, false);
+        String seq = TerminalConnection.closeCleanupSequences(true, false, false);
         assertTrue("Must end synchronized output",
                 seq.contains(ANSI.MODE_2026_DISABLE));
         assertTrue("Must ensure the cursor is visible (#273)",
@@ -145,13 +145,49 @@ public class TerminalConnectionCloseTest {
     @Test
     public void testCloseCleanupSequencesNoAnsi() {
         // External terminals and redirected stdout get no escape sequences
-        assertEquals("", TerminalConnection.closeCleanupSequences(false, false));
+        assertEquals("", TerminalConnection.closeCleanupSequences(false, false, false));
     }
 
     @Test
     public void testCloseCleanupSequencesFocus() {
         assertEquals(ANSI.FOCUS_TRACKING_DISABLE,
-                TerminalConnection.closeCleanupSequences(false, true));
+                TerminalConnection.closeCleanupSequences(false, true, false));
+    }
+
+    @Test
+    public void testCloseCleanupSequencesKeyboard() {
+        assertEquals(ANSI.KEYBOARD_ENHANCE_POP,
+                TerminalConnection.closeCleanupSequences(false, false, true));
+        assertFalse("Must not pop keyboard enhancements when not pushed",
+                TerminalConnection.closeCleanupSequences(true, true, false)
+                        .contains(ANSI.KEYBOARD_ENHANCE_POP));
+    }
+
+    @Test
+    public void testCloseWritesKeyboardPopWhenPushed() throws Exception {
+        PipedOutputStream stdinWriter = new PipedOutputStream();
+        PipedInputStream stdinReader = new PipedInputStream(stdinWriter, 4096);
+        ByteArrayOutputStream stdoutCapture = new ByteArrayOutputStream();
+        TerminalConnection conn = new TerminalConnection(StandardCharsets.UTF_8,
+                stdinReader, stdoutCapture);
+        conn.setKeyboardEnhancements(true);
+        conn.close();
+        String out = stdoutCapture.toString(StandardCharsets.UTF_8.name());
+        assertTrue("close must pop pushed keyboard enhancements",
+                out.contains(ANSI.KEYBOARD_ENHANCE_POP));
+    }
+
+    @Test
+    public void testCloseWritesNoPopWhenNotPushed() throws Exception {
+        PipedOutputStream stdinWriter = new PipedOutputStream();
+        PipedInputStream stdinReader = new PipedInputStream(stdinWriter, 4096);
+        ByteArrayOutputStream stdoutCapture = new ByteArrayOutputStream();
+        TerminalConnection conn = new TerminalConnection(StandardCharsets.UTF_8,
+                stdinReader, stdoutCapture);
+        conn.close();
+        String out = stdoutCapture.toString(StandardCharsets.UTF_8.name());
+        assertFalse("close must not pop unpushed keyboard enhancements",
+                out.contains(ANSI.KEYBOARD_ENHANCE_POP));
     }
 
     /**

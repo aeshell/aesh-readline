@@ -30,6 +30,7 @@ import java.util.logging.Logger;
 
 import org.aesh.terminal.detect.ImageProtocol;
 import org.aesh.terminal.detect.ModeSupport;
+import org.aesh.terminal.detect.TerminalCapabilities;
 import org.aesh.terminal.detect.TerminalDetection;
 import org.aesh.terminal.detect.TerminalReplyFramer;
 import org.aesh.terminal.detect.TerminalReplyFramer.Kind;
@@ -1471,5 +1472,86 @@ public class TerminalFeatures {
      */
     public void disableFocusTracking() {
         connection.write(ANSI.FOCUS_TRACKING_DISABLE);
+    }
+
+    // ==================== Progressive Keyboard ====================
+
+    /**
+     * Whether this session may push progressive keyboard
+     * enhancements: the shared detection result reports the
+     * disambiguate flag and no multiplexer stands in between.
+     * Detection must have run first; without a probed bitmask
+     * there is nothing to push.
+     *
+     * @return true when {@link #enableProgressiveKeyboard()} would push
+     * @since 3.18.9
+     */
+    public boolean supportsProgressiveKeyboard() {
+        int flags = TerminalCapabilities.getInstance().kittyKeyboardFlags();
+        return flags > 0 && (flags & 1) != 0
+                && !isInMultiplexer(System.getenv("TMUX"), System.getenv("TERM"));
+    }
+
+    /**
+     * Push progressive keyboard enhancements, disambiguate-only.
+     * <p>
+     * The terminal then reports ambiguous keys as {@code CSI u}
+     * sequences (Ctrl+I versus Tab, Shift+Enter versus Enter)
+     * instead of legacy bytes. Pushing is additive
+     * ({@code CSI = 1 ; 2 u} sets only the disambiguate bit),
+     * so other pushed flags survive. Returns false — writing
+     * nothing — when the terminal did not report the flag,
+     * detection never ran, or a multiplexer stands in between.
+     * Call {@link #disableProgressiveKeyboard()} or close the
+     * connection to pop the entry again.
+     *
+     * @return true when the push was written
+     * @since 3.18.9
+     */
+    public boolean enableProgressiveKeyboard() {
+        if (connection.keyboardEnhancements()) {
+            return true;
+        }
+        if (!supportsProgressiveKeyboard()) {
+            return false;
+        }
+        connection.write(ANSI.KEYBOARD_ENHANCE_PUSH);
+        connection.setKeyboardEnhancements(true);
+        return true;
+    }
+
+    /**
+     * Pop one progressive keyboard enhancement entry.
+     * Does nothing when nothing was pushed through this connection.
+     *
+     * @since 3.18.9
+     */
+    public void disableProgressiveKeyboard() {
+        if (connection.keyboardEnhancements()) {
+            connection.write(ANSI.KEYBOARD_ENHANCE_POP);
+            connection.setKeyboardEnhancements(false);
+        }
+    }
+
+    /**
+     * Multiplexer check mirroring detection: pushing through
+     * tmux/screen reaches the multiplexer, not the terminal.
+     * Terminal-detect owns the canonical check (private there),
+     * so this side carries the same three markers.
+     * Package-visible for direct unit tests.
+     *
+     * @param tmux the TMUX environment value, may be null
+     * @param term the TERM environment value, may be null
+     * @return true inside tmux or screen
+     */
+    static boolean isInMultiplexer(String tmux, String term) {
+        if (tmux != null && !tmux.isEmpty()) {
+            return true;
+        }
+        if (term == null) {
+            return false;
+        }
+        String lower = term.toLowerCase();
+        return lower.startsWith("tmux") || lower.startsWith("screen");
     }
 }

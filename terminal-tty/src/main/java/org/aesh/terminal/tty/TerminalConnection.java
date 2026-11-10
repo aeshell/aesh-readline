@@ -890,9 +890,12 @@ public class TerminalConnection extends AbstractConnection {
      * @param ansi whether ANSI output is enabled (false for external
      *        terminals and redirected stdout)
      * @param focusTracking whether focus tracking was enabled
+     * @param keyboardEnhancements whether progressive keyboard
+     *        enhancements were pushed
      * @return the cleanup sequence (possibly empty, never null)
      */
-    static String closeCleanupSequences(boolean ansi, boolean focusTracking) {
+    static String closeCleanupSequences(boolean ansi, boolean focusTracking,
+            boolean keyboardEnhancements) {
         StringBuilder cleanup = new StringBuilder();
         if (ansi) {
             cleanup.append(ANSI.MODE_2026_DISABLE);
@@ -909,6 +912,9 @@ public class TerminalConnection extends AbstractConnection {
         }
         if (focusTracking) {
             cleanup.append(ANSI.FOCUS_TRACKING_DISABLE);
+        }
+        if (keyboardEnhancements) {
+            cleanup.append(ANSI.KEYBOARD_ENHANCE_POP);
         }
         return cleanup.toString();
     }
@@ -959,7 +965,8 @@ public class TerminalConnection extends AbstractConnection {
         // Leaving BSU (Mode 2026) without ESU causes the terminal
         // to buffer all output indefinitely.
         try {
-            String cleanup = closeCleanupSequences(supportsAnsi(), focusHandler() != null);
+            String cleanup = closeCleanupSequences(supportsAnsi(), focusHandler() != null,
+                    keyboardEnhancements());
             if (!cleanup.isEmpty()) {
                 byte[] cleanupBytes = cleanup.getBytes();
                 writeBytes(cleanupBytes, 0, cleanupBytes.length);
