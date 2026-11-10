@@ -41,12 +41,14 @@ public final class TerminalSnapshot {
     private final Map<Integer, int[]> paletteColors;
     private final ModeSupport mode2026Support;
     private final ModeSupport mode2027Support;
+    private final ModeSupport mode2048Support;
     private final Boolean nativeGraphemeClustering;
 
     TerminalSnapshot(long revision, TerminalTheme theme,
             int[] foregroundRGB, int[] backgroundRGB,
             Map<Integer, int[]> paletteColors,
             ModeSupport mode2026Support, ModeSupport mode2027Support,
+            ModeSupport mode2048Support,
             Boolean nativeGraphemeClustering) {
         this.revision = revision;
         this.theme = theme;
@@ -64,6 +66,7 @@ public final class TerminalSnapshot {
         }
         this.mode2026Support = mode2026Support;
         this.mode2027Support = mode2027Support;
+        this.mode2048Support = mode2048Support;
         this.nativeGraphemeClustering = nativeGraphemeClustering;
     }
 
@@ -127,6 +130,13 @@ public final class TerminalSnapshot {
      */
     public ModeSupport mode2027Support() {
         return mode2027Support;
+    }
+
+    /**
+     * @return in-band resize mode support
+     */
+    public ModeSupport mode2048Support() {
+        return mode2048Support;
     }
 
     /**

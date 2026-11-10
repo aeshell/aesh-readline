@@ -87,6 +87,7 @@ public final class TerminalCapabilities {
     private volatile ImageProtocol queriedImageProtocol;
     private volatile ModeSupport mode2026Support;
     private volatile ModeSupport mode2027Support;
+    private volatile ModeSupport mode2048Support;
     private volatile Boolean nativeGraphemeClustering;
     /** Present only for an explicitly started shared discovery round. */
     private final Discovery discovery;
@@ -708,7 +709,8 @@ public final class TerminalCapabilities {
         return new TerminalSnapshot(revision,
                 resolvedTheme != null ? resolvedTheme : detector.theme,
                 foregroundRGB, backgroundRGB, paletteColors,
-                mode2026Support, mode2027Support, nativeGraphemeClustering);
+                mode2026Support, mode2027Support, mode2048Support,
+                nativeGraphemeClustering);
     }
 
     /**
@@ -916,6 +918,7 @@ public final class TerminalCapabilities {
             queried256 = result.supports256;
             mode2026Support = result.mode2026;
             mode2027Support = result.mode2027;
+            mode2048Support = result.mode2048;
             if (result.graphemeClustering != null) {
                 nativeGraphemeClustering = result.graphemeClustering;
             }
@@ -1261,6 +1264,19 @@ public final class TerminalCapabilities {
      */
     public ModeSupport graphemeClusterSupport() {
         return mode2027Support;
+    }
+
+    /**
+     * Support status for Mode 2048 (in-band window resize notifications).
+     * <p>
+     * Only available after a terminal query via {@link #detectAsync()}.
+     * Returns {@code null} if not yet queried.
+     *
+     * @return the mode support status, or null if not queried
+     * @since 3.18.8
+     */
+    public ModeSupport inBandResizeSupport() {
+        return mode2048Support;
     }
 
     /**

@@ -94,6 +94,7 @@ final class TerminalColorQuery {
     boolean da1Received;
     ModeSupport mode2026 = ModeSupport.NO_RESPONSE;
     ModeSupport mode2027 = ModeSupport.NO_RESPONSE;
+    ModeSupport mode2048 = ModeSupport.NO_RESPONSE;
     /**
      * Native grapheme clustering measured in the same session, or null
      * when the cursor-position probe did not run (DA1 absent or Mode
@@ -215,7 +216,7 @@ final class TerminalColorQuery {
             try (TerminalProbeSession session = transport.open()) {
                 session.write(buildColorQuery());
 
-                // Full batch: 2 DECRPM + 1 DA1 + 19 OSC responses.
+                // Full batch: 3 DECRPM + 1 DA1 + 19 OSC responses.
                 // Terminals without DECRQM send no DECRPM; the DA1 fence
                 // finalizes the mode budget so the read ends with the
                 // 19 post-fence OSC replies instead of a timeout.
@@ -454,6 +455,7 @@ final class TerminalColorQuery {
         StringBuilder queries = new StringBuilder();
         queries.append("\033[?2026$p"); // DECRQM: Mode 2026 (synchronized output)
         queries.append("\033[?2027$p"); // DECRQM: Mode 2027 (grapheme cluster)
+        queries.append("\033[?2048$p"); // DECRQM: Mode 2048 (in-band resize)
         queries.append("\033[c"); // DA1 query (fence)
         queries.append("\033]10;?").append(BEL);
         queries.append("\033]11;?").append(BEL);
@@ -471,11 +473,11 @@ final class TerminalColorQuery {
         while ((n = in.read(buf)) > 0) {
             sb.append(new String(buf, 0, n));
             FrameCount count = countFrames(sb);
-            // Full batch: 2 DECRPM + DA1 + 19 OSC. Terminals without DECRQM
+            // Full batch: 3 DECRPM + DA1 + 19 OSC. Terminals without DECRQM
             // legitimately send no DECRPM, so once the DA1 fence lands the
             // mode budget is final and only the 19 post-fence OSC replies
             // can still be outstanding — never wait the full count past it.
-            int expected = count.da1Seen ? count.decrpm + 20 : 22;
+            int expected = count.da1Seen ? count.decrpm + 20 : 23;
             if (count.total >= expected) {
                 break;
             }
@@ -490,14 +492,14 @@ final class TerminalColorQuery {
         while (!deadline.isExpired() && (n = in.read(buf)) > 0) {
             sb.append(new String(buf, 0, n));
             FrameCount count = countFrames(sb);
-            int expected = count.da1Seen ? count.decrpm + 20 : 22;
+            int expected = count.da1Seen ? count.decrpm + 20 : 23;
             if (count.total >= expected) {
                 break;
             }
         }
         if (deadline.isExpired()) {
             FrameCount count = countFrames(sb);
-            int expected = count.da1Seen ? count.decrpm + 20 : 22;
+            int expected = count.da1Seen ? count.decrpm + 20 : 23;
             if (count.total < expected) {
                 return null;
             }
@@ -730,6 +732,7 @@ final class TerminalColorQuery {
             result.da1Received = true;
             result.mode2026 = ModeSupport.NOT_SUPPORTED;
             result.mode2027 = ModeSupport.NOT_SUPPORTED;
+            result.mode2048 = ModeSupport.NOT_SUPPORTED;
         }
 
         // One framed scan per mode; the last valid report wins, anything
@@ -741,6 +744,10 @@ final class TerminalColorQuery {
         ModeSupport mode2027 = TerminalReplyParser.modeSupport(response, 2027);
         if (mode2027 != ModeSupport.NO_RESPONSE) {
             result.mode2027 = mode2027;
+        }
+        ModeSupport mode2048 = TerminalReplyParser.modeSupport(response, 2048);
+        if (mode2048 != ModeSupport.NO_RESPONSE) {
+            result.mode2048 = mode2048;
         }
     }
 
