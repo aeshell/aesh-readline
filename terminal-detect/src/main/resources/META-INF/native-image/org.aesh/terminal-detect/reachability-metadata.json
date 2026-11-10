@@ -75,7 +75,8 @@
           "jint",
           "jlong",
           "void*"
-        ]
+        ],
+        "options": { "firstVariadicArg": 2 }
       }
     ]
   }

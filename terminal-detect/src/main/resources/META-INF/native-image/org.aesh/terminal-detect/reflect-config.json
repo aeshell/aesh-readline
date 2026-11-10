@@ -10,6 +10,13 @@
   },
   {
     "name": "org.aesh.terminal.detect.FfmPosix",
+    "fields": [
+      { "name": "O_RDONLY" },
+      { "name": "TIOCGWINSZ" },
+      { "name": "WINSIZE_SIZE" },
+      { "name": "WINSIZE_ROW_OFFSET" },
+      { "name": "WINSIZE_COL_OFFSET" }
+    ],
     "methods": [
       { "name": "isNativeAccessEnabled", "parameterTypes": [] },
       { "name": "open", "parameterTypes": ["java.lang.String", "int", "java.lang.foreign.Arena"] },

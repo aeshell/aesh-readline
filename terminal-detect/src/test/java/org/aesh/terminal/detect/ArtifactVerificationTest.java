@@ -294,4 +294,35 @@ public class ArtifactVerificationTest {
                 content.contains("org.aesh.terminal.tty.impl.WinConsoleNativeJni"));
     }
 
+    @Test
+    public void testReachabilityMetadataRegistersIoctlVariadic() {
+        File configFile = new File("target/classes/META-INF/native-image/org.aesh/terminal-detect/reachability-metadata.json");
+        if (!configFile.isFile()) {
+            return;
+        }
+        String content = readFileContent(configFile);
+        assertNotNull("Could not read reachability-metadata.json", content);
+        assertTrue("reachability-metadata.json must carry the firstVariadicArg option "
+                + "on the ioctl downcall: without it the shape is unregistered in "
+                + "the native image and the whole FfmPosix holder fails to "
+                + "initialize, taking all FFM probing down with it (#394)",
+                content.contains("\"firstVariadicArg\": 2"));
+    }
+
+    @Test
+    public void testReflectConfigNamesFfmPosixFields() {
+        File configFile = new File("target/classes/META-INF/native-image/org.aesh/terminal-detect/reflect-config.json");
+        if (!configFile.isFile()) {
+            return;
+        }
+        String content = readFileContent(configFile);
+        assertNotNull("Could not read reflect-config.json", content);
+        for (String field : new String[] { "O_RDONLY", "TIOCGWINSZ", "WINSIZE_SIZE",
+                "WINSIZE_ROW_OFFSET", "WINSIZE_COL_OFFSET" }) {
+            assertTrue("reflect-config.json must register FfmPosix field " + field
+                    + ": reflective struct tests go blind in-image without it (#394)",
+                    content.contains("\"name\": \"" + field + "\""));
+        }
+    }
+
 }
