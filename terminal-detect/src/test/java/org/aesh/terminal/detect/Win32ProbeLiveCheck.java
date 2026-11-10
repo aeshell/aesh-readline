@@ -36,6 +36,8 @@ public final class Win32ProbeLiveCheck {
      * Probe colors and grapheme clustering, checking console-mode restore.
      * Windows Terminal must answer the OSC background query; a legacy
      * conhost may not, but both must restore input and output modes.
+     * Also checks the point-in-time size query against the same output
+     * handle: a real console must answer with positive dimensions.
      *
      * @param args exactly one argument: "conhost" or "windows-terminal"
      * @throws Exception if a native binding or terminal query fails
@@ -81,9 +83,13 @@ public final class Win32ProbeLiveCheck {
         if ("windows-terminal".equals(args[0]) && (colors == null || colors.background == null)) {
             throw new AssertionError("Windows Terminal did not answer the OSC background query");
         }
+        java.util.Optional<TerminalSize> size = TerminalCapabilities.queryTerminalSize();
+        if (!size.isPresent() || size.get().width() <= 0 || size.get().height() <= 0) {
+            throw new AssertionError("Real console did not answer the size query: " + size);
+        }
         System.out.println("Win32 probe: mode restored; background="
                 + (colors == null || colors.background == null ? "no OSC response" : "received")
-                + "; grapheme=" + grapheme);
+                + "; grapheme=" + grapheme + "; size=" + size.get());
     }
 
     private static int mode(Method getConsoleMode, long handle) throws Exception {

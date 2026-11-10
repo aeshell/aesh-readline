@@ -588,8 +588,9 @@ public final class TerminalCapabilities {
      * mode flips). On POSIX it prefers an in-process
      * {@code ioctl(TIOCGWINSZ)} call (Java 22+ with native access)
      * and falls back to a bounded standalone {@code stty size}
-     * parse. On Windows it reads the output console screen buffer.
-     * Returns empty when no controlling terminal exists,
+     * parse. On Windows it reads the output console screen buffer;
+     * with redirected stdout the output handle may be a pipe, which
+     * declines. Returns empty when no controlling terminal exists,
      * the platform path is unavailable, or any failure occurs.
      *
      * @return the terminal size, or empty

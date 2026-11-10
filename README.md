@@ -273,6 +273,26 @@ degrade to environment hints, never to null. The call blocks up to the
 deadline plus one transport read quantum, so keep it off
 latency-critical threads.
 
+### Terminal size
+
+`TerminalCapabilities.queryTerminalSize()` answers the controlling
+terminal's current dimensions without a session — for one-shot CLIs
+whose stdout is redirected but whose controlling terminal is alive:
+
+```java
+import org.aesh.terminal.detect.TerminalCapabilities;
+import org.aesh.terminal.detect.TerminalSize;
+
+int width = TerminalCapabilities.queryTerminalSize()
+        .map(TerminalSize::width).orElse(80);
+```
+
+The read is point-in-time (no caching: `SIGWINCH` can change the
+answer), passive (no raw mode, no mode flips), and never throws:
+unavailable terminals decline to empty. On POSIX it prefers an
+in-process `ioctl` call and falls back to a bounded `stty size`;
+on Windows it reads the output console screen buffer.
+
 ### Endpoint facts
 
 `Connection.endpointContext()` returns an immutable metadata snapshot without
