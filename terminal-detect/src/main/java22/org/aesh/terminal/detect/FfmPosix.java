@@ -90,9 +90,23 @@ final class FfmPosix {
     }
 
     static final int O_RDWR = 0x0002;
+    static final int O_RDONLY = 0x0000;
 
     static final int TCSANOW = 0;
     static final int TCSAFLUSH = 2;
+
+    /**
+     * {@code TIOCGWINSZ} request code for the supported ABIs.
+     * Linux on x86_64/aarch64 uses {@code 0x5413}; macOS uses
+     * {@code 0x40087468}. Other architectures are outside
+     * {@link #IS_SUPPORTED_ABI} and never reach the ioctl.
+     */
+    static final int TIOCGWINSZ = IS_MACOS ? 0x40087468 : 0x5413;
+
+    /** {@code struct winsize} is four shorts (8 bytes). */
+    static final long WINSIZE_SIZE = 8;
+    static final long WINSIZE_ROW_OFFSET = 0;
+    static final long WINSIZE_COL_OFFSET = 2;
 
     // termios struct sizes and flag offsets (Linux: 4-byte flags, macOS: 8-byte).
     static final long TERMIOS_SIZE = IS_MACOS ? 72 : 60;
@@ -166,6 +180,15 @@ final class FfmPosix {
                         ValueLayout.JAVA_INT,
                         ValueLayout.JAVA_INT,
                         ValueLayout.ADDRESS));
+
+        static final MethodHandle IOCTL = LINKER.downcallHandle(
+                STDLIB.find("ioctl").orElseThrow(),
+                FunctionDescriptor.of(
+                        ValueLayout.JAVA_INT,
+                        ValueLayout.JAVA_INT,
+                        ValueLayout.JAVA_LONG,
+                        ValueLayout.ADDRESS),
+                Linker.Option.firstVariadicArg(2));
     }
 
     /**
@@ -301,6 +324,26 @@ final class FfmPosix {
             throw e;
         } catch (Throwable t) {
             throw new IOException("tcsetattr() failed", t);
+        }
+    }
+
+    /**
+     * Calls {@code ioctl} with a pointer argument.
+     *
+     * @param fd the file descriptor
+     * @param request the ioctl request code (e.g. {@link #TIOCGWINSZ})
+     * @param arg the pointer argument (e.g. a {@code winsize} struct)
+     * @return the ioctl return value (0 on success)
+     * @throws IOException if the FFM linkage fails
+     * @since 3.18.8
+     */
+    public static int ioctl(int fd, long request, MemorySegment arg) throws IOException {
+        try {
+            return (int) Handles.IOCTL.invokeExact(fd, request, arg);
+        } catch (IOException e) {
+            throw e;
+        } catch (Throwable t) {
+            throw new IOException("ioctl() failed", t);
         }
     }
 

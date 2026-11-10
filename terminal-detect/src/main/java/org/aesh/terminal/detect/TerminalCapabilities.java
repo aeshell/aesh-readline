@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
@@ -572,6 +573,29 @@ public final class TerminalCapabilities {
             caps.discovery.completed.countDown();
             throw e;
         }
+    }
+
+    /**
+     * Query the controlling terminal's current size.
+     * <p>
+     * Returns the dimensions as a fresh point-in-time read. No
+     * terminal session is required: the query targets the
+     * controlling terminal ({@code /dev/tty} on POSIX), so it
+     * answers even when standard output is redirected. No result
+     * is cached.
+     * <p>
+     * The query never changes terminal state (no raw mode, no
+     * mode flips). On POSIX it prefers an in-process
+     * {@code ioctl(TIOCGWINSZ)} call (Java 22+ with native access)
+     * and falls back to a bounded standalone {@code stty size}
+     * parse. Returns empty when no controlling terminal exists,
+     * the platform path is unavailable, or any failure occurs.
+     *
+     * @return the terminal size, or empty
+     * @since 3.18.8
+     */
+    public static Optional<TerminalSize> queryTerminalSize() {
+        return TerminalSizeQuery.query();
     }
 
     /**

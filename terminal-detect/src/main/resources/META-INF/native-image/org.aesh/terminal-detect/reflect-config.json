@@ -17,7 +17,14 @@
       { "name": "read", "parameterTypes": ["int", "java.lang.foreign.MemorySegment", "long"] },
       { "name": "write", "parameterTypes": ["int", "java.lang.foreign.MemorySegment", "long"] },
       { "name": "tcgetattr", "parameterTypes": ["int", "java.lang.foreign.MemorySegment"] },
-      { "name": "tcsetattr", "parameterTypes": ["int", "int", "java.lang.foreign.MemorySegment"] }
+      { "name": "tcsetattr", "parameterTypes": ["int", "int", "java.lang.foreign.MemorySegment"] },
+      { "name": "ioctl", "parameterTypes": ["int", "long", "java.lang.foreign.MemorySegment"] }
+    ]
+  },
+  {
+    "name": "org.aesh.terminal.detect.FfmTerminalSize",
+    "methods": [
+      { "name": "query", "parameterTypes": [] }
     ]
   },
   {
