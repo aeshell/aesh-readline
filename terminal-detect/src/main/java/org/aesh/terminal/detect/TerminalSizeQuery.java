@@ -25,6 +25,8 @@ import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 
+import org.aesh.terminal.tty.impl.WinConsoleNative;
+
 /**
  * Point-in-time terminal size reads without a terminal session.
  * <p>
@@ -33,11 +35,13 @@ import java.util.Optional;
  * then a bounded standalone {@code stty size} parse, then empty.
  * The {@code stty} path never touches raw mode: it runs
  * {@code stty size} redirected from the tty, unlike the probe
- * sessions in {@link SttyProbeTransport}. No result is cached:
- * {@code SIGWINCH} can change the answer between calls.
+ * sessions in {@link SttyProbeTransport}. Windows reads the output
+ * console screen buffer through the same {@code WinConsoleNative}
+ * facade the probe transports use (FFM overlay on 22+, JNI below).
+ * No result is cached: {@code SIGWINCH} can change the answer
+ * between calls.
  * <p>
- * Windows returns empty in slice 1; slice 2 wires the console
- * screen-buffer path. Every failure declines to empty, never throws.
+ * Every failure declines to empty, never throws.
  * <p>
  * Java 8, zero dependencies beyond {@code java.base}.
  */
@@ -72,7 +76,7 @@ final class TerminalSizeQuery {
     static Optional<TerminalSize> query(String osName) {
         String lower = osName == null ? "" : osName.toLowerCase();
         if (lower.contains("win")) {
-            return Optional.empty();
+            return queryWindowsSize();
         }
         int[] dims = queryFfmSize();
         if (dims == null) {
@@ -127,6 +131,29 @@ final class TerminalSizeQuery {
             return null;
         } catch (Exception ignored) {
             return null;
+        }
+    }
+
+    /**
+     * Try the Windows console screen-buffer path through the
+     * {@code WinConsoleNative} facade (FFM overlay on 22+, JNI
+     * below). Reads the output handle: with redirected stdout the
+     * handle may be a pipe, in which case the call declines.
+     *
+     * @return the size, or empty
+     */
+    static Optional<TerminalSize> queryWindowsSize() {
+        try {
+            long output = WinConsoleNative.getStdHandle(
+                    WinConsoleNative.STD_OUTPUT_HANDLE);
+            if (output == WinConsoleNative.INVALID_HANDLE) {
+                return Optional.empty();
+            }
+            return toSize(WinConsoleNative.getConsoleSize(output));
+        } catch (UnsatisfiedLinkError
+                | ExceptionInInitializerError
+                | RuntimeException e) {
+            return Optional.empty();
         }
     }
 

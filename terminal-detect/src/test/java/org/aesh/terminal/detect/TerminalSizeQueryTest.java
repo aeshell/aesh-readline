@@ -87,11 +87,24 @@ public class TerminalSizeQueryTest {
     }
 
     @Test
-    public void testWindowsBranchDeclinesWithoutIo() {
+    public void testWindowsBranchDeclinesHeadless() {
+        Assume.assumeFalse("a real Windows console may answer",
+                System.getProperty("os.name", "").toLowerCase()
+                        .contains("win"));
         Optional<TerminalSize> size = TerminalSizeQuery.query(
                 "Windows 11");
-        assertFalse("Windows is slice 2; slice 1 must decline",
+        assertFalse("headless Windows branch must decline",
                 size.isPresent());
+    }
+
+    @Test
+    public void testWindowsBranchNeverThrows() {
+        Optional<TerminalSize> size = TerminalSizeQuery.query(
+                "Windows 11");
+        if (size.isPresent()) {
+            assertTrue(size.get().width() > 0);
+            assertTrue(size.get().height() > 0);
+        }
     }
 
     @Test
