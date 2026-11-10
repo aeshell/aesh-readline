@@ -47,6 +47,7 @@ For examples, have a look here: [Aesh Examples](https://github.com/aeshell/aesh-
 
 ### Terminal Features
 - **[Focus Tracking](https://aeshell.github.io/docs/readline/focus-tracking/)** - Detect terminal focus gained/lost
+- **[Keyboard Enhancements](https://aeshell.github.io/docs/readline/keyboard-enhancements/)** - Disambiguated keys (Ctrl+I vs Tab) via the progressive keyboard protocol
 - **[Mouse Tracking](https://aeshell.github.io/docs/readline/mouse-tracking/)** - Mouse events with SGR encoding
 - **[Synchronized Output](https://aeshell.github.io/docs/readline/synchronized-output/)** - Tear-free rendering (Mode 2026)
 - **[Non-blocking Input](https://aeshell.github.io/docs/readline/posix-native-access/)** - Poll-based read with escape timeout disambiguation (Java 22+)
