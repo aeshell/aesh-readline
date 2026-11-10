@@ -293,6 +293,34 @@ unavailable terminals decline to empty. On POSIX it prefers an
 in-process `ioctl` call and falls back to a bounded `stty size`;
 on Windows it reads the output console screen buffer.
 
+### Progressive keyboard
+
+`TerminalFeatures.enableProgressiveKeyboard()` asks the terminal
+for disambiguated key reports (`CSI u`), so Ctrl+I stops
+looking like Tab and Shift+Enter stops looking like Enter:
+
+```java
+import org.aesh.terminal.TerminalFeatures;
+
+TerminalFeatures features = connection.terminal();
+if (features.supportsProgressiveKeyboard()
+        && features.enableProgressiveKeyboard()) {
+    // ... session runs with disambiguated keys ...
+    features.disableProgressiveKeyboard();
+}
+```
+
+Closing the connection pops the enhancement again. Keys keep
+their default actions (rebinding a disambiguated key is what
+the feature unlocks); Ctrl+C and friends still raise signals.
+
+Requirements: run detection first (the shared result must
+report the enhancement bitmask), and don't run inside
+tmux/screen — the multiplexer stands between the bytes and
+the terminal, so enablement declines there. Only terminals
+reporting the disambiguate flag are pushed; remapped control
+characters (`stty intr ^X`) keep legacy behavior.
+
 ### Endpoint facts
 
 `Connection.endpointContext()` returns an immutable metadata snapshot without
