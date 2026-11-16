@@ -58,7 +58,19 @@ import org.aesh.terminal.utils.PlatformContext;
  */
 public final class TtyDetect {
 
-    private static final Logger LOGGER = Logger.getLogger(TtyDetect.class.getName());
+    /**
+     * Lazy logger holder: creating the logger runs the JDK's
+     * {@code LoggerFinder} ServiceLoader scan over the whole class path,
+     * so it must not happen in {@code <clinit>} — the first
+     * {@code isTty} call on an application startup path would otherwise
+     * pay ~50ms before any logging is needed. The logger's only use is
+     * an exceptional Windows-native-fallback path, so normal startup
+     * never initializes this class. Initialization-on-demand is
+     * thread-safe by the JVM's class-init guarantees.
+     */
+    private static final class Log {
+        static final Logger LOGGER = Logger.getLogger(TtyDetect.class.getName());
+    }
 
     /** File descriptor for standard input. */
     public static final int FD_STDIN = 0;
@@ -449,7 +461,7 @@ public final class TtyDetect {
             // getConsoleMode returns -1 on failure (pipe/redirected)
             return WinConsoleNative.getConsoleMode(handle) != -1;
         } catch (Throwable e) {
-            LOGGER.log(Level.FINE, "WinConsoleNative not available for TTY detection", e);
+            Log.LOGGER.log(Level.FINE, "WinConsoleNative not available for TTY detection", e);
             return null;
         }
     }

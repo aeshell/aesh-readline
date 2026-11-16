@@ -100,4 +100,23 @@ public class TtyDetectTest {
         // but the important thing is it doesn't throw
         assertNotNull("Result should not be null", Boolean.valueOf(first));
     }
+
+    @Test
+    public void testNoEagerStaticLogger() {
+        // Creating the JUL logger runs the LoggerFinder ServiceLoader
+        // scan over the whole class path (~50ms on a wide one), so it
+        // must stay behind the lazy holder and never run in <clinit>.
+        // A behavioral test cannot observe the scan in an already
+        // JUL-initialized test JVM, hence this structural pin: any
+        // static Logger field directly on the class fails it.
+        for (java.lang.reflect.Field field : TtyDetect.class.getDeclaredFields()) {
+            if (!java.lang.reflect.Modifier.isStatic(field.getModifiers())) {
+                continue;
+            }
+            assertFalse("eager static Logger field would pay the LoggerFinder "
+                    + "ServiceLoader scan at first use; keep it in the lazy "
+                    + "holder (#398): " + field,
+                    java.util.logging.Logger.class.isAssignableFrom(field.getType()));
+        }
+    }
 }
