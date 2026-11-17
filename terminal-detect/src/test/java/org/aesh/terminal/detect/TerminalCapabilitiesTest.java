@@ -907,4 +907,24 @@ public class TerminalCapabilitiesTest {
             TerminalCapabilities.setInstance(saved);
         }
     }
+
+    @Test
+    public void testNoEagerStaticLogger() {
+        // Creating the logger runs the JDK's LoggerFinder ServiceLoader
+        // scan over the whole class path, so it must stay behind the
+        // lazy holder and never run in <clinit>: the first detect() on
+        // a startup path would otherwise pay it before any logging is
+        // needed (#398 follow-up). A behavioral test cannot observe the
+        // scan in an already JUL-initialized test JVM, so this pins the
+        // shape structurally instead.
+        for (java.lang.reflect.Field field : TerminalCapabilities.class.getDeclaredFields()) {
+            if (!java.lang.reflect.Modifier.isStatic(field.getModifiers())) {
+                continue;
+            }
+            assertFalse("eager static Logger field would pay the LoggerFinder "
+                    + "ServiceLoader scan at first detect(); keep it in the "
+                    + "lazy holder: " + field,
+                    java.util.logging.Logger.class.isAssignableFrom(field.getType()));
+        }
+    }
 }

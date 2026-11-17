@@ -74,7 +74,19 @@ import java.util.logging.Logger;
  */
 public final class TerminalCapabilities {
 
-    private static final Logger LOG = Logger.getLogger(TerminalCapabilities.class.getName());
+    /**
+     * Lazy logger holder: creating the logger runs the JDK's
+     * {@code LoggerFinder} ServiceLoader scan over the whole class
+     * path, so it must not happen in {@code <clinit>} — the first
+     * {@code detect()} call on a startup path would otherwise pay it
+     * before any logging is needed (#398 follow-up). The only use is
+     * an already-failing subscriber callback, so normal operation
+     * never initializes this class. Initialization-on-demand is
+     * thread-safe by the JVM's class-init guarantees.
+     */
+    private static final class Log {
+        static final Logger LOGGER = Logger.getLogger(TerminalCapabilities.class.getName());
+    }
 
     private static volatile TerminalCapabilities instance;
 
@@ -872,7 +884,7 @@ public final class TerminalCapabilities {
             try {
                 callback.accept(snapshot);
             } catch (RuntimeException | Error e) {
-                LOG.fine("Capability subscriber threw; delivering to the rest: " + e);
+                Log.LOGGER.fine("Capability subscriber threw; delivering to the rest: " + e);
             }
         }
 
