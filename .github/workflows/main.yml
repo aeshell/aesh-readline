@@ -40,6 +40,25 @@ jobs:
     - name: Build and native test terminal-tty and terminal-detect
       run: mvn clean verify -pl terminal-tty,terminal-detect -am -Dformat.skip=true
 
+  # FFM-enabled native lane (#399): same as native-test but the FFM overlay
+  # is kept, so the isatty fast path executes inside the native test binary
+  # (PosixTtyProbeBindingTest requires a non-null answer there). The default
+  # lane above tests the old-GraalVM compatibility deletion instead.
+  native-test-ffm:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v7
+    - name: Set up GraalVM
+      uses: graalvm/setup-graalvm@v1
+      with:
+        java-version: '25'
+        distribution: 'graalvm'
+        cache: maven
+        native-image-job-reports: true
+    - name: Build and native test terminal-tty and terminal-detect with FFM kept
+      run: mvn clean verify -pl terminal-tty,terminal-detect -am -Dformat.skip=true -Dnative.delete.ffm=false
+
   native-test-windows:
     runs-on: windows-latest
 
@@ -120,8 +139,32 @@ jobs:
         native-image --no-fallback -cp "/tmp/verify-classes:$CP" \
           org.aesh.terminal.tty.nativeimage.NativeImageVerify \
           /tmp/native-verify
+        # Embedder-style build: broad build-time initialization, the way a
+        # Quarkus-style embedder configures it. The isatty holder pin must
+        # survive this shape with the FFM path intact (proven by the marker
+        # run below, not by exit code alone: pipes answer false everywhere).
+        native-image --no-fallback --initialize-at-build-time=org.aesh \
+          -cp "/tmp/verify-classes:$CP" \
+          org.aesh.terminal.tty.nativeimage.NativeImageVerify \
+          /tmp/native-verify-embedder
     - name: Run native verification
       run: /tmp/native-verify
+    - name: Run native verification with spawn marker
+      # A marker sh first on PATH proves the FFM path ran: under the shell
+      # fallback every probed fd spawns `sh -c "test -t N"` and the marker
+      # is non-empty. Missing downcall registration fails this step.
+      run: |
+        mkdir -p /tmp/spawn-marker
+        printf '#!/bin/sh\necho "$@" >> /tmp/spawn-marker/marker.log\nexec /bin/sh "$@"\n' > /tmp/spawn-marker/sh
+        chmod +x /tmp/spawn-marker/sh
+        : > /tmp/spawn-marker/marker.log
+        PATH=/tmp/spawn-marker:$PATH /tmp/native-verify < /dev/null
+        test ! -s /tmp/spawn-marker/marker.log
+    - name: Run embedder-style verification with spawn marker
+      run: |
+        : > /tmp/spawn-marker/marker.log
+        PATH=/tmp/spawn-marker:$PATH /tmp/native-verify-embedder < /dev/null
+        test ! -s /tmp/spawn-marker/marker.log
 
   windows-test:
     runs-on: windows-latest

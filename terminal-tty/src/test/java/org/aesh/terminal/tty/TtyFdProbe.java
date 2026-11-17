@@ -38,6 +38,11 @@ import org.aesh.terminal.utils.PlatformContext;
  * Every line goes to stderr and, when {@code TTY_FD_PROBE_REPORT} points at a
  * file, is also written there. The file is the only channel that survives
  * redirected or closed stderr, so the matrix harness always reads the file.
+ * <p>
+ * When {@code TTY_FD_PROBE_SKIP_SHELL} is set (to any value), the child omits
+ * its own {@code test -t} grandchildren and reports them as null. The
+ * no-spawn proof uses this so that only {@code TtyDetect}'s own subprocess
+ * use can reach a marker {@code sh} on the path.
  */
 public final class TtyFdProbe {
 
@@ -47,6 +52,12 @@ public final class TtyFdProbe {
      * lines there in addition to stderr.
      */
     static final String REPORT_ENV = "TTY_FD_PROBE_REPORT";
+
+    /**
+     * Environment variable opting out of the agreement grandchildren.
+     * When set, the shell line reports null instead of spawning.
+     */
+    static final String SKIP_SHELL_ENV = "TTY_FD_PROBE_SKIP_SHELL";
 
     private TtyFdProbe() {
     }
@@ -68,10 +79,15 @@ public final class TtyFdProbe {
                 + " 1:" + TtyDetect.isTty(1, context)
                 + " 2:" + TtyDetect.isTty(2, context)
                 + " 999:" + TtyDetect.isTty(999, context);
-        String shell = "shell 0:" + testT(0)
-                + " 1:" + testT(1)
-                + " 2:" + testT(2)
-                + " 999:" + testT(999);
+        String shell;
+        if (System.getenv(SKIP_SHELL_ENV) != null) {
+            shell = "shell 0:null 1:null 2:null 999:null";
+        } else {
+            shell = "shell 0:" + testT(0)
+                    + " 1:" + testT(1)
+                    + " 2:" + testT(2)
+                    + " 999:" + testT(999);
+        }
         String identity = "identity overlay=" + isOverlay() + " native=" + PosixTtyProbe.isNativeAccessEnabled()
                 + " lib=" + probeLocation();
         // Keep the verdict visible when stdout itself is redirected.

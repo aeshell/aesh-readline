@@ -274,6 +274,14 @@
                                                 <include name="LibC.class"/>
                                                 <include name="PosixConstants.class"/>
                                             </fileset>
+                                            <!-- The isatty overlay and its holder only (#399): the
+                                                 base stub in target/classes stays as the declining
+                                                 fallback, and the tests stay to cover that path. -->
+                                            <fileset dir="${project.build.testOutputDirectory}/org/aesh/terminal/tty"
+                                                     erroronmissingdir="false">
+                                                <include name="PosixTtyProbe.class"/>
+                                                <include name="PosixTtyProbe$*.class"/>
+                                            </fileset>
                                         </delete>
                                     </target>
                                 </configuration>

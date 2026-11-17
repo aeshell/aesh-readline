@@ -124,6 +124,52 @@ PTY, with `-prof gc` and the benchmark annotations' fork/warmup settings:
 | stty, warm (3 forks, 10 measured iterations) | 2.432 ± 0.012 |
 | FFM, warm (3 forks, 10 measured iterations) | 0.0050 ± 0.0001 |
 
+### isatty fast path for TtyDetect (#399)
+
+`TtyStartupProbe` compares one cold `TtyDetect.isTty` call per fresh JVM:
+the public shell route against the raw FFM `isatty` helper. One scenario
+per invocation; the caller measures process lifetime externally. Nothing
+is preflighted, so the first timing charges full class and native init.
+
+Policy: on supported POSIX hosts (Linux/macOS on x86_64/aarch64) with
+Java 22+ and native access enabled, one in-process `isatty` answers first
+and a completed call is final — including valid negatives. Only a missing
+capability (older Java, denied native access, unsupported host) falls
+through to the bounded `test -t` probe, then `Console.isTerminal()`, then
+the `System.console()` heuristic. Cygwin/MSYS and native Windows keep
+their existing branches and never consult the fast path.
+
+Measured on Linux x86_64, Temurin 25.0.4, 20 alternating fresh JVMs per
+cell, minimal environment, stdio on files/pipes (FALSE path), small cp =
+`benchmarks.jar`, wide cp = `benchmarks.jar` + 300 `~/.m2` jars:
+
+| Cell | First call med | Process wall med |
+|---|---|---|
+| small, baseline (pure shell) | 12.4 ms | 50 ms |
+| small, wired (FFM first) | 37.3 ms | 70 ms |
+| wide, baseline (pure shell) | 101.9 ms | 160 ms |
+| wide, wired (FFM first) | 36.9 ms | 79 ms |
+
+The FFM first call is a classpath-independent ~37 ms Linker constant
+(zero logger/ServiceLoader frames); repeats cost ~0.05 ms. The shell
+first call scales with the classpath (~12 ms small vs ~102 ms wide)
+because the JDK-internal `ProcessBuilder` logging triggers a
+ServiceLoader scan over the whole classpath. Wide-classpath startups
+win ~65 ms first-call / ~80 ms wall; small one-shot runs pay ~25 ms
+for the Linker constant. Warmed repeats: FFM ~0.05 ms vs shell ~1-3 ms.
+A marker-`sh` fixture (no `sh` invocation under the wired path, exactly
+three under denied fallback) proves the no-spawn property without
+profilers; see `benchmark/results/tty-isatty-cold-2026-11-17.md`.
+
+```bash
+mvn clean package -Pbenchmark -pl benchmark -am -DskipTests
+# shell arm = wired TtyDetect; ffm arm = raw helper directly
+java --enable-native-access=ALL-UNNAMED -cp benchmark/target/benchmarks.jar \
+  org.aesh.terminal.tty.TtyStartupProbe shell
+java --enable-native-access=ALL-UNNAMED -cp benchmark/target/benchmarks.jar \
+  org.aesh.terminal.tty.TtyStartupProbe ffm
+```
+
 The Linker accounts for only part of the measured cold FFM cost here;
 the probe still creates its downcall handles on first use. Repeat these
 measurements on the deployment JVM rather than treating this machine's

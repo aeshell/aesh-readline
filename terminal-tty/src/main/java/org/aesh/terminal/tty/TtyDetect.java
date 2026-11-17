@@ -34,14 +34,22 @@ import org.aesh.terminal.utils.PlatformContext;
  * Utility for detecting whether file descriptors are connected to a terminal.
  * <p>
  * Each descriptor is examined independently: Windows probes the matching
- * standard handle with {@code GetConsoleMode}, POSIX and Cygwin/MSYS
- * run {@code test -t} for the descriptor. Both answer per-fd, so mixed redirection (e.g. tty
+ * standard handle with {@code GetConsoleMode}, POSIX answers per-fd (fast
+ * path or {@code test -t}), and Cygwin/MSYS runs {@code test -t} for the
+ * descriptor. Both answer per-fd, so mixed redirection (e.g. tty
  * stdout with piped stdin) reports each stream truthfully.
  * <p>
- * No native access is needed on POSIX at any Java version. Where the
- * platform cannot answer per-fd (no {@code sh} available), detection falls
- * back to the whole-console {@code Console.isTerminal()} approximation and
- * finally the {@code System.console()} heuristic, in that order.
+ * POSIX selection policy (#399): on supported hosts (Linux/macOS on
+ * x86_64/aarch64) with Java 22+ and native access enabled, one in-process
+ * {@code isatty} downcall answers first and a completed call is final,
+ * including valid negatives — no subprocess runs. Only a missing
+ * capability (older Java, denied native access, unsupported host) falls
+ * through to the bounded {@code test -t} probe. Cygwin/MSYS and native
+ * Windows keep their existing branches and never consult the fast path.
+ * Where the platform cannot answer per-fd (no {@code sh} available),
+ * detection falls back to the whole-console {@code Console.isTerminal()}
+ * approximation and finally the {@code System.console()} heuristic, in
+ * that order.
  * <p>
  * Typical usage:
  *
@@ -92,7 +100,8 @@ public final class TtyDetect {
      * Check if the given file descriptor is connected to a terminal.
      * <p>
      * Each descriptor is examined on its own: Windows probes the matching
-     * standard handle, POSIX runs {@code test -t} for the descriptor, so
+     * standard handle, POSIX tries the in-process {@code isatty} fast path
+     * where available and otherwise {@code test -t} for the descriptor, so
      * mixed redirection reports each stream truthfully. Descriptors other
      * than 0-2, and negative values, always report false without spawning
      * anything. Where POSIX cannot run {@code sh}, the whole-console

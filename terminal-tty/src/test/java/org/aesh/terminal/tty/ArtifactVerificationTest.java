@@ -292,6 +292,71 @@ public class ArtifactVerificationTest {
     }
 
     @Test
+    public void testNativeImagePropertiesContainsPosixTtyProbeHandles() {
+        String content = readNativeImageProperties();
+        if (content == null) {
+            return;
+        }
+
+        // The isatty downcall holder initializes the Linker on first use;
+        // in a native image that must happen at runtime, never at build
+        // time. Without this pin an embedder-style broad build-time
+        // initialization would bake a build-time Linker into the binary.
+        assertTrue("native-image.properties must contain --initialize-at-run-time for "
+                + "PosixTtyProbe$Handles (#399)",
+                content.contains("org.aesh.terminal.tty.PosixTtyProbe$Handles"));
+    }
+
+    @Test
+    public void testPosixTtyProbeHandlesDeclared() throws Exception {
+        // The runtime pin above is worthless if the holder it names does
+        // not exist. The overlay (with its nested Handles) only compiles
+        // on Java 22+, and the native compatibility profile deletes the
+        // copy for old-GraalVM testing: skip every shape that cannot prove
+        // the declaration instead of failing it.
+        if (!isJava22OrLater()) {
+            return;
+        }
+        if (!new File("target/test-classes/org/aesh/terminal/tty/PosixTtyProbe.class").isFile()) {
+            return;
+        }
+        Class<?> probe = Class.forName("org.aesh.terminal.tty.PosixTtyProbe");
+        Class<?> handles = Class.forName("org.aesh.terminal.tty.PosixTtyProbe$Handles");
+        assertTrue("PosixTtyProbe$Handles must be nested in PosixTtyProbe",
+                handles.getDeclaringClass() == probe);
+    }
+
+    @Test
+    public void testReachabilityMetadataHasPlainIntDowncall() {
+        File metadataFile = new File("target/classes/" + REACHABILITY_METADATA);
+        if (!metadataFile.isFile()) {
+            return;
+        }
+        String content = readFileContent(metadataFile);
+        assertNotNull("Could not read reachability-metadata.json", content);
+
+        // The isatty fast path (#399) reuses the existing plain
+        // (jint) -> jint descriptor: no duplicate entry, no variadic
+        // options, no call-state capture for this shape.
+        assertTrue("reachability-metadata.json must register the plain (jint) -> jint downcall "
+                + "the isatty fast path reuses",
+                content.contains("\"returnType\": \"jint\"")
+                        && content.contains("\"parameterTypes\": [\"jint\"]"));
+    }
+
+    private static boolean isJava22OrLater() {
+        String spec = System.getProperty("java.specification.version", "8");
+        try {
+            if (spec.startsWith("1.")) {
+                return false;
+            }
+            return Integer.parseInt(spec) >= 22;
+        } catch (NumberFormatException e) {
+            return false;
+        }
+    }
+
+    @Test
     public void testReflectConfigContainsFfmPty() {
         File configFile = new File("target/classes/" + REFLECT_CONFIG);
         if (!configFile.isFile()) {

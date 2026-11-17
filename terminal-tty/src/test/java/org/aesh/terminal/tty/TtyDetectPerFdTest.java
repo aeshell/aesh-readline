@@ -338,6 +338,22 @@ public class TtyDetectPerFdTest {
     }
 
     /**
+     * Whether the FFM overlay loads for one matrix child. Packaged jars
+     * always carry the versioned overlay on Java 22+; exploded test-classes
+     * only when the overlay copy survived (the native compatibility profile
+     * deletes it for old-GraalVM testing, and then the base stub declines).
+     */
+    private static boolean expectedOverlay(boolean packaged) {
+        if (!isJava22OrLater()) {
+            return false;
+        }
+        if (packaged) {
+            return true;
+        }
+        return new File("target/test-classes/org/aesh/terminal/tty/PosixTtyProbe.class").isFile();
+    }
+
+    /**
      * Resolve the child classpath. Packaged main jars win when present and
      * newer than the compiled classes (so a stale jar never tests old code);
      * otherwise exploded output dirs are used. The probe itself always runs
@@ -501,14 +517,15 @@ public class TtyDetectPerFdTest {
                 + ")";
         assertEquals("tty verdict " + where, expectedTty, verdict.tty);
         assertEquals("shell agreement " + where, expectedShell, verdict.shell);
-        if (isJava22OrLater()) {
-            assertTrue("overlay must load on Java 22+ " + where
-                    + "; a base-stub shadow is a failure, not fallback coverage", verdict.overlay);
+        boolean overlayExpected = expectedOverlay(verdict.packaged);
+        assertEquals("overlay must load exactly when the layout carries it " + where
+                + "; a base-stub shadow is a failure, not fallback coverage", overlayExpected,
+                verdict.overlay);
+        if (!overlayExpected) {
+            assertFalse("no native access without the overlay " + where, verdict.nativeEnabled);
+        } else {
             assertEquals("native flag must match mode " + where, mode == NativeMode.ENABLED,
                     verdict.nativeEnabled);
-        } else {
-            assertFalse("no overlay pre-22 " + where, verdict.overlay);
-            assertFalse("no native access pre-22 " + where, verdict.nativeEnabled);
         }
         if (verdict.packaged) {
             assertTrue("packaged layout must load PosixTtyProbe from a jar, was: " + verdict.lib
@@ -610,6 +627,68 @@ public class TtyDetectPerFdTest {
         }
     }
 
+    /** Marker file recording every {@code sh} invocation of a child. */
+    private static final String SPAWN_MARKER_ENV = "TTY_SPAWN_MARKER";
+
+    private static File writeMarkerSh(File bindir, File marker, File realSh) throws Exception {
+        File sh = new File(bindir, "sh");
+        String script = "#!" + realSh.getAbsolutePath() + "\n"
+                + "echo \"$@\" >> " + quoteShellArg(marker.getAbsolutePath()) + "\n"
+                + "exec " + quoteShellArg(realSh.getAbsolutePath()) + " \"$@\"\n";
+        Files.write(sh.toPath(), script.getBytes(StandardCharsets.UTF_8));
+        if (!sh.setExecutable(true)) {
+            fail("cannot make marker sh executable: " + sh);
+        }
+        return sh;
+    }
+
+    private static String readMarker(File marker, String describe) throws Exception {
+        try {
+            return new String(Files.readAllBytes(marker.toPath()), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            fail("cannot read spawn marker (" + describe + "): " + e);
+            return null;
+        }
+    }
+
+    /**
+     * Run the no-spawn case: the child runs directly on files (no PTY, no
+     * shell in the harness), with a marker {@code sh} first on its PATH and
+     * its own agreement grandchildren skipped. Only {@code TtyDetect}'s own
+     * subprocess use can reach the marker.
+     */
+    private static void runNoSpawnCase(NativeMode mode, File pathPrefix, File marker) throws Exception {
+        ChildClassPath cp = childClassPath();
+        File stdin = File.createTempFile("tty-stdin-", ".txt");
+        File stdout = File.createTempFile("tty-stdout-", ".txt");
+        File stderr = File.createTempFile("tty-stderr-", ".txt");
+        stdin.deleteOnExit();
+        stdout.deleteOnExit();
+        stderr.deleteOnExit();
+        ProcessBuilder builder = new ProcessBuilder(childArgv(mode, cp));
+        builder.redirectInput(stdin);
+        builder.redirectOutput(stdout);
+        builder.redirectError(stderr);
+        File report = tempReport("tty-nosspawn-");
+        builder.environment().put(TtyFdProbe.REPORT_ENV, report.getAbsolutePath());
+        builder.environment().put(TtyFdProbe.SKIP_SHELL_ENV, "1");
+        builder.environment().put(SPAWN_MARKER_ENV, marker.getAbsolutePath());
+        String path = builder.environment().get("PATH");
+        builder.environment().put("PATH",
+                pathPrefix.getAbsolutePath() + File.pathSeparator + (path == null ? "" : path));
+        scrubDisabledEnv(builder, mode);
+        String describe = "no-spawn " + mode;
+        Process process = builder.start();
+        Drain drain = new Drain(process.getInputStream());
+        awaitChild(process, drain, describe, mode);
+        String output = drain.join("no-spawn matrix child");
+        Verdict verdict = parseVerdict(readReport(report, describe, mode, output), describe, mode);
+        verdict.packaged = cp.packaged;
+        assertVerdict(mode, verdict, "0:false 1:false 2:false 999:false",
+                "0:null 1:null 2:null 999:null");
+        directMatrixRuns.incrementAndGet();
+    }
+
     private static void runPtyBothModes(String suffix, String expectedTty, String expectedShell,
             String... probeArgs) throws Exception {
         for (NativeMode mode : NativeMode.values()) {
@@ -673,6 +752,35 @@ public class TtyDetectPerFdTest {
         assumePosixSh();
         for (NativeMode mode : NativeMode.values()) {
             runDirectCase(mode, "0:false 1:false 2:false 999:false");
+        }
+    }
+
+    @Test
+    public void testNativeNegativePerformsNoSubprocess() throws Exception {
+        // A valid native negative must perform no subprocess: prove it with
+        // a marker sh first on the child's PATH. The child's own agreement
+        // grandchildren are skipped, so only TtyDetect's own `test -t` use
+        // can write to the marker. The denied mode is the control proving
+        // the fixture detects spawns (exactly the three standard fds).
+        assumePosixSh();
+        Assume.assumeTrue("no-spawn proof needs the Java 22+ FFM overlay", isJava22OrLater());
+        File realSh = new File("/bin/sh").canExecute() ? new File("/bin/sh")
+                : new File("/usr/bin/sh");
+        File bindir = Files.createTempDirectory("tty-nosspawn-").toFile();
+        bindir.deleteOnExit();
+        File marker = File.createTempFile("tty-spawn-marker-", ".log");
+        marker.deleteOnExit();
+        writeMarkerSh(bindir, marker, realSh).deleteOnExit();
+        runNoSpawnCase(NativeMode.ENABLED, bindir, marker);
+        assertEquals("enabled FFM path must not spawn sh; marker:\n" + readMarker(marker, "enabled"),
+                "", readMarker(marker, "enabled"));
+        runNoSpawnCase(NativeMode.DISABLED, bindir, marker);
+        String[] invocations = readMarker(marker, "disabled").trim().split("\\r?\\n");
+        assertEquals("denied fallback must spawn exactly the three standard fds; marker:\n"
+                + readMarker(marker, "disabled"), 3, invocations.length);
+        for (String invocation : invocations) {
+            assertTrue("marker must show test -t use, was: " + invocation,
+                    invocation.contains("test -t"));
         }
     }
 

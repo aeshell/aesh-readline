@@ -134,6 +134,22 @@ public class NativeImageVerify {
             failures++;
         }
 
+        // 6. Exercise the per-fd isatty detection without throwing.
+        // Values are environment-dependent (pipes answer false, a PTY
+        // answers true), so this step only requires no-throw plus a
+        // printed line. The FFM-vs-fallback discrimination lives in the
+        // spawn count: run with a marker sh first on PATH and assert zero
+        // invocations — under fallback every fd spawns `sh -c test -t`.
+        try {
+            String verdict = "isTty 0:" + org.aesh.terminal.tty.TtyDetect.isTty(0)
+                    + " 1:" + org.aesh.terminal.tty.TtyDetect.isTty(1)
+                    + " 2:" + org.aesh.terminal.tty.TtyDetect.isTty(2);
+            System.out.println(verdict);
+        } catch (Throwable e) {
+            System.err.println("FAIL: TtyDetect.isTty threw: " + e);
+            failures++;
+        }
+
         if (failures > 0) {
             System.err.println("FAILED: " + failures + " check(s) failed");
             System.exit(1);

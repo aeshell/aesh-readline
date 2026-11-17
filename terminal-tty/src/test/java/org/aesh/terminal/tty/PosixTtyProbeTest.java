@@ -67,6 +67,15 @@ public class PosixTtyProbeTest {
         return PosixTtyProbe.isNativeAccessEnabled();
     }
 
+    /**
+     * Whether the FFM overlay copy is present in test-classes. The native
+     * compatibility profile deletes the overlay for old-GraalVM testing;
+     * then even a capable runtime declines through the base stub.
+     */
+    private static boolean overlayCopyPresent() {
+        return new File("target/test-classes/org/aesh/terminal/tty/PosixTtyProbe.class").isFile();
+    }
+
     private static void assumePosixSh() {
         Assume.assumeFalse("native probe fixture needs a POSIX shell",
                 OSUtils.IS_WINDOWS);
@@ -165,8 +174,12 @@ public class PosixTtyProbeTest {
             fail("denied-native-access child did not finish");
         }
         assertEquals("child must exit cleanly", 0, process.exitValue());
+        // The overlay loads from the test-classes copy; the native
+        // compatibility profile deletes that copy for old-GraalVM testing
+        // and the child then declines through the base stub instead.
+        boolean overlayExpected = isJava22OrLater() && overlayCopyPresent();
         assertEquals("denied native access must decline on every fd",
-                "overlay=true native=false 0:null 1:null 2:null",
+                "overlay=" + overlayExpected + " native=false 0:null 1:null 2:null",
                 output.toString("UTF-8").trim());
     }
 }
