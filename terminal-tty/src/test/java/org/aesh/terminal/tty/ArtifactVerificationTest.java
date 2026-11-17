@@ -313,7 +313,13 @@ public class ArtifactVerificationTest {
         // not exist. The overlay (with its nested Handles) only compiles
         // on Java 22+, and the native compatibility profile deletes the
         // copy for old-GraalVM testing: skip every shape that cannot prove
-        // the declaration instead of failing it.
+        // the declaration instead of failing it. Also skipped inside native
+        // binaries: the flat overlay copy and the base stub disagree on the
+        // InnerClasses attribute in the image builder's class universe, so
+        // reflective nesting checks explode there while direct calls work.
+        if (isNativeImage()) {
+            return;
+        }
         if (!isJava22OrLater()) {
             return;
         }
@@ -342,6 +348,10 @@ public class ArtifactVerificationTest {
                 + "the isatty fast path reuses",
                 content.contains("\"returnType\": \"jint\"")
                         && content.contains("\"parameterTypes\": [\"jint\"]"));
+    }
+
+    private static boolean isNativeImage() {
+        return System.getProperty("org.graalvm.nativeimage.imagecode") != null;
     }
 
     private static boolean isJava22OrLater() {

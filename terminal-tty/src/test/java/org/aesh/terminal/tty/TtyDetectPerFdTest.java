@@ -530,13 +530,15 @@ public class TtyDetectPerFdTest {
         if (verdict.packaged) {
             assertTrue("packaged layout must load PosixTtyProbe from a jar, was: " + verdict.lib
                     + " " + where, verdict.lib.endsWith(".jar") && !verdict.lib.contains("test-classes"));
-        } else if (isJava22OrLater()) {
+        } else if (overlayExpected) {
+            // Java 22+ with the overlay copy present in test-classes.
             assertTrue("exploded layout must load the overlay copy from test-classes, was: "
                     + verdict.lib + " " + where, verdict.lib.contains("test-classes"));
         } else {
-            // Pre-22 there is no overlay copy in test-classes; the base
-            // stub loads from the classes directory itself.
-            assertTrue("exploded pre-22 layout must load the base stub from the classes dir, was: "
+            // Pre-22, or 22+ with the copy deleted for old-GraalVM
+            // compatibility testing: the base stub loads from the classes
+            // directory itself and declines to the shell.
+            assertTrue("exploded layout without overlay must load the base stub from the classes dir, was: "
                     + verdict.lib + " " + where,
                     verdict.lib.endsWith("/") && !verdict.lib.contains("test-classes"));
         }
@@ -555,6 +557,10 @@ public class TtyDetectPerFdTest {
      */
     private static void runPtyCase(NativeMode mode, String suffix, String expectedTty,
             String expectedShell, String... probeArgs) throws Exception {
+        // Child-JVM cases run in the JVM suites and skip in the native test
+        // binary: there is no java launcher next to a native image
+        // (java.home is null there) to run the probe child with.
+        Assume.assumeFalse("child-JVM matrix runs in JVM suites only", isNativeImage());
         ChildClassPath cp = childClassPath();
         String shellCode = joinShell(childArgv(mode, cp, probeArgs)) + suffix;
         // Follow the proven shape: util-linux script runs `sh -c '...'`;
@@ -590,6 +596,8 @@ public class TtyDetectPerFdTest {
      * {@code ProcessBuilder} redirections.
      */
     private static void runDirectCase(NativeMode mode, String expected) throws Exception {
+        // Same native-image reason as runPtyCase: no java launcher there.
+        Assume.assumeFalse("child-JVM matrix runs in JVM suites only", isNativeImage());
         ChildClassPath cp = childClassPath();
         File stdin = File.createTempFile("tty-stdin-", ".txt");
         File stdout = File.createTempFile("tty-stdout-", ".txt");
@@ -617,6 +625,9 @@ public class TtyDetectPerFdTest {
 
     @AfterClass
     public static void requireMatrixExecution() {
+        if (isNativeImage()) {
+            return;
+        }
         if (Boolean.TRUE.equals(scriptUsable)) {
             assertTrue("PTY matrix must execute at least one case on script-capable CI",
                     ptyMatrixRuns.get() > 0);
@@ -658,6 +669,8 @@ public class TtyDetectPerFdTest {
      * subprocess use can reach the marker.
      */
     private static void runNoSpawnCase(NativeMode mode, File pathPrefix, File marker) throws Exception {
+        // Same native-image reason as runPtyCase: no java launcher there.
+        Assume.assumeFalse("child-JVM matrix runs in JVM suites only", isNativeImage());
         ChildClassPath cp = childClassPath();
         File stdin = File.createTempFile("tty-stdin-", ".txt");
         File stdout = File.createTempFile("tty-stdout-", ".txt");
@@ -764,6 +777,11 @@ public class TtyDetectPerFdTest {
         // the fixture detects spawns (exactly the three standard fds).
         assumePosixSh();
         Assume.assumeTrue("no-spawn proof needs the Java 22+ FFM overlay", isJava22OrLater());
+        // The overlay must be in the classpath the child will actually
+        // resolve: under the native compatibility deletion the exploded
+        // child falls back to the shell and spawning is correct behavior.
+        Assume.assumeTrue("no-spawn proof needs the FFM overlay in the child classpath",
+                expectedOverlay(childClassPath().packaged));
         File realSh = new File("/bin/sh").canExecute() ? new File("/bin/sh")
                 : new File("/usr/bin/sh");
         File bindir = Files.createTempDirectory("tty-nosspawn-").toFile();

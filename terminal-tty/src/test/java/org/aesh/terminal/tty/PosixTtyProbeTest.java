@@ -57,6 +57,10 @@ public class PosixTtyProbeTest {
         }
     }
 
+    private static boolean isNativeImage() {
+        return System.getProperty("org.graalvm.nativeimage.imagecode") != null;
+    }
+
     private static boolean nativeProbeEnabled() {
         if (!isJava22OrLater()) {
             return false;
@@ -146,6 +150,10 @@ public class PosixTtyProbeTest {
     public void testDeniedNativeAccessDeclinesInChildJvm() throws Exception {
         Assume.assumeTrue("needs the Java 22 overlay to deny",
                 isJava22OrLater());
+        // Child-JVM cases run in the JVM suites and skip in the native test
+        // binary: there is no java launcher next to a native image
+        // (java.home is null there) to run the denied child with.
+        Assume.assumeFalse("child-JVM control runs in JVM suites only", isNativeImage());
         String javaHome = System.getProperty("java.home");
         String executable = System.getProperty("os.name", "").startsWith("Windows") ? "java.exe" : "java";
         File java = new File(new File(javaHome, "bin"), executable);

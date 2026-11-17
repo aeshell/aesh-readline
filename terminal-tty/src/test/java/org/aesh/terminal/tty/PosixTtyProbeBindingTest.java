@@ -40,9 +40,16 @@ import org.junit.Test;
  * ({@code -Dnative.delete.ffm=false} lane): the same assertion also runs
  * in ordinary JVM suites, where it duplicates the direct helper tests on
  * purpose — a green run consisting of skips or fallback is not evidence.
- * The compatibility binary (overlay deleted for old GraalVM) and runtimes
+ * The compatibility binary overlay (deleted for old GraalVM) and runtimes
  * without native access skip; fallback coverage for those lives in the fd
  * matrix and the decline tests.
+ * <p>
+ * Deliberately no reflective loading of the holder: in images built from
+ * exploded classes the flat overlay copy and the base stub coexist, and
+ * reflective nesting checks explode on that duality while direct calls
+ * resolve normally. A linkage failure from an inconsistent universe
+ * skips; only a completed-but-null answer — the missing-registration
+ * shape — fails.
  */
 public class PosixTtyProbeBindingTest {
 
@@ -61,15 +68,17 @@ public class PosixTtyProbeBindingTest {
     @Test
     public void testBindingExecutesWhereOverlayLoads() {
         Assume.assumeTrue("needs Java 22+ FFM", isJava22OrLater());
-        try {
-            Class.forName("org.aesh.terminal.tty.PosixTtyProbe$Handles");
-        } catch (ClassNotFoundException | LinkageError e) {
-            Assume.assumeTrue("FFM overlay deleted for compatibility; fallback covered elsewhere",
-                    false);
-        }
         Assume.assumeTrue("native access required", PosixTtyProbe.isNativeAccessEnabled());
+        Boolean answer;
+        try {
+            answer = PosixTtyProbe.tryIsTty(1);
+        } catch (LinkageError e) {
+            Assume.assumeTrue("overlay/base duality in this image; binding proven on JVM suites",
+                    false);
+            return;
+        }
         assertNotNull("FFM isatty binding must execute, not decline: the downcall descriptor "
                 + "is missing from reachability-metadata.json or the holder pin is wrong",
-                PosixTtyProbe.tryIsTty(1));
+                answer);
     }
 }
