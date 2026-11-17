@@ -104,6 +104,26 @@
                         <include>**/*Test.java</include>
                     </includes>
                 </configuration>
+                <executions>
+                    <!-- Packaged-matrix acceptance (#399, slice 3): re-run the
+                         fd matrix after packaging, when the module jars are
+                         guaranteed fresh, with the packaged MRJAR layout
+                         required. The test-phase run above uses packaged
+                         jars when available and exploded classes otherwise;
+                         this execution proves the shipped layout resolves
+                         the Java 22 overlay from a real jar. -->
+                    <execution>
+                        <id>packaged-matrix-acceptance</id>
+                        <phase>verify</phase>
+                        <goals><goal>test</goal></goals>
+                        <configuration>
+                            <test>TtyDetectPerFdTest</test>
+                            <systemPropertyVariables>
+                                <aesh.matrix.requirePackaged>true</aesh.matrix.requirePackaged>
+                            </systemPropertyVariables>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <artifactId>maven-jar-plugin</artifactId>
