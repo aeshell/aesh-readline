@@ -64,21 +64,44 @@ public final class TtyFdProbe {
 
     /**
      * Print one verdict triple for the inherited descriptors.
+     * <p>
+     * The {@code cached} argument switches the tty line to the caching
+     * convenience methods ({@code isStdoutTty}/{@code isStderrTty}) instead
+     * of per-fd {@code isTty}, exercising the combined shell probe where
+     * the platform would spawn. May be combined with a transport argument.
      *
-     * @param args optional simulated Windows transport context
+     * @param args optional "cached" mode flag and simulated Windows
+     *        transport context ("cygwin" or "windows")
      */
     public static void main(String[] args) {
+        boolean cached = false;
+        String transport = null;
+        for (String arg : args) {
+            if ("cached".equals(arg)) {
+                cached = true;
+            } else if ("cygwin".equals(arg) || "windows".equals(arg)) {
+                transport = arg;
+            }
+        }
         PlatformContext context = PlatformContext.system();
-        if (args.length > 0) {
+        if (transport != null) {
             context = new PlatformContext("Windows 11", "amd64",
-                    "cygwin".equals(args[0]) ? java.util.Collections.singletonMap("MSYSTEM", "MINGW64")
+                    "cygwin".equals(transport) ? java.util.Collections.singletonMap("MSYSTEM", "MINGW64")
                             : java.util.Collections.<String, String> emptyMap(),
                     "");
         }
-        String tty = "0:" + TtyDetect.isTty(0, context)
-                + " 1:" + TtyDetect.isTty(1, context)
-                + " 2:" + TtyDetect.isTty(2, context)
-                + " 999:" + TtyDetect.isTty(999, context);
+        String tty;
+        if (cached) {
+            tty = "0:" + TtyDetect.isTty(0, context)
+                    + " 1:" + TtyDetect.isStdoutTty(context)
+                    + " 2:" + TtyDetect.isStderrTty(context)
+                    + " 999:" + TtyDetect.isTty(999, context);
+        } else {
+            tty = "0:" + TtyDetect.isTty(0, context)
+                    + " 1:" + TtyDetect.isTty(1, context)
+                    + " 2:" + TtyDetect.isTty(2, context)
+                    + " 999:" + TtyDetect.isTty(999, context);
+        }
         String shell;
         if (System.getenv(SKIP_SHELL_ENV) != null) {
             shell = "shell 0:null 1:null 2:null 999:null";

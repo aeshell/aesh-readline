@@ -27,11 +27,14 @@ package org.aesh.terminal.tty;
  * loggers, no providers — so the first timing includes full class and
  * native initialization.
  * <p>
- * Usage: {@code java ... TtyStartupProbe shell} or {@code ... ffm}.
- * The shell arm calls {@code TtyDetect.isTty} (public entry point,
- * fresh read per fd); the ffm arm calls the package-private fast
- * path directly. Output is one JSON line; {@code null} answers print
- * as {@code null}, never as fabricated booleans.
+ * Usage: {@code java ... TtyStartupProbe shell}, {@code ... ffm}, or
+ * {@code ... combined}. The shell arm calls {@code TtyDetect.isTty}
+ * (public entry point, fresh read per fd); the ffm arm calls the
+ * package-private fast path directly; the combined arm calls the
+ * caching convenience methods in {@code AeshRuntimeRunner} order
+ * (stdout, then stderr, then all three), exercising the one-child
+ * stdout+stderr probe. Output is one JSON line; {@code null} answers
+ * print as {@code null}, never as fabricated booleans.
  */
 public final class TtyStartupProbe {
 
@@ -41,24 +44,27 @@ public final class TtyStartupProbe {
     /**
      * Run one cold-start scenario and print JSON timings.
      *
-     * @param args single scenario name: {@code shell} or {@code ffm}
+     * @param args single scenario name: {@code shell}, {@code ffm},
+     *        or {@code combined}
      */
     public static void main(String[] args) {
-        boolean shell = args.length == 0 || !"ffm".equals(args[0]);
-        String scenario = shell ? "tty-shell" : "tty-ffm";
+        String which = args.length == 0 ? "shell" : args[0];
+        boolean combined = "combined".equals(which);
+        boolean shell = !combined && !"ffm".equals(which);
+        String scenario = combined ? "tty-combined" : shell ? "tty-shell" : "tty-ffm";
 
         long start = System.nanoTime();
-        Boolean first = probe(shell, 1);
+        Boolean first = combined ? TtyDetect.isStdoutTty() : probe(shell, 1);
         long firstNanos = System.nanoTime() - start;
 
         start = System.nanoTime();
-        Boolean repeat = probe(shell, 1);
+        Boolean repeat = combined ? TtyDetect.isStderrTty() : probe(shell, 1);
         long repeatNanos = System.nanoTime() - start;
 
         long allStart = System.nanoTime();
-        Boolean fd0 = probe(shell, 0);
-        Boolean fd1 = probe(shell, 1);
-        Boolean fd2 = probe(shell, 2);
+        Boolean fd0 = combined ? TtyDetect.isStdinTty() : probe(shell, 0);
+        Boolean fd1 = combined ? TtyDetect.isStdoutTty() : probe(shell, 1);
+        Boolean fd2 = combined ? TtyDetect.isStderrTty() : probe(shell, 2);
         long allNanos = System.nanoTime() - allStart;
 
         System.out.println("{\"scenario\":\"" + scenario + "\""

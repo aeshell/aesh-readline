@@ -595,7 +595,8 @@ public class TtyDetectPerFdTest {
      * descriptors on files. No script, no shell, no quoting: pure argv plus
      * {@code ProcessBuilder} redirections.
      */
-    private static void runDirectCase(NativeMode mode, String expected) throws Exception {
+    private static void runDirectCase(NativeMode mode, String expected, String... probeArgs)
+            throws Exception {
         // Same native-image reason as runPtyCase: no java launcher there.
         Assume.assumeFalse("child-JVM matrix runs in JVM suites only", isNativeImage());
         ChildClassPath cp = childClassPath();
@@ -605,7 +606,7 @@ public class TtyDetectPerFdTest {
         stdin.deleteOnExit();
         stdout.deleteOnExit();
         stderr.deleteOnExit();
-        ProcessBuilder builder = new ProcessBuilder(childArgv(mode, cp));
+        ProcessBuilder builder = new ProcessBuilder(childArgv(mode, cp, probeArgs));
         builder.redirectInput(stdin);
         builder.redirectOutput(stdout);
         builder.redirectError(stderr);
@@ -668,7 +669,8 @@ public class TtyDetectPerFdTest {
      * its own agreement grandchildren skipped. Only {@code TtyDetect}'s own
      * subprocess use can reach the marker.
      */
-    private static void runNoSpawnCase(NativeMode mode, File pathPrefix, File marker) throws Exception {
+    private static void runNoSpawnCase(NativeMode mode, File pathPrefix, File marker,
+            String... probeArgs) throws Exception {
         // Same native-image reason as runPtyCase: no java launcher there.
         Assume.assumeFalse("child-JVM matrix runs in JVM suites only", isNativeImage());
         ChildClassPath cp = childClassPath();
@@ -678,7 +680,7 @@ public class TtyDetectPerFdTest {
         stdin.deleteOnExit();
         stdout.deleteOnExit();
         stderr.deleteOnExit();
-        ProcessBuilder builder = new ProcessBuilder(childArgv(mode, cp));
+        ProcessBuilder builder = new ProcessBuilder(childArgv(mode, cp, probeArgs));
         builder.redirectInput(stdin);
         builder.redirectOutput(stdout);
         builder.redirectError(stderr);
@@ -702,10 +704,18 @@ public class TtyDetectPerFdTest {
         directMatrixRuns.incrementAndGet();
     }
 
+    private static String[] withCached(String... probeArgs) {
+        String[] all = new String[probeArgs.length + 1];
+        all[0] = "cached";
+        System.arraycopy(probeArgs, 0, all, 1, probeArgs.length);
+        return all;
+    }
+
     private static void runPtyBothModes(String suffix, String expectedTty, String expectedShell,
             String... probeArgs) throws Exception {
         for (NativeMode mode : NativeMode.values()) {
             runPtyCase(mode, suffix, expectedTty, expectedShell, probeArgs);
+            runPtyCase(mode, suffix, expectedTty, expectedShell, withCached(probeArgs));
         }
     }
 
@@ -765,6 +775,7 @@ public class TtyDetectPerFdTest {
         assumePosixSh();
         for (NativeMode mode : NativeMode.values()) {
             runDirectCase(mode, "0:false 1:false 2:false 999:false");
+            runDirectCase(mode, "0:false 1:false 2:false 999:false", "cached");
         }
     }
 
@@ -800,6 +811,41 @@ public class TtyDetectPerFdTest {
             assertTrue("marker must show test -t use, was: " + invocation,
                     invocation.contains("test -t"));
         }
+    }
+
+    @Test
+    public void testCombinedProbeSpawnsOnce() throws Exception {
+        // The combined shell probe answers stdout+stderr with a single
+        // child: prove the spawn count with a marker sh. Cached mode calls
+        // the caching convenience methods (stdin alone, then the combined
+        // pair); agreement grandchildren are skipped so only TtyDetect's
+        // own use reaches the marker. Works on every JDK: the combined
+        // probe itself is plain sh, no FFM needed.
+        assumePosixSh();
+        File realSh = new File("/bin/sh").canExecute() ? new File("/bin/sh")
+                : new File("/usr/bin/sh");
+        File bindir = Files.createTempDirectory("tty-combined-").toFile();
+        bindir.deleteOnExit();
+        File marker = File.createTempFile("tty-spawn-marker-", ".log");
+        marker.deleteOnExit();
+        writeMarkerSh(bindir, marker, realSh).deleteOnExit();
+        runNoSpawnCase(NativeMode.DISABLED, bindir, marker, "cached");
+        String[] invocations = readMarker(marker, "combined").trim().split("\\r?\\n");
+        assertEquals("combined probe must answer the pair with one child; marker:\n"
+                + readMarker(marker, "combined"), 2, invocations.length);
+        boolean single = false;
+        boolean compound = false;
+        for (String invocation : invocations) {
+            if ("-c test -t 0".equals(invocation.trim())) {
+                single = true;
+            }
+            if (invocation.contains("test -t 1") && invocation.contains("test -t 2")) {
+                compound = true;
+            }
+        }
+        assertTrue("stdin answers alone; marker:\n" + readMarker(marker, "combined"), single);
+        assertTrue("stdout+stderr share one compound child; marker:\n"
+                + readMarker(marker, "combined"), compound);
     }
 
     @Test

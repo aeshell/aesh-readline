@@ -22,6 +22,7 @@ package org.aesh.terminal.tty;
 import java.io.Console;
 import java.lang.reflect.Method;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -334,6 +335,118 @@ public final class TtyDetect {
     }
 
     /**
+     * Probe several descriptors with one {@code test -t} child (#400).
+     * <p>
+     * Each tested descriptor is inherited (the child answers for its own
+     * fds, so every descriptor under test is bound to the parent's) while
+     * the rest stay piped and drained. Answers travel in the exit code,
+     * two bits at a time: bit {@code i} set means {@code test -t} failed
+     * for {@code fds[i]}. No output is produced, so inheriting stdout and
+     * stderr together is safe — the child's exit status is the whole
+     * verdict. Same bounded deadline and reap discipline as the
+     * single-fd probe; anything else (no sh, timeout, unparseable code)
+     * declines with null and the caller falls back to individual probes.
+     *
+     * @param fds the descriptors to test, each 0-2
+     * @return per-fd TRUE/FALSE in input order, or null when unavailable
+     */
+    static Boolean[] tryCombinedTestT(int[] fds) {
+        if (fds == null || fds.length == 0 || fds.length > 3) {
+            return null;
+        }
+        for (int fd : fds) {
+            if (fd < FD_STDIN || fd > FD_STDERR) {
+                return null;
+            }
+        }
+        StringBuilder script = new StringBuilder("c=0;");
+        for (int i = 0; i < fds.length; i++) {
+            script.append("test -t ").append(fds[i]).append(" || c=$((c | ").append(1 << i)
+                    .append("));");
+        }
+        script.append("exit $c");
+        ProcessBuilder builder = new ProcessBuilder("sh", "-c", script.toString());
+        if (contains(fds, FD_STDIN)) {
+            builder.redirectInput(ProcessBuilder.Redirect.INHERIT);
+        }
+        if (contains(fds, FD_STDOUT)) {
+            builder.redirectOutput(ProcessBuilder.Redirect.INHERIT);
+        }
+        if (contains(fds, FD_STDERR)) {
+            builder.redirectError(ProcessBuilder.Redirect.INHERIT);
+        }
+        final Process process;
+        try {
+            process = builder.start();
+        } catch (Exception e) {
+            return null;
+        }
+        Thread outDrainer = drainAsync(process.getInputStream());
+        Thread errDrainer = drainAsync(process.getErrorStream());
+        final boolean finished;
+        try {
+            finished = process.waitFor(ProcessRunner.DEFAULT_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            process.destroyForcibly();
+            return null;
+        }
+        if (!finished) {
+            process.destroyForcibly();
+            closeQuietly(process.getInputStream());
+            closeQuietly(process.getErrorStream());
+            return null;
+        }
+        joinQuietly(outDrainer);
+        joinQuietly(errDrainer);
+        final int code;
+        try {
+            code = process.exitValue();
+        } catch (Exception e) {
+            return null;
+        }
+        if (code < 0 || code >= (1 << fds.length)) {
+            return null;
+        }
+        Boolean[] answers = new Boolean[fds.length];
+        for (int i = 0; i < fds.length; i++) {
+            answers[i] = (code & (1 << i)) == 0 ? Boolean.TRUE : Boolean.FALSE;
+        }
+        return answers;
+    }
+
+    private static boolean contains(int[] fds, int fd) {
+        for (int f : fds) {
+            if (f == fd) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Whether the combined shell probe is worth trying for this platform.
+     * <p>
+     * Combining only pays when the shell path would spawn: native Windows
+     * answers per handle without spawning, and an available FFM binding
+     * answers per fd in-process. Everywhere else the first of stdout/stderr
+     * may answer both with one child. Cygwin probes through its POSIX
+     * runtime first, so it combines too.
+     *
+     * @param context the captured platform facts
+     * @return true when one shell child may answer both descriptors
+     */
+    static boolean shouldCombine(PlatformContext context) {
+        if (context.isCygwin()) {
+            return true;
+        }
+        if (context.isWindows()) {
+            return false;
+        }
+        return !(context.isFfmPosixSupported() && PosixTtyProbe.isNativeAccessEnabled());
+    }
+
+    /**
      * Try Console.isTerminal() (Java 22+). Returns null if not available.
      */
     private static Boolean tryConsoleIsTerminal() {
@@ -428,12 +541,58 @@ public final class TtyDetect {
     /**
      * Check if standard output is connected to a terminal.
      * Result is cached after the first call.
+     * <p>
+     * When stderr is also uncomputed and the platform would spawn for it,
+     * one shell child answers both descriptors (#400) and both caches are
+     * filled together. Otherwise this probes stdout alone.
      *
      * @return true if stdout is a terminal (not piped/redirected)
      */
     public static boolean isStdoutTty() {
         if (cachedStdout == -1) {
-            cachedStdout = isTty(FD_STDOUT) ? 1 : 0;
+            return isStdoutTty(PlatformContext.system());
+        }
+        return cachedStdout == 1;
+    }
+
+    /**
+     * Standard-output check on a captured context, with the production
+     * probes. Combines when {@link #shouldCombine(PlatformContext)} allows.
+     *
+     * @param context the captured platform facts
+     * @return true if stdout is a terminal (not piped/redirected)
+     */
+    static boolean isStdoutTty(PlatformContext context) {
+        Function<int[], Boolean[]> combined = shouldCombine(context) ? TtyDetect::tryCombinedTestT : null;
+        return isStdoutTty(context, PosixTtyProbe::tryIsTty, f -> tryTestT(f), combined);
+    }
+
+    /**
+     * Standard-output check with injectable POSIX probes, for tests.
+     * Call-scoped like {@link #isTty(int, PlatformContext, IntFunction, IntFunction)}:
+     * production passes the real helper, the real {@code test -t} probe,
+     * and the real combined probe (or null when combining would not pay);
+     * tests pass counted, scripted, or throwing answers.
+     *
+     * @param context the captured platform facts
+     * @param nativeProbe the FFM isatty answer (null = unavailable)
+     * @param shellProbe the {@code test -t} answer (null = unavailable)
+     * @param combinedProbe the one-child answer for stdout+stderr in order
+     *        (null = unavailable), or null to probe stdout alone
+     * @return true if stdout is a terminal (not piped/redirected)
+     */
+    static boolean isStdoutTty(PlatformContext context, IntFunction<Boolean> nativeProbe,
+            IntFunction<Boolean> shellProbe, Function<int[], Boolean[]> combinedProbe) {
+        if (cachedStdout == -1) {
+            if (cachedStderr == -1 && combinedProbe != null) {
+                Boolean[] both = combinedProbe.apply(new int[] { FD_STDOUT, FD_STDERR });
+                if (both != null && both.length == 2 && both[0] != null && both[1] != null) {
+                    cachedStdout = both[0] ? 1 : 0;
+                    cachedStderr = both[1] ? 1 : 0;
+                    return cachedStdout == 1;
+                }
+            }
+            cachedStdout = isTty(FD_STDOUT, context, nativeProbe, shellProbe) ? 1 : 0;
         }
         return cachedStdout == 1;
     }
@@ -441,12 +600,57 @@ public final class TtyDetect {
     /**
      * Check if standard error is connected to a terminal.
      * Result is cached after the first call.
+     * <p>
+     * When stdout is also uncomputed and the platform would spawn for it,
+     * one shell child answers both descriptors (#400) and both caches are
+     * filled together. Otherwise this probes stderr alone.
      *
      * @return true if stderr is a terminal (not piped/redirected)
      */
     public static boolean isStderrTty() {
         if (cachedStderr == -1) {
-            cachedStderr = isTty(FD_STDERR) ? 1 : 0;
+            return isStderrTty(PlatformContext.system());
+        }
+        return cachedStderr == 1;
+    }
+
+    /**
+     * Standard-error check on a captured context, with the production
+     * probes. Combines when {@link #shouldCombine(PlatformContext)} allows.
+     *
+     * @param context the captured platform facts
+     * @return true if stderr is a terminal (not piped/redirected)
+     */
+    static boolean isStderrTty(PlatformContext context) {
+        Function<int[], Boolean[]> combined = shouldCombine(context) ? TtyDetect::tryCombinedTestT : null;
+        return isStderrTty(context, PosixTtyProbe::tryIsTty, f -> tryTestT(f), combined);
+    }
+
+    /**
+     * Standard-error check with injectable POSIX probes, for tests.
+     * Call-scoped like {@link #isStdoutTty(PlatformContext, IntFunction, IntFunction, Function)}:
+     * production passes the real probes, tests pass counted, scripted, or
+     * throwing answers.
+     *
+     * @param context the captured platform facts
+     * @param nativeProbe the FFM isatty answer (null = unavailable)
+     * @param shellProbe the {@code test -t} answer (null = unavailable)
+     * @param combinedProbe the one-child answer for stdout+stderr in order
+     *        (null = unavailable), or null to probe stderr alone
+     * @return true if stderr is a terminal (not piped/redirected)
+     */
+    static boolean isStderrTty(PlatformContext context, IntFunction<Boolean> nativeProbe,
+            IntFunction<Boolean> shellProbe, Function<int[], Boolean[]> combinedProbe) {
+        if (cachedStderr == -1) {
+            if (cachedStdout == -1 && combinedProbe != null) {
+                Boolean[] both = combinedProbe.apply(new int[] { FD_STDOUT, FD_STDERR });
+                if (both != null && both.length == 2 && both[0] != null && both[1] != null) {
+                    cachedStdout = both[0] ? 1 : 0;
+                    cachedStderr = both[1] ? 1 : 0;
+                    return cachedStderr == 1;
+                }
+            }
+            cachedStderr = isTty(FD_STDERR, context, nativeProbe, shellProbe) ? 1 : 0;
         }
         return cachedStderr == 1;
     }
