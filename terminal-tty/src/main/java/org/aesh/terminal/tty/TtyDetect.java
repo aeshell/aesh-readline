@@ -22,6 +22,7 @@ package org.aesh.terminal.tty;
 import java.io.Console;
 import java.lang.reflect.Method;
 import java.util.concurrent.TimeUnit;
+import java.util.function.IntFunction;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -117,6 +118,27 @@ public final class TtyDetect {
      * @return true if the file descriptor is connected to a terminal
      */
     public static boolean isTty(int fd, PlatformContext context) {
+        return isTty(fd, context, PosixTtyProbe::tryIsTty, f -> tryTestT(f));
+    }
+
+    /**
+     * Selection with injectable POSIX probes, for tests.
+     * <p>
+     * Call-scoped: each function answers one selection and is never
+     * stored. Production passes the real FFM helper and the real
+     * {@code test -t} probe; tests pass counted, scripted, or throwing
+     * answers to prove call counts and routing without timing
+     * assertions or subprocesses. Not public API: no selection knob,
+     * no installed or mutable transport.
+     *
+     * @param fd the file descriptor (0=stdin, 1=stdout, 2=stderr)
+     * @param context the captured platform facts
+     * @param nativeProbe the FFM isatty answer (null = unavailable)
+     * @param shellProbe the {@code test -t} answer (null = unavailable)
+     * @return true if the file descriptor is connected to a terminal
+     */
+    static boolean isTty(int fd, PlatformContext context,
+            IntFunction<Boolean> nativeProbe, IntFunction<Boolean> shellProbe) {
         if (fd < FD_STDIN || fd > FD_STDERR) {
             return false;
         }
@@ -125,7 +147,7 @@ public final class TtyDetect {
         // GetConsoleMode. In particular, stdin being a PTY does not prove
         // that stdout is one: redirection must still suppress ANSI output.
         if (context.isCygwin()) {
-            Boolean exact = tryTestT(fd);
+            Boolean exact = shellProbe.apply(fd);
             if (exact != null) {
                 return exact;
             }
@@ -137,9 +159,19 @@ public final class TtyDetect {
         if (context.isWindows()) {
             return isWindowsConsole(fd);
         }
+        // Fast path on supported POSIX hosts: one in-process isatty
+        // instead of a `sh -c "test -t"` child (#399). A completed call
+        // answers for the descriptor itself, including valid negatives;
+        // only a missing capability (null) falls through to the shell.
+        if (context.isFfmPosixSupported()) {
+            Boolean fast = nativeProbe.apply(fd);
+            if (fast != null) {
+                return fast;
+            }
+        }
         // Exact per-fd answer wherever sh exists (all POSIX, all Java
         // versions, no native access needed).
-        Boolean exact = tryTestT(fd);
+        Boolean exact = shellProbe.apply(fd);
         if (exact != null) {
             return exact;
         }
