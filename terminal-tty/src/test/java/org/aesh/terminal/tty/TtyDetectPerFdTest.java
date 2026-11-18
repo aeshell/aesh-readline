@@ -31,6 +31,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.aesh.terminal.utils.OSUtils;
+import org.aesh.terminal.utils.PlatformContext;
 import org.junit.AfterClass;
 import org.junit.Assume;
 import org.junit.Test;
@@ -73,6 +74,7 @@ public class TtyDetectPerFdTest {
     private static final class Verdict {
         String tty;
         String shell;
+        String readlink;
         boolean overlay;
         boolean nativeEnabled;
         String lib;
@@ -208,6 +210,28 @@ public class TtyDetectPerFdTest {
         for (int fd = 0; fd <= 2; fd++) {
             assertEquals("fd " + fd + " must match test -t",
                     shellGroundTruth(fd), TtyDetect.isTty(fd));
+        }
+    }
+
+    @Test
+    public void testReadlinkAgreesWithShellOnOwnDescriptors() throws Exception {
+        // The harness's own stdio proves the agreement on whatever the CI
+        // machine provides (PTY, files, pipes): a non-null readlink answer
+        // must match test -t for the same inherited descriptor.
+        if (OSUtils.IS_WINDOWS) {
+            for (int fd = 0; fd <= 2; fd++) {
+                assertTrue("Windows has no readlink descriptors, fd=" + fd,
+                        TtyDetect.tryReadlinkTty(fd, PlatformContext.system()) == null);
+            }
+            return;
+        }
+        assumePosixSh();
+        for (int fd = 0; fd <= 2; fd++) {
+            Boolean link = TtyDetect.tryReadlinkTty(fd, PlatformContext.system());
+            if (link != null) {
+                assertEquals("readlink must agree with test -t for fd " + fd,
+                        shellGroundTruth(fd), link.booleanValue());
+            }
         }
     }
 
@@ -480,6 +504,7 @@ public class TtyDetectPerFdTest {
         String tty = null;
         String shell = null;
         String identity = null;
+        String readlink = null;
         for (String line : content.split("\\r?\\n")) {
             if (line.startsWith("0:")) {
                 tty = line.trim();
@@ -487,9 +512,11 @@ public class TtyDetectPerFdTest {
                 shell = line.substring("shell ".length()).trim();
             } else if (line.startsWith("identity ")) {
                 identity = line.trim();
+            } else if (line.startsWith("readlink 0:")) {
+                readlink = line.substring("readlink ".length()).trim();
             }
         }
-        if (tty == null || shell == null || identity == null) {
+        if (tty == null || shell == null || identity == null || readlink == null) {
             fail("probe report incomplete (" + describe + ", " + mode + "):\n" + tail(content, 2000));
         }
         Verdict verdict = new Verdict();
@@ -503,7 +530,62 @@ public class TtyDetectPerFdTest {
         verdict.overlay = Boolean.parseBoolean(tokens[1].substring("overlay=".length()));
         verdict.nativeEnabled = Boolean.parseBoolean(tokens[2].substring("native=".length()));
         verdict.lib = tokens[3].substring("lib=".length());
+        verdict.readlink = readlink;
         return verdict;
+    }
+
+    /**
+     * Assert the readlink answers agree with ground truth per fd. A null
+     * readlink answer (unknown shape, closed fd) always agrees; a non-null
+     * one must match the shell line where the shell answered, otherwise
+     * the known matrix expectation. This pins the pre-check table on every
+     * matrix shape without ever asserting a spawn happened.
+     */
+    private static void assertReadlinkAgrees(String describe, NativeMode mode, Verdict verdict,
+            String expectedTty) {
+        String where = "(mode=" + mode + ", packaged=" + verdict.packaged + ", " + describe + ")";
+        Boolean[] readlink = parseFdAnswers(verdict.readlink, "readlink", describe, mode);
+        Boolean[] expected = parseFdAnswers(expectedTty, "expected", describe, mode);
+        Boolean[] shell = parseFdAnswers(verdict.shell, "shell", describe, mode);
+        boolean shellAvailable = false;
+        for (Boolean answer : shell) {
+            if (answer != null) {
+                shellAvailable = true;
+            }
+        }
+        String[] names = { "0", "1", "2", "999" };
+        for (int i = 0; i < 4; i++) {
+            if (readlink[i] == null) {
+                continue;
+            }
+            Boolean reference = expected[i];
+            if (shellAvailable && shell[i] != null) {
+                reference = shell[i];
+            }
+            assertEquals("readlink must agree with ground truth, fd=" + names[i] + " " + where,
+                    reference, readlink[i]);
+        }
+    }
+
+    private static Boolean[] parseFdAnswers(String line, String kind, String describe, NativeMode mode) {
+        String[] tokens = line.trim().split(" ");
+        if (tokens.length != 4 || !tokens[0].startsWith("0:") || !tokens[1].startsWith("1:")
+                || !tokens[2].startsWith("2:") || !tokens[3].startsWith("999:")) {
+            fail("probe " + kind + " line malformed (" + describe + ", " + mode + "): " + line);
+        }
+        Boolean[] answers = new Boolean[4];
+        String[] names = { "0:", "1:", "2:", "999:" };
+        for (int i = 0; i < 4; i++) {
+            String value = tokens[i].substring(names[i].length());
+            if ("null".equals(value)) {
+                answers[i] = null;
+            } else if ("true".equals(value) || "false".equals(value)) {
+                answers[i] = Boolean.valueOf(value);
+            } else {
+                fail("probe " + kind + " answer malformed (" + describe + ", " + mode + "): " + line);
+            }
+        }
+        return answers;
     }
 
     /**
@@ -587,6 +669,7 @@ public class TtyDetectPerFdTest {
         Verdict verdict = parseVerdict(readReport(report, describe, mode, output), describe, mode);
         verdict.packaged = cp.packaged;
         assertVerdict(mode, verdict, expectedTty, expectedShell);
+        assertReadlinkAgrees(describe, mode, verdict, expectedTty);
         ptyMatrixRuns.incrementAndGet();
     }
 
@@ -621,6 +704,7 @@ public class TtyDetectPerFdTest {
         Verdict verdict = parseVerdict(readReport(report, describe, mode, output), describe, mode);
         verdict.packaged = cp.packaged;
         assertVerdict(mode, verdict, expected, expected);
+        assertReadlinkAgrees(describe, mode, verdict, expected);
         directMatrixRuns.incrementAndGet();
     }
 
@@ -669,8 +753,7 @@ public class TtyDetectPerFdTest {
      * its own agreement grandchildren skipped. Only {@code TtyDetect}'s own
      * subprocess use can reach the marker.
      */
-    private static void runNoSpawnCase(NativeMode mode, File pathPrefix, File marker,
-            String... probeArgs) throws Exception {
+    private static void runNoSpawnCase(NativeMode mode, File pathPrefix, File marker) throws Exception {
         // Same native-image reason as runPtyCase: no java launcher there.
         Assume.assumeFalse("child-JVM matrix runs in JVM suites only", isNativeImage());
         ChildClassPath cp = childClassPath();
@@ -680,7 +763,7 @@ public class TtyDetectPerFdTest {
         stdin.deleteOnExit();
         stdout.deleteOnExit();
         stderr.deleteOnExit();
-        ProcessBuilder builder = new ProcessBuilder(childArgv(mode, cp, probeArgs));
+        ProcessBuilder builder = new ProcessBuilder(childArgv(mode, cp));
         builder.redirectInput(stdin);
         builder.redirectOutput(stdout);
         builder.redirectError(stderr);
@@ -701,6 +784,56 @@ public class TtyDetectPerFdTest {
         verdict.packaged = cp.packaged;
         assertVerdict(mode, verdict, "0:false 1:false 2:false 999:false",
                 "0:null 1:null 2:null 999:null");
+        assertReadlinkAgrees(describe, mode, verdict, "0:false 1:false 2:false 999:false");
+        directMatrixRuns.incrementAndGet();
+    }
+
+    /**
+     * Run a probe child whose stdio the inner shell reshapes first — closed
+     * or deleted descriptors the plain redirect API cannot express — with
+     * the same marker, report, and silence discipline as
+     * {@link #runNoSpawnCase}. The reshaping runs before the probe java
+     * command in one {@code sh -c} wrapper; the outer redirections only
+     * backstop file descriptors the inner shell leaves alone.
+     */
+    private static void runWrappedProbeCase(NativeMode mode, File pathPrefix, File marker,
+            String stdioSetup, String describe, String... probeArgs) throws Exception {
+        // Same native-image reason as runPtyCase: no java launcher there.
+        Assume.assumeFalse("child-JVM matrix runs in JVM suites only", isNativeImage());
+        ChildClassPath cp = childClassPath();
+        File stdin = File.createTempFile("tty-stdin-", ".txt");
+        File stdout = File.createTempFile("tty-stdout-", ".txt");
+        File stderr = File.createTempFile("tty-stderr-", ".txt");
+        stdin.deleteOnExit();
+        stdout.deleteOnExit();
+        stderr.deleteOnExit();
+        List<String> argv = new ArrayList<String>();
+        argv.add("sh");
+        argv.add("-c");
+        argv.add(stdioSetup + "; " + joinShell(childArgv(mode, cp, probeArgs)));
+        ProcessBuilder builder = new ProcessBuilder(argv);
+        builder.redirectInput(stdin);
+        builder.redirectOutput(stdout);
+        builder.redirectError(stderr);
+        File report = tempReport("tty-wrapped-");
+        builder.environment().put(TtyFdProbe.REPORT_ENV, report.getAbsolutePath());
+        builder.environment().put(TtyFdProbe.SKIP_SHELL_ENV, "1");
+        if (marker != null) {
+            builder.environment().put(SPAWN_MARKER_ENV, marker.getAbsolutePath());
+            String path = builder.environment().get("PATH");
+            builder.environment().put("PATH",
+                    pathPrefix.getAbsolutePath() + File.pathSeparator + (path == null ? "" : path));
+        }
+        scrubDisabledEnv(builder, mode);
+        Process process = builder.start();
+        Drain drain = new Drain(process.getInputStream());
+        awaitChild(process, drain, describe, mode);
+        String output = drain.join("wrapped probe child " + describe);
+        Verdict verdict = parseVerdict(readReport(report, describe, mode, output), describe, mode);
+        verdict.packaged = cp.packaged;
+        assertVerdict(mode, verdict, "0:false 1:false 2:false 999:false",
+                "0:null 1:null 2:null 999:null");
+        assertReadlinkAgrees(describe, mode, verdict, "0:false 1:false 2:false 999:false");
         directMatrixRuns.incrementAndGet();
     }
 
@@ -780,19 +913,13 @@ public class TtyDetectPerFdTest {
     }
 
     @Test
-    public void testNativeNegativePerformsNoSubprocess() throws Exception {
-        // A valid native negative must perform no subprocess: prove it with
-        // a marker sh first on the child's PATH. The child's own agreement
-        // grandchildren are skipped, so only TtyDetect's own `test -t` use
-        // can write to the marker. The denied mode is the control proving
-        // the fixture detects spawns (exactly the three standard fds).
+    public void testFileDescriptorsPerformNoSubprocess() throws Exception {
+        // Classified descriptors need no subprocess: regular files answer
+        // through readlink on every JDK, in both native modes. Prove it
+        // with a marker sh first on the child's PATH. The child's own
+        // agreement grandchildren are skipped, so only TtyDetect's own
+        // subprocess use could write to the marker.
         assumePosixSh();
-        Assume.assumeTrue("no-spawn proof needs the Java 22+ FFM overlay", isJava22OrLater());
-        // The overlay must be in the classpath the child will actually
-        // resolve: under the native compatibility deletion the exploded
-        // child falls back to the shell and spawning is correct behavior.
-        Assume.assumeTrue("no-spawn proof needs the FFM overlay in the child classpath",
-                expectedOverlay(childClassPath().packaged));
         File realSh = new File("/bin/sh").canExecute() ? new File("/bin/sh")
                 : new File("/usr/bin/sh");
         File bindir = Files.createTempDirectory("tty-nosspawn-").toFile();
@@ -801,26 +928,33 @@ public class TtyDetectPerFdTest {
         marker.deleteOnExit();
         writeMarkerSh(bindir, marker, realSh).deleteOnExit();
         runNoSpawnCase(NativeMode.ENABLED, bindir, marker);
-        assertEquals("enabled FFM path must not spawn sh; marker:\n" + readMarker(marker, "enabled"),
+        assertEquals("readlink answers need no spawn; marker:\n" + readMarker(marker, "enabled"),
                 "", readMarker(marker, "enabled"));
         runNoSpawnCase(NativeMode.DISABLED, bindir, marker);
-        String[] invocations = readMarker(marker, "disabled").trim().split("\\r?\\n");
-        assertEquals("denied fallback must spawn exactly the three standard fds; marker:\n"
-                + readMarker(marker, "disabled"), 3, invocations.length);
-        for (String invocation : invocations) {
-            assertTrue("marker must show test -t use, was: " + invocation,
-                    invocation.contains("test -t"));
-        }
+        assertEquals("readlink answers need no spawn; marker:\n" + readMarker(marker, "disabled"),
+                "", readMarker(marker, "disabled"));
+    }
+
+    @Test
+    public void testClosedStderrHeadlessReportsNonTty() throws Exception {
+        // A closed fd cannot be readlinked: it may stay closed or be reused
+        // by JVM startup, but the answer is false either way — via the
+        // shell fallback when still closed, via readlink when reused.
+        // No marker assertion here: reuse makes the spawn count racy.
+        // Headless, unlike the PTY matrix row, so every CI shape covers it.
+        assumePosixSh();
+        runWrappedProbeCase(NativeMode.ENABLED, null, null, "exec 2>&-", "closed-stderr");
+        runWrappedProbeCase(NativeMode.DISABLED, null, null, "exec 2>&-", "closed-stderr");
     }
 
     @Test
     public void testCombinedProbeSpawnsOnce() throws Exception {
-        // The combined shell probe answers stdout+stderr with a single
-        // child: prove the spawn count with a marker sh. Cached mode calls
-        // the caching convenience methods (stdin alone, then the combined
-        // pair); agreement grandchildren are skipped so only TtyDetect's
-        // own use reaches the marker. Works on every JDK: the combined
-        // probe itself is plain sh, no FFM needed.
+        // Unknown-shape stdio (deleted temp files) forces the shell path:
+        // stdout+stderr must share one compound child instead of two.
+        // Deleted files read as unknown (their stat fails after removal)
+        // while test -t still answers them as plain non-terminals.
+        // Pre-22 runtimes have no FFM overlay, so the enabled child spawns
+        // the same pair there.
         assumePosixSh();
         File realSh = new File("/bin/sh").canExecute() ? new File("/bin/sh")
                 : new File("/usr/bin/sh");
@@ -829,10 +963,18 @@ public class TtyDetectPerFdTest {
         File marker = File.createTempFile("tty-spawn-marker-", ".log");
         marker.deleteOnExit();
         writeMarkerSh(bindir, marker, realSh).deleteOnExit();
-        runNoSpawnCase(NativeMode.DISABLED, bindir, marker, "cached");
-        String[] invocations = readMarker(marker, "combined").trim().split("\\r?\\n");
+        String deletedStdio = "T=$(mktemp) || exit 99; exec 0<>\"$T\" 1<>\"$T\" 2<>\"$T\"; rm -f \"$T\"";
+        if (isJava22OrLater() && expectedOverlay(childClassPath().packaged)) {
+            runWrappedProbeCase(NativeMode.ENABLED, bindir, marker, deletedStdio, "combined-deleted",
+                    "cached");
+            assertEquals("FFM answers need no spawn; marker:\n" + readMarker(marker, "enabled"),
+                    "", readMarker(marker, "enabled"));
+        }
+        runWrappedProbeCase(NativeMode.DISABLED, bindir, marker, deletedStdio, "combined-deleted",
+                "cached");
+        String[] invocations = readMarker(marker, "disabled").trim().split("\\r?\\n");
         assertEquals("combined probe must answer the pair with one child; marker:\n"
-                + readMarker(marker, "combined"), 2, invocations.length);
+                + readMarker(marker, "disabled"), 2, invocations.length);
         boolean single = false;
         boolean compound = false;
         for (String invocation : invocations) {
@@ -843,9 +985,9 @@ public class TtyDetectPerFdTest {
                 compound = true;
             }
         }
-        assertTrue("stdin answers alone; marker:\n" + readMarker(marker, "combined"), single);
+        assertTrue("stdin answers alone; marker:\n" + readMarker(marker, "disabled"), single);
         assertTrue("stdout+stderr share one compound child; marker:\n"
-                + readMarker(marker, "combined"), compound);
+                + readMarker(marker, "disabled"), compound);
     }
 
     @Test

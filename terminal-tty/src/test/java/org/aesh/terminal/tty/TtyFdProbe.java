@@ -34,6 +34,9 @@ import org.aesh.terminal.utils.PlatformContext;
  * when the shell probe cannot answer);
  * <li>the identity line proving which binding ran, e.g.
  * {@code identity overlay=true native=true lib=file:/.../terminal-tty-....jar}.
+ * <li>the readlink line, e.g. {@code readlink 0:false 1:true 2:true 999:null}:
+ * the pre-check answers for the same inherited descriptors ({@code null}
+ * where the shape is unknown), asserted to agree with the shell line.
  * </ol>
  * Every line goes to stderr and, when {@code TTY_FD_PROBE_REPORT} points at a
  * file, is also written there. The file is the only channel that survives
@@ -117,12 +120,17 @@ public final class TtyFdProbe {
         System.err.println(tty);
         System.err.println(shell);
         System.err.println(identity);
+        String readlink = "readlink 0:" + TtyDetect.tryReadlinkTty(0, context)
+                + " 1:" + TtyDetect.tryReadlinkTty(1, context)
+                + " 2:" + TtyDetect.tryReadlinkTty(2, context)
+                + " 999:" + TtyDetect.tryReadlinkTty(999, context);
+        System.err.println(readlink);
         String report = System.getenv(REPORT_ENV);
         if (report != null) {
             OutputStream out = null;
             try {
                 out = new FileOutputStream(report, false);
-                String body = tty + "\n" + shell + "\n" + identity + "\n";
+                String body = tty + "\n" + shell + "\n" + identity + "\n" + readlink + "\n";
                 out.write(body.getBytes("UTF-8"));
                 out.flush();
             } catch (Exception e) {

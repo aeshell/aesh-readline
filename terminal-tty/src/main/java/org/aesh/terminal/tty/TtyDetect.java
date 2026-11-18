@@ -21,6 +21,9 @@ package org.aesh.terminal.tty;
 
 import java.io.Console;
 import java.lang.reflect.Method;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.function.IntFunction;
@@ -40,13 +43,16 @@ import org.aesh.terminal.utils.PlatformContext;
  * descriptor. Both answer per-fd, so mixed redirection (e.g. tty
  * stdout with piped stdin) reports each stream truthfully.
  * <p>
- * POSIX selection policy (#399): on supported hosts (Linux/macOS on
- * x86_64/aarch64) with Java 22+ and native access enabled, one in-process
- * {@code isatty} downcall answers first and a completed call is final,
- * including valid negatives — no subprocess runs. Only a missing
- * capability (older Java, denied native access, unsupported host) falls
- * through to the bounded {@code test -t} probe. Cygwin/MSYS and native
- * Windows keep their existing branches and never consult the fast path.
+ * POSIX selection policy (#399, #400): where the descriptor entry already
+ * classifies the fd (pipes, redirections, terminals visible through the
+ * filesystem), a readlink answer comes first and skips every probe.
+ * Otherwise, on supported hosts (Linux/macOS on x86_64/aarch64) with
+ * Java 22+ and native access enabled, one in-process {@code isatty}
+ * downcall answers and a completed call is final, including valid
+ * negatives — no subprocess runs. Only when neither can answer (older
+ * Java, denied native access, unsupported host, unknown descriptor)
+ * does the bounded {@code test -t} probe run. Cygwin/MSYS and native
+ * Windows keep their existing branches and never consult these paths.
  * Where the platform cannot answer per-fd (no {@code sh} available),
  * detection falls back to the whole-console {@code Console.isTerminal()}
  * approximation and finally the {@code System.console()} heuristic, in
@@ -100,34 +106,44 @@ public final class TtyDetect {
     /**
      * Check if the given file descriptor is connected to a terminal.
      * <p>
-     * Each descriptor is examined on its own: Windows probes the matching
-     * standard handle, POSIX tries the in-process {@code isatty} fast path
-     * where available and otherwise {@code test -t} for the descriptor, so
-     * mixed redirection reports each stream truthfully. Descriptors other
-     * than 0-2, and negative values, always report false without spawning
-     * anything. Where POSIX cannot run {@code sh}, the whole-console
-     * {@code Console.isTerminal()} approximation applies instead.
+     * Each descriptor is examined on its own: a readlink answer comes
+     * first where the platform exposes one, then the in-process
+     * {@code isatty} fast path where available and otherwise
+     * {@code test -t} for the descriptor, so mixed redirection reports
+     * each stream truthfully. Descriptors other than 0-2, and negative
+     * values, always report false without spawning anything. Where POSIX
+     * cannot run {@code sh}, the whole-console {@code Console.isTerminal()}
+     * approximation applies instead.
      *
      * @param fd the file descriptor (0=stdin, 1=stdout, 2=stderr)
      * @return true if the file descriptor is connected to a terminal
      */
     public static boolean isTty(int fd) {
-        return isTty(fd, PlatformContext.system());
+        PlatformContext context = PlatformContext.system();
+        Boolean link = tryReadlinkTty(fd, context);
+        if (link != null) {
+            return link;
+        }
+        return isTty(fd, context);
     }
 
     /**
      * Check if the given file descriptor is connected to a terminal,
      * with the OS branch taken from captured platform facts.
      * <p>
-     * Only the OS branch is captured: liveness itself (per-fd
-     * {@code test -t}, console handles, {@code Console.isTerminal()}) is
-     * always probed fresh, since redirection can change between calls.
+     * Only the OS branch is captured: liveness itself (readlink answers,
+     * per-fd {@code test -t}, console handles, {@code Console.isTerminal()})
+     * is always probed fresh, since redirection can change between calls.
      *
      * @param fd the file descriptor (0=stdin, 1=stdout, 2=stderr)
      * @param context the captured platform facts
      * @return true if the file descriptor is connected to a terminal
      */
     public static boolean isTty(int fd, PlatformContext context) {
+        Boolean link = tryReadlinkTty(fd, context);
+        if (link != null) {
+            return link;
+        }
         return isTty(fd, context, PosixTtyProbe::tryIsTty, f -> tryTestT(f));
     }
 
@@ -332,6 +348,131 @@ public final class TtyDetect {
             builder.redirectError(ProcessBuilder.Redirect.INHERIT);
         }
         return builder;
+    }
+
+    /**
+     * Answer a standard descriptor from its /proc (or /dev/fd) symlink,
+     * without spawning (#400).
+     * <p>
+     * A single {@code readlink} classifies the common shapes: pipes,
+     * sockets and {@code /dev/null} are never terminals, pty slaves
+     * always are, regular files never are. Anything else — unknown
+     * devices, serial consoles, unreadable links, unsupported platforms
+     * — declines with null and the caller falls through to the FFM and
+     * shell probes unchanged. Only answers when the answer is certain;
+     * never guesses.
+     *
+     * @param fd the file descriptor (0=stdin, 1=stdout, 2=stderr)
+     * @param context the captured platform facts
+     * @return TRUE/FALSE for a classified shape, or null when unknown
+     */
+    static Boolean tryReadlinkTty(int fd, PlatformContext context) {
+        if (fd < FD_STDIN || fd > FD_STDERR) {
+            return null;
+        }
+        // Cross-runtime descriptors stay out: a POSIX view of a Windows
+        // or Cygwin handle answers nothing about its own runtime (#399).
+        if (context.isWindows()) {
+            return null;
+        }
+        String dir;
+        if (context.isLinux()) {
+            dir = "/proc/self/fd/";
+        } else if (context.isMac()) {
+            dir = "/dev/fd/";
+        } else {
+            return null;
+        }
+        String target;
+        try {
+            target = Files.readSymbolicLink(Paths.get(dir + fd)).toString();
+        } catch (Exception e) {
+            return null;
+        }
+        // A link to another fd entry resolves to the concrete target with
+        // one extra hop (e.g. through /dev/stdin); anything odd declines.
+        if (target.startsWith("/proc/self/fd/") || target.startsWith("/dev/fd/")) {
+            try {
+                target = Files.readSymbolicLink(Paths.get(target)).toString();
+            } catch (Exception e) {
+                return null;
+            }
+        }
+        if (target.startsWith("pipe:") || target.startsWith("socket:")) {
+            return Boolean.FALSE;
+        }
+        if (target.equals("/dev/null")) {
+            return Boolean.FALSE;
+        }
+        boolean statOk = true;
+        boolean regular = false;
+        boolean directory = false;
+        boolean other = false;
+        try {
+            BasicFileAttributes attrs = Files.readAttributes(Paths.get(target), BasicFileAttributes.class);
+            regular = attrs.isRegularFile();
+            directory = attrs.isDirectory();
+            other = attrs.isOther();
+        } catch (Exception e) {
+            statOk = false;
+        }
+        return classifyLinkTarget(target, statOk, regular, directory, other);
+    }
+
+    /**
+     * Classify one symlink target. Pure function of its arguments so the
+     * table is unit-testable without touching the filesystem.
+     * <p>
+     * Only certain shapes answer: anonymously piped, socket-bound and
+     * null descriptors are never terminals; a pty slave behind a
+     * confirmed non-regular, non-directory target always is. Everything
+     * else — serial consoles, /dev/tty itself, stray devices, dangling
+     * links, unreadable targets — is UNKNOWN (null) and falls through to
+     * the regular probes. A wrong answer here would be worse than a
+     * spawn, so the unknown set is deliberately wide.
+     *
+     * @param target the readlink result, or null
+     * @param statOk whether the target statted successfully
+     * @param regular whether the final target is a regular file
+     * @param directory whether the final target is a directory
+     * @param other whether the final target is neither file, dir nor link
+     * @return TRUE/FALSE for certain shapes, null when unknown
+     */
+    static Boolean classifyLinkTarget(String target, boolean statOk, boolean regular,
+            boolean directory, boolean other) {
+        if (target == null) {
+            return null;
+        }
+        if (target.startsWith("pipe:") || target.startsWith("socket:")) {
+            return Boolean.FALSE;
+        }
+        if (target.equals("/dev/null")) {
+            return Boolean.FALSE;
+        }
+        if (!statOk) {
+            return null;
+        }
+        if (regular || directory) {
+            // Neither regular files nor directories are terminal devices.
+            return Boolean.FALSE;
+        }
+        if (target.startsWith("/dev/pts/")) {
+            // A pty slave is a terminal by definition. Anything mounted
+            // over the path that is not a device (files, directories) is
+            // handled above; what remains is the device itself.
+            return Boolean.TRUE;
+        }
+        if (target.startsWith("/dev/tty") || target.equals("/dev/console")) {
+            // Serial consoles, /dev/tty itself, the system console: real
+            // terminals the table does not claim — let the probes answer.
+            return null;
+        }
+        if (other) {
+            // FIFOs, stray character devices, anything else that is
+            // definitely not a terminal device behind the above allowlist.
+            return Boolean.FALSE;
+        }
+        return null;
     }
 
     /**
@@ -563,6 +704,7 @@ public final class TtyDetect {
      * @return true if stdout is a terminal (not piped/redirected)
      */
     static boolean isStdoutTty(PlatformContext context) {
+        fillReadlinkStdCaches(context);
         Function<int[], Boolean[]> combined = shouldCombine(context) ? TtyDetect::tryCombinedTestT : null;
         return isStdoutTty(context, PosixTtyProbe::tryIsTty, f -> tryTestT(f), combined);
     }
@@ -622,8 +764,31 @@ public final class TtyDetect {
      * @return true if stderr is a terminal (not piped/redirected)
      */
     static boolean isStderrTty(PlatformContext context) {
+        fillReadlinkStdCaches(context);
         Function<int[], Boolean[]> combined = shouldCombine(context) ? TtyDetect::tryCombinedTestT : null;
         return isStderrTty(context, PosixTtyProbe::tryIsTty, f -> tryTestT(f), combined);
+    }
+
+    /**
+     * Fill the stdout/stderr caches from certain readlink answers, before
+     * any probe that could spawn or initialize native bindings runs.
+     * Answers nothing on its own when the descriptors stay unclassified.
+     *
+     * @param context the captured platform facts
+     */
+    private static void fillReadlinkStdCaches(PlatformContext context) {
+        if (cachedStdout == -1) {
+            Boolean link = tryReadlinkTty(FD_STDOUT, context);
+            if (link != null) {
+                cachedStdout = link ? 1 : 0;
+            }
+        }
+        if (cachedStderr == -1) {
+            Boolean link = tryReadlinkTty(FD_STDERR, context);
+            if (link != null) {
+                cachedStderr = link ? 1 : 0;
+            }
+        }
     }
 
     /**
