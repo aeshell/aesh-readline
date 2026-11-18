@@ -175,8 +175,46 @@ the probe still creates its downcall handles on first use. Repeat these
 measurements on the deployment JVM rather than treating this machine's
 numbers as a startup budget for another process.
 
-### Detection baseline coverage (#379)
+### stty size without a controlling terminal (#401)
 
+`SttySizeProbe` warms up one `TerminalSizeQuery.querySttySize` call path
+then times a fixed number of repetitions in one JVM; the caller compares
+IDs and repeats the spawn-marker check separately. On Linux the
+no-argument query reads `/proc/self/stat` first and declines when
+`tty_nr` is zero, so a doomed `stty` child is never built and its
+`FileNotFoundException` (with stack walk) never happens. Answers are
+unchanged: every other outcome falls through to the existing probe.
+
+Measured on Linux x86_64, Temurin 25.0.4 without a controlling
+terminal, plain `java` (native access denied), 5 fresh JVMs per arm,
+20000-call warmed loops:
+
+| Cell | Per call med (min-max) | `sh` spawns | `FileNotFoundException`s |
+|---|---|---|---|
+| baseline (spawn-or-fail) | 5.4 us (5.4-5.6) | 0 | thrown per call |
+| gated (read `/proc/self/stat`) | 8.0 us (8.0-8.2) | 0 | none |
+
+A marker-`sh` on `PATH` stays empty for both arms: without a controlling
+terminal the child was never spawned even before this change — the
+failure already happened in-process at `ProcessBuilder.start`.
+JFR `jdk.JavaExceptionThrow` counts confirm it: 29 sampled
+`FileNotFoundException` throws in the baseline run against zero in the
+gated run. The gate costs a few microseconds of file I/O per call, so
+on shallow warmed stacks it roughly ties a caught exception; its value
+is structural rather than arithmetic — no stack walks in the hot path,
+no dependence on call-stack depth, deterministic behavior, and the
+expensive path (real spawn) still pays only where a terminal exists.
+Warmed spans stay in the single-digit microseconds either way; the
+absolute numbers above are host-specific, so re-run before quoting.
+
+```bash
+mvn clean package -Pbenchmark -pl benchmark -am -DskipTests
+# denied native access matches the no-flag headless setup from #400
+java -cp benchmark/target/benchmarks.jar \
+  org.aesh.terminal.detect.SttySizeProbe 20000 20000
+```
+
+### Detection baseline coverage (#379)
 The transport measurements above are not a baseline for complete terminal
 detection or Quarkus startup. Before changing detection defaults, measure
 the following operations separately. This inventory describes production

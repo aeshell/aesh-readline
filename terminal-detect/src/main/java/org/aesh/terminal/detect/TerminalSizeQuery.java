@@ -20,6 +20,7 @@
 package org.aesh.terminal.detect;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
@@ -35,9 +36,13 @@ import org.aesh.terminal.tty.impl.WinConsoleNative;
  * then a bounded standalone {@code stty size} parse, then empty.
  * The {@code stty} path never touches raw mode: it runs
  * {@code stty size} redirected from the tty, unlike the probe
- * sessions in {@link SttyProbeTransport}. Windows reads the output
- * console screen buffer through the same {@code WinConsoleNative}
- * facade the probe transports use (FFM overlay on 22+, JNI below).
+ * sessions in {@link SttyProbeTransport}. The child never starts
+ * where it cannot succeed: on Linux a {@code /proc/self/stat} check
+ * declines up front when the process has no controlling terminal, so
+ * neither a doomed open nor its exception ever happens.
+ * Windows reads the output console screen buffer through the same
+ * {@code WinConsoleNative} facade the probe transports use (FFM overlay
+ * on 22+, JNI below).
  * No result is cached: {@code SIGWINCH} can change the answer
  * between calls.
  * <p>
@@ -159,11 +164,124 @@ final class TerminalSizeQuery {
 
     /**
      * Try the bounded {@code stty size} fallback.
+     * <p>
+     * On Linux without a controlling terminal this declines before the
+     * child exists (see {@link #hasNoControllingTerminal()}): opening
+     * {@code /dev/tty} could only fail, so neither the process launch
+     * nor its failure is attempted.
      *
      * @return {@code [width, height]}, or null
      */
     static int[] querySttySize() {
+        if (hasNoControllingTerminal()) {
+            return null;
+        }
         return querySttySize(DEV_TTY, "stty", STTY_TIMEOUT_MS);
+    }
+
+    /**
+     * Whether this process provably has no controlling terminal.
+     * <p>
+     * True only when Linux {@code /proc/self/stat} parses to a zero
+     * {@code tty_nr} field: opening {@code /dev/tty} could only fail
+     * with {@code ENXIO}. Every other outcome — non-Linux platform,
+     * unreadable proc file, unparseable content — answers false so the
+     * caller proceeds exactly as before.
+     *
+     * @return true only when a probe child would be doomed
+     */
+    static boolean hasNoControllingTerminal() {
+        String os = System.getProperty("os.name", "").toLowerCase();
+        if (!os.contains("linux")) {
+            return false;
+        }
+        // One small bounded read: the line is a few hundred bytes, so a
+        // single read gets it without buffer growth. Anything odd (no
+        // proc, short read, unreadable) proceeds as before.
+        byte[] buf = new byte[512];
+        int total = 0;
+        try (FileInputStream in = new FileInputStream("/proc/self/stat")) {
+            int n;
+            while (total < buf.length && (n = in.read(buf, total, buf.length - total)) != -1) {
+                total += n;
+            }
+        } catch (IOException | RuntimeException e) {
+            return false;
+        }
+        if (total <= 0) {
+            return false;
+        }
+        return hasNoControllingTerminal(new String(buf, 0, total, StandardCharsets.US_ASCII));
+    }
+
+    /**
+     * Parse one {@code /proc/self/stat} line for the controlling
+     * terminal. Pure function so the table is unit-testable without a
+     * controllable terminal: only an explicit zero {@code tty_nr} field
+     * answers true. The command name may itself contain spaces and
+     * parentheses, so the split starts after its closing paren.
+     *
+     * @param stat the proc stat line, or null
+     * @return true only when the line proves tty_nr is zero
+     */
+    static boolean hasNoControllingTerminal(String stat) {
+        if (stat == null) {
+            return false;
+        }
+        int commEnd = stat.lastIndexOf(')');
+        if (commEnd < 0) {
+            return false;
+        }
+        int pos = commEnd + 1;
+        int end = stat.length();
+        // Skip state, ppid, pgrp, session: tty_nr is the fifth field.
+        // No regex: the split cost dominates this path otherwise.
+        for (int field = 0; field < 4; field++) {
+            pos = skipBlank(stat, pos, end);
+            if (pos < 0) {
+                return false;
+            }
+            pos = skipField(stat, pos, end);
+            if (pos < 0) {
+                return false;
+            }
+        }
+        pos = skipBlank(stat, pos, end);
+        if (pos < 0) {
+            return false;
+        }
+        int valueStart = pos;
+        pos = skipField(stat, pos, end);
+        if (pos < 0) {
+            return false;
+        }
+        try {
+            return Long.parseLong(stat.substring(valueStart, pos)) == 0;
+        } catch (NumberFormatException e) {
+            return false;
+        }
+    }
+
+    private static int skipBlank(String stat, int pos, int end) {
+        while (pos < end) {
+            char c = stat.charAt(pos);
+            if (c != ' ' && c != '\t' && c != '\n' && c != '\r') {
+                return pos;
+            }
+            pos++;
+        }
+        return -1;
+    }
+
+    private static int skipField(String stat, int pos, int end) {
+        while (pos < end) {
+            char c = stat.charAt(pos);
+            if (c == ' ' || c == '\t' || c == '\n' || c == '\r') {
+                return pos;
+            }
+            pos++;
+        }
+        return -1;
     }
 
     /**

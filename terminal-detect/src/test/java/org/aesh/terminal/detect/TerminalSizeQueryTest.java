@@ -168,6 +168,71 @@ public class TerminalSizeQueryTest {
     }
 
     @Test
+    public void testNoControllingTerminalParsesStat() {
+        // tty_nr zero means no controlling terminal: skip the child.
+        assertTrue(TerminalSizeQuery.hasNoControllingTerminal(
+                "4164285 (cat) R 4164269 4164269 4164269 0 -1 4194304 0 0 0 0 0"));
+        // Any nonzero terminal number means proceed.
+        assertFalse(TerminalSizeQuery.hasNoControllingTerminal(
+                "4164285 (cat) R 4164269 4164269 4164269 34816 -1 4194304 0 0 0 0 0"));
+        // The command name may itself contain spaces and parentheses:
+        // the split must start after its closing paren.
+        assertTrue(TerminalSizeQuery.hasNoControllingTerminal(
+                "1234 (my (prog) v1) S 100 200 300 0 -1 4194304 0 0"));
+        assertFalse(TerminalSizeQuery.hasNoControllingTerminal(
+                "1234 (my (prog) v1) S 100 200 300 18 -1 4194304 0 0"));
+        // Anything unparseable proceeds instead of skipping blind.
+        assertFalse(TerminalSizeQuery.hasNoControllingTerminal(null));
+        assertFalse(TerminalSizeQuery.hasNoControllingTerminal(""));
+        assertFalse(TerminalSizeQuery.hasNoControllingTerminal("garbage without parens"));
+        assertFalse(TerminalSizeQuery.hasNoControllingTerminal("1234 (cat) R 1 2"));
+        assertFalse(TerminalSizeQuery.hasNoControllingTerminal("1234 (cat) R 1 2 x 4"));
+        assertFalse(TerminalSizeQuery.hasNoControllingTerminal("1234 (cat) R 1 2 3 -1"));
+    }
+
+    @Test
+    public void testNoControllingTerminalSkipsSpawn() throws Exception {
+        Assume.assumeTrue("pre-check is Linux-only",
+                System.getProperty("os.name", "").toLowerCase().contains("linux"));
+        final List<String> commands = new ArrayList<>();
+        ProcessRunner.setInstalled(
+                new ProcessRunner.RunnerTransport() {
+                    @Override
+                    public ProcessRunner.Result run(
+                            ProcessBuilder starter, long timeoutMs) {
+                        commands.add(String.join(" ",
+                                starter.command()));
+                        return new ProcessRunner.Result(0, false,
+                                "24 80\n".getBytes(
+                                        StandardCharsets.US_ASCII));
+                    }
+                });
+        try {
+            // Independent ground truth for this JVM: can /dev/tty open?
+            boolean openable = devTtyOpens();
+            int[] dims = TerminalSizeQuery.querySttySize();
+            if (!openable) {
+                assertNull("no controlling terminal must decline", dims);
+                assertTrue("doomed probe must not spawn: " + commands,
+                        commands.isEmpty());
+            } else {
+                assertEquals("controlling terminal must probe exactly once", 1, commands.size());
+                assertArrayEquals(new int[] { 80, 24 }, dims);
+            }
+        } finally {
+            ProcessRunner.setInstalled(null);
+        }
+    }
+
+    private static boolean devTtyOpens() {
+        try (java.io.FileInputStream in = new java.io.FileInputStream(TerminalSizeQuery.DEV_TTY)) {
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    @Test
     public void testMissingCommandDeclines() throws Exception {
         File device = new File(tmp.newFolder("stty-size-missing"),
                 "tty");
