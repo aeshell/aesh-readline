@@ -190,6 +190,25 @@ public final class WcWidth {
         return ((BMP_EMOJI_WIDE[offset >>> 6] >>> (offset & 63)) & 1L) != 0;
     }
 
+    /*
+     * Astral code points with Emoji_Presentation=Yes below U+1F300
+     * plus U+1F7F0 (Unicode emoji-data.txt). All 27 are East Asian Wide.
+     * Guarded to U+1F004..U+1F7F0 so other paths pay one range check.
+     * Regional indicators U+1F1E6..U+1F1FF stay width 1 by design.
+     */
+    private static boolean isSupplementaryEmojiWide(int ucs) {
+        if (ucs < 0x1F004 || ucs > 0x1F7F0) {
+            return false;
+        }
+        return ucs == 0x1F004 || ucs == 0x1F0CF || ucs == 0x1F18E ||
+                (ucs >= 0x1F191 && ucs <= 0x1F19A) ||
+                ucs == 0x1F201 || ucs == 0x1F21A || ucs == 0x1F22F ||
+                (ucs >= 0x1F232 && ucs <= 0x1F236) ||
+                (ucs >= 0x1F238 && ucs <= 0x1F23A) ||
+                (ucs >= 0x1F250 && ucs <= 0x1F251) ||
+                ucs == 0x1F7F0;
+    }
+
     /**
      * Determine the column width of an ISO 10646 character.
      * <p>
@@ -246,7 +265,8 @@ public final class WcWidth {
                                 (ucs >= 0x1fa70 && ucs <= 0x1faff) || /* Symbols and Pictographs Extended-A */
                                 (ucs >= 0x20000 && ucs <= 0x2fffd) ||
                                 (ucs >= 0x30000 && ucs <= 0x3fffd) ||
-                                isBmpEmojiWide(ucs))) ? 1 : 0);
+                                isBmpEmojiWide(ucs) ||
+                                isSupplementaryEmojiWide(ucs))) ? 1 : 0);
     }
 
 }

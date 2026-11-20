@@ -94,6 +94,39 @@ public class WcWidthTest {
     }
 
     @Test
+    public void testEmojiWidth_SupplementaryPresentation() {
+        // All 11 astral Emoji_Presentation ranges below U+1F300 plus U+1F7F0
+        int[][] ranges = {
+                { 0x1F004, 0x1F004 }, { 0x1F0CF, 0x1F0CF }, { 0x1F18E, 0x1F18E },
+                { 0x1F191, 0x1F19A }, { 0x1F201, 0x1F201 }, { 0x1F21A, 0x1F21A },
+                { 0x1F22F, 0x1F22F }, { 0x1F232, 0x1F236 }, { 0x1F238, 0x1F23A },
+                { 0x1F250, 0x1F251 }, { 0x1F7F0, 0x1F7F0 },
+        };
+        for (int[] range : ranges) {
+            for (int cp = range[0]; cp <= range[1]; cp++) {
+                assertEquals("U+" + Integer.toHexString(cp), 2, WcWidth.width(cp));
+            }
+        }
+    }
+
+    @Test
+    public void testSupplementaryNonEmoji_Width1() {
+        // Range neighbours without Emoji_Presentation stay width 1
+        assertEquals(1, WcWidth.width(0x1F003));
+        assertEquals(1, WcWidth.width(0x1F005));
+        assertEquals(1, WcWidth.width(0x1F190));
+        assertEquals(1, WcWidth.width(0x1F19B));
+        assertEquals(1, WcWidth.width(0x1F7EC));
+        assertEquals(1, WcWidth.width(0x1F7EF));
+        assertEquals(1, WcWidth.width(0x1F7F1));
+        // Regional indicators stay width 1 by design
+        assertEquals(1, WcWidth.width(0x1F1E6));
+        assertEquals(1, WcWidth.width(0x1F1FF));
+        // Existing text-default width 2 is preserved
+        assertEquals(2, WcWidth.width(0x1F321));
+    }
+
+    @Test
     public void testEmojiWidth_BmpPresentation() {
         // All 33 BMP Emoji_Presentation ranges from Unicode emoji-data.txt
         int[][] ranges = {
