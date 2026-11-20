@@ -159,6 +159,37 @@ public final class WcWidth {
         return false;
     }
 
+    /*
+     * BMP code points with Emoji_Presentation=Yes (Unicode emoji-data.txt).
+     * All 60 are East Asian Wide, so they render as two cells.
+     * Stored as a bit set over U+231A..U+2B55 (2108 code points, 33 words)
+     * so the common ASCII path pays nothing: this is only consulted after
+     * the existing wide ranges fail to match.
+     */
+    private static final int BMP_EMOJI_BASE = 0x231A;
+    private static final int BMP_EMOJI_END = 0x2B55;
+    private static final long[] BMP_EMOJI_WIDE = {
+            0x0000000000000003L, 0x0000000000000000L, 0x0000000000000000L,
+            0x0000000002478000L, 0x0000000000000000L, 0x0000000000000000L,
+            0x0000000000000000L, 0x0000000000000000L, 0x0000000000000000L,
+            0x0000000000000000L, 0x0000000000000000L, 0x0C00001800000000L,
+            0x03FFC00000000000L, 0x0200002000000000L, 0x04100C1800030080L,
+            0x000308090B010000L, 0x2E14000000004000L, 0x3800000000000000L,
+            0x0000002000400000L, 0x0000000000000000L, 0x0000000000000000L,
+            0x0000000000000000L, 0x0000000000000000L, 0x0000000000000000L,
+            0x0000000000000000L, 0x0000000000000000L, 0x0000000000000000L,
+            0x0000000000000000L, 0x0000000000000000L, 0x0000000000000000L,
+            0x0000000000000000L, 0x0000000000000000L, 0x0840000000000006L,
+    };
+
+    private static boolean isBmpEmojiWide(int ucs) {
+        if (ucs < BMP_EMOJI_BASE || ucs > BMP_EMOJI_END) {
+            return false;
+        }
+        int offset = ucs - BMP_EMOJI_BASE;
+        return ((BMP_EMOJI_WIDE[offset >>> 6] >>> (offset & 63)) & 1L) != 0;
+    }
+
     /**
      * Determine the column width of an ISO 10646 character.
      * <p>
@@ -214,7 +245,8 @@ public final class WcWidth {
                                 (ucs >= 0x1f900 && ucs <= 0x1f9ff) || /* Supplemental Symbols and Pictographs */
                                 (ucs >= 0x1fa70 && ucs <= 0x1faff) || /* Symbols and Pictographs Extended-A */
                                 (ucs >= 0x20000 && ucs <= 0x2fffd) ||
-                                (ucs >= 0x30000 && ucs <= 0x3fffd))) ? 1 : 0);
+                                (ucs >= 0x30000 && ucs <= 0x3fffd) ||
+                                isBmpEmojiWide(ucs))) ? 1 : 0);
     }
 
 }

@@ -385,7 +385,7 @@ public final class Buffer {
         int width = WcWidth.width(data);
         if (width == -1) {
             //todo: handle control chars...
-        } else if (width == 1) {
+        } else if (width == 1 || width == 2) {
             if (cursor < size)
                 System.arraycopy(line, cursor, line, cursor + 1, size - cursor);
             line[cursor++] = data;

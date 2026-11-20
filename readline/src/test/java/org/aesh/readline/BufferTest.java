@@ -131,6 +131,18 @@ public class BufferTest {
     }
 
     @Test
+    public void insertSingleWideChar() {
+        Buffer buffer = new Buffer(new Prompt(""));
+        List<int[]> outConsumer = new ArrayList<>();
+        buffer.insert(outConsumer::add, 0x2615, 100);
+        assertEquals(1, buffer.length());
+        assertEquals(0x2615, buffer.get(0));
+        buffer.insert(outConsumer::add, 0x4E00, 100);
+        assertEquals(2, buffer.length());
+        assertEquals(0x4E00, buffer.get(1));
+    }
+
+    @Test
     public void insertString() {
         Buffer buffer = new Buffer(new Prompt(": "));
         List<int[]> outConsumer = new ArrayList<>();
