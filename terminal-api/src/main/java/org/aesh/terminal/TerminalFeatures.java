@@ -26,7 +26,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.logging.Logger;
 
 import org.aesh.terminal.detect.ImageProtocol;
 import org.aesh.terminal.detect.ModeSupport;
@@ -70,8 +69,6 @@ import org.aesh.terminal.utils.TerminalColorCapability;
  * @see Connection#terminal()
  */
 public class TerminalFeatures {
-
-    private static final Logger LOGGER = Logger.getLogger(TerminalFeatures.class.getName());
 
     // EventDecoder updates the shared theme cache before invoking its handler.
     // This marker enables interception when no application callback was supplied.

@@ -52,11 +52,16 @@ public final class Parser {
     public static final char DOUBLE_QUOTE = '\"';
     /** Dollar sign character constant. */
     public static final char DOLLAR = '$';
-    private static final Pattern spaceEscapedPattern = Pattern.compile("\\\\ ");
-    private static final Pattern ansiPattern = Pattern
-            .compile("\\u001B(?:\\[[\\?]?[0-9;]*[a-zA-Z]?|\\][^\\u0007\\u001B]*(?:\\u0007|\\u001B\\\\)|[0-9=><A-Za-z])");
-    // command text which starts with '#' is a comment
-    private static final Pattern commentPattern = Pattern.compile("^(\\s*)(#)(.*)");
+
+    private static final class AnsiPattern {
+        static final Pattern INSTANCE = Pattern
+                .compile("\\u001B(?:\\[[\\?]?[0-9;]*[a-zA-Z]?|\\][^\\u0007\\u001B]*(?:\\u0007|\\u001B\\\\)|[0-9=><A-Za-z])");
+    }
+
+    private static final class CommentPattern {
+        // command text which starts with '#' is a comment
+        static final Pattern INSTANCE = Pattern.compile("^(\\s*)(#)(.*)");
+    }
 
     /**
      * Format completions so that they look similar to GNU Readline
@@ -567,7 +572,7 @@ public final class Parser {
         boolean singleQuote = false;
         boolean escapedByBackSlash = false;
         // do not parse comment
-        if (commentPattern.matcher(text).find())
+        if (CommentPattern.INSTANCE.matcher(text).find())
             return false;
 
         for (int i = 0; i < text.length(); i++) {
@@ -613,7 +618,7 @@ public final class Parser {
      * @return true if the word contains at least one escaped space
      */
     public static boolean doWordContainEscapedSpace(String word) {
-        return spaceEscapedPattern.matcher(word).find();
+        return word.contains(spaceEscapedMatcher);
     }
 
     /**
@@ -687,7 +692,7 @@ public final class Parser {
      * @return the word with escaped spaces converted to regular spaces
      */
     public static String switchEscapedSpacesToSpacesInWord(String word) {
-        return spaceEscapedPattern.matcher(word).replaceAll(SPACE);
+        return word.replace(spaceEscapedMatcher, SPACE);
     }
 
     /**
@@ -814,7 +819,7 @@ public final class Parser {
         if (text.indexOf('\u001B') < 0) {
             return text;
         }
-        return ansiPattern.matcher(text).replaceAll("");
+        return AnsiPattern.INSTANCE.matcher(text).replaceAll("");
     }
 
     /**

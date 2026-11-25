@@ -69,6 +69,11 @@ public class FfmProbeTransportAvailabilityTest {
             // Without a terminal the transport can never be available
             assertTrue(!available);
         }
+        if (TerminalSizeQuery.hasNoControllingTerminal()) {
+            // On Linux without a controlling terminal, availability must
+            // decline before touching FFM handles or opening /dev/tty.
+            assertTrue("FFM probe transport must decline without controlling terminal", !available);
+        }
     }
 
     @Test

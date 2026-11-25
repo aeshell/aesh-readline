@@ -37,7 +37,10 @@ public final class CodePointUtils {
      * The backslash character constant.
      */
     public static final char BACK_SLASH = '\\';
-    private static final Pattern spacePattern = Pattern.compile("(?<!\\\\)\\s");
+
+    private static final class SpacePattern {
+        static final Pattern INSTANCE = Pattern.compile("(?<!\\\\)\\s");
+    }
 
     private CodePointUtils() {
     }
@@ -97,6 +100,6 @@ public final class CodePointUtils {
      * @return the word with spaces escaped
      */
     public static String switchSpacesToEscapedSpacesInWord(String word) {
-        return spacePattern.matcher(word).replaceAll("\\\\ ");
+        return SpacePattern.INSTANCE.matcher(word).replaceAll("\\\\ ");
     }
 }

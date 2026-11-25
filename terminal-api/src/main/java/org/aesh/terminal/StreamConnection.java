@@ -66,7 +66,9 @@ import org.aesh.terminal.utils.Parser;
  */
 public class StreamConnection extends AbstractConnection {
 
-    private static final Logger LOGGER = Logger.getLogger(StreamConnection.class.getName());
+    private static final class Log {
+        static final Logger LOGGER = Logger.getLogger(StreamConnection.class.getName());
+    }
 
     /** Delay when a nonconforming stream returns zero from read(byte[]). */
     private static final int PUMP_POLL_MS = 10;
@@ -94,7 +96,7 @@ public class StreamConnection extends AbstractConnection {
                 output.write(Parser.fromCodePoints(data).getBytes(outputCharset));
                 output.flush();
             } catch (IOException e) {
-                LOGGER.log(Level.FINE, "StreamConnection write failed (peer gone?)", e);
+                Log.LOGGER.log(Level.FINE, "StreamConnection write failed (peer gone?)", e);
             }
         }
     }
@@ -278,7 +280,7 @@ public class StreamConnection extends AbstractConnection {
             } catch (Throwable ignored) {
             }
         } else {
-            LOGGER.log(Level.SEVERE,
+            Log.LOGGER.log(Level.SEVERE,
                     "StreamConnection reader died; input will no longer be delivered", cause);
         }
     }

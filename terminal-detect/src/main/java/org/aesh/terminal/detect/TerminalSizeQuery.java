@@ -83,6 +83,9 @@ final class TerminalSizeQuery {
         if (lower.contains("win")) {
             return queryWindowsSize();
         }
+        if (hasNoControllingTerminal()) {
+            return Optional.empty();
+        }
         int[] dims = queryFfmSize();
         if (dims == null) {
             dims = querySttySize();

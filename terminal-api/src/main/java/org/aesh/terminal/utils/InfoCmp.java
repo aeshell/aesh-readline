@@ -245,7 +245,7 @@ public final class InfoCmp {
                 } else {
                     // boolean capability
                     // remove any trailing punctuation
-                    String key = cap.replaceAll("[,\\.]$", "").trim();
+                    String key = stripTrailingPunctuation(cap);
                     Capability c = Capability.byName(key);
                     if (c != null) {
                         bools.add(c);
@@ -290,11 +290,20 @@ public final class InfoCmp {
 
         // clean tokens: remove trailing commas or dots leftover
         for (int j = 0; j < tokens.size(); j++) {
-            String t = tokens.get(j);
-            t = t.replaceAll("[,.]$", "").trim();
-            tokens.set(j, t);
+            tokens.set(j, stripTrailingPunctuation(tokens.get(j)));
         }
 
         return tokens;
+    }
+
+    private static String stripTrailingPunctuation(String s) {
+        int len = s.length();
+        if (len > 0) {
+            char last = s.charAt(len - 1);
+            if (last == ',' || last == '.') {
+                return s.substring(0, len - 1).trim();
+            }
+        }
+        return s;
     }
 }

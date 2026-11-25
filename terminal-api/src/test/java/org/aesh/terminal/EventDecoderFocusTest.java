@@ -72,6 +72,21 @@ public class EventDecoderFocusTest {
     }
 
     @Test
+    public void testLazyFilterActivatesOnFirstEscape() {
+        // Plain text before and after installing a filter handler stays intact;
+        // the filter parser initializes lazily when the first ESC arrives.
+        decoder.accept(new int[] { 'h', 'i' });
+        decoder.setFocusHandler(focusEvents::add);
+        decoder.accept(new int[] { 'o', 'k' });
+        decoder.accept(new int[] { 27, '[', 'I' });
+        assertEquals(1, focusEvents.size());
+        assertEquals(true, focusEvents.get(0));
+        assertEquals(2, receivedInput.size());
+        assertEquals('h', receivedInput.get(0)[0]);
+        assertEquals('o', receivedInput.get(1)[0]);
+    }
+
+    @Test
     public void testFocusHandlerSetToNull() {
         decoder.setFocusHandler(focusEvents::add);
         decoder.accept(new int[] { 27, '[', 'I' });

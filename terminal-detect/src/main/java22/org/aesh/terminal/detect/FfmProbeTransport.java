@@ -58,6 +58,9 @@ final class FfmProbeTransport implements BoundedProbeTransport {
         if (!FfmPosix.isNativeAccessEnabled()) {
             return false;
         }
+        if (TerminalSizeQuery.hasNoControllingTerminal()) {
+            return false;
+        }
         return DEV_TTY.exists() && DEV_TTY.canRead() && DEV_TTY.canWrite();
     }
 

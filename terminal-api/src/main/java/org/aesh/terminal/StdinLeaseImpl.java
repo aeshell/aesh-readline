@@ -35,7 +35,9 @@ import java.util.logging.Logger;
  */
 final class StdinLeaseImpl implements StdinLease {
 
-    private static final Logger LOGGER = Logger.getLogger(StdinLeaseImpl.class.getName());
+    private static final class Log {
+        static final Logger LOGGER = Logger.getLogger(StdinLeaseImpl.class.getName());
+    }
 
     private final Connection connection;
     private final Consumer<int[]> saved;
@@ -52,7 +54,7 @@ final class StdinLeaseImpl implements StdinLease {
     public void close() {
         if (closed.compareAndSet(false, true)) {
             if (connection.stdinHandler() != installed) {
-                LOGGER.log(Level.WARNING,
+                Log.LOGGER.log(Level.WARNING,
                         "StdinLease closed out of order: current handler is not the leased one, "
                                 + "restoring the saved handler anyway");
             }

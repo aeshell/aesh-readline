@@ -302,6 +302,28 @@ public class InfoCmpTest {
     }
 
     @Test
+    public void testCapabilityByNameMatchesLinearPrecedence() {
+        Capability[] all = Capability.values();
+        assertNull(Capability.byName(null));
+        assertNull(Capability.byName(""));
+        assertNull(Capability.byName("not-a-real-capability"));
+        for (Capability c : all) {
+            assertEquals("enum name " + c.name(), linearByName(all, c.name()), Capability.byName(c.name()));
+            assertEquals("terminfo name " + c.getName(), linearByName(all, c.getName()), Capability.byName(c.getName()));
+            assertEquals("termcap code " + c.getCap(), linearByName(all, c.getCap()), Capability.byName(c.getCap()));
+        }
+    }
+
+    private static Capability linearByName(Capability[] all, String name) {
+        for (Capability c : all) {
+            if (c.name().equals(name) || c.getName().equals(name) || c.getCap().equals(name)) {
+                return c;
+            }
+        }
+        return null;
+    }
+
+    @Test
     public void testNative() throws IOException, InterruptedException {
         if (Config.isOSPOSIXCompatible()) {
             Set<Capability> bools = new HashSet<>();

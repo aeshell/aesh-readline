@@ -46,6 +46,9 @@ final class SttyProbeTransport implements BoundedProbeTransport {
 
     @Override
     public boolean isAvailable() {
+        if (TerminalSizeQuery.hasNoControllingTerminal()) {
+            return false;
+        }
         return DEV_TTY.exists() && DEV_TTY.canRead() && DEV_TTY.canWrite();
     }
 

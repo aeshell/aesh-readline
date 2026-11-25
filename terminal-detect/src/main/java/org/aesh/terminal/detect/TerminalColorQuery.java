@@ -108,8 +108,15 @@ final class TerminalColorQuery {
      */
     Boolean graphemeClustering;
 
-    private static final java.util.logging.Logger LOGGER = java.util.logging.Logger
-            .getLogger(TerminalColorQuery.class.getName());
+    /**
+     * Lazy logger holder: creating the logger runs the JDK's
+     * {@code LoggerFinder} ServiceLoader scan over the whole class
+     * path, so it must not happen in {@code <clinit>} (#398, #406).
+     */
+    private static final class Log {
+        static final java.util.logging.Logger LOGGER = java.util.logging.Logger
+                .getLogger(TerminalColorQuery.class.getName());
+    }
 
     TerminalColorQuery() {
     }
@@ -306,10 +313,10 @@ final class TerminalColorQuery {
 
     private static void logProbeTiming(TerminalProbeTransport transport, long openNanos,
             long readNanos, long parseNanos, long graphemeNanos, boolean graphemeRan) {
-        if (!LOGGER.isLoggable(java.util.logging.Level.FINE)) {
+        if (!Log.LOGGER.isLoggable(java.util.logging.Level.FINE)) {
             return;
         }
-        LOGGER.fine("probe-timing transport=" + transport.getClass().getSimpleName()
+        Log.LOGGER.fine("probe-timing transport=" + transport.getClass().getSimpleName()
                 + " session-open=" + toMillis(openNanos) + "ms"
                 + " color-write-read=" + toMillis(readNanos) + "ms"
                 + " parse=" + toMillis(parseNanos) + "ms"

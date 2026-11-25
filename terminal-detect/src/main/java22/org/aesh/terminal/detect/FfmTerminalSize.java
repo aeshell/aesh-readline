@@ -57,6 +57,9 @@ final class FfmTerminalSize {
         if (!FfmPosix.isNativeAccessEnabled()) {
             return null;
         }
+        if (TerminalSizeQuery.hasNoControllingTerminal()) {
+            return null;
+        }
         try (Arena arena = Arena.ofConfined()) {
             int fd = FfmPosix.open("/dev/tty", FfmPosix.O_RDONLY, arena);
             if (fd < 0) {

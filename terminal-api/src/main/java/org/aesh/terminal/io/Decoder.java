@@ -45,7 +45,10 @@ import java.util.logging.Logger;
 public class Decoder {
 
     private static final ByteBuffer EMPTY = ByteBuffer.allocate(0);
-    private static final Logger LOGGER = Logger.getLogger(Decoder.class.getName());
+
+    private static final class Log {
+        static final Logger LOGGER = Logger.getLogger(Decoder.class.getName());
+    }
 
     /** Unicode replacement character, used for malformed or unmappable input. */
     private static final int REPLACEMENT_CHAR = 0xFFFD;
@@ -199,7 +202,7 @@ public class Decoder {
             if (onChar != null)
                 onChar.accept(codePoints);
             else {
-                LOGGER.log(Level.WARNING, "InputHandler is set to null, will ignore input: " + fromCodePoints(codePoints));
+                Log.LOGGER.log(Level.WARNING, "InputHandler is set to null, will ignore input: " + fromCodePoints(codePoints));
                 leftOverCodePoints = codePoints;
             }
             cBuf.compact();
@@ -214,7 +217,7 @@ public class Decoder {
                 // Malformed or unmappable input — should not happen because
                 // the decoder is configured with CodingErrorAction.REPLACE,
                 // but handle defensively just in case.
-                LOGGER.log(Level.FINE, "Unexpected CoderResult: {0}, skipping {1} bytes",
+                Log.LOGGER.log(Level.FINE, "Unexpected CoderResult: {0}, skipping {1} bytes",
                         new Object[] { result, result.length() });
                 bBuf.position(bBuf.position() + result.length());
             }

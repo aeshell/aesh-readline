@@ -20,6 +20,7 @@
 package org.aesh.terminal.utils;
 
 import java.io.File;
+import java.util.Locale;
 
 /**
  * Operating system detection and command utilities.
@@ -32,11 +33,14 @@ public final class OSUtils {
     private OSUtils() {
     }
 
+    private static final String OS_NAME = System.getProperty("os.name", "");
+    private static final String OS_NAME_LOWER = OS_NAME.toLowerCase(Locale.ROOT);
+
     /** True if running on Linux. */
-    public static final boolean IS_LINUX = System.getProperty("os.name").toLowerCase().contains("linux");
+    public static final boolean IS_LINUX = OS_NAME_LOWER.contains("linux");
 
     /** True if running on Windows. */
-    public static final boolean IS_WINDOWS = System.getProperty("os.name").toLowerCase().contains("win");
+    public static final boolean IS_WINDOWS = OS_NAME_LOWER.contains("win");
 
     /**
      * True if running in a Cygwin, MSYS2, or Git-Bash POSIX environment on Windows.
@@ -53,13 +57,13 @@ public final class OSUtils {
     public static final boolean IS_CYGWIN = IS_WINDOWS && detectCygwinOrMsys();
 
     /** True if running on macOS. */
-    public static final boolean IS_OSX = System.getProperty("os.name").toLowerCase().contains("mac");
+    public static final boolean IS_OSX = OS_NAME_LOWER.contains("mac");
 
     /** True if running on HP-UX. */
-    public static final boolean IS_HPUX = System.getProperty("os.name").toLowerCase().contains("hp-ux");
+    public static final boolean IS_HPUX = OS_NAME_LOWER.contains("hp-ux");
 
     /** True if running on SunOS/Solaris. */
-    public static final boolean IS_SUNOS = System.getProperty("os.name").toLowerCase().contains("sunos");
+    public static final boolean IS_SUNOS = OS_NAME_LOWER.contains("sunos");
 
     /**
      * True when the FFM-based POSIX backends may be selected.
@@ -71,7 +75,7 @@ public final class OSUtils {
      * subprocess fallback instead.
      */
     public static final boolean IS_FFM_POSIX_SUPPORTED = isFfmPosixSupported(
-            System.getProperty("os.name", ""), System.getProperty("os.arch", ""));
+            OS_NAME, System.getProperty("os.arch", ""));
 
     /**
      * Whether the FFM-based POSIX backends support the given platform.

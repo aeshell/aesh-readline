@@ -215,6 +215,12 @@ public class TerminalSizeQueryTest {
                 assertNull("no controlling terminal must decline", dims);
                 assertTrue("doomed probe must not spawn: " + commands,
                         commands.isEmpty());
+                assertFalse("stty transport must report unavailable without controlling terminal",
+                        SttyProbeTransport.INSTANCE.isAvailable());
+                assertFalse("size query must decline without controlling terminal",
+                        TerminalSizeQuery.query("Linux").isPresent());
+                assertTrue("size query must not spawn without controlling terminal: " + commands,
+                        commands.isEmpty());
             } else {
                 assertEquals("controlling terminal must probe exactly once", 1, commands.size());
                 assertArrayEquals(new int[] { 80, 24 }, dims);

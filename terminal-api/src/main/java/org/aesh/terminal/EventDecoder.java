@@ -57,7 +57,9 @@ import org.aesh.terminal.utils.ANSI;
  */
 public class EventDecoder implements Consumer<int[]> {
 
-    private static final Logger LOGGER = Logger.getLogger(EventDecoder.class.getName());
+    private static final class Log {
+        static final Logger LOGGER = Logger.getLogger(EventDecoder.class.getName());
+    }
 
     /**
      * Timeout (ms) for lone-ESC disambiguation. Mirrors
@@ -96,14 +98,14 @@ public class EventDecoder implements Consumer<int[]> {
 
     // ---- VtParser-based sequence filtering ----
     // A single VtParser instance replaces the three hand-rolled state machines
-    // (DSR theme, mouse SGR, focus events). The parser classifies sequences
-    // via table-driven state transitions, and the FilterHandler dispatches
-    // recognized sequences to the appropriate handler.
-    private final FilterHandler filterHandler = new FilterHandler();
-    private final VtParser filterParser = new VtParser(filterHandler);
+    // (DSR theme, mouse SGR, focus events). Allocated lazily on first filtered
+    // ESC sequence so ordinary input without active filters skips VtParser
+    // initialization and buffer allocation entirely.
+    private FilterHandler filterHandler;
+    private VtParser filterParser;
 
     /** Pre-allocated output buffer for filtered input. Reused across calls. */
-    private int[] filterOutput = new int[256];
+    private int[] filterOutput;
     private int filterOutputLen;
 
     /**
@@ -111,7 +113,7 @@ public class EventDecoder implements Consumer<int[]> {
      * sequence completes (e.g., arrow key ESC [ A), these bytes are re-emitted
      * to the output buffer.
      */
-    private int[] sequenceBytes = new int[32];
+    private int[] sequenceBytes;
     private int sequenceBytesLen;
 
     /**
@@ -536,8 +538,8 @@ public class EventDecoder implements Consumer<int[]> {
             return input;
         }
 
-        // Fast path: parser in GROUND state and no ESC in input → pass through
-        if (filterParser.isGroundState()) {
+        // Fast path: parser in GROUND state (or not yet needed) and no ESC in input → pass through
+        if (filterParser == null || filterParser.isGroundState()) {
             boolean hasEsc = false;
             for (int c : input) {
                 if (c == 27) {
@@ -549,6 +551,8 @@ public class EventDecoder implements Consumer<int[]> {
                 return input;
             }
         }
+
+        ensureFilterInitialized();
 
         // Ensure output buffer is large enough
         // Worst case: input passes through entirely + pending sequence bytes
@@ -624,6 +628,15 @@ public class EventDecoder implements Consumer<int[]> {
         return Arrays.copyOf(filterOutput, filterOutputLen);
     }
 
+    private void ensureFilterInitialized() {
+        if (filterParser == null) {
+            filterHandler = new FilterHandler();
+            filterParser = new VtParser(filterHandler);
+            filterOutput = new int[256];
+            sequenceBytes = new int[32];
+        }
+    }
+
     private void ensureFilterOutputCapacity(int needed) {
         if (filterOutput.length < needed) {
             filterOutput = Arrays.copyOf(filterOutput, Math.max(needed, filterOutput.length * 2));
@@ -648,7 +661,7 @@ public class EventDecoder implements Consumer<int[]> {
         try {
             return inputPeeker.peek(escapeTimeout) < 0;
         } catch (Exception e) {
-            LOGGER.log(Level.FINE, "peek() failed during lone-ESC disambiguation", e);
+            Log.LOGGER.log(Level.FINE, "peek() failed during lone-ESC disambiguation", e);
             return true;
         }
     }

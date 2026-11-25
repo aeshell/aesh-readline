@@ -997,6 +997,23 @@ public enum Capability {
         return cap;
     }
 
+    private static final class Lookup {
+        static final java.util.Map<String, Capability> BY_NAME = buildIndex();
+
+        private static java.util.Map<String, Capability> buildIndex() {
+            Capability[] all = values();
+            java.util.Map<String, Capability> map = new java.util.HashMap<>(all.length * 4);
+            // putIfAbsent in declaration order preserves exact first-match
+            // precedence if an alias ever overlaps across constants.
+            for (Capability c : all) {
+                map.putIfAbsent(c.name(), c);
+                map.putIfAbsent(c.getName(), c);
+                map.putIfAbsent(c.getCap(), c);
+            }
+            return map;
+        }
+    }
+
     /**
      * Finds a capability by its name, terminfo name, or termcap code.
      *
@@ -1004,10 +1021,6 @@ public enum Capability {
      * @return the matching capability, or null if not found
      */
     public static Capability byName(String name) {
-        for (Capability c : values()) {
-            if (c.name().equals(name) || c.getName().equals(name) || c.getCap().equals(name))
-                return c;
-        }
-        return null;
+        return name == null ? null : Lookup.BY_NAME.get(name);
     }
 }

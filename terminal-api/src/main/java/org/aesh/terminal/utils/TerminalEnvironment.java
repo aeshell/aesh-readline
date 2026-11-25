@@ -45,7 +45,14 @@ import org.aesh.terminal.detect.TerminalCapabilities;
  */
 public final class TerminalEnvironment {
 
-    private static final Map<String, Device.TerminalType> TERMINAL_TYPES = terminalTypes();
+    /**
+     * Lazy terminal-type lookup map: avoids loading {@link Device.TerminalType}
+     * and its 27 {@code EnumSet}s during {@code TerminalEnvironment.<clinit>}
+     * when callers only inspect environment flags.
+     */
+    private static final class TerminalTypeLookup {
+        static final Map<String, Device.TerminalType> BY_NAME = terminalTypes();
+    }
 
     // Cached environment values (parsed lazily)
     private static volatile TerminalEnvironment instance;
@@ -583,7 +590,7 @@ public final class TerminalEnvironment {
             return Device.TerminalType.UNKNOWN;
         }
         String lower = termType.toLowerCase(Locale.ROOT);
-        Device.TerminalType known = TERMINAL_TYPES.get(lower);
+        Device.TerminalType known = TerminalTypeLookup.BY_NAME.get(lower);
         if (known != null) {
             return known;
         }

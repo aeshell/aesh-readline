@@ -19,7 +19,7 @@
  */
 package org.aesh.terminal.utils;
 
-import java.nio.file.FileSystems;
+import java.io.File;
 
 /**
  * Configuration utility class providing system and environment information
@@ -35,14 +35,18 @@ public class Config {
     private static final boolean macOS = OSUtils.IS_OSX;
     private static final boolean windows = OSUtils.IS_WINDOWS;
     private static final String lineSeparator = System.lineSeparator();
-    private static final String pathSeparator = FileSystems.getDefault().getSeparator();
+    private static final String pathSeparator = File.separator;
     private static final String tmpDir = System.getProperty("java.io.tmpdir");
     private static final boolean posixCompatible = checkPosixCompability();
 
     /**
      * The line separator as an array of code points.
      */
-    public static final int[] CR = lineSeparator.codePoints().toArray();
+    public static final int[] CR = "\n".equals(lineSeparator)
+            ? new int[] { '\n' }
+            : "\r\n".equals(lineSeparator)
+                    ? new int[] { '\r', '\n' }
+                    : CodePointUtils.toCodePoints(lineSeparator);
     private static final boolean cygwin = OSUtils.IS_CYGWIN;
 
     /**
