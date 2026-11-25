@@ -169,7 +169,7 @@ public abstract class AbstractConnection implements Connection {
     protected AbstractConnection() {
     }
 
-    private TerminalFeatures terminalFeatures;
+    private volatile TerminalFeatures terminalFeatures;
 
     /**
      * Cached OSC 7501 support for this connection. TerminalFeatures reads
@@ -181,10 +181,17 @@ public abstract class AbstractConnection implements Connection {
 
     @Override
     public TerminalFeatures terminal() {
-        if (terminalFeatures == null) {
-            terminalFeatures = new TerminalFeatures(this);
+        TerminalFeatures current = terminalFeatures;
+        if (current == null) {
+            synchronized (this) {
+                current = terminalFeatures;
+                if (current == null) {
+                    current = new TerminalFeatures(this);
+                    terminalFeatures = current;
+                }
+            }
         }
-        return terminalFeatures;
+        return current;
     }
 
     /**

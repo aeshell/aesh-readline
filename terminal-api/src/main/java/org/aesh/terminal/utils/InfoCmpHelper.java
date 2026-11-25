@@ -19,7 +19,7 @@
  */
 package org.aesh.terminal.utils;
 
-import java.io.StringWriter;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -37,10 +37,7 @@ public class InfoCmpHelper {
     private InfoCmpHelper() {
     }
 
-    private static boolean initialized = false;
-    private static final Set<Capability> bools = new HashSet<>();
-    private static final Map<Capability, Integer> ints = new HashMap<>();
-    private static final Map<Capability, String> strings = new HashMap<>();
+    private static volatile Map<Capability, String> strings;
 
     /**
      * Get a terminal capability as an array of code points.
@@ -68,23 +65,15 @@ public class InfoCmpHelper {
      */
     public static String getCurrentTranslatedCapability(String cap, String defaultValue) {
         try {
-            if (!initialized) {
-                String term = System.getenv("TERM");
-                if (term == null) {
-                    term = "xterm-256color";
-                }
-                String infocmp = InfoCmp.getInfoCmp(term);
-                InfoCmp.parseInfoCmp(infocmp, bools, ints, strings);
-                initialized = true;
-            }
+            Map<Capability, String> currentStrings = ensureStrings();
             Capability capability = Capability.byName(cap);
             if (capability != null) {
-                String capStr = strings.get(capability);
+                String capStr = currentStrings.get(capability);
                 if (capStr != null) {
-                    StringWriter sw = new StringWriter();
-                    Curses.tputs(sw, capStr);
-                    if (!sw.toString().isEmpty())
-                        return sw.toString();
+                    StringBuilder sb = new StringBuilder();
+                    Curses.tputs(sb, capStr);
+                    if (sb.length() > 0)
+                        return sb.toString();
                     else
                         return capStr;
                 }
@@ -92,6 +81,31 @@ public class InfoCmpHelper {
         } catch (Exception e) {
         }
         return defaultValue;
+    }
+
+    private static Map<Capability, String> ensureStrings() throws Exception {
+        Map<Capability, String> current = strings;
+        if (current != null) {
+            return current;
+        }
+        synchronized (InfoCmpHelper.class) {
+            current = strings;
+            if (current != null) {
+                return current;
+            }
+            String term = System.getenv("TERM");
+            if (term == null) {
+                term = "xterm-256color";
+            }
+            String infocmp = InfoCmp.getInfoCmp(term);
+            Set<Capability> bools = new HashSet<>();
+            Map<Capability, Integer> ints = new HashMap<>();
+            Map<Capability, String> parsedStrings = new HashMap<>();
+            InfoCmp.parseInfoCmp(infocmp, bools, ints, parsedStrings);
+            current = Collections.unmodifiableMap(parsedStrings);
+            strings = current;
+            return current;
+        }
     }
 
 }

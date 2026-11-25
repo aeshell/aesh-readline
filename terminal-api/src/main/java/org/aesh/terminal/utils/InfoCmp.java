@@ -22,9 +22,9 @@ package org.aesh.terminal.utils;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.aesh.terminal.detect.ProcessRunner;
 import org.aesh.terminal.tty.Capability;
@@ -36,7 +36,7 @@ import org.aesh.terminal.tty.Capability;
  */
 public final class InfoCmp {
 
-    private static final Map<String, String> CAPS = new HashMap<>();
+    private static final Map<String, String> CAPS = new ConcurrentHashMap<>();
 
     private InfoCmp() {
     }
@@ -216,14 +216,14 @@ public final class InfoCmp {
                 int hash = cap.indexOf('#');
                 int eq = cap.indexOf('=');
 
-                if (hash >= 0) {
+                if (hash >= 0 && (eq < 0 || hash < eq)) {
                     String key = cap.substring(0, hash).trim();
                     String val = cap.substring(hash + 1).trim();
                     try {
                         int iVal;
                         if (val.startsWith("0x") || val.startsWith("0X")) {
                             iVal = Integer.parseInt(val.substring(2), 16);
-                        } else if (val.startsWith("0")) {
+                        } else if (val.length() > 1 && val.startsWith("0")) {
                             iVal = Integer.parseInt(val.substring(1), 8);
                         } else {
                             iVal = Integer.parseInt(val);

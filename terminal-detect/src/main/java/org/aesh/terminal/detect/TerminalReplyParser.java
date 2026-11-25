@@ -215,10 +215,11 @@ public final class TerminalReplyParser {
             if (start < 0) {
                 return found;
             }
-            // ... scan to this CSI's own final byte (0x40-0x7E).
-            int end = start + marker.length();
-            while (end < response.length() && !isCsiFinal(response.charAt(end))) {
-                end++;
+            // ... scan to this CSI's own final byte (0x40-0x7E) or a fresh ESC resync.
+            int end = scanCsiEnd(response, start + marker.length());
+            if (end < response.length() && response.charAt(end) == '\033') {
+                pos = end;
+                continue;
             }
             if (end < response.length() && response.charAt(end) == 'y'
                     && end > start + marker.length() && response.charAt(end - 1) == '$') {
@@ -271,10 +272,11 @@ public final class TerminalReplyParser {
             if (start < 0) {
                 return found;
             }
-            // ... scan to this CSI's own final byte (0x40-0x7E).
-            int end = start + marker.length();
-            while (end < response.length() && !isCsiFinal(response.charAt(end))) {
-                end++;
+            // ... scan to this CSI's own final byte (0x40-0x7E) or a fresh ESC resync.
+            int end = scanCsiEnd(response, start + marker.length());
+            if (end < response.length() && response.charAt(end) == '\033') {
+                pos = end;
+                continue;
             }
             if (end < response.length() && response.charAt(end) == 'u') {
                 String body = response.substring(start + marker.length(), end);
@@ -324,28 +326,48 @@ public final class TerminalReplyParser {
                     || response.charAt(end) == '$')) {
                 end++;
             }
+            if (end < response.length() && response.charAt(end) == '\033') {
+                pos = end;
+                continue;
+            }
             if (end < response.length() && response.charAt(end) == 'c') {
-                String params = response.substring(start + 3, end);
-                String[] parts = params.split(";");
-                if (parts.length == 0) {
-                    return null;
-                }
-                try {
-                    int deviceClass = Integer.parseInt(parts[0].trim());
-                    List<Integer> features = new ArrayList<>();
-                    for (int i = 1; i < parts.length; i++) {
-                        String part = parts[i].trim();
-                        if (!part.isEmpty()) {
-                            features.add(Integer.parseInt(part));
-                        }
-                    }
-                    return new TerminalDeviceAttributes(deviceClass, features);
-                } catch (NumberFormatException e) {
-                    return null;
+                TerminalDeviceAttributes parsed = parseDa1Params(response.substring(start + 3, end));
+                if (parsed != null) {
+                    return parsed;
                 }
             }
             pos = end + 1;
         }
+    }
+
+    private static TerminalDeviceAttributes parseDa1Params(String params) {
+        String[] parts = params.split(";");
+        if (parts.length == 0) {
+            return null;
+        }
+        try {
+            int deviceClass = Integer.parseInt(parts[0].trim());
+            List<Integer> features = new ArrayList<>();
+            for (int i = 1; i < parts.length; i++) {
+                String part = parts[i].trim();
+                if (!part.isEmpty()) {
+                    features.add(Integer.parseInt(part));
+                }
+            }
+            return new TerminalDeviceAttributes(deviceClass, features);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private static int scanCsiEnd(String response, int from) {
+        int end = from;
+        while (end < response.length()
+                && response.charAt(end) != '\033'
+                && !isCsiFinal(response.charAt(end))) {
+            end++;
+        }
+        return end;
     }
 
     /**

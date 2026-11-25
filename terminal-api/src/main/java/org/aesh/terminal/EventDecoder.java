@@ -618,14 +618,26 @@ public class EventDecoder implements Consumer<int[]> {
             filterOutput[filterOutputLen++] = 27;
         }
 
-        // If nothing was filtered and no pending sequence, return original
-        if (filterOutputLen == input.length && filterParser.isGroundState()) {
-            return input;
-        }
+        // If nothing changed and no sequence is pending, return original array
         if (filterOutputLen == 0) {
             return new int[0];
         }
+        if (filterParser.isGroundState() && matchesInput(input)) {
+            return input;
+        }
         return Arrays.copyOf(filterOutput, filterOutputLen);
+    }
+
+    private boolean matchesInput(int[] input) {
+        if (filterOutputLen != input.length) {
+            return false;
+        }
+        for (int i = 0; i < filterOutputLen; i++) {
+            if (filterOutput[i] != input[i]) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private void ensureFilterInitialized() {

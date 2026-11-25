@@ -646,18 +646,22 @@ public enum Key implements KeyAction {
      * @return true if this key's values are found within the input
      */
     public boolean containKey(int[] input) {
-        for (int i = 0; i < input.length; i++) {
-            if (input[i] == keyValues.get(0)) {
-                if (keyValues.limit() == 1)
-                    return true;
-                else if ((i + keyValues.limit()) < input.length) {
-                    int j = i;
-                    for (int k : keyValues.array()) {
-                        if (input[j] != k) {
-                            return false;
-                        }
-                        j++;
+        int len = keyValues.limit();
+        if (input == null || len == 0 || len > input.length) {
+            return false;
+        }
+        int first = keyValues.get(0);
+        int lastStart = input.length - len;
+        for (int i = 0; i <= lastStart; i++) {
+            if (input[i] == first) {
+                boolean match = true;
+                for (int j = 1; j < len; j++) {
+                    if (input[i + j] != keyValues.get(j)) {
+                        match = false;
+                        break;
                     }
+                }
+                if (match) {
                     return true;
                 }
             }

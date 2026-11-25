@@ -302,6 +302,21 @@ public class InfoCmpTest {
     }
 
     @Test
+    public void testParseZeroNumericAndStringWithHash() {
+        Set<Capability> bools = new HashSet<>();
+        Map<Capability, Integer> ints = new HashMap<>();
+        Map<Capability, String> strings = new HashMap<>();
+
+        InfoCmp.parseInfoCmp(
+                "test|fixture,\n\tcolors#0, cols#010, lines#24, initc=abc#def,\n",
+                bools, ints, strings);
+        assertEquals(Integer.valueOf(0), ints.get(Capability.max_colors));
+        assertEquals(Integer.valueOf(8), ints.get(Capability.columns));
+        assertEquals(Integer.valueOf(24), ints.get(Capability.lines));
+        assertEquals("abc#def", strings.get(Capability.initialize_color));
+    }
+
+    @Test
     public void testCapabilityByNameMatchesLinearPrecedence() {
         Capability[] all = Capability.values();
         assertNull(Capability.byName(null));

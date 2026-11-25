@@ -196,6 +196,9 @@ public final class VtParser {
      * @param b the byte (0-255) or code point (&gt; 255)
      */
     public void advance(int b) {
+        if (b < 0) {
+            return;
+        }
         if (b > 255) {
             // Code points beyond the table range: printable in ground, ignore elsewhere
             if (state == GROUND) {
@@ -272,8 +275,13 @@ public final class VtParser {
                     flushParam();
                     hasSubParams = true;
                 } else {
-                    // Digit 0-9
-                    currentParam = currentParam * 10 + (b - '0');
+                    // Digit 0-9 (saturate instead of overflowing negative)
+                    int digit = b - '0';
+                    if (currentParam > (Integer.MAX_VALUE - digit) / 10) {
+                        currentParam = Integer.MAX_VALUE;
+                    } else {
+                        currentParam = currentParam * 10 + digit;
+                    }
                     paramStarted = true;
                 }
                 break;

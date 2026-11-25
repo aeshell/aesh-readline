@@ -326,7 +326,7 @@ public final class WinConsoleNative {
     }
 
     public static boolean writeConsole(long handle, char[] buffer, int length) {
-        if (buffer == null || length < 0 || length > buffer.length) {
+        if (WRITE_CONSOLE_W == null || buffer == null || length < 0 || length > buffer.length) {
             return false;
         }
         try (Arena arena = Arena.ofConfined()) {

@@ -456,6 +456,25 @@ public class VtParserTest {
         }
     }
 
+    @Test
+    public void testNegativeInputIgnored() {
+        RecordingHandler h = new RecordingHandler();
+        VtParser p = new VtParser(h);
+        p.advance(-1);
+        p.advance(Integer.MIN_VALUE);
+        assertTrue(p.isGroundState());
+        assertTrue(h.events.isEmpty());
+    }
+
+    @Test
+    public void testParamOverflowSaturates() {
+        RecordingHandler h = new RecordingHandler();
+        VtParser p = new VtParser(h);
+        feed(p, "\033[99999999999m");
+        assertEquals(1, h.events.size());
+        assertEquals("csi:[" + Integer.MAX_VALUE + "]m", h.events.get(0));
+    }
+
     // ==================== Byte-at-a-time vs batch ====================
 
     @Test

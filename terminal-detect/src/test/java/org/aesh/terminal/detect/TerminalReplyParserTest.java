@@ -127,6 +127,21 @@ public class TerminalReplyParserTest {
     }
 
     @Test
+    public void testInterruptedPrefixResync() {
+        // An interrupted ESC[? prefix immediately before a fresh ESC[? reply
+        // must resync at the new ESC rather than consuming its '[' as a CSI final.
+        assertEquals(ModeSupport.SUPPORTED,
+                TerminalReplyParser.modeSupport("\033[?2026;\033[?2026;1$y", 2026));
+        assertEquals(1,
+                TerminalReplyParser.keyboardFlags("\033[?\033[?1u"));
+        assertEquals(new TerminalDeviceAttributes(62, Arrays.asList(4)),
+                TerminalReplyParser.deviceAttributes("\033[?123\033[?62;4c"));
+        // Malformed DA1 before a valid DA1 must not stop resync either.
+        assertEquals(new TerminalDeviceAttributes(62, Arrays.asList(4)),
+                TerminalReplyParser.deviceAttributes("\033[?;c\033[?62;4c"));
+    }
+
+    @Test
     public void testDeviceAttributesValueSemantics() {
         TerminalDeviceAttributes attributes = new TerminalDeviceAttributes(63, Arrays.asList(1, 4));
         assertEquals(attributes, new TerminalDeviceAttributes(63, Arrays.asList(1, 4)));

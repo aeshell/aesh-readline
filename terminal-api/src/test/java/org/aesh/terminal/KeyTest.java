@@ -34,6 +34,11 @@ public class KeyTest {
     @Test
     public void testContain() {
         assertTrue(Key.ESC.containKey(new int[] { 27, 10 }));
+        assertTrue(Key.UP.containKey(new int[] { 'a', 27, '[', 'A' }));
+        assertTrue(Key.UP.containKey(new int[] { 27, 'x', 27, '[', 'A', 'z' }));
+        assertTrue(Key.UP.containKey(new int[] { 27, '[', 'A' }));
+        assertFalse(Key.UP.containKey(new int[] { 27, '[' }));
+        assertFalse(Key.UP.containKey(null));
     }
 
     @Test

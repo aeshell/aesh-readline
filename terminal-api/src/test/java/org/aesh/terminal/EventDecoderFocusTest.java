@@ -87,6 +87,21 @@ public class EventDecoderFocusTest {
     }
 
     @Test
+    public void testSplitCsiFollowedByFilteredEventMatchingInputLength() {
+        decoder.setFocusHandler(focusEvents::add);
+        // Chunk 1 leaves 3 pending bytes of ESC [ 1 ~
+        decoder.accept(new int[] { 27, '[', '1' });
+        assertEquals(0, receivedInput.size());
+        // Chunk 2 (len 4) completes ESC [ 1 ~ (emits 4 ints) and carries ESC [ I (3 bytes consumed).
+        // filterOutputLen == input.length (4 == 4), but content differs from input.
+        decoder.accept(new int[] { '~', 27, '[', 'I' });
+        assertEquals(1, focusEvents.size());
+        assertEquals(true, focusEvents.get(0));
+        assertEquals(1, receivedInput.size());
+        org.junit.Assert.assertArrayEquals(new int[] { 27, '[', '1', '~' }, receivedInput.get(0));
+    }
+
+    @Test
     public void testFocusHandlerSetToNull() {
         decoder.setFocusHandler(focusEvents::add);
         decoder.accept(new int[] { 27, '[', 'I' });

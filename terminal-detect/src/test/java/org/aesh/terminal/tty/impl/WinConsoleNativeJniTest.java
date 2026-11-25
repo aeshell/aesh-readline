@@ -162,6 +162,23 @@ public class WinConsoleNativeJniTest {
         });
     }
 
+    @Test
+    public void testFfmWriteConsoleReturnsFalseWhenUnavailable() {
+        Assume.assumeTrue("FFM overlay only runs on Java 22+", isJava22OrLater());
+        Assume.assumeFalse("off-Windows only: handles stay null there",
+                System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT).contains("win"));
+        // Verify the FFM overlay (not the JNI base stub, e.g. native-compat deletion)
+        // is actually active: base stub throws UnsatisfiedLinkError, overlay returns sentinel.
+        try {
+            long handle = WinConsoleNative.getStdHandle(WinConsoleNative.STD_INPUT_HANDLE);
+            Assume.assumeTrue("expected FFM sentinel off-Windows", handle == WinConsoleNative.INVALID_HANDLE);
+        } catch (UnsatisfiedLinkError baseStubActive) {
+            Assume.assumeNoException("base JNI stub active rather than FFM overlay", baseStubActive);
+        }
+        assertFalse("writeConsole must return false when WRITE_CONSOLE_W handle is null",
+                WinConsoleNative.writeConsole(1L, new char[] { 'a' }, 1));
+    }
+
     /**
      * Whether the runtime is Java 22 or later (release-8-safe: no
      * {@code Runtime.version()} which needs Java 9+). Only below 22 does
