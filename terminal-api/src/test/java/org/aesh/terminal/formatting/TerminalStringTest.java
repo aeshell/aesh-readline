@@ -178,6 +178,8 @@ public class TerminalStringTest {
                 first.equals(second));
         assertTrue(second.equals(first));
         assertEquals(first.hashCode(), second.hashCode());
+        assertTrue("equalsIgnoreCharacter must compare styles by value, not reference",
+                first.equalsIgnoreCharacter(new TerminalString("y", new TerminalColor(), boldStyle())));
     }
 
     @Test

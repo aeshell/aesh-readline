@@ -89,12 +89,12 @@ public final class OSUtils {
      * @return true only for Linux/macOS on x86_64/aarch64
      */
     public static boolean isFfmPosixSupported(String osName, String osArch) {
-        String os = osName.toLowerCase();
+        String os = osName.toLowerCase(Locale.ROOT);
         boolean supportedOs = os.contains("linux") || os.startsWith("mac") || os.contains("darwin");
         if (!supportedOs) {
             return false;
         }
-        String arch = osArch.toLowerCase();
+        String arch = osArch.toLowerCase(Locale.ROOT);
         // Layouts are documented for 64-bit x86/ARM only, and the poll()
         // descriptor maps nfds_t as 8 bytes on Linux but 4 on 32-bit
         // kernels — unknown or 32-bit arches decline to stty.
@@ -144,16 +144,25 @@ public final class OSUtils {
             infocmp = "infocmp.exe";
             String path = System.getenv("PATH");
             if (path != null) {
+                boolean ttyFound = false;
+                boolean sttyFound = false;
+                boolean infocmpFound = false;
                 String[] paths = path.split(";");
                 for (String p : paths) {
-                    if (new File(p, "tty.exe").exists()) {
+                    if (!ttyFound && new File(p, "tty.exe").exists()) {
                         tty = new File(p, "tty.exe").getAbsolutePath();
+                        ttyFound = true;
                     }
-                    if (new File(p, "stty.exe").exists()) {
+                    if (!sttyFound && new File(p, "stty.exe").exists()) {
                         stty = new File(p, "stty.exe").getAbsolutePath();
+                        sttyFound = true;
                     }
-                    if (new File(p, "infocmp.exe").exists()) {
+                    if (!infocmpFound && new File(p, "infocmp.exe").exists()) {
                         infocmp = new File(p, "infocmp.exe").getAbsolutePath();
+                        infocmpFound = true;
+                    }
+                    if (ttyFound && sttyFound && infocmpFound) {
+                        break;
                     }
                 }
             }

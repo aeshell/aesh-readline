@@ -302,6 +302,16 @@ public class InfoCmpTest {
     }
 
     @Test
+    public void testNullTerminalHandledWithoutNpe() throws Exception {
+        assertNull(InfoCmp.getInfoCmp(null));
+        assertNull(InfoCmp.getInfoCmp(""));
+        String fallback = InfoCmp.getDefaultInfoCmp(null);
+        assertNotNull("null terminal should fall back to ansi caps", fallback);
+        assertTrue(fallback.startsWith("ansi|"));
+        InfoCmp.setDefaultInfoCmp(null, "ignored");
+    }
+
+    @Test
     public void testParseZeroNumericAndStringWithHash() {
         Set<Capability> bools = new HashSet<>();
         Map<Capability, Integer> ints = new HashMap<>();

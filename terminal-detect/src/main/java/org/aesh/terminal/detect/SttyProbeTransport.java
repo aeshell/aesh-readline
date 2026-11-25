@@ -24,6 +24,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 
 /**
  * Built-in POSIX probe transport: {@code /dev/tty} with {@code stty}
@@ -186,7 +187,7 @@ final class SttyProbeTransport implements BoundedProbeTransport {
             StringBuilder sb = new StringBuilder();
             int n;
             while ((n = p.getInputStream().read(buf)) != -1) {
-                sb.append(new String(buf, 0, n));
+                sb.append(new String(buf, 0, n, StandardCharsets.US_ASCII));
             }
             p.waitFor();
             return p.exitValue() == 0 ? sb.toString().trim() : null;
@@ -205,33 +206,22 @@ final class SttyProbeTransport implements BoundedProbeTransport {
         if (deadline == null || deadline.isExpired()) {
             return null;
         }
-        Process p = null;
+        long timeoutMs = deadline.remainingMillis();
+        if (timeoutMs <= 0) {
+            return null;
+        }
         try {
-            p = new ProcessBuilder(command, "-g")
-                    .redirectInput(tty)
-                    .redirectErrorStream(true)
-                    .start();
-            byte[] buf = new byte[256];
-            StringBuilder sb = new StringBuilder();
-            int n;
-            while ((n = p.getInputStream().read(buf)) != -1) {
-                sb.append(new String(buf, 0, n));
-                if (deadline.isExpired()) {
-                    return null;
-                }
-            }
-            if (!p.waitFor(deadline.remainingNanos(), java.util.concurrent.TimeUnit.NANOSECONDS)) {
+            ProcessBuilder starter = new ProcessBuilder(command, "-g").redirectInput(tty);
+            ProcessRunner.Result result = ProcessRunner.execute(starter, timeoutMs);
+            if (result == null || result.timedOut() || result.exitCode() != 0) {
                 return null;
             }
-            return p.exitValue() == 0 ? sb.toString().trim() : null;
+            return result.text(StandardCharsets.US_ASCII).trim();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             return null;
         } catch (Exception ignored) {
             return null;
-        } finally {
-            if (p != null)
-                p.destroy();
         }
     }
 

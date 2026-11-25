@@ -366,7 +366,7 @@ final class TerminalDetector {
      * @return the detected theme, or UNKNOWN if not determinable
      */
     private static TerminalTheme detectOsPlatformTheme(String osName) {
-        String os = osName == null ? "" : osName.toLowerCase();
+        String os = osName == null ? "" : osName.toLowerCase(Locale.ROOT);
         try {
             if (os.contains("mac")) {
                 return detectMacOsTheme();
@@ -381,7 +381,7 @@ final class TerminalDetector {
     }
 
     private static TerminalTheme detectOsPlatformTheme(String osName, ProbeDeadline deadline) {
-        String os = osName == null ? "" : osName.toLowerCase();
+        String os = osName == null ? "" : osName.toLowerCase(Locale.ROOT);
         try {
             if (os.contains("mac")) {
                 return detectMacOsTheme(deadline);
@@ -397,7 +397,7 @@ final class TerminalDetector {
 
     private static TerminalTheme detectMacOsTheme() {
         String result = execCommand("defaults", "read", "-g", "AppleInterfaceStyle");
-        if (result != null && result.trim().toLowerCase().contains("dark")) {
+        if (result != null && result.trim().toLowerCase(Locale.ROOT).contains("dark")) {
             return TerminalTheme.DARK;
         }
         if (result != null) {
@@ -409,7 +409,7 @@ final class TerminalDetector {
 
     private static TerminalTheme detectMacOsTheme(ProbeDeadline deadline) {
         String result = execCommand(deadline, "defaults", "read", "-g", "AppleInterfaceStyle");
-        if (result != null && result.trim().toLowerCase().contains("dark")) {
+        if (result != null && result.trim().toLowerCase(Locale.ROOT).contains("dark")) {
             return TerminalTheme.DARK;
         }
         if (result != null) {
@@ -455,7 +455,7 @@ final class TerminalDetector {
         String result = execCommand("gsettings", "get",
                 "org.gnome.desktop.interface", "color-scheme");
         if (result != null) {
-            String lower = result.trim().toLowerCase();
+            String lower = result.trim().toLowerCase(Locale.ROOT);
             if (lower.contains("dark"))
                 return TerminalTheme.DARK;
             if (lower.contains("light") || lower.contains("default"))
@@ -465,7 +465,7 @@ final class TerminalDetector {
         result = execCommand("kreadconfig5", "--group", "General",
                 "--key", "ColorScheme");
         if (result != null) {
-            String lower = result.trim().toLowerCase();
+            String lower = result.trim().toLowerCase(Locale.ROOT);
             if (lower.contains("dark"))
                 return TerminalTheme.DARK;
             if (lower.contains("light") || !lower.isEmpty())
@@ -478,7 +478,7 @@ final class TerminalDetector {
         String result = execCommand(deadline, "gsettings", "get",
                 "org.gnome.desktop.interface", "color-scheme");
         if (result != null) {
-            String lower = result.trim().toLowerCase();
+            String lower = result.trim().toLowerCase(Locale.ROOT);
             if (lower.contains("dark"))
                 return TerminalTheme.DARK;
             if (lower.contains("light") || lower.contains("default"))
@@ -490,7 +490,7 @@ final class TerminalDetector {
         result = execCommand(deadline, "kreadconfig5", "--group", "General",
                 "--key", "ColorScheme");
         if (result != null) {
-            String lower = result.trim().toLowerCase();
+            String lower = result.trim().toLowerCase(Locale.ROOT);
             if (lower.contains("dark"))
                 return TerminalTheme.DARK;
             if (lower.contains("light") || !lower.isEmpty())

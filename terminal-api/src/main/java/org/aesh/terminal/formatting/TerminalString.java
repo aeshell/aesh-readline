@@ -294,7 +294,7 @@ public class TerminalString implements Comparable<TerminalString> {
      * @return true if style and color are equal
      */
     public boolean equalsIgnoreCharacter(TerminalString that) {
-        if (style != that.style)
+        if (!style.equals(that.style))
             return false;
         if (ignoreRendering != that.ignoreRendering)
             return false;

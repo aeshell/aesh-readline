@@ -104,6 +104,30 @@ public class SttyProbeTransportTest {
     }
 
     @Test
+    public void testBoundedSttyGetTimesOutWhenHanging() throws Exception {
+        assumePosixShell();
+        File dir = tmp.newFolder("stty-hang");
+        File script = new File(dir, "stty");
+        try (FileWriter writer = new FileWriter(script)) {
+            writer.write("#!/bin/sh\n");
+            writer.write("exec sleep 30\n");
+        }
+        assertTrue(script.setExecutable(true));
+        File device = new File(dir, "tty");
+        assertTrue(device.createNewFile());
+
+        long start = System.nanoTime();
+        try {
+            SttyProbeTransport.openBounded(script.getAbsolutePath(), device,
+                    ProbeDeadline.after(150, java.util.concurrent.TimeUnit.MILLISECONDS));
+            fail("hanging stty -g must time out against the deadline");
+        } catch (IOException expected) {
+            long elapsedMs = java.util.concurrent.TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
+            assertTrue("bounded stty -g must abort promptly, took " + elapsedMs + "ms", elapsedMs < 5000);
+        }
+    }
+
+    @Test
     public void testInterruptedRawSetupPreservesInterrupt() throws Exception {
         assumePosixShell();
         File dir = tmp.newFolder("stty-interrupt");

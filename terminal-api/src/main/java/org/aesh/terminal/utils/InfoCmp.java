@@ -22,6 +22,8 @@ package org.aesh.terminal.utils;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -51,6 +53,9 @@ public final class InfoCmp {
      * @throws InterruptedException if the thread is interrupted
      */
     public static String getInfoCmp(String terminal) throws IOException, InterruptedException {
+        if (terminal == null || terminal.isEmpty()) {
+            return null;
+        }
         String caps = CAPS.get(terminal);
         if (caps == null) {
             caps = loadInfoCmp(terminal);
@@ -126,7 +131,10 @@ public final class InfoCmp {
     }
 
     private static String bundledCapsFile(String terminal) {
-        String lower = terminal.toLowerCase();
+        if (terminal == null) {
+            return null;
+        }
+        String lower = terminal.toLowerCase(Locale.ROOT);
         if (lower.contains("windows")) {
             return "windows_caps.src";
         } else if (lower.contains("tmux-256color") || lower.contains("tmux_256color")) {
@@ -151,21 +159,20 @@ public final class InfoCmp {
     }
 
     private static String readDefaultInfoCmp(String filename) {
-        ByteArrayOutputStream res = new ByteArrayOutputStream();
         try (InputStream in = InfoCmp.class.getResourceAsStream(filename)) {
-            byte[] buffer = new byte[256];
-            while (true) {
-                int len = in.read(buffer);
-                if (len == -1) {
-                    break;
-                }
+            if (in == null) {
+                return null;
+            }
+            ByteArrayOutputStream res = new ByteArrayOutputStream();
+            byte[] buffer = new byte[1024];
+            int len;
+            while ((len = in.read(buffer)) != -1) {
                 res.write(buffer, 0, len);
             }
-            return res.toString("ISO-8859-1");
+            return res.toString(StandardCharsets.ISO_8859_1.name());
         } catch (IOException e) {
-            e.printStackTrace();
+            return null;
         }
-        return null;
     }
 
     /**
@@ -176,7 +183,9 @@ public final class InfoCmp {
      * @param caps the capabilities string to set
      */
     public static void setDefaultInfoCmp(String terminal, String caps) {
-        CAPS.putIfAbsent(terminal, caps);
+        if (terminal != null && caps != null) {
+            CAPS.putIfAbsent(terminal, caps);
+        }
     }
 
     /**

@@ -108,6 +108,7 @@ public class TerminalTextStyle {
      */
     public void setBold(boolean bold) {
         this.bold = bold;
+        this.length = -1;
     }
 
     /**
@@ -135,6 +136,7 @@ public class TerminalTextStyle {
      */
     public void setItalic(boolean italic) {
         this.italic = italic;
+        this.length = -1;
     }
 
     /**
@@ -153,6 +155,7 @@ public class TerminalTextStyle {
      */
     public void setUnderline(boolean underline) {
         this.underline = underline;
+        this.length = -1;
     }
 
     /**
@@ -171,6 +174,7 @@ public class TerminalTextStyle {
      */
     public void setBlink(boolean blink) {
         this.blink = blink;
+        this.length = -1;
     }
 
     /**
@@ -189,6 +193,7 @@ public class TerminalTextStyle {
      */
     public void setInvert(boolean invert) {
         this.invert = invert;
+        this.length = -1;
     }
 
     /**
@@ -207,6 +212,7 @@ public class TerminalTextStyle {
      */
     public void setCrossedOut(boolean crossedOut) {
         this.crossedOut = crossedOut;
+        this.length = -1;
     }
 
     /**
@@ -225,6 +231,7 @@ public class TerminalTextStyle {
      */
     public void setConceal(boolean conceal) {
         this.conceal = conceal;
+        this.length = -1;
     }
 
     /**
@@ -233,7 +240,7 @@ public class TerminalTextStyle {
      * @return true if any style option is enabled
      */
     public boolean isFormatted() {
-        return !(!bold && !blink && !faint && !italic && !underline && !invert && !crossedOut);
+        return bold || blink || faint || italic || underline || invert || crossedOut || conceal;
     }
 
     @Override

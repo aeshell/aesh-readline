@@ -433,7 +433,8 @@ public class TerminalFeatures {
 
         private static boolean isReply(Kind kind) {
             return kind == Kind.OSC || kind == Kind.DEVICE_ATTRIBUTES
-                    || kind == Kind.MODE_REPORT || kind == Kind.CURSOR_POSITION;
+                    || kind == Kind.MODE_REPORT || kind == Kind.KEYBOARD_REPORT
+                    || kind == Kind.CURSOR_POSITION;
         }
 
         private static int[] toCodePoints(String text) {
@@ -1484,9 +1485,23 @@ public class TerminalFeatures {
      * @since 3.18.9
      */
     public boolean supportsProgressiveKeyboard() {
-        int flags = TerminalCapabilities.getInstance().kittyKeyboardFlags();
-        return flags > 0 && (flags & 1) != 0
-                && !isInMultiplexer(System.getenv("TMUX"), System.getenv("TERM"));
+        TerminalDetection attached = attachedDetection();
+        boolean remote = connection.endpointContext().locality() == EndpointContext.Locality.REMOTE;
+        int flags;
+        if (attached != null) {
+            flags = attached.capabilities().kittyKeyboardFlags();
+        } else if (remote) {
+            return false;
+        } else {
+            flags = TerminalCapabilities.getInstance().kittyKeyboardFlags();
+        }
+        if (flags <= 0 || (flags & 1) == 0) {
+            return false;
+        }
+        if (connection.device() != null && connection.device().isMultiplexer()) {
+            return false;
+        }
+        return remote || !isInMultiplexer(System.getenv("TMUX"), System.getenv("TERM"));
     }
 
     /**
@@ -1548,7 +1563,7 @@ public class TerminalFeatures {
         if (term == null) {
             return false;
         }
-        String lower = term.toLowerCase();
+        String lower = term.toLowerCase(java.util.Locale.ROOT);
         return lower.startsWith("tmux") || lower.startsWith("screen");
     }
 }

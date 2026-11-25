@@ -124,7 +124,7 @@ public final class PlatformContext {
      * @return true on Windows
      */
     public boolean isWindows() {
-        return osName.toLowerCase().contains("win");
+        return osName.toLowerCase(java.util.Locale.ROOT).contains("win");
     }
 
     /**
@@ -133,7 +133,7 @@ public final class PlatformContext {
      * @return true on Linux
      */
     public boolean isLinux() {
-        return osName.toLowerCase().contains("linux");
+        return osName.toLowerCase(java.util.Locale.ROOT).contains("linux");
     }
 
     /**
@@ -142,7 +142,7 @@ public final class PlatformContext {
      * @return true on macOS
      */
     public boolean isMac() {
-        String os = osName.toLowerCase();
+        String os = osName.toLowerCase(java.util.Locale.ROOT);
         return os.startsWith("mac") || os.contains("darwin");
     }
 

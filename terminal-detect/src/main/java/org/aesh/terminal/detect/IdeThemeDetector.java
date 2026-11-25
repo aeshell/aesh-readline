@@ -21,11 +21,14 @@ package org.aesh.terminal.detect;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -72,7 +75,7 @@ final class IdeThemeDetector {
      * @return the detected theme, or UNKNOWN if not determinable
      */
     static TerminalTheme detect(String terminalName, Map<String, String> env, String osName) {
-        String os = osName == null ? "" : osName.toLowerCase();
+        String os = osName == null ? "" : osName.toLowerCase(Locale.ROOT);
         switch (terminalName) {
             case "jetbrains":
                 return detectJetBrainsTheme(env, os);
@@ -152,7 +155,7 @@ final class IdeThemeDetector {
                 if (name != null && background != null) {
                     int[] rgb = parseHexColor(background);
                     if (rgb != null) {
-                        backgrounds.put(name.toLowerCase(), rgb);
+                        backgrounds.put(name.toLowerCase(Locale.ROOT), rgb);
                     }
                 }
             }
@@ -205,7 +208,7 @@ final class IdeThemeDetector {
         if (schemeName == null) {
             return TerminalTheme.UNKNOWN;
         }
-        int[] rgb = backgrounds.get(schemeName.toLowerCase());
+        int[] rgb = backgrounds.get(schemeName.toLowerCase(Locale.ROOT));
         if (rgb != null) {
             return TerminalTheme.fromRGB(rgb[0], rgb[1], rgb[2]);
         }
@@ -446,10 +449,11 @@ final class IdeThemeDetector {
     }
 
     private static TerminalTheme parseJetBrainsLafFile(File lafFile) {
-        try (BufferedReader reader = new BufferedReader(new FileReader(lafFile))) {
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(new FileInputStream(lafFile), StandardCharsets.UTF_8))) {
             String line;
             while ((line = reader.readLine()) != null) {
-                String lower = line.toLowerCase();
+                String lower = line.toLowerCase(Locale.ROOT);
                 if (lower.contains("themeid=") || lower.contains("class-name=")) {
                     TerminalTheme theme = ThemeNameClassifier.classify(lower);
                     if (theme != TerminalTheme.UNKNOWN) {
@@ -512,17 +516,21 @@ final class IdeThemeDetector {
         return dirs;
     }
 
+    private static final class Patterns {
+        static final Pattern XML_NAME_ATTR = Pattern.compile("name=\"([^\"]+)\"");
+    }
+
     private static TerminalTheme parseJetBrainsColorScheme(File colorsFile) {
-        try (BufferedReader reader = new BufferedReader(new FileReader(colorsFile))) {
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(new FileInputStream(colorsFile), StandardCharsets.UTF_8))) {
             String line;
             while ((line = reader.readLine()) != null) {
                 if (line.contains("global_color_scheme")) {
-                    String lower = line.toLowerCase();
+                    String lower = line.toLowerCase(Locale.ROOT);
                     // A line can carry several name attributes (the
                     // component name shadows the scheme name); classify
                     // each and take the first recognizable one.
-                    Pattern namePattern = Pattern.compile("name=\"([^\"]+)\"");
-                    Matcher matcher = namePattern.matcher(lower);
+                    Matcher matcher = Patterns.XML_NAME_ATTR.matcher(lower);
                     while (matcher.find()) {
                         TerminalTheme theme = ThemeNameClassifier.classify(matcher.group(1));
                         if (theme != TerminalTheme.UNKNOWN) {
@@ -548,7 +556,8 @@ final class IdeThemeDetector {
      * @return the content, or null if unreadable
      */
     private static String readFileContent(File file) {
-        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8))) {
             StringBuilder content = new StringBuilder();
             String line;
             while ((line = reader.readLine()) != null) {
@@ -729,7 +738,7 @@ final class IdeThemeDetector {
      * @return the value, or null if not found
      */
     static String extractJsonValue(String json, String key) {
-        String pattern = "\"" + key + "\"\\s*:\\s*\"([^\"]+)\"";
+        String pattern = "\"" + Pattern.quote(key) + "\"\\s*:\\s*\"([^\"]+)\"";
         Pattern p = Pattern.compile(pattern);
         Matcher m = p.matcher(json);
         if (m.find()) {

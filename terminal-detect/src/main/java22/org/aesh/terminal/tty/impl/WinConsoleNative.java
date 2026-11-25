@@ -143,7 +143,7 @@ public final class WinConsoleNative {
         MethodHandle getNumberOfConsoleInputEvents = null;
         MethodHandle allocConsole = null;
         MethodHandle freeConsole = null;
-        if (System.getProperty("os.name", "").toLowerCase().contains("win")) {
+        if (System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT).contains("win")) {
             try {
                 Linker linker = Linker.nativeLinker();
                 SymbolLookup kernel32 = SymbolLookup.libraryLookup("kernel32", Arena.global());

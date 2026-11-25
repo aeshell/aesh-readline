@@ -92,7 +92,7 @@ final class ThemeNameClassifier {
             return TerminalTheme.UNKNOWN;
         }
 
-        String lower = themeName.toLowerCase().trim();
+        String lower = themeName.toLowerCase(java.util.Locale.ROOT).trim();
 
         // Check specific light keywords first (before generic "light")
         for (String keyword : LIGHT_KEYWORDS) {

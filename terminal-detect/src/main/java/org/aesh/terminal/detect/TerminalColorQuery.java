@@ -493,7 +493,7 @@ final class TerminalColorQuery {
         StringBuilder sb = new StringBuilder();
         int n;
         while ((n = in.read(buf)) > 0) {
-            sb.append(new String(buf, 0, n));
+            sb.append(new String(buf, 0, n, StandardCharsets.US_ASCII));
             FrameCount count = countFrames(sb);
             // Full batch: 3 DECRPM + keyboard + DA1 + 19 OSC. Terminals without DECRQM
             // legitimately send no DECRPM, so once the DA1 fence lands the
@@ -512,7 +512,7 @@ final class TerminalColorQuery {
         StringBuilder sb = new StringBuilder();
         int n;
         while (!deadline.isExpired() && (n = in.read(buf)) > 0) {
-            sb.append(new String(buf, 0, n));
+            sb.append(new String(buf, 0, n, StandardCharsets.US_ASCII));
             FrameCount count = countFrames(sb);
             int expected = count.da1Seen ? count.decrpm + (count.kittySeen ? 1 : 0) + 20 : 24;
             if (count.total >= expected) {
@@ -534,7 +534,7 @@ final class TerminalColorQuery {
         StringBuilder sb = new StringBuilder();
         int n;
         while ((n = in.read(buf)) > 0) {
-            sb.append(new String(buf, 0, n));
+            sb.append(new String(buf, 0, n, StandardCharsets.US_ASCII));
             if (countFrames(sb).cprSeen) {
                 break;
             }
@@ -547,7 +547,7 @@ final class TerminalColorQuery {
         StringBuilder sb = new StringBuilder();
         int n;
         while (!deadline.isExpired() && (n = in.read(buf)) > 0) {
-            sb.append(new String(buf, 0, n));
+            sb.append(new String(buf, 0, n, StandardCharsets.US_ASCII));
             if (countFrames(sb).cprSeen) {
                 break;
             }

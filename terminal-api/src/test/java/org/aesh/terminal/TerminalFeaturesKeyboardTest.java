@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.function.Consumer;
 
 import org.aesh.terminal.detect.TerminalCapabilities;
+import org.aesh.terminal.detect.TerminalDetection;
 import org.aesh.terminal.detect.TerminalProbeSession;
 import org.aesh.terminal.detect.TerminalProbeTransport;
 import org.aesh.terminal.tty.Capability;
@@ -185,6 +186,35 @@ public class TerminalFeaturesKeyboardTest {
             connection.terminal().disableProgressiveKeyboard();
             assertEquals("repeat disable must not pop again",
                     2, connection.written().size());
+        } finally {
+            TerminalCapabilities.setProbeTransport(null);
+            TerminalCapabilities.setInstance(saved);
+        }
+    }
+
+    @Test
+    public void testRemoteEndpointDoesNotInheritSharedKeyboardFlags() {
+        assumeNoMultiplexer();
+        TerminalCapabilities saved = TerminalCapabilities.getInstance();
+        try {
+            TerminalCapabilities probed = seedShared(5, true);
+            RecordingConnection remote = new RecordingConnection();
+            remote.declareRemoteEndpoint();
+            assertFalse("remote endpoint without attached facts must not inherit local flags",
+                    remote.terminal().supportsProgressiveKeyboard());
+            assertFalse(remote.terminal().enableProgressiveKeyboard());
+            assertTrue(remote.written().isEmpty());
+
+            // Attached endpoint facts override the shared default on local connections too.
+            RecordingConnection attachedUnprobed = new RecordingConnection();
+            attachedUnprobed.attachDetection(TerminalDetection.managed(null));
+            assertFalse("attached unprobed detection must not fall back to shared flags",
+                    attachedUnprobed.terminal().supportsProgressiveKeyboard());
+
+            // Remote endpoint with explicitly attached probed facts may enable.
+            remote.attachDetection(TerminalDetection.managed(probed));
+            assertTrue("remote endpoint with attached probed flags should enable",
+                    remote.terminal().supportsProgressiveKeyboard());
         } finally {
             TerminalCapabilities.setProbeTransport(null);
             TerminalCapabilities.setInstance(saved);

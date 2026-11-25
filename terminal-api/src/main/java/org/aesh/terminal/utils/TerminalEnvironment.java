@@ -129,7 +129,7 @@ public final class TerminalEnvironment {
 
         // Compute derived values
         this.inTmux = tmux != null && !tmux.isEmpty();
-        this.inScreen = term != null && term.toLowerCase().startsWith("screen");
+        this.inScreen = term != null && term.toLowerCase(Locale.ROOT).startsWith("screen");
         this.tmuxPassthroughEnabled = computeTmuxPassthrough();
         this.terminalType = computeTerminalType();
         this.defaultColorDepth = startupDepth != null ? startupDepth : computeColorDepth();
@@ -346,7 +346,7 @@ public final class TerminalEnvironment {
         if (colorterm == null) {
             return false;
         }
-        String lower = colorterm.toLowerCase();
+        String lower = colorterm.toLowerCase(Locale.ROOT);
         return "truecolor".equals(lower) || "24bit".equals(lower);
     }
 
@@ -479,7 +479,7 @@ public final class TerminalEnvironment {
         if (term == null) {
             return false;
         }
-        String lower = term.toLowerCase();
+        String lower = term.toLowerCase(Locale.ROOT);
         return lower.startsWith("tmux") || lower.startsWith("screen");
     }
 
@@ -529,7 +529,7 @@ public final class TerminalEnvironment {
 
         // Priority 3: TERM_PROGRAM
         if (termProgram != null) {
-            String lower = termProgram.toLowerCase();
+            String lower = termProgram.toLowerCase(Locale.ROOT);
             if (lower.contains("iterm")) {
                 return Device.TerminalType.ITERM2;
             }

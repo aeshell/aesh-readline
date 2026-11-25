@@ -375,6 +375,28 @@ public class IdeThemeDetectorTest {
     }
 
     @Test
+    public void testExtractJsonValueQuotesLiteralDots() {
+        String json = "{\"terminalXbackground\": \"#FFFFFF\", \"terminal.background\": \"#000000\"}";
+        assertEquals("#000000", IdeThemeDetector.extractJsonValue(json, "terminal.background"));
+        assertEquals(TerminalTheme.DARK, IdeThemeDetector.parseVSCodeSettings(json));
+    }
+
+    @Test
+    public void testTurkishLocaleCaseFolding() {
+        java.util.Locale prev = java.util.Locale.getDefault();
+        try {
+            java.util.Locale.setDefault(new java.util.Locale("tr", "TR"));
+            assertEquals(TerminalTheme.LIGHT, ThemeNameClassifier.classify("LIGHT"));
+            java.util.Map<String, String> env = new java.util.HashMap<>();
+            env.put("TERM", "KITTY");
+            TerminalDetector detector = new TerminalDetector(env, "LINUX");
+            assertEquals("kitty", detector.terminalName);
+        } finally {
+            java.util.Locale.setDefault(prev);
+        }
+    }
+
+    @Test
     public void testWindowsTerminalDefaultsBackgroundIsInheritedPerSetting() {
         String json = "{\"profiles\":{\"defaults\":{\"background\":\"#fff\",\"colorScheme\":\"Campbell\"},"
                 + "\"list\":[{\"guid\":\"{11111111-1111-1111-1111-111111111111}\","

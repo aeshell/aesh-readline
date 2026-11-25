@@ -49,7 +49,7 @@ final class Win32Probe {
 
     static final boolean IS_WINDOWS;
     static {
-        IS_WINDOWS = System.getProperty("os.name", "").toLowerCase().contains("win");
+        IS_WINDOWS = System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT).contains("win");
     }
 
     static final int STD_INPUT_HANDLE = -10;

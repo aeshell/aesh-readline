@@ -27,6 +27,7 @@ import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SymbolLookup;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
+import java.util.Locale;
 
 /**
  * Shared FFM bindings to POSIX terminal syscalls.
@@ -52,23 +53,12 @@ import java.lang.invoke.MethodHandle;
  */
 final class FfmPosix {
 
-    static final boolean IS_MACOS;
-    static {
-        String osName = System.getProperty("os.name", "").toLowerCase();
-        IS_MACOS = osName.startsWith("mac") || osName.contains("darwin");
-    }
+    private static final String OS_NAME = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
+    private static final String OS_ARCH = System.getProperty("os.arch", "").toLowerCase(Locale.ROOT);
 
-    static final boolean IS_WINDOWS;
-    static {
-        String osName = System.getProperty("os.name", "").toLowerCase();
-        IS_WINDOWS = osName.contains("win");
-    }
-
-    static final boolean IS_LINUX;
-    static {
-        String osName = System.getProperty("os.name", "").toLowerCase();
-        IS_LINUX = osName.contains("linux");
-    }
+    static final boolean IS_MACOS = OS_NAME.startsWith("mac") || OS_NAME.contains("darwin");
+    static final boolean IS_WINDOWS = OS_NAME.contains("win");
+    static final boolean IS_LINUX = OS_NAME.contains("linux");
 
     /**
      * True only for OS/architecture pairs with implemented layouts.
@@ -79,15 +69,9 @@ final class FfmPosix {
      * else (BSDs, Solaris, 32-bit) would take the Linux struct branch with
      * the wrong termios layout and corrupt terminal flags.
      */
-    static final boolean IS_SUPPORTED_ABI;
-    static {
-        String osName = System.getProperty("os.name", "").toLowerCase();
-        String osArch = System.getProperty("os.arch", "").toLowerCase();
-        boolean os = osName.contains("linux") || osName.startsWith("mac") || osName.contains("darwin");
-        boolean arch = osArch.equals("amd64") || osArch.equals("x86_64")
-                || osArch.equals("aarch64") || osArch.equals("arm64");
-        IS_SUPPORTED_ABI = os && arch;
-    }
+    static final boolean IS_SUPPORTED_ABI = (IS_LINUX || IS_MACOS)
+            && (OS_ARCH.equals("amd64") || OS_ARCH.equals("x86_64")
+                    || OS_ARCH.equals("aarch64") || OS_ARCH.equals("arm64"));
 
     static final int O_RDWR = 0x0002;
     static final int O_RDONLY = 0x0000;

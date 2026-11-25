@@ -1,5 +1,6 @@
 package org.aesh.terminal.formatting;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -21,5 +22,16 @@ public class TerminalTextStyleTest {
         assertTrue(textStyle.isBold());
         assertTrue(textStyle.isFormatted());
         assertFalse(textStyle.isUnderline());
+
+        TerminalTextStyle mutable = new TerminalTextStyle();
+        assertEquals(0, mutable.getLength());
+        mutable.setBold(true);
+        assertEquals(mutable.toString().length(), mutable.getLength());
+        assertTrue(mutable.getLength() > 0);
+
+        TerminalTextStyle concealed = new TerminalTextStyle();
+        concealed.setConceal(true);
+        assertTrue(concealed.isFormatted());
+        assertEquals(concealed.toString().length(), concealed.getLength());
     }
 }

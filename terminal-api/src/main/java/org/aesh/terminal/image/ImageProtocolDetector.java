@@ -239,7 +239,7 @@ public final class ImageProtocolDetector {
         if (termType == null) {
             return ImageProtocol.NONE;
         }
-        String typeLower = termType.toLowerCase();
+        String typeLower = termType.toLowerCase(java.util.Locale.ROOT);
 
         if (typeLower.contains("kitty") || typeLower.contains("ghostty") ||
                 typeLower.contains("konsole")) {

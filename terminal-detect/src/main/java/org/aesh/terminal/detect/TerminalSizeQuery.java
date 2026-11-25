@@ -24,6 +24,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 import java.util.Optional;
 
 import org.aesh.terminal.tty.impl.WinConsoleNative;
@@ -79,7 +80,7 @@ final class TerminalSizeQuery {
      * @return the size, or empty when unavailable
      */
     static Optional<TerminalSize> query(String osName) {
-        String lower = osName == null ? "" : osName.toLowerCase();
+        String lower = osName == null ? "" : osName.toLowerCase(Locale.ROOT);
         if (lower.contains("win")) {
             return queryWindowsSize();
         }
@@ -194,7 +195,7 @@ final class TerminalSizeQuery {
      * @return true only when a probe child would be doomed
      */
     static boolean hasNoControllingTerminal() {
-        String os = System.getProperty("os.name", "").toLowerCase();
+        String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
         if (!os.contains("linux")) {
             return false;
         }
