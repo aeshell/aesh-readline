@@ -54,8 +54,13 @@ public class Encoder implements Consumer<int[]> {
     private CharsetEncoder cachedEncoder;
     private final ByteWriter out;
 
-    // Reusable buffers — shared across all encoding paths, never shrunk
-    private char[] charBuf = new char[256]; // general path only
+    // Cap retained buffer sizes so a one-off large write (e.g. Sixel/Kitty
+    // image) does not pin a multi-megabyte buffer for the connection's lifetime.
+    private static final int MAX_RETAINED_BYTE_BUF = 16 * 1024;
+    private static final int MAX_RETAINED_CHAR_BUF = 8 * 1024;
+
+    // Reusable buffers — shared across encoding paths, trimmed after oversized writes
+    private char[] charBuf; // general (non-UTF-8) path only, allocated lazily
     private byte[] byteBuf = new byte[512]; // shared by UTF-8 and general paths
 
     /**
@@ -105,11 +110,19 @@ public class Encoder implements Consumer<int[]> {
 
     /**
      * Ensure byteBuf has at least the specified capacity.
-     * Grows the buffer if needed; never shrinks.
      */
     private void ensureByteBufCapacity(int needed) {
         if (byteBuf.length < needed) {
             byteBuf = new byte[needed];
+        }
+    }
+
+    private void trimBuffers() {
+        if (byteBuf.length > MAX_RETAINED_BYTE_BUF) {
+            byteBuf = new byte[MAX_RETAINED_BYTE_BUF];
+        }
+        if (charBuf != null && charBuf.length > MAX_RETAINED_CHAR_BUF) {
+            charBuf = new char[MAX_RETAINED_CHAR_BUF];
         }
     }
 
@@ -123,10 +136,14 @@ public class Encoder implements Consumer<int[]> {
      */
     @Override
     public synchronized void accept(int[] input) {
-        if (isUtf8) {
-            acceptUtf8(input);
-        } else {
-            acceptGeneral(input);
+        try {
+            if (isUtf8) {
+                acceptUtf8(input);
+            } else {
+                acceptGeneral(input);
+            }
+        } finally {
+            trimBuffers();
         }
     }
 
@@ -145,7 +162,11 @@ public class Encoder implements Consumer<int[]> {
             return;
 
         if (isUtf8) {
-            acceptUtf8String(s);
+            try {
+                acceptUtf8String(s);
+            } finally {
+                trimBuffers();
+            }
         } else {
             accept(CodePointUtils.toCodePoints(s));
         }
@@ -171,10 +192,7 @@ public class Encoder implements Consumer<int[]> {
                 if (Character.isLowSurrogate(low)) {
                     int cp = Character.toCodePoint(c, low);
                     i++;
-                    // Ensure capacity for 4 bytes (surrogate pair)
-                    if (pos + 4 > byteBuf.length) {
-                        ensureByteBufCapacity(pos + (len - i) * 3 + 4);
-                    }
+                    // len * 3 already covers surrogate pairs (2 chars -> 4 <= 6 bytes)
                     byteBuf[pos++] = (byte) (0xF0 | (cp >> 18));
                     byteBuf[pos++] = (byte) (0x80 | ((cp >> 12) & 0x3F));
                     byteBuf[pos++] = (byte) (0x80 | ((cp >> 6) & 0x3F));
@@ -316,6 +334,9 @@ public class Encoder implements Consumer<int[]> {
      * fill loop runs bounds-check-free.
      */
     private int codePointsToChars(int[] input) {
+        if (charBuf == null) {
+            charBuf = new char[256];
+        }
         int len = input.length;
         if (len > charBuf.length / 2) {
             int needed = 0;

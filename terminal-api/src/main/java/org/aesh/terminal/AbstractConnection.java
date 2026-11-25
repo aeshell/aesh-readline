@@ -362,15 +362,25 @@ public abstract class AbstractConnection implements Connection {
     /** Handler for printAbove requests. */
     private volatile Consumer<String> printAboveHandler;
 
-    /** Registered status lines, sorted by priority. */
-    private final CopyOnWriteArrayList<StatusLineImpl> statusLines = new CopyOnWriteArrayList<>();
+    /** Registered status lines, sorted by priority. Allocated lazily on first registration. */
+    private volatile CopyOnWriteArrayList<StatusLineImpl> statusLines;
 
     @Override
     public StatusLine registerStatusLine(int priority) {
+        CopyOnWriteArrayList<StatusLineImpl> lines = statusLines;
+        if (lines == null) {
+            synchronized (this) {
+                lines = statusLines;
+                if (lines == null) {
+                    lines = new CopyOnWriteArrayList<>();
+                    statusLines = lines;
+                }
+            }
+        }
         StatusLineImpl sl = new StatusLineImpl(priority, this);
-        statusLines.add(sl);
+        lines.add(sl);
         // Sort by priority (lowest first = top, highest last = bottom near prompt)
-        statusLines.sort((a, b) -> Integer.compare(a.priority, b.priority));
+        lines.sort((a, b) -> Integer.compare(a.priority, b.priority));
         // Trigger a redraw if a printAbove handler is active
         Consumer<String> handler = printAboveHandler;
         if (handler != null) {
@@ -386,11 +396,12 @@ public abstract class AbstractConnection implements Connection {
      * @return unmodifiable list of active status line messages
      */
     public List<String> getStatusMessages() {
-        if (statusLines.isEmpty()) {
+        CopyOnWriteArrayList<StatusLineImpl> lines = statusLines;
+        if (lines == null || lines.isEmpty()) {
             return Collections.emptyList();
         }
         List<String> messages = new java.util.ArrayList<>();
-        for (StatusLineImpl sl : statusLines) {
+        for (StatusLineImpl sl : lines) {
             String msg = sl.message;
             if (msg != null && !msg.isEmpty()) {
                 messages.add(msg);
@@ -400,7 +411,10 @@ public abstract class AbstractConnection implements Connection {
     }
 
     void removeStatusLine(StatusLineImpl sl) {
-        statusLines.remove(sl);
+        CopyOnWriteArrayList<StatusLineImpl> lines = statusLines;
+        if (lines != null) {
+            lines.remove(sl);
+        }
         // Trigger a redraw
         Consumer<String> handler = printAboveHandler;
         if (handler != null) {

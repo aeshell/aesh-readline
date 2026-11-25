@@ -106,10 +106,13 @@ public final class VtParser {
     }
 
     /**
-     * The transition table: TABLE[state][byte] = packed (action, nextState).
-     * Generated from the Williams specification with colon-as-subparam extension.
+     * The transition table: TABLE[(state << 8) | byte] = packed (action, nextState).
+     * Flat 1D array (1 heap object, single bounds check) generated from the
+     * Williams specification with colon-as-subparam extension.
      */
-    static final short[][] TABLE = new short[STATE_COUNT][256];
+    static final short[] TABLE = new short[STATE_COUNT * 256];
+
+    private static final int MAX_RETAINED_OSC_CAPACITY = 4096;
 
     static {
         buildTable();
@@ -135,8 +138,8 @@ public final class VtParser {
     private int currentParam;
     private boolean paramStarted;
 
-    // OSC string accumulator
-    private final StringBuilder oscString = new StringBuilder(256);
+    // OSC string accumulator (allocated lazily on first OSC; trimmed after huge payloads)
+    private StringBuilder oscString;
 
     /**
      * Creates a new parser with the given handler.
@@ -206,7 +209,7 @@ public final class VtParser {
             }
             return;
         }
-        short entry = TABLE[state][b];
+        short entry = TABLE[(state << 8) | b];
         int action = (entry >> 4) & 0x0F;
         int nextState = entry & 0x0F;
 
@@ -229,7 +232,7 @@ public final class VtParser {
         if (state == DCS_PASSTHROUGH) {
             handler.unhook();
         } else if (state == OSC_STRING) {
-            handler.oscEnd(oscString.toString());
+            dispatchOscEnd();
         }
         state = GROUND;
         clearParams();
@@ -305,15 +308,34 @@ public final class VtParser {
                 handler.unhook();
                 break;
             case ACTION_OSC_START:
-                oscString.setLength(0);
+                resetOscString();
                 break;
             case ACTION_OSC_PUT:
+                if (oscString == null) {
+                    oscString = new StringBuilder(64);
+                }
                 oscString.append((char) b);
                 break;
             case ACTION_OSC_END:
-                handler.oscEnd(oscString.toString());
+                dispatchOscEnd();
                 break;
         }
+    }
+
+    private void resetOscString() {
+        if (oscString != null) {
+            if (oscString.capacity() > MAX_RETAINED_OSC_CAPACITY) {
+                oscString = null;
+            } else {
+                oscString.setLength(0);
+            }
+        }
+    }
+
+    private void dispatchOscEnd() {
+        String data = oscString == null ? "" : oscString.toString();
+        resetOscString();
+        handler.oscEnd(data);
     }
 
     private void performEntryAction(int newState) {
@@ -324,7 +346,7 @@ public final class VtParser {
                 clearParams();
                 break;
             case OSC_STRING:
-                oscString.setLength(0);
+                resetOscString();
                 break;
             case DCS_PASSTHROUGH:
                 // hook is dispatched via the transition action
@@ -338,7 +360,7 @@ public final class VtParser {
                 handler.unhook();
                 break;
             case OSC_STRING:
-                handler.oscEnd(oscString.toString());
+                dispatchOscEnd();
                 break;
         }
     }
@@ -363,243 +385,168 @@ public final class VtParser {
     // Table generation — Williams spec + colon extension + BEL for OSC
     // =========================================================================
 
+    private static void set(int state, int b, short entry) {
+        TABLE[(state << 8) | b] = entry;
+    }
+
+    private static void setRange(int state, int from, int to, short entry) {
+        int base = state << 8;
+        for (int b = from; b <= to; b++) {
+            TABLE[base | b] = entry;
+        }
+    }
+
+    private static void setC0(int state, int action) {
+        short entry = pack(action, state);
+        setRange(state, 0x00, 0x17, entry);
+        set(state, 0x19, entry);
+        setRange(state, 0x1C, 0x1F, entry);
+    }
+
     private static void buildTable() {
         // Initialize everything to (IGNORE, same state) — safe default
         for (int s = 0; s < STATE_COUNT; s++) {
-            for (int b = 0; b < 256; b++) {
-                TABLE[s][b] = pack(ACTION_IGNORE, s);
-            }
+            setRange(s, 0, 255, pack(ACTION_IGNORE, s));
         }
 
         // ---- "anywhere" transitions (from any state) ----
         for (int s = 0; s < STATE_COUNT; s++) {
             // CAN (0x18) and SUB (0x1A) → execute and go to ground
-            TABLE[s][0x18] = pack(ACTION_EXECUTE, GROUND);
-            TABLE[s][0x1A] = pack(ACTION_EXECUTE, GROUND);
+            set(s, 0x18, pack(ACTION_EXECUTE, GROUND));
+            set(s, 0x1A, pack(ACTION_EXECUTE, GROUND));
             // ESC (0x1B) → escape (no action — entry action does clear)
-            TABLE[s][0x1B] = pack(ACTION_NONE, ESCAPE);
+            set(s, 0x1B, pack(ACTION_NONE, ESCAPE));
             // C1 controls (8-bit)
-            for (int b = 0x80; b <= 0x8F; b++)
-                TABLE[s][b] = pack(ACTION_EXECUTE, GROUND);
-            for (int b = 0x91; b <= 0x97; b++)
-                TABLE[s][b] = pack(ACTION_EXECUTE, GROUND);
-            TABLE[s][0x99] = pack(ACTION_EXECUTE, GROUND);
-            TABLE[s][0x9A] = pack(ACTION_EXECUTE, GROUND);
-            TABLE[s][0x90] = pack(ACTION_NONE, DCS_ENTRY); // DCS
-            TABLE[s][0x9B] = pack(ACTION_NONE, CSI_ENTRY); // CSI
-            TABLE[s][0x9C] = pack(ACTION_NONE, GROUND); // ST
-            TABLE[s][0x9D] = pack(ACTION_NONE, OSC_STRING); // OSC
-            TABLE[s][0x98] = pack(ACTION_NONE, SOS_PM_APC_STRING); // SOS
-            TABLE[s][0x9E] = pack(ACTION_NONE, SOS_PM_APC_STRING); // PM
-            TABLE[s][0x9F] = pack(ACTION_NONE, SOS_PM_APC_STRING); // APC
+            setRange(s, 0x80, 0x8F, pack(ACTION_EXECUTE, GROUND));
+            setRange(s, 0x91, 0x97, pack(ACTION_EXECUTE, GROUND));
+            set(s, 0x99, pack(ACTION_EXECUTE, GROUND));
+            set(s, 0x9A, pack(ACTION_EXECUTE, GROUND));
+            set(s, 0x90, pack(ACTION_NONE, DCS_ENTRY)); // DCS
+            set(s, 0x9B, pack(ACTION_NONE, CSI_ENTRY)); // CSI
+            set(s, 0x9C, pack(ACTION_NONE, GROUND)); // ST
+            set(s, 0x9D, pack(ACTION_NONE, OSC_STRING)); // OSC
+            set(s, 0x98, pack(ACTION_NONE, SOS_PM_APC_STRING)); // SOS
+            set(s, 0x9E, pack(ACTION_NONE, SOS_PM_APC_STRING)); // PM
+            set(s, 0x9F, pack(ACTION_NONE, SOS_PM_APC_STRING)); // APC
         }
 
         // ---- ground ----
-        for (int b = 0x00; b <= 0x17; b++)
-            TABLE[GROUND][b] = pack(ACTION_EXECUTE, GROUND);
-        TABLE[GROUND][0x19] = pack(ACTION_EXECUTE, GROUND);
-        for (int b = 0x1C; b <= 0x1F; b++)
-            TABLE[GROUND][b] = pack(ACTION_EXECUTE, GROUND);
-        for (int b = 0x20; b <= 0x7F; b++)
-            TABLE[GROUND][b] = pack(ACTION_PRINT, GROUND);
+        setC0(GROUND, ACTION_EXECUTE);
+        setRange(GROUND, 0x20, 0x7F, pack(ACTION_PRINT, GROUND));
 
         // ---- escape ----
-        for (int b = 0x00; b <= 0x17; b++)
-            TABLE[ESCAPE][b] = pack(ACTION_EXECUTE, ESCAPE);
-        TABLE[ESCAPE][0x19] = pack(ACTION_EXECUTE, ESCAPE);
-        for (int b = 0x1C; b <= 0x1F; b++)
-            TABLE[ESCAPE][b] = pack(ACTION_EXECUTE, ESCAPE);
-        for (int b = 0x20; b <= 0x2F; b++)
-            TABLE[ESCAPE][b] = pack(ACTION_COLLECT, ESCAPE_INTERMEDIATE);
-        for (int b = 0x30; b <= 0x4F; b++)
-            TABLE[ESCAPE][b] = pack(ACTION_ESC_DISPATCH, GROUND);
-        TABLE[ESCAPE][0x50] = pack(ACTION_NONE, DCS_ENTRY); // P → DCS
-        for (int b = 0x51; b <= 0x57; b++)
-            TABLE[ESCAPE][b] = pack(ACTION_ESC_DISPATCH, GROUND);
-        TABLE[ESCAPE][0x58] = pack(ACTION_NONE, SOS_PM_APC_STRING); // X → SOS
-        TABLE[ESCAPE][0x59] = pack(ACTION_ESC_DISPATCH, GROUND);
-        TABLE[ESCAPE][0x5A] = pack(ACTION_ESC_DISPATCH, GROUND);
-        TABLE[ESCAPE][0x5B] = pack(ACTION_NONE, CSI_ENTRY); // [ → CSI
-        TABLE[ESCAPE][0x5C] = pack(ACTION_ESC_DISPATCH, GROUND); // \ (ST as esc_dispatch)
-        TABLE[ESCAPE][0x5D] = pack(ACTION_NONE, OSC_STRING); // ] → OSC
-        TABLE[ESCAPE][0x5E] = pack(ACTION_NONE, SOS_PM_APC_STRING); // ^ → PM
-        TABLE[ESCAPE][0x5F] = pack(ACTION_NONE, SOS_PM_APC_STRING); // _ → APC
-        for (int b = 0x60; b <= 0x7E; b++)
-            TABLE[ESCAPE][b] = pack(ACTION_ESC_DISPATCH, GROUND);
-        TABLE[ESCAPE][0x7F] = pack(ACTION_IGNORE, ESCAPE);
+        setC0(ESCAPE, ACTION_EXECUTE);
+        setRange(ESCAPE, 0x20, 0x2F, pack(ACTION_COLLECT, ESCAPE_INTERMEDIATE));
+        setRange(ESCAPE, 0x30, 0x4F, pack(ACTION_ESC_DISPATCH, GROUND));
+        set(ESCAPE, 0x50, pack(ACTION_NONE, DCS_ENTRY)); // P → DCS
+        setRange(ESCAPE, 0x51, 0x57, pack(ACTION_ESC_DISPATCH, GROUND));
+        set(ESCAPE, 0x58, pack(ACTION_NONE, SOS_PM_APC_STRING)); // X → SOS
+        set(ESCAPE, 0x59, pack(ACTION_ESC_DISPATCH, GROUND));
+        set(ESCAPE, 0x5A, pack(ACTION_ESC_DISPATCH, GROUND));
+        set(ESCAPE, 0x5B, pack(ACTION_NONE, CSI_ENTRY)); // [ → CSI
+        set(ESCAPE, 0x5C, pack(ACTION_ESC_DISPATCH, GROUND)); // \ (ST as esc_dispatch)
+        set(ESCAPE, 0x5D, pack(ACTION_NONE, OSC_STRING)); // ] → OSC
+        set(ESCAPE, 0x5E, pack(ACTION_NONE, SOS_PM_APC_STRING)); // ^ → PM
+        set(ESCAPE, 0x5F, pack(ACTION_NONE, SOS_PM_APC_STRING)); // _ → APC
+        setRange(ESCAPE, 0x60, 0x7E, pack(ACTION_ESC_DISPATCH, GROUND));
+        set(ESCAPE, 0x7F, pack(ACTION_IGNORE, ESCAPE));
 
         // ---- escape intermediate ----
-        for (int b = 0x00; b <= 0x17; b++)
-            TABLE[ESCAPE_INTERMEDIATE][b] = pack(ACTION_EXECUTE, ESCAPE_INTERMEDIATE);
-        TABLE[ESCAPE_INTERMEDIATE][0x19] = pack(ACTION_EXECUTE, ESCAPE_INTERMEDIATE);
-        for (int b = 0x1C; b <= 0x1F; b++)
-            TABLE[ESCAPE_INTERMEDIATE][b] = pack(ACTION_EXECUTE, ESCAPE_INTERMEDIATE);
-        for (int b = 0x20; b <= 0x2F; b++)
-            TABLE[ESCAPE_INTERMEDIATE][b] = pack(ACTION_COLLECT, ESCAPE_INTERMEDIATE);
-        for (int b = 0x30; b <= 0x7E; b++)
-            TABLE[ESCAPE_INTERMEDIATE][b] = pack(ACTION_ESC_DISPATCH, GROUND);
-        TABLE[ESCAPE_INTERMEDIATE][0x7F] = pack(ACTION_IGNORE, ESCAPE_INTERMEDIATE);
+        setC0(ESCAPE_INTERMEDIATE, ACTION_EXECUTE);
+        setRange(ESCAPE_INTERMEDIATE, 0x20, 0x2F, pack(ACTION_COLLECT, ESCAPE_INTERMEDIATE));
+        setRange(ESCAPE_INTERMEDIATE, 0x30, 0x7E, pack(ACTION_ESC_DISPATCH, GROUND));
+        set(ESCAPE_INTERMEDIATE, 0x7F, pack(ACTION_IGNORE, ESCAPE_INTERMEDIATE));
 
         // ---- csi entry ----
-        for (int b = 0x00; b <= 0x17; b++)
-            TABLE[CSI_ENTRY][b] = pack(ACTION_EXECUTE, CSI_ENTRY);
-        TABLE[CSI_ENTRY][0x19] = pack(ACTION_EXECUTE, CSI_ENTRY);
-        for (int b = 0x1C; b <= 0x1F; b++)
-            TABLE[CSI_ENTRY][b] = pack(ACTION_EXECUTE, CSI_ENTRY);
-        for (int b = 0x20; b <= 0x2F; b++)
-            TABLE[CSI_ENTRY][b] = pack(ACTION_COLLECT, CSI_INTERMEDIATE);
-        for (int b = 0x30; b <= 0x39; b++)
-            TABLE[CSI_ENTRY][b] = pack(ACTION_PARAM, CSI_PARAM);
-        TABLE[CSI_ENTRY][0x3A] = pack(ACTION_PARAM, CSI_PARAM); // colon → subparam (deviation from Williams)
-        TABLE[CSI_ENTRY][0x3B] = pack(ACTION_PARAM, CSI_PARAM); // semicolon
-        for (int b = 0x3C; b <= 0x3F; b++)
-            TABLE[CSI_ENTRY][b] = pack(ACTION_COLLECT, CSI_PARAM); // private markers
-        for (int b = 0x40; b <= 0x7E; b++)
-            TABLE[CSI_ENTRY][b] = pack(ACTION_CSI_DISPATCH, GROUND);
-        TABLE[CSI_ENTRY][0x7F] = pack(ACTION_IGNORE, CSI_ENTRY);
+        setC0(CSI_ENTRY, ACTION_EXECUTE);
+        setRange(CSI_ENTRY, 0x20, 0x2F, pack(ACTION_COLLECT, CSI_INTERMEDIATE));
+        setRange(CSI_ENTRY, 0x30, 0x39, pack(ACTION_PARAM, CSI_PARAM));
+        set(CSI_ENTRY, 0x3A, pack(ACTION_PARAM, CSI_PARAM)); // colon → subparam (deviation from Williams)
+        set(CSI_ENTRY, 0x3B, pack(ACTION_PARAM, CSI_PARAM)); // semicolon
+        setRange(CSI_ENTRY, 0x3C, 0x3F, pack(ACTION_COLLECT, CSI_PARAM)); // private markers
+        setRange(CSI_ENTRY, 0x40, 0x7E, pack(ACTION_CSI_DISPATCH, GROUND));
+        set(CSI_ENTRY, 0x7F, pack(ACTION_IGNORE, CSI_ENTRY));
 
         // ---- csi param ----
-        for (int b = 0x00; b <= 0x17; b++)
-            TABLE[CSI_PARAM][b] = pack(ACTION_EXECUTE, CSI_PARAM);
-        TABLE[CSI_PARAM][0x19] = pack(ACTION_EXECUTE, CSI_PARAM);
-        for (int b = 0x1C; b <= 0x1F; b++)
-            TABLE[CSI_PARAM][b] = pack(ACTION_EXECUTE, CSI_PARAM);
-        for (int b = 0x20; b <= 0x2F; b++)
-            TABLE[CSI_PARAM][b] = pack(ACTION_COLLECT, CSI_INTERMEDIATE);
-        for (int b = 0x30; b <= 0x39; b++)
-            TABLE[CSI_PARAM][b] = pack(ACTION_PARAM, CSI_PARAM);
-        TABLE[CSI_PARAM][0x3A] = pack(ACTION_PARAM, CSI_PARAM); // colon → subparam
-        TABLE[CSI_PARAM][0x3B] = pack(ACTION_PARAM, CSI_PARAM); // semicolon
-        for (int b = 0x3C; b <= 0x3F; b++)
-            TABLE[CSI_PARAM][b] = pack(ACTION_NONE, CSI_IGNORE);
-        for (int b = 0x40; b <= 0x7E; b++)
-            TABLE[CSI_PARAM][b] = pack(ACTION_CSI_DISPATCH, GROUND);
-        TABLE[CSI_PARAM][0x7F] = pack(ACTION_IGNORE, CSI_PARAM);
+        setC0(CSI_PARAM, ACTION_EXECUTE);
+        setRange(CSI_PARAM, 0x20, 0x2F, pack(ACTION_COLLECT, CSI_INTERMEDIATE));
+        setRange(CSI_PARAM, 0x30, 0x39, pack(ACTION_PARAM, CSI_PARAM));
+        set(CSI_PARAM, 0x3A, pack(ACTION_PARAM, CSI_PARAM)); // colon → subparam
+        set(CSI_PARAM, 0x3B, pack(ACTION_PARAM, CSI_PARAM)); // semicolon
+        setRange(CSI_PARAM, 0x3C, 0x3F, pack(ACTION_NONE, CSI_IGNORE));
+        setRange(CSI_PARAM, 0x40, 0x7E, pack(ACTION_CSI_DISPATCH, GROUND));
+        set(CSI_PARAM, 0x7F, pack(ACTION_IGNORE, CSI_PARAM));
 
         // ---- csi intermediate ----
-        for (int b = 0x00; b <= 0x17; b++)
-            TABLE[CSI_INTERMEDIATE][b] = pack(ACTION_EXECUTE, CSI_INTERMEDIATE);
-        TABLE[CSI_INTERMEDIATE][0x19] = pack(ACTION_EXECUTE, CSI_INTERMEDIATE);
-        for (int b = 0x1C; b <= 0x1F; b++)
-            TABLE[CSI_INTERMEDIATE][b] = pack(ACTION_EXECUTE, CSI_INTERMEDIATE);
-        for (int b = 0x20; b <= 0x2F; b++)
-            TABLE[CSI_INTERMEDIATE][b] = pack(ACTION_COLLECT, CSI_INTERMEDIATE);
-        for (int b = 0x30; b <= 0x3F; b++)
-            TABLE[CSI_INTERMEDIATE][b] = pack(ACTION_NONE, CSI_IGNORE);
-        for (int b = 0x40; b <= 0x7E; b++)
-            TABLE[CSI_INTERMEDIATE][b] = pack(ACTION_CSI_DISPATCH, GROUND);
-        TABLE[CSI_INTERMEDIATE][0x7F] = pack(ACTION_IGNORE, CSI_INTERMEDIATE);
+        setC0(CSI_INTERMEDIATE, ACTION_EXECUTE);
+        setRange(CSI_INTERMEDIATE, 0x20, 0x2F, pack(ACTION_COLLECT, CSI_INTERMEDIATE));
+        setRange(CSI_INTERMEDIATE, 0x30, 0x3F, pack(ACTION_NONE, CSI_IGNORE));
+        setRange(CSI_INTERMEDIATE, 0x40, 0x7E, pack(ACTION_CSI_DISPATCH, GROUND));
+        set(CSI_INTERMEDIATE, 0x7F, pack(ACTION_IGNORE, CSI_INTERMEDIATE));
 
         // ---- csi ignore ----
-        for (int b = 0x00; b <= 0x17; b++)
-            TABLE[CSI_IGNORE][b] = pack(ACTION_EXECUTE, CSI_IGNORE);
-        TABLE[CSI_IGNORE][0x19] = pack(ACTION_EXECUTE, CSI_IGNORE);
-        for (int b = 0x1C; b <= 0x1F; b++)
-            TABLE[CSI_IGNORE][b] = pack(ACTION_EXECUTE, CSI_IGNORE);
-        for (int b = 0x20; b <= 0x3F; b++)
-            TABLE[CSI_IGNORE][b] = pack(ACTION_IGNORE, CSI_IGNORE);
-        for (int b = 0x40; b <= 0x7E; b++)
-            TABLE[CSI_IGNORE][b] = pack(ACTION_NONE, GROUND);
-        TABLE[CSI_IGNORE][0x7F] = pack(ACTION_IGNORE, CSI_IGNORE);
+        setC0(CSI_IGNORE, ACTION_EXECUTE);
+        setRange(CSI_IGNORE, 0x20, 0x3F, pack(ACTION_IGNORE, CSI_IGNORE));
+        setRange(CSI_IGNORE, 0x40, 0x7E, pack(ACTION_NONE, GROUND));
+        set(CSI_IGNORE, 0x7F, pack(ACTION_IGNORE, CSI_IGNORE));
 
         // ---- dcs entry ----
-        for (int b = 0x00; b <= 0x17; b++)
-            TABLE[DCS_ENTRY][b] = pack(ACTION_IGNORE, DCS_ENTRY);
-        TABLE[DCS_ENTRY][0x19] = pack(ACTION_IGNORE, DCS_ENTRY);
-        for (int b = 0x1C; b <= 0x1F; b++)
-            TABLE[DCS_ENTRY][b] = pack(ACTION_IGNORE, DCS_ENTRY);
-        for (int b = 0x20; b <= 0x2F; b++)
-            TABLE[DCS_ENTRY][b] = pack(ACTION_COLLECT, DCS_INTERMEDIATE);
-        for (int b = 0x30; b <= 0x39; b++)
-            TABLE[DCS_ENTRY][b] = pack(ACTION_PARAM, DCS_PARAM);
-        TABLE[DCS_ENTRY][0x3A] = pack(ACTION_NONE, DCS_IGNORE); // colon in DCS → ignore (no subparam in DCS)
-        TABLE[DCS_ENTRY][0x3B] = pack(ACTION_PARAM, DCS_PARAM);
-        for (int b = 0x3C; b <= 0x3F; b++)
-            TABLE[DCS_ENTRY][b] = pack(ACTION_COLLECT, DCS_PARAM);
-        for (int b = 0x40; b <= 0x7E; b++)
-            TABLE[DCS_ENTRY][b] = pack(ACTION_HOOK, DCS_PASSTHROUGH);
-        TABLE[DCS_ENTRY][0x7F] = pack(ACTION_IGNORE, DCS_ENTRY);
+        setC0(DCS_ENTRY, ACTION_IGNORE);
+        setRange(DCS_ENTRY, 0x20, 0x2F, pack(ACTION_COLLECT, DCS_INTERMEDIATE));
+        setRange(DCS_ENTRY, 0x30, 0x39, pack(ACTION_PARAM, DCS_PARAM));
+        set(DCS_ENTRY, 0x3A, pack(ACTION_NONE, DCS_IGNORE)); // colon in DCS → ignore (no subparam in DCS)
+        set(DCS_ENTRY, 0x3B, pack(ACTION_PARAM, DCS_PARAM));
+        setRange(DCS_ENTRY, 0x3C, 0x3F, pack(ACTION_COLLECT, DCS_PARAM));
+        setRange(DCS_ENTRY, 0x40, 0x7E, pack(ACTION_HOOK, DCS_PASSTHROUGH));
+        set(DCS_ENTRY, 0x7F, pack(ACTION_IGNORE, DCS_ENTRY));
 
         // ---- dcs param ----
-        for (int b = 0x00; b <= 0x17; b++)
-            TABLE[DCS_PARAM][b] = pack(ACTION_IGNORE, DCS_PARAM);
-        TABLE[DCS_PARAM][0x19] = pack(ACTION_IGNORE, DCS_PARAM);
-        for (int b = 0x1C; b <= 0x1F; b++)
-            TABLE[DCS_PARAM][b] = pack(ACTION_IGNORE, DCS_PARAM);
-        for (int b = 0x20; b <= 0x2F; b++)
-            TABLE[DCS_PARAM][b] = pack(ACTION_COLLECT, DCS_INTERMEDIATE);
-        for (int b = 0x30; b <= 0x39; b++)
-            TABLE[DCS_PARAM][b] = pack(ACTION_PARAM, DCS_PARAM);
-        TABLE[DCS_PARAM][0x3A] = pack(ACTION_NONE, DCS_IGNORE);
-        TABLE[DCS_PARAM][0x3B] = pack(ACTION_PARAM, DCS_PARAM);
-        for (int b = 0x3C; b <= 0x3F; b++)
-            TABLE[DCS_PARAM][b] = pack(ACTION_NONE, DCS_IGNORE);
-        for (int b = 0x40; b <= 0x7E; b++)
-            TABLE[DCS_PARAM][b] = pack(ACTION_HOOK, DCS_PASSTHROUGH);
-        TABLE[DCS_PARAM][0x7F] = pack(ACTION_IGNORE, DCS_PARAM);
+        setC0(DCS_PARAM, ACTION_IGNORE);
+        setRange(DCS_PARAM, 0x20, 0x2F, pack(ACTION_COLLECT, DCS_INTERMEDIATE));
+        setRange(DCS_PARAM, 0x30, 0x39, pack(ACTION_PARAM, DCS_PARAM));
+        set(DCS_PARAM, 0x3A, pack(ACTION_NONE, DCS_IGNORE));
+        set(DCS_PARAM, 0x3B, pack(ACTION_PARAM, DCS_PARAM));
+        setRange(DCS_PARAM, 0x3C, 0x3F, pack(ACTION_NONE, DCS_IGNORE));
+        setRange(DCS_PARAM, 0x40, 0x7E, pack(ACTION_HOOK, DCS_PASSTHROUGH));
+        set(DCS_PARAM, 0x7F, pack(ACTION_IGNORE, DCS_PARAM));
 
         // ---- dcs intermediate ----
-        for (int b = 0x00; b <= 0x17; b++)
-            TABLE[DCS_INTERMEDIATE][b] = pack(ACTION_IGNORE, DCS_INTERMEDIATE);
-        TABLE[DCS_INTERMEDIATE][0x19] = pack(ACTION_IGNORE, DCS_INTERMEDIATE);
-        for (int b = 0x1C; b <= 0x1F; b++)
-            TABLE[DCS_INTERMEDIATE][b] = pack(ACTION_IGNORE, DCS_INTERMEDIATE);
-        for (int b = 0x20; b <= 0x2F; b++)
-            TABLE[DCS_INTERMEDIATE][b] = pack(ACTION_COLLECT, DCS_INTERMEDIATE);
-        for (int b = 0x30; b <= 0x3F; b++)
-            TABLE[DCS_INTERMEDIATE][b] = pack(ACTION_NONE, DCS_IGNORE);
-        for (int b = 0x40; b <= 0x7E; b++)
-            TABLE[DCS_INTERMEDIATE][b] = pack(ACTION_HOOK, DCS_PASSTHROUGH);
-        TABLE[DCS_INTERMEDIATE][0x7F] = pack(ACTION_IGNORE, DCS_INTERMEDIATE);
+        setC0(DCS_INTERMEDIATE, ACTION_IGNORE);
+        setRange(DCS_INTERMEDIATE, 0x20, 0x2F, pack(ACTION_COLLECT, DCS_INTERMEDIATE));
+        setRange(DCS_INTERMEDIATE, 0x30, 0x3F, pack(ACTION_NONE, DCS_IGNORE));
+        setRange(DCS_INTERMEDIATE, 0x40, 0x7E, pack(ACTION_HOOK, DCS_PASSTHROUGH));
+        set(DCS_INTERMEDIATE, 0x7F, pack(ACTION_IGNORE, DCS_INTERMEDIATE));
 
         // ---- dcs passthrough ----
-        for (int b = 0x00; b <= 0x17; b++)
-            TABLE[DCS_PASSTHROUGH][b] = pack(ACTION_PUT, DCS_PASSTHROUGH);
-        TABLE[DCS_PASSTHROUGH][0x19] = pack(ACTION_PUT, DCS_PASSTHROUGH);
-        for (int b = 0x1C; b <= 0x1F; b++)
-            TABLE[DCS_PASSTHROUGH][b] = pack(ACTION_PUT, DCS_PASSTHROUGH);
-        for (int b = 0x20; b <= 0x7E; b++)
-            TABLE[DCS_PASSTHROUGH][b] = pack(ACTION_PUT, DCS_PASSTHROUGH);
-        TABLE[DCS_PASSTHROUGH][0x7F] = pack(ACTION_IGNORE, DCS_PASSTHROUGH);
+        setC0(DCS_PASSTHROUGH, ACTION_PUT);
+        setRange(DCS_PASSTHROUGH, 0x20, 0x7E, pack(ACTION_PUT, DCS_PASSTHROUGH));
+        set(DCS_PASSTHROUGH, 0x7F, pack(ACTION_IGNORE, DCS_PASSTHROUGH));
         // 9C (ST) is handled by anywhere transitions
 
         // ---- dcs ignore ----
-        for (int b = 0x00; b <= 0x17; b++)
-            TABLE[DCS_IGNORE][b] = pack(ACTION_IGNORE, DCS_IGNORE);
-        TABLE[DCS_IGNORE][0x19] = pack(ACTION_IGNORE, DCS_IGNORE);
-        for (int b = 0x1C; b <= 0x1F; b++)
-            TABLE[DCS_IGNORE][b] = pack(ACTION_IGNORE, DCS_IGNORE);
-        for (int b = 0x20; b <= 0x7F; b++)
-            TABLE[DCS_IGNORE][b] = pack(ACTION_IGNORE, DCS_IGNORE);
+        setC0(DCS_IGNORE, ACTION_IGNORE);
+        setRange(DCS_IGNORE, 0x20, 0x7F, pack(ACTION_IGNORE, DCS_IGNORE));
         // 9C (ST) → ground is handled by anywhere transitions
 
         // ---- osc string ----
-        for (int b = 0x00; b <= 0x06; b++)
-            TABLE[OSC_STRING][b] = pack(ACTION_IGNORE, OSC_STRING);
-        TABLE[OSC_STRING][0x07] = pack(ACTION_NONE, GROUND); // BEL terminates OSC (xterm extension)
-        for (int b = 0x08; b <= 0x17; b++)
-            TABLE[OSC_STRING][b] = pack(ACTION_IGNORE, OSC_STRING);
-        TABLE[OSC_STRING][0x19] = pack(ACTION_IGNORE, OSC_STRING);
-        for (int b = 0x1C; b <= 0x1F; b++)
-            TABLE[OSC_STRING][b] = pack(ACTION_IGNORE, OSC_STRING);
-        for (int b = 0x20; b <= 0x7F; b++)
-            TABLE[OSC_STRING][b] = pack(ACTION_OSC_PUT, OSC_STRING);
+        setRange(OSC_STRING, 0x00, 0x06, pack(ACTION_IGNORE, OSC_STRING));
+        set(OSC_STRING, 0x07, pack(ACTION_NONE, GROUND)); // BEL terminates OSC (xterm extension)
+        setRange(OSC_STRING, 0x08, 0x17, pack(ACTION_IGNORE, OSC_STRING));
+        set(OSC_STRING, 0x19, pack(ACTION_IGNORE, OSC_STRING));
+        setRange(OSC_STRING, 0x1C, 0x1F, pack(ACTION_IGNORE, OSC_STRING));
+        setRange(OSC_STRING, 0x20, 0x7F, pack(ACTION_OSC_PUT, OSC_STRING));
         // 9C (ST) → ground is handled by anywhere transitions
 
         // ---- sos/pm/apc string ----
-        for (int b = 0x00; b <= 0x17; b++)
-            TABLE[SOS_PM_APC_STRING][b] = pack(ACTION_IGNORE, SOS_PM_APC_STRING);
-        TABLE[SOS_PM_APC_STRING][0x19] = pack(ACTION_IGNORE, SOS_PM_APC_STRING);
-        for (int b = 0x1C; b <= 0x1F; b++)
-            TABLE[SOS_PM_APC_STRING][b] = pack(ACTION_IGNORE, SOS_PM_APC_STRING);
-        for (int b = 0x20; b <= 0x7F; b++)
-            TABLE[SOS_PM_APC_STRING][b] = pack(ACTION_IGNORE, SOS_PM_APC_STRING);
+        setC0(SOS_PM_APC_STRING, ACTION_IGNORE);
+        setRange(SOS_PM_APC_STRING, 0x20, 0x7F, pack(ACTION_IGNORE, SOS_PM_APC_STRING));
         // 9C (ST) → ground is handled by anywhere transitions
 
         // ---- GR area (0xA0-0xFF) → same as GL (0x20-0x7F) for all states ----
         for (int s = 0; s < STATE_COUNT; s++) {
+            int base = s << 8;
             for (int b = 0xA0; b <= 0xFF; b++) {
-                TABLE[s][b] = TABLE[s][b - 0x80];
+                TABLE[base | b] = TABLE[base | (b - 0x80)];
             }
         }
     }

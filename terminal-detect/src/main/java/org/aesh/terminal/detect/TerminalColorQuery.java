@@ -227,7 +227,7 @@ final class TerminalColorQuery {
         PROBE_LOCK.lock();
         try {
             try (TerminalProbeSession session = transport.open()) {
-                session.write(buildColorQuery());
+                session.write(COLOR_QUERY_BYTES);
 
                 // Full batch: 3 DECRPM + keyboard + 1 DA1 + 19 OSC responses.
                 // Terminals without DECRQM send no DECRPM; the DA1 fence
@@ -284,7 +284,7 @@ final class TerminalColorQuery {
             long openStart = System.nanoTime();
             try (TerminalProbeSession session = transport.open()) {
                 long opened = System.nanoTime();
-                session.write(buildColorQuery());
+                session.write(COLOR_QUERY_BYTES);
                 String response = readBatchResponse(session.input());
                 long colorRead = System.nanoTime();
                 if (response == null || response.isEmpty()) {
@@ -392,7 +392,7 @@ final class TerminalColorQuery {
                 return null;
             }
             try (TerminalProbeSession session = transport.open(deadline)) {
-                session.write(buildColorQuery());
+                session.write(COLOR_QUERY_BYTES);
                 String response = readBatchResponse(session.input(), deadline);
                 if (response == null || response.isEmpty()) {
                     return null;
@@ -457,13 +457,10 @@ final class TerminalColorQuery {
         return null;
     }
 
-    /**
-     * The batched color/mode query: DECRQM probes + DA1 fence + OSC colors.
-     * All ASCII, so US-ASCII encoding is exact.
-     *
-     * @return the query bytes to write to the terminal
-     */
-    static byte[] buildColorQuery() {
+    /** Cached batched color/mode query bytes (all ASCII). */
+    private static final byte[] COLOR_QUERY_BYTES = createColorQueryBytes();
+
+    private static byte[] createColorQueryBytes() {
         // Build batch: DECRQM probes + DA1 + OSC colors
         // DECRQM responses arrive before DA1 (DA1 acts as fence)
         StringBuilder queries = new StringBuilder();
@@ -479,6 +476,16 @@ final class TerminalColorQuery {
         }
         queries.append("\033]4;255;?").append(BEL);
         return queries.toString().getBytes(StandardCharsets.US_ASCII);
+    }
+
+    /**
+     * The batched color/mode query: DECRQM probes + DA1 fence + OSC colors.
+     * All ASCII, so US-ASCII encoding is exact.
+     *
+     * @return the query bytes to write to the terminal
+     */
+    static byte[] buildColorQuery() {
+        return COLOR_QUERY_BYTES.clone();
     }
 
     private static String readBatchResponse(InputStream in) throws IOException {
@@ -670,7 +677,7 @@ final class TerminalColorQuery {
      * @throws IOException if the probe cannot be written or read
      */
     private static boolean probeGraphemeInSession(TerminalProbeSession session) throws IOException {
-        session.write(buildGraphemeProbe());
+        session.write(GRAPHEME_PROBE_BYTES);
         try {
             // Read CPR response: ESC [ row ; col R
             String response = readCprResponse(session.input());
@@ -698,7 +705,7 @@ final class TerminalColorQuery {
 
     private static boolean probeGraphemeInSession(TerminalProbeSession session,
             ProbeDeadline deadline) throws IOException {
-        session.write(buildGraphemeProbe());
+        session.write(GRAPHEME_PROBE_BYTES);
         try {
             String response = readCprResponse(session.input(), deadline);
             if (response == null || response.isEmpty()) {
@@ -719,6 +726,14 @@ final class TerminalColorQuery {
         }
     }
 
+    /** Cached grapheme probe bytes (contains UTF-8 flag emoji). */
+    private static final byte[] GRAPHEME_PROBE_BYTES = ("\0337" // save cursor (DECSC)
+            + "\r" // column 0
+            + "\033[K" // erase line
+            + "\uD83C\uDDEB\uD83C\uDDF7" // 🇫🇷 (two regional indicators)
+            + "\033[6n") // DSR: query cursor position
+            .getBytes(StandardCharsets.UTF_8);
+
     /**
      * Save cursor, move to column 0, erase line, write flag emoji, query
      * position. Contains a non-ASCII emoji, so UTF-8 encoding is required.
@@ -726,13 +741,7 @@ final class TerminalColorQuery {
      * @return the probe bytes to write to the terminal
      */
     static byte[] buildGraphemeProbe() {
-        // Save cursor, move to column 0, erase line, write flag emoji, query position
-        String probe = "\0337" // save cursor (DECSC)
-                + "\r" // column 0
-                + "\033[K" // erase line
-                + "\uD83C\uDDEB\uD83C\uDDF7" // 🇫🇷 (two regional indicators)
-                + "\033[6n"; // DSR: query cursor position
-        return probe.getBytes(StandardCharsets.UTF_8);
+        return GRAPHEME_PROBE_BYTES.clone();
     }
 
     // ==================== DECRPM Response Parsing ====================

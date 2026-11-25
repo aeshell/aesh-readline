@@ -432,7 +432,7 @@ public class VtParserTest {
         // Verify every state/byte combination has a defined entry
         for (int s = 0; s < VtParser.STATE_COUNT; s++) {
             for (int b = 0; b < 256; b++) {
-                short entry = VtParser.TABLE[s][b];
+                short entry = VtParser.TABLE[(s << 8) | b];
                 int action = (entry >> 4) & 0x0F;
                 int nextState = entry & 0x0F;
                 assertTrue("State " + s + " byte " + b + ": nextState out of range",
@@ -450,8 +450,8 @@ public class VtParserTest {
             for (int b = 0xA0; b <= 0xFF; b++) {
                 assertEquals(
                         "State " + s + ": GR byte " + b + " should match GL byte " + (b - 0x80),
-                        VtParser.TABLE[s][b - 0x80],
-                        VtParser.TABLE[s][b]);
+                        VtParser.TABLE[(s << 8) | (b - 0x80)],
+                        VtParser.TABLE[(s << 8) | b]);
             }
         }
     }
@@ -473,6 +473,22 @@ public class VtParserTest {
         feed(p, "\033[99999999999m");
         assertEquals(1, h.events.size());
         assertEquals("csi:[" + Integer.MAX_VALUE + "]m", h.events.get(0));
+    }
+
+    @Test
+    public void testOversizedOscDeliversAndRecovers() {
+        RecordingHandler h = new RecordingHandler();
+        VtParser p = new VtParser(h);
+        StringBuilder payload = new StringBuilder(6000);
+        for (int i = 0; i < 6000; i++) {
+            payload.append('a');
+        }
+        String big = "52;c;" + payload;
+        feed(p, "\033]" + big + "\007");
+        feed(p, "\033]0;title\007");
+        assertEquals(2, h.events.size());
+        assertEquals("osc:" + big, h.events.get(0));
+        assertEquals("osc:0;title", h.events.get(1));
     }
 
     // ==================== Byte-at-a-time vs batch ====================

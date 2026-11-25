@@ -28,31 +28,11 @@ import java.util.Map;
  */
 final class TerminalDetector {
 
-    // Environment variables (injected map for testability; production
-    // passes System.getenv(), tests pass fixture maps)
+    // Retained only for active discovery paths (detectIdeOrPlatformTheme).
+    // Passive environment-only detection passes retainIdeContext=false so
+    // instances do not keep a reference to the environment map or OS name.
     private final Map<String, String> env;
-
-    // Operating system name (injected for testability; production passes
-    // the real os.name, tests pass literals like "Windows 11"). Drives the
-    // IDE layout selection and the OS theme branch.
     private final String osName;
-
-    // Environment variables
-    private final String term;
-    private final String termProgram;
-    private final String terminalEmulator;
-    private final String colorterm;
-    private final String kittyWindowId;
-    private final String ghosttyResourcesDir;
-    private final String weztermPane;
-    private final String itermSessionId;
-    private final String wtSession;
-    private final String wtProfileId;
-    private final String alacrittySocket;
-    private final String colorFgBg;
-    private final String appleInterfaceStyle;
-    private final boolean inTmux;
-    private final boolean inScreen;
 
     // Computed results
     final String terminalName;
@@ -61,6 +41,7 @@ final class TerminalDetector {
     final boolean supportsColor;
     final ImageProtocol imageProtocol;
     final TerminalTheme theme;
+    private final boolean inMultiplexer;
 
     TerminalDetector() {
         this(System.getenv());
@@ -71,33 +52,33 @@ final class TerminalDetector {
     }
 
     TerminalDetector(Map<String, String> env, String osName) {
-        this.env = env;
-        this.osName = osName;
-        this.term = env.get("TERM");
-        this.termProgram = env.get("TERM_PROGRAM");
-        this.terminalEmulator = env.get("TERMINAL_EMULATOR");
-        this.colorterm = env.get("COLORTERM");
-        this.kittyWindowId = env.get("KITTY_WINDOW_ID");
-        this.ghosttyResourcesDir = env.get("GHOSTTY_RESOURCES_DIR");
-        this.weztermPane = env.get("WEZTERM_PANE");
-        this.itermSessionId = env.get("ITERM_SESSION_ID");
-        this.wtSession = sessionMarker(env.get("WT_SESSION"));
-        this.wtProfileId = sessionMarker(env.get("WT_PROFILE_ID"));
-        this.alacrittySocket = env.get("ALACRITTY_SOCKET");
-        this.colorFgBg = env.get("COLORFGBG");
-        this.appleInterfaceStyle = env.get("APPLE_INTERFACE_STYLE");
-        String tmux = env.get("TMUX");
-        this.inTmux = tmux != null && !tmux.isEmpty();
-        this.inScreen = term != null && term.toLowerCase().startsWith("screen");
+        this(env, osName, true);
+    }
 
-        this.terminalName = detectTerminalName();
-        this.trueColor = detectTrueColor();
-        this.colors256 = trueColor || detect256Colors();
+    /** Passive environment-only snapshot: retains no env map or OS property. */
+    static TerminalDetector passive(Map<String, String> env) {
+        return new TerminalDetector(env, null, false);
+    }
+
+    private TerminalDetector(Map<String, String> env, String osName, boolean retainIdeContext) {
+        this.env = retainIdeContext ? env : null;
+        this.osName = retainIdeContext ? osName : null;
+
+        String term = env.get("TERM");
+        String termLower = term == null ? null : term.toLowerCase(Locale.ROOT);
+        String tmux = env.get("TMUX");
+        boolean inTmux = tmux != null && !tmux.isEmpty();
+        this.inMultiplexer = inTmux
+                || (termLower != null && (termLower.startsWith("screen") || termLower.startsWith("tmux")));
+
+        this.terminalName = detectTerminalName(env, termLower);
+        this.trueColor = detectTrueColor(env.get("COLORTERM"), termLower, terminalName);
+        this.colors256 = trueColor || detect256Colors(termLower, terminalName);
         // Every recognized terminal supports at least basic 8-color
         // output; unknown ones fail safe to false.
         this.supportsColor = colors256 || !"unknown".equals(terminalName);
-        this.imageProtocol = detectImageProtocol();
-        this.theme = detectTheme();
+        this.imageProtocol = detectImageProtocol(env, inMultiplexer, terminalName, termLower);
+        this.theme = detectTheme(env.get("COLORFGBG"), env.get("APPLE_INTERFACE_STYLE"));
     }
 
     // ==================== Terminal Name Detection ====================
@@ -106,113 +87,100 @@ final class TerminalDetector {
         return value == null || value.trim().isEmpty() ? null : value;
     }
 
-    private String detectTerminalName() {
-        if (isJetBrains())
+    private static String detectTerminalName(Map<String, String> env, String termLower) {
+        if (isJetBrains(env.get("TERMINAL_EMULATOR")))
             return "jetbrains";
         // IDE terminals can inherit session markers from their launcher.
-        if (termProgram != null && termProgram.toLowerCase(Locale.ROOT).contains("vscode"))
+        String termProgram = env.get("TERM_PROGRAM");
+        String termProgramLower = termProgram == null ? null : termProgram.toLowerCase(Locale.ROOT);
+        if (termProgramLower != null && termProgramLower.contains("vscode"))
             return "vscode";
-        if (kittyWindowId != null)
+        if (env.get("KITTY_WINDOW_ID") != null)
             return "kitty";
-        if (ghosttyResourcesDir != null)
+        if (env.get("GHOSTTY_RESOURCES_DIR") != null)
             return "ghostty";
-        if (weztermPane != null)
+        if (env.get("WEZTERM_PANE") != null)
             return "wezterm";
-        if (itermSessionId != null)
+        if (env.get("ITERM_SESSION_ID") != null)
             return "iterm2";
-        if (isWindowsTerminal())
+        if (sessionMarker(env.get("WT_SESSION")) != null || sessionMarker(env.get("WT_PROFILE_ID")) != null)
             return "windows-terminal";
-        if (alacrittySocket != null)
+        if (env.get("ALACRITTY_SOCKET") != null)
             return "alacritty";
 
-        if (termProgram != null) {
-            String lower = termProgram.toLowerCase();
-            if (lower.contains("iterm"))
+        if (termProgramLower != null) {
+            if (termProgramLower.contains("iterm"))
                 return "iterm2";
-            if (lower.contains("apple_terminal") || lower.contains("terminal.app"))
+            if (termProgramLower.contains("apple_terminal") || termProgramLower.contains("terminal.app"))
                 return "apple-terminal";
-            if (lower.contains("hyper"))
+            if (termProgramLower.contains("hyper"))
                 return "hyper";
-            if (lower.contains("tabby") || lower.contains("terminus"))
+            if (termProgramLower.contains("tabby") || termProgramLower.contains("terminus"))
                 return "tabby";
-            if (lower.contains("mintty"))
+            if (termProgramLower.contains("mintty"))
                 return "mintty";
         }
 
-        if (term != null) {
-            String lower = term.toLowerCase();
+        if (termLower != null) {
             // Multiplexers only when no outer-terminal signal matched
             // above: their TERM prefix is the honest identity, since live
             // queries cannot see past them by design.
-            if (lower.startsWith("tmux"))
+            if (termLower.startsWith("tmux"))
                 return "tmux";
-            if (lower.startsWith("screen"))
+            if (termLower.startsWith("screen"))
                 return "screen";
-            if (lower.contains("kitty"))
+            if (termLower.contains("kitty"))
                 return "kitty";
-            if (lower.contains("ghostty"))
+            if (termLower.contains("ghostty"))
                 return "ghostty";
-            if (lower.contains("foot"))
+            if (termLower.contains("foot"))
                 return "foot";
-            if (lower.contains("contour"))
+            if (termLower.contains("contour"))
                 return "contour";
-            if (lower.contains("konsole"))
+            if (termLower.contains("konsole"))
                 return "konsole";
-            if (lower.startsWith("xterm"))
+            if (termLower.startsWith("xterm"))
                 return "xterm";
-            if (lower.equals("linux"))
+            if (termLower.equals("linux"))
                 return "linux-console";
         }
 
         return "unknown";
     }
 
-    private boolean isJetBrains() {
+    private static boolean isJetBrains(String terminalEmulator) {
         return terminalEmulator != null &&
                 (terminalEmulator.contains("JetBrains") || terminalEmulator.contains("JediTerm"));
     }
 
-    private boolean isWindowsTerminal() {
-        // Installed applications and default-terminal preferences do not
-        // identify the host of this process. Only session facts apply here.
-        return wtSession != null || wtProfileId != null;
-    }
-
     boolean isInMultiplexer() {
-        if (inTmux || inScreen)
-            return true;
-        if (term == null)
-            return false;
-        String lower = term.toLowerCase();
-        return lower.startsWith("tmux") || lower.startsWith("screen");
+        return inMultiplexer;
     }
 
     // ==================== Color Depth Detection ====================
 
-    private boolean detectTrueColor() {
+    private static boolean detectTrueColor(String colorterm, String termLower, String terminalName) {
         if (colorterm != null) {
-            String lower = colorterm.toLowerCase();
+            String lower = colorterm.toLowerCase(Locale.ROOT);
             if ("truecolor".equals(lower) || "24bit".equals(lower))
                 return true;
         }
-        if (term != null) {
-            String lower = term.toLowerCase();
-            if (lower.contains("truecolor") || lower.contains("24bit") || lower.contains("direct"))
+        if (termLower != null) {
+            if (termLower.contains("truecolor") || termLower.contains("24bit") || termLower.contains("direct"))
                 return true;
         }
-        return isKnownTrueColorTerminal();
+        return isKnownTrueColorTerminal(terminalName);
     }
 
-    private boolean detect256Colors() {
-        if (term != null) {
-            String lower = term.toLowerCase();
-            if (lower.contains("256color") || lower.contains("256-color"))
+    private static boolean detect256Colors(String termLower, String terminalName) {
+        if (termLower != null) {
+            if (termLower.contains("256color") || termLower.contains("256-color"))
                 return true;
         }
-        return isKnown256ColorTerminal();
+        return isKnown256ColorTerminal(terminalName);
     }
 
-    private boolean isKnownTrueColorTerminal() {
+    private static boolean isKnownTrueColorTerminal(String terminalName) {
         switch (terminalName) {
             case "kitty":
             case "ghostty":
@@ -233,7 +201,7 @@ final class TerminalDetector {
         }
     }
 
-    private boolean isKnown256ColorTerminal() {
+    private static boolean isKnown256ColorTerminal(String terminalName) {
         switch (terminalName) {
             case "xterm":
             case "apple-terminal":
@@ -246,16 +214,15 @@ final class TerminalDetector {
 
     // ==================== Image Protocol Detection ====================
 
-    private ImageProtocol detectImageProtocol() {
-        boolean inMux = isInMultiplexer();
-
-        if (ghosttyResourcesDir != null) {
+    private static ImageProtocol detectImageProtocol(Map<String, String> env, boolean inMux,
+            String terminalName, String termLower) {
+        if (env.get("GHOSTTY_RESOURCES_DIR") != null) {
             return inMux ? ImageProtocol.SIXEL : ImageProtocol.KITTY;
         }
-        if (kittyWindowId != null) {
+        if (env.get("KITTY_WINDOW_ID") != null) {
             return inMux ? ImageProtocol.NONE : ImageProtocol.KITTY;
         }
-        if (itermSessionId != null || weztermPane != null) {
+        if (env.get("ITERM_SESSION_ID") != null || env.get("WEZTERM_PANE") != null) {
             return ImageProtocol.ITERM2;
         }
 
@@ -267,8 +234,8 @@ final class TerminalDetector {
             return fromName;
         }
 
-        if (term != null) {
-            return imageProtocolFromTermType(term);
+        if (termLower != null) {
+            return imageProtocolFromTermType(termLower);
         }
 
         return ImageProtocol.NONE;
@@ -306,8 +273,7 @@ final class TerminalDetector {
         }
     }
 
-    private static ImageProtocol imageProtocolFromTermType(String termType) {
-        String lower = termType.toLowerCase();
+    private static ImageProtocol imageProtocolFromTermType(String lower) {
         if (lower.contains("kitty") || lower.contains("ghostty") || lower.contains("konsole"))
             return ImageProtocol.KITTY;
         if (lower.contains("iterm") || lower.contains("wezterm") || lower.contains("mintty") ||
@@ -321,7 +287,7 @@ final class TerminalDetector {
 
     // ==================== Theme Detection ====================
 
-    private TerminalTheme detectTheme() {
+    private static TerminalTheme detectTheme(String colorFgBg, String appleInterfaceStyle) {
         if (colorFgBg != null) {
             String[] parts = colorFgBg.split(";");
             if (parts.length >= 2) {
@@ -354,9 +320,11 @@ final class TerminalDetector {
      * (which would repeat registry identity subprocesses on Windows).
      */
     TerminalTheme detectIdeOrPlatformTheme() {
-        TerminalTheme ide = IdeThemeDetector.detect(terminalName, env, osName);
-        if (ide != TerminalTheme.UNKNOWN) {
-            return ide;
+        if (env != null) {
+            TerminalTheme ide = IdeThemeDetector.detect(terminalName, env, osName);
+            if (ide != TerminalTheme.UNKNOWN) {
+                return ide;
+            }
         }
         return detectOsPlatformTheme(osName);
     }
@@ -379,7 +347,7 @@ final class TerminalDetector {
         if (deadline.isExpired()) {
             return TerminalTheme.UNKNOWN;
         }
-        if (permissions.allowIdeFiles() && !deadline.isExpired()) {
+        if (permissions.allowIdeFiles() && !deadline.isExpired() && env != null) {
             TerminalTheme ide = IdeThemeDetector.detect(terminalName, env, osName);
             if (ide != TerminalTheme.UNKNOWN) {
                 return ide;

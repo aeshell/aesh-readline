@@ -378,6 +378,34 @@ public class EncoderTest {
                 actual, viaCodePoints);
     }
 
+    @Test
+    public void testOversizedWriteTrimsRetainedByteBuffer() {
+        final int[] observedLengths = new int[2];
+        final int[] callCount = { 0 };
+        final List<byte[]> captured = new ArrayList<>();
+        Encoder encoder = new Encoder(StandardCharsets.UTF_8, new ByteWriter() {
+            @Override
+            public void write(byte[] buf, int off, int len) {
+                observedLengths[callCount[0]++] = buf.length;
+                byte[] copy = new byte[len];
+                System.arraycopy(buf, off, copy, 0, len);
+                captured.add(copy);
+            }
+        });
+        StringBuilder large = new StringBuilder(32768);
+        for (int i = 0; i < 32768; i++) {
+            large.append('x');
+        }
+        String big = large.toString();
+        encoder.accept(big);
+        encoder.accept("ok");
+        assertEquals(big, new String(captured.get(0), StandardCharsets.UTF_8));
+        assertEquals("ok", new String(captured.get(1), StandardCharsets.UTF_8));
+        assertTrue("large write must grow buffer: " + observedLengths[0], observedLengths[0] >= 32768);
+        assertTrue("buffer must be trimmed after oversized write: " + observedLengths[1],
+                observedLengths[1] <= 16384);
+    }
+
     /**
      * Encode raw code points through the UTF-8 path, covering values
      * no String can hold (negatives, beyond U+10FFFF).

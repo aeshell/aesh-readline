@@ -75,16 +75,16 @@ public class ANSIBuilder {
     // Extended color support
     private TerminalColorCapability capability;
     private boolean bright = false;
-    private Integer textCode = null; // Raw ANSI code (30-37, 90-97)
-    private Integer bgCode = null; // Raw ANSI code (40-47, 100-107)
-    private Integer text256 = null; // 256-color palette index
-    private Integer bg256 = null; // 256-color palette index
-    private int[] textRgb = null; // True color RGB
-    private int[] bgRgb = null; // True color RGB
+    private int textCode = -1; // Raw ANSI code (30-37, 90-97), -1 if unset
+    private int bgCode = -1; // Raw ANSI code (40-47, 100-107), -1 if unset
+    private int text256 = -1; // 256-color palette index, -1 if unset
+    private int bg256 = -1; // 256-color palette index, -1 if unset
+    private int textRgb = -1; // Packed 24-bit RGB (r<<16 | g<<8 | b), -1 if unset
+    private int bgRgb = -1; // Packed 24-bit RGB (r<<16 | g<<8 | b), -1 if unset
 
-    // Semantic color overrides stored in maps (null entry means use capability or default)
-    private final EnumMap<SemanticColor, Integer> semanticCodeOverrides = new EnumMap<>(SemanticColor.class);
-    private final EnumMap<SemanticColor, int[]> semanticRgbOverrides = new EnumMap<>(SemanticColor.class);
+    // Semantic color overrides allocated lazily on first override
+    private EnumMap<SemanticColor, Integer> semanticCodeOverrides;
+    private EnumMap<SemanticColor, int[]> semanticRgbOverrides;
 
     private ANSIBuilder(boolean enableAnsi) {
         ansi = enableAnsi;
@@ -133,12 +133,18 @@ public class ANSIBuilder {
     // ==================== Semantic Color Override Helpers ====================
 
     private ANSIBuilder semanticCode(SemanticColor color, int code) {
+        if (semanticCodeOverrides == null) {
+            semanticCodeOverrides = new EnumMap<>(SemanticColor.class);
+        }
         semanticCodeOverrides.put(color, code);
         return this;
     }
 
     private ANSIBuilder semanticRgb(SemanticColor color, int r, int g, int b) {
         validateRgb(r, g, b);
+        if (semanticRgbOverrides == null) {
+            semanticRgbOverrides = new EnumMap<>(SemanticColor.class);
+        }
         semanticRgbOverrides.put(color, new int[] { r, g, b });
         return this;
     }
@@ -157,25 +163,29 @@ public class ANSIBuilder {
     }
 
     private ANSIBuilder applySemantic(SemanticColor color) {
-        int[] rgbOverride = semanticRgbOverrides.get(color);
-        Integer codeOverride = semanticCodeOverrides.get(color);
+        int[] rgbOverride = semanticRgbOverrides == null ? null : semanticRgbOverrides.get(color);
+        Integer codeOverride = semanticCodeOverrides == null ? null : semanticCodeOverrides.get(color);
         if (rgbOverride != null) {
-            this.textRgb = rgbOverride;
-            this.textCode = null;
+            this.textRgb = packRgb(rgbOverride[0], rgbOverride[1], rgbOverride[2]);
+            this.textCode = -1;
         } else if (codeOverride != null) {
             this.textCode = codeOverride;
-            this.textRgb = null;
+            this.textRgb = -1;
         } else if (capability != null) {
             this.textCode = color.getFromCapability(capability);
-            this.textRgb = null;
+            this.textRgb = -1;
         } else {
             this.textCode = color.defaultCode();
-            this.textRgb = null;
+            this.textRgb = -1;
         }
         this.text = Color.DEFAULT;
-        this.text256 = null;
+        this.text256 = -1;
         havePrintedColor = false;
         return this;
+    }
+
+    private static int packRgb(int r, int g, int b) {
+        return (r << 16) | (g << 8) | b;
     }
 
     private ANSIBuilder applySemantic(SemanticColor color, String text) {
@@ -679,8 +689,8 @@ public class ANSIBuilder {
 
     private void doAppendColors() {
         // Check if we have any colors to output
-        boolean hasText = text != Color.DEFAULT || textCode != null || text256 != null || textRgb != null;
-        boolean hasBg = bg != Color.DEFAULT || bgCode != null || bg256 != null || bgRgb != null;
+        boolean hasText = text != Color.DEFAULT || textCode >= 0 || text256 >= 0 || textRgb >= 0;
+        boolean hasBg = bg != Color.DEFAULT || bgCode >= 0 || bg256 >= 0 || bgRgb >= 0;
         boolean hasStyle = textType != TextType.DEFAULT;
 
         if (!hasText && !hasBg && !hasStyle) {
@@ -697,19 +707,20 @@ public class ANSIBuilder {
         }
 
         // Foreground color
-        if (textRgb != null) {
+        if (textRgb >= 0) {
             // True color: ESC[38;2;r;g;bm
             if (needsSemicolon)
                 b.append(';');
-            b.append("38;2;").append(textRgb[0]).append(';').append(textRgb[1]).append(';').append(textRgb[2]);
+            b.append("38;2;").append((textRgb >> 16) & 0xFF).append(';')
+                    .append((textRgb >> 8) & 0xFF).append(';').append(textRgb & 0xFF);
             needsSemicolon = true;
-        } else if (text256 != null) {
+        } else if (text256 >= 0) {
             // 256-color: ESC[38;5;indexm
             if (needsSemicolon)
                 b.append(';');
             b.append("38;5;").append(text256);
             needsSemicolon = true;
-        } else if (textCode != null) {
+        } else if (textCode >= 0) {
             // Check if it's a valid basic ANSI foreground code or a 256-color index
             if (needsSemicolon)
                 b.append(';');
@@ -730,17 +741,18 @@ public class ANSIBuilder {
         }
 
         // Background color
-        if (bgRgb != null) {
+        if (bgRgb >= 0) {
             // True color: ESC[48;2;r;g;bm
             if (needsSemicolon)
                 b.append(';');
-            b.append("48;2;").append(bgRgb[0]).append(';').append(bgRgb[1]).append(';').append(bgRgb[2]);
-        } else if (bg256 != null) {
+            b.append("48;2;").append((bgRgb >> 16) & 0xFF).append(';')
+                    .append((bgRgb >> 8) & 0xFF).append(';').append(bgRgb & 0xFF);
+        } else if (bg256 >= 0) {
             // 256-color: ESC[48;5;indexm
             if (needsSemicolon)
                 b.append(';');
             b.append("48;5;").append(bg256);
-        } else if (bgCode != null) {
+        } else if (bgCode >= 0) {
             // Check if it's a valid basic ANSI background code or a 256-color index
             if (needsSemicolon)
                 b.append(';');
@@ -771,9 +783,9 @@ public class ANSIBuilder {
             return this;
         // Check if any colors or styles are active (basic or extended)
         boolean hasBasicColors = textType != TextType.DEFAULT || bg != Color.DEFAULT || text != Color.DEFAULT;
-        boolean hasExtendedColors = textCode != null || bgCode != null ||
-                text256 != null || bg256 != null ||
-                textRgb != null || bgRgb != null || bright;
+        boolean hasExtendedColors = textCode >= 0 || bgCode >= 0 ||
+                text256 >= 0 || bg256 >= 0 ||
+                textRgb >= 0 || bgRgb >= 0 || bright;
         if (!hasBasicColors && !hasExtendedColors) {
         } else {
             doResetColors();
@@ -787,12 +799,12 @@ public class ANSIBuilder {
         bg = Color.DEFAULT;
         text = Color.DEFAULT;
         bright = false;
-        textCode = null;
-        bgCode = null;
-        text256 = null;
-        bg256 = null;
-        textRgb = null;
-        bgRgb = null;
+        textCode = -1;
+        bgCode = -1;
+        text256 = -1;
+        bg256 = -1;
+        textRgb = -1;
+        bgRgb = -1;
     }
 
     /**
@@ -1675,8 +1687,8 @@ public class ANSIBuilder {
         }
         this.text256 = index;
         this.text = Color.DEFAULT;
-        this.textCode = null;
-        this.textRgb = null;
+        this.textCode = -1;
+        this.textRgb = -1;
         havePrintedColor = false;
         return this;
     }
@@ -1694,8 +1706,8 @@ public class ANSIBuilder {
         }
         this.bg256 = index;
         this.bg = Color.DEFAULT;
-        this.bgCode = null;
-        this.bgRgb = null;
+        this.bgCode = -1;
+        this.bgRgb = -1;
         havePrintedColor = false;
         return this;
     }
@@ -1739,10 +1751,10 @@ public class ANSIBuilder {
      */
     public ANSIBuilder rgb(int r, int g, int b) {
         validateRgb(r, g, b);
-        this.textRgb = new int[] { r, g, b };
+        this.textRgb = packRgb(r, g, b);
         this.text = Color.DEFAULT;
-        this.textCode = null;
-        this.text256 = null;
+        this.textCode = -1;
+        this.text256 = -1;
         havePrintedColor = false;
         return this;
     }
@@ -1758,10 +1770,10 @@ public class ANSIBuilder {
      */
     public ANSIBuilder bgRgb(int r, int g, int b) {
         validateRgb(r, g, b);
-        this.bgRgb = new int[] { r, g, b };
+        this.bgRgb = packRgb(r, g, b);
         this.bg = Color.DEFAULT;
-        this.bgCode = null;
-        this.bg256 = null;
+        this.bgCode = -1;
+        this.bg256 = -1;
         havePrintedColor = false;
         return this;
     }
@@ -2124,8 +2136,8 @@ public class ANSIBuilder {
     public ANSIBuilder textCode(int code) {
         this.textCode = code;
         this.text = Color.DEFAULT;
-        this.text256 = null;
-        this.textRgb = null;
+        this.text256 = -1;
+        this.textRgb = -1;
         havePrintedColor = false;
         return this;
     }
@@ -2145,8 +2157,8 @@ public class ANSIBuilder {
     public ANSIBuilder bgCode(int code) {
         this.bgCode = code;
         this.bg = Color.DEFAULT;
-        this.bg256 = null;
-        this.bgRgb = null;
+        this.bg256 = -1;
+        this.bgRgb = -1;
         havePrintedColor = false;
         return this;
     }

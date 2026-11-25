@@ -408,9 +408,7 @@ public enum Key implements KeyAction {
     private final IntBuffer keyValues;
 
     Key(int[] keyValues) {
-        this.keyValues = IntBuffer.allocate(keyValues.length);
-        this.keyValues.put(keyValues);
-
+        this.keyValues = IntBuffer.wrap(keyValues);
     }
 
     /**

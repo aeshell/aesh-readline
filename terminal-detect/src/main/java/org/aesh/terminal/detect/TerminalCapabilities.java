@@ -121,8 +121,8 @@ public final class TerminalCapabilities {
      * result instance; revisions order one instance's snapshots only.
      */
     private long revision;
-    /** Live subscribers, in registration order. Copy-on-write, so delivery never holds a monitor. */
-    private final CopyOnWriteArrayList<Subscription> subscribers = new CopyOnWriteArrayList<Subscription>();
+    /** Live subscribers, in registration order. Allocated lazily under this monitor. */
+    private CopyOnWriteArrayList<Subscription> subscribers;
 
     /** Synchronous delivery on the publisher's thread. */
     private static final Executor DIRECT = new Executor() {
@@ -305,12 +305,13 @@ public final class TerminalCapabilities {
      * @return the detected capabilities
      */
     public static TerminalCapabilities detect() {
-        return new TerminalCapabilities(new TerminalDetector(), null);
+        return new TerminalCapabilities(TerminalDetector.passive(System.getenv()), null);
     }
 
     /** Passive scoped hints have no platform fallback or OS-property lookup. */
     static TerminalCapabilities fromEnvironment(Map<String, String> environment) {
-        return new TerminalCapabilities(new TerminalDetector(Objects.requireNonNull(environment, "environment"), ""), null);
+        return new TerminalCapabilities(
+                TerminalDetector.passive(Objects.requireNonNull(environment, "environment")), null);
     }
 
     /**
@@ -680,6 +681,9 @@ public final class TerminalCapabilities {
                 listener, executor == null ? DIRECT : executor);
         TerminalSnapshot replay;
         synchronized (this) {
+            if (subscribers == null) {
+                subscribers = new CopyOnWriteArrayList<Subscription>();
+            }
             subscribers.add(subscription);
             replay = captureLocked();
         }
@@ -738,7 +742,7 @@ public final class TerminalCapabilities {
      * @return the batch to deliver outside every monitor
      */
     private PublishBatch capturePublishLocked() {
-        if (subscribers.isEmpty()) {
+        if (subscribers == null || subscribers.isEmpty()) {
             return PublishBatch.NONE;
         }
         revision++;
@@ -747,7 +751,9 @@ public final class TerminalCapabilities {
     }
 
     private void removeSubscription(Subscription subscription) {
-        subscribers.remove(subscription);
+        if (subscribers != null) {
+            subscribers.remove(subscription);
+        }
     }
 
     /**
