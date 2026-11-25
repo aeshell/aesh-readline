@@ -140,34 +140,30 @@ public abstract class AbstractExecPty implements Pty {
         }
         // control char
         if (str.charAt(0) == '^') {
-            if (str.charAt(1) == '?') {
-                return 127;
-            } else {
-                return str.charAt(1) - 64;
+            return parseCaretChar(str, 1);
+        } else if (str.length() >= 2 && str.charAt(0) == 'M' && str.charAt(1) == '-') {
+            if (str.length() < 3) {
+                return -1;
             }
-        } else if (str.charAt(0) == 'M' && str.charAt(1) == '-') {
             if (str.charAt(2) == '^') {
-                if (str.charAt(3) == '?') {
-                    return 127 + 128;
-                } else {
-                    return str.charAt(3) - 64 + 128;
-                }
-            } else {
-                return str.charAt(2) + 128;
+                int ctrl = parseCaretChar(str, 3);
+                return ctrl < 0 ? -1 : ctrl + 128;
             }
-        }
-        // undef
-        if ("<UNDEF>".equals(str) || "<undef>".equals(str)) {
-            return -1;
+            return str.charAt(2) + 128;
         }
         // del
         if ("DEL".equalsIgnoreCase(str)) {
             return 127;
         }
+        return str.charAt(0);
+    }
 
-        else {
-            return str.charAt(0);
+    private static int parseCaretChar(String str, int index) {
+        if (index >= str.length()) {
+            return -1;
         }
+        char ch = str.charAt(index);
+        return ch == '?' ? 127 : ch - 64;
     }
 
     static Size doGetSize(String cfg) throws IOException {

@@ -2,6 +2,7 @@ package org.aesh.terminal.tty.split;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import org.aesh.terminal.tty.ScreenRegion;
 import org.aesh.terminal.tty.Size;
@@ -78,6 +79,19 @@ public class SplitScreenTest {
         assertEquals(2, visible.size());
         assertEquals("line 2", visible.get(0));
         assertEquals("line 3", visible.get(1));
+
+        assertTrue(buf.getLastLines(0).isEmpty());
+        assertTrue(buf.getLastLines(-1).isEmpty());
+        try {
+            new ScrollbackBuffer(0);
+            fail("zero capacity must throw IllegalArgumentException");
+        } catch (IllegalArgumentException expected) {
+        }
+        try {
+            new ScrollbackBuffer(-5);
+            fail("negative capacity must throw IllegalArgumentException");
+        } catch (IllegalArgumentException expected) {
+        }
     }
 
     @Test

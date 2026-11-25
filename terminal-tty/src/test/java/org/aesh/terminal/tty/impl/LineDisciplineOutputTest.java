@@ -37,6 +37,52 @@ import org.junit.Test;
  */
 public class LineDisciplineOutputTest {
 
+    @Test
+    public void testHighBitByteDoesNotTriggerUnsetSignal() throws IOException {
+        LineDisciplineTerminal terminal = new LineDisciplineTerminal(
+                "test", "xterm", new ByteArrayOutputStream());
+        try {
+            Attributes attrs = terminal.getAttributes();
+            attrs.setLocalFlag(Attributes.LocalFlag.ISIG, true);
+            terminal.setAttributes(attrs);
+            List<org.aesh.terminal.tty.Signal> fired = new ArrayList<>();
+            terminal.handle(org.aesh.terminal.tty.Signal.INT, fired::add);
+
+            terminal.processInputBytes(new byte[] { (byte) 0xFF }, 1);
+            assertTrue("0xFF must not match unset VINTR (-1): " + fired, fired.isEmpty());
+            assertEquals(1, terminal.input().available());
+            assertEquals(0xFF, terminal.input().read());
+        } finally {
+            terminal.close();
+        }
+    }
+
+    @Test
+    public void testLinePipedInputStreamReadZeroAndBounds() throws IOException {
+        org.aesh.terminal.tty.utils.LinePipedInputStream in = new org.aesh.terminal.tty.utils.LinePipedInputStream(64);
+        java.io.PipedOutputStream out = new java.io.PipedOutputStream(in);
+        try {
+            out.write('x');
+            out.flush();
+            assertEquals(0, in.read(new byte[0], 0, 0));
+            assertEquals("zero-length read must not consume bytes", 1, in.available());
+            try {
+                in.read(null, 0, 1);
+                org.junit.Assert.fail("expected NullPointerException");
+            } catch (NullPointerException expected) {
+            }
+            try {
+                in.read(new byte[4], 2, 3);
+                org.junit.Assert.fail("expected IndexOutOfBoundsException");
+            } catch (IndexOutOfBoundsException expected) {
+            }
+            assertEquals('x', in.read());
+        } finally {
+            out.close();
+            in.close();
+        }
+    }
+
     /** Master output recording bulk/single call shapes plus bytes. */
     private static final class CountingOutput extends OutputStream {
         final ByteArrayOutputStream bytes = new ByteArrayOutputStream();

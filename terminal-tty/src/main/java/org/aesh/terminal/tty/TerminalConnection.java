@@ -31,6 +31,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -74,7 +75,7 @@ public class TerminalConnection extends AbstractConnection {
     private Consumer<Connection> handler;
     private CountDownLatch latch;
     private volatile boolean waiting = false;
-    private volatile boolean closed = false;
+    private final AtomicBoolean closed = new AtomicBoolean(false);
     /**
      * Guards reader lifecycle transitions only (flag/executor/future);
      * never held across terminal I/O or close() handling.
@@ -222,10 +223,12 @@ public class TerminalConnection extends AbstractConnection {
         });
         //window resize signal
         prevWincHandler = this.terminal.handle(Signal.WINCH, s -> {
-            updateEndpointDimensions(terminal.getSize(), EndpointContext.Source.OBSERVED);
+            Size newSize = terminal.getSize();
+            updateEndpointDimensions(newSize, EndpointContext.Source.OBSERVED);
             // Resize split screen first (recalculates layout, redraws separator)
-            if (splitScreenImpl != null && !splitScreenImpl.isClosed()) {
-                splitScreenImpl.handleResize(terminal.getSize());
+            org.aesh.terminal.tty.split.SplitScreenImpl split = splitScreenImpl;
+            if (split != null && !split.isClosed()) {
+                split.handleResize(newSize);
             }
             if (sizeHandler() != null) {
                 sizeHandler().accept(size());
@@ -298,7 +301,7 @@ public class TerminalConnection extends AbstractConnection {
     @Override
     public void openNonBlocking() {
         synchronized (readerLock) {
-            if (closed) {
+            if (closed.get()) {
                 LOGGER.log(Level.FINE, "openNonBlocking on a closed connection is a no-op");
                 return;
             }
@@ -395,7 +398,7 @@ public class TerminalConnection extends AbstractConnection {
      */
     public void openBlocking(String buffer) {
         synchronized (readerLock) {
-            if (closed) {
+            if (closed.get()) {
                 return;
             }
         }
@@ -695,8 +698,9 @@ public class TerminalConnection extends AbstractConnection {
     @Override
     public org.aesh.terminal.Connection write(String s) {
         // Fast path: no split screen — direct field check, no method dispatch
-        if (currentRegion != null) {
-            currentRegion.write(s);
+        org.aesh.terminal.tty.ScreenRegion region = currentRegion;
+        if (region != null) {
+            region.write(s);
             return this;
         }
         return writeRaw(s);
@@ -727,9 +731,10 @@ public class TerminalConnection extends AbstractConnection {
     @Override
     public void printAbove(String text) {
         // When split screen is active, route to top region
-        if (splitScreenImpl != null && !splitScreenImpl.isClosed() && !splitScreenImpl.isSuspended()) {
+        org.aesh.terminal.tty.split.SplitScreenImpl split = splitScreenImpl;
+        if (split != null && !split.isClosed() && !split.isSuspended()) {
             if (text != null && !text.isEmpty()) {
-                splitScreenImpl.topRegion().writeln(text);
+                split.topRegion().writeln(text);
             }
             return;
         }
@@ -751,7 +756,7 @@ public class TerminalConnection extends AbstractConnection {
             // because the user's signal handler may have already closed the
             // connection before Readline.finish() writes cleanup sequences.
             // Log at FINE to avoid noisy WARNING messages during normal exit.
-            if (closed) {
+            if (closed.get()) {
                 LOGGER.log(Level.FINE, "Write after close (expected during shutdown)", e);
             } else {
                 LOGGER.log(Level.WARNING, "Failed to write out.", e);
@@ -777,8 +782,9 @@ public class TerminalConnection extends AbstractConnection {
     public Size size() {
         // When split screen is active, return the bottom region size
         // so readline constrains itself to the bottom region bounds
-        if (splitScreenImpl != null && !splitScreenImpl.isSuspended()) {
-            return splitScreenImpl.bottomRegion().size();
+        org.aesh.terminal.tty.split.SplitScreenImpl split = splitScreenImpl;
+        if (split != null && !split.isSuspended()) {
+            return split.bottomRegion().size();
         }
         return terminal.getSize();
     }
@@ -921,10 +927,9 @@ public class TerminalConnection extends AbstractConnection {
 
     @Override
     public void close() {
-        if (closed) {
+        if (!closed.compareAndSet(false, true)) {
             return;
         }
-        closed = true;
         closeEndpointContext();
         reading = false;
         // Release the owned reader worker, if any. No await: close() runs
@@ -938,13 +943,14 @@ public class TerminalConnection extends AbstractConnection {
             }
         }
         // Close split screen if active
-        if (splitScreenImpl != null) {
+        org.aesh.terminal.tty.split.SplitScreenImpl split = splitScreenImpl;
+        splitScreenImpl = null;
+        if (split != null) {
             try {
-                splitScreenImpl.close();
+                split.close();
             } catch (Exception e) {
                 LOGGER.log(Level.FINE, "Failed to close split screen", e);
             }
-            splitScreenImpl = null;
         }
         try {
             //call closeHandler before we close the terminal stream

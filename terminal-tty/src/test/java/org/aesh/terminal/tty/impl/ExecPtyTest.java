@@ -155,6 +155,23 @@ public class ExecPtyTest {
     }
 
     @Test
+    public void testParseControlCharShortTokens() {
+        assertEquals(-1, ExecPty.parseControlChar("^"));
+        assertEquals('M', ExecPty.parseControlChar("M"));
+        assertEquals(-1, ExecPty.parseControlChar("M-"));
+        assertEquals(-1, ExecPty.parseControlChar("M-^"));
+    }
+
+    @Test
+    public void testDoGetLinuxAttrShortOutputFallsBack() {
+        String shortStty = "speed 38400 baud; rows 24; columns 80;\nintr = ^C; echo -icanon\n";
+        Attributes attr = ExecPty.doGetLinuxAttr(shortStty);
+        assertEquals(3, attr.getControlChar(ControlChar.VINTR));
+        assertTrue(attr.getLocalFlag(LocalFlag.ECHO));
+        assertFalse(attr.getLocalFlag(LocalFlag.ICANON));
+    }
+
+    @Test
     public void testParseAttributesLinux() {
         Attributes attributes = ExecPty.doGetAttr(linuxSttySample);
         checkAttributestLinux(attributes);

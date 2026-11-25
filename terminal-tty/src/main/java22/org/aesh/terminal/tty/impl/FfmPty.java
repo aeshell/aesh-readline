@@ -413,6 +413,9 @@ public class FfmPty implements Pty {
         if (peekedByte != -2) {
             int pb = peekedByte;
             peekedByte = -2;
+            if (pb < 0) {
+                return pb; // EOF observed by peek()
+            }
             b[off] = (byte) pb;
             if (len == 1) return 1;
             // Try to read more non-blocking
@@ -790,6 +793,8 @@ public class FfmPty implements Pty {
         private final MemorySegment pollfd;
         private final MemorySegment readBuf;
         private final Arena streamArena;
+        private final java.util.concurrent.atomic.AtomicBoolean streamClosed =
+                new java.util.concurrent.atomic.AtomicBoolean(false);
 
         FfmInputStream() {
             this.streamArena = Arena.ofShared();
@@ -802,41 +807,46 @@ public class FfmPty implements Pty {
 
         @Override
         public int read() throws IOException {
-            if (closed.get()) {
-                return -1;
-            }
-            while (!closed.get()) {
-                // Reset revents
-                pollfd.set(ValueLayout.JAVA_SHORT, PosixConstants.POLLFD_REVENTS_OFFSET, (short) 0);
-
-                // Poll with 100ms timeout to remain responsive to close()
-                int result = LibC.poll(pollfd, 1, 100);
-                if (result < 0) {
-                    if (closed.get()) {
+            while (!closed.get() && !streamClosed.get()) {
+                inFlight.incrementAndGet();
+                try {
+                    if (closed.get() || streamClosed.get()) {
                         return -1;
                     }
-                    // Likely EINTR — signal interrupted poll, retry
-                    continue;
-                }
-                if (result == 0) {
-                    // Timeout — check if closed and retry
-                    continue;
-                }
+                    // Reset revents
+                    pollfd.set(ValueLayout.JAVA_SHORT, PosixConstants.POLLFD_REVENTS_OFFSET, (short) 0);
 
-                short revents = pollfd.get(ValueLayout.JAVA_SHORT, PosixConstants.POLLFD_REVENTS_OFFSET);
-                if ((revents & (PosixConstants.POLLHUP | PosixConstants.POLLERR)) != 0) {
-                    return -1; // EOF or error
-                }
-                if ((revents & PosixConstants.POLLIN) != 0) {
-                    long bytesRead = LibC.read(ttyFd, readBuf, 1);
-                    if (bytesRead == 0) {
-                        return -1; // EOF
-                    }
-                    if (bytesRead < 0) {
-                        // Likely EINTR (signal between poll and read), retry
+                    // Poll with 100ms timeout to remain responsive to close()
+                    int result = LibC.poll(pollfd, 1, 100);
+                    if (result < 0) {
+                        if (closed.get() || streamClosed.get()) {
+                            return -1;
+                        }
+                        // Likely EINTR — signal interrupted poll, retry
                         continue;
                     }
-                    return Byte.toUnsignedInt(readBuf.get(ValueLayout.JAVA_BYTE, 0));
+                    if (result == 0) {
+                        // Timeout — check if closed and retry
+                        continue;
+                    }
+
+                    short revents = pollfd.get(ValueLayout.JAVA_SHORT, PosixConstants.POLLFD_REVENTS_OFFSET);
+                    if ((revents & (PosixConstants.POLLHUP | PosixConstants.POLLERR | PosixConstants.POLLNVAL)) != 0) {
+                        return -1; // EOF, error, or fd closed under us
+                    }
+                    if ((revents & PosixConstants.POLLIN) != 0) {
+                        long bytesRead = LibC.read(ttyFd, readBuf, 1);
+                        if (bytesRead == 0) {
+                            return -1; // EOF
+                        }
+                        if (bytesRead < 0) {
+                            // Likely EINTR (signal between poll and read), retry
+                            continue;
+                        }
+                        return Byte.toUnsignedInt(readBuf.get(ValueLayout.JAVA_BYTE, 0));
+                    }
+                } finally {
+                    inFlight.decrementAndGet();
                 }
             }
             return -1;
@@ -862,6 +872,9 @@ public class FfmPty implements Pty {
 
         @Override
         public void close() {
+            if (!streamClosed.compareAndSet(false, true)) {
+                return;
+            }
             // Quiesce first: a concurrent stream read may still hold this
             // arena inside a downcall section.
             quiesceReads();

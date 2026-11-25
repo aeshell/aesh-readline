@@ -20,6 +20,7 @@
 package org.aesh.terminal.tty.split;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -41,6 +42,9 @@ public class ScrollbackBuffer {
      * @param maxLines maximum number of lines to store
      */
     public ScrollbackBuffer(int maxLines) {
+        if (maxLines <= 0) {
+            throw new IllegalArgumentException("maxLines must be positive: " + maxLines);
+        }
         this.capacity = maxLines;
         this.lines = new String[maxLines];
         this.head = 0;
@@ -70,6 +74,9 @@ public class ScrollbackBuffer {
      * @return list of lines, oldest first
      */
     public synchronized List<String> getLastLines(int count) {
+        if (count <= 0 || size == 0) {
+            return Collections.emptyList();
+        }
         int n = Math.min(count, size);
         List<String> result = new ArrayList<>(n);
         int start = (head + size - n) % capacity;

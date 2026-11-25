@@ -51,8 +51,8 @@ public class ExecPty extends AbstractExecPty {
     private final boolean validTTYFile;
     private static final String NOT_A_TTY = "not a tty";
 
-    private InputStream slaveInput;
-    private OutputStream slaveOutput;
+    private volatile InputStream slaveInput;
+    private volatile OutputStream slaveOutput;
     private boolean slaveInputOwned;
     private boolean slaveOutputOwned;
 
@@ -190,7 +190,7 @@ public class ExecPty extends AbstractExecPty {
                 return doGetAttr(cfg);
         } catch (IOException ioe) {
             //if we get permission denied on stty -F tty -a we can try without -F tty
-            if (ioe.getMessage().contains("Permission denied")) {
+            if (ioe.getMessage() != null && ioe.getMessage().contains("Permission denied")) {
                 return doGetAttr(doGetFailSafeConfig());
             } else
                 throw ioe;
@@ -302,8 +302,11 @@ public class ExecPty extends AbstractExecPty {
     }
 
     static Attributes doGetLinuxAttr(String cfg) {
-        Attributes attributes = new Attributes();
         String[] attr = cfg.split(";");
+        if (attr.length < 22) {
+            return doGetAttr(cfg);
+        }
+        Attributes attributes = new Attributes();
         //the first line of attributes we ignore (speed, rows, columns and line)
         //the rest which are delimited with ; are control cars
         setAttr(Attributes.ControlChar.VINTR, attr[4], attributes);
@@ -393,9 +396,17 @@ public class ExecPty extends AbstractExecPty {
                 Integer.parseInt(tokens[2].substring(7)));
     }
 
-    private static Size doGetOptimalSize(String cfg) {
-        final String[] size = cfg.split(" ");
-        return new Size(Integer.parseInt(size[1].trim()), Integer.parseInt(size[0].trim()));
+    private static Size doGetOptimalSize(String cfg) throws IOException {
+        String trimmed = cfg == null ? "" : cfg.trim();
+        final String[] size = trimmed.split("\\s+");
+        if (size.length < 2) {
+            throw new IOException("Unable to parse stty size output: " + cfg);
+        }
+        try {
+            return new Size(Integer.parseInt(size[1]), Integer.parseInt(size[0]));
+        } catch (NumberFormatException e) {
+            throw new IOException("Unable to parse stty size output: " + cfg, e);
+        }
     }
 
 }

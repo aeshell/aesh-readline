@@ -20,8 +20,8 @@
 package org.aesh.terminal.tty.impl;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -48,7 +48,7 @@ public abstract class AbstractTerminal implements Terminal {
     /** The terminal type (e.g., "xterm", "vt100"). */
     protected final String type;
     /** Map of signal types to their handlers. */
-    protected final Map<Signal, SignalHandler> handlers = new HashMap<>();
+    protected final Map<Signal, SignalHandler> handlers = new ConcurrentHashMap<>();
     /** The device capabilities for this terminal. */
     protected final Device device;
 

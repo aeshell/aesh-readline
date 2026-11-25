@@ -62,6 +62,15 @@ public class LinePipedInputStream extends PipedInputStream {
      * @throws IOException if an I/O error occurs
      */
     public synchronized int read(byte[] b, int off, int len) throws IOException {
+        if (b == null) {
+            throw new NullPointerException();
+        }
+        if (off < 0 || len < 0 || len > b.length - off) {
+            throw new IndexOutOfBoundsException();
+        }
+        if (len == 0) {
+            return 0;
+        }
         /* possibly wait on the first character */
         int c = read();
         if (c < 0) {

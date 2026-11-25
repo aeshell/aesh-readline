@@ -166,7 +166,7 @@ public class LineDisciplineTerminal extends AbstractTerminal {
      */
     public void processInputBytes(byte[] input, int length) throws IOException {
         for (int i = 0; i < length; i++)
-            doProcessInputByte(input[i]);
+            doProcessInputByte(input[i] & 0xFF);
         slaveInputPipe.flush();
     }
 
@@ -184,19 +184,8 @@ public class LineDisciplineTerminal extends AbstractTerminal {
     }
 
     private void doProcessInputByte(int c) throws IOException {
-        if (attributes.getLocalFlag(Attributes.LocalFlag.ISIG)) {
-            if (c == attributes.getControlChar(Attributes.ControlChar.VINTR)) {
-                raise(Signal.INT);
-                return;
-            } else if (c == attributes.getControlChar(Attributes.ControlChar.VQUIT)) {
-                raise(Signal.QUIT);
-                return;
-            } else if (c == attributes.getControlChar(Attributes.ControlChar.VSUSP)) {
-                raise(Signal.SUSP);
-                return;
-            } else if (c == attributes.getControlChar(Attributes.ControlChar.VSTATUS)) {
-                raise(Signal.INFO);
-            }
+        if (attributes.getLocalFlag(Attributes.LocalFlag.ISIG) && handleSignalByte(c)) {
+            return;
         }
         if (c == '\r') {
             if (attributes.getInputFlag(Attributes.InputFlag.IGNCR)) {
@@ -213,6 +202,30 @@ public class LineDisciplineTerminal extends AbstractTerminal {
             masterOutput.flush();
         }
         slaveInputPipe.write(c);
+    }
+
+    private boolean handleSignalByte(int c) {
+        if (matchesControlChar(c, Attributes.ControlChar.VINTR)) {
+            raise(Signal.INT);
+            return true;
+        }
+        if (matchesControlChar(c, Attributes.ControlChar.VQUIT)) {
+            raise(Signal.QUIT);
+            return true;
+        }
+        if (matchesControlChar(c, Attributes.ControlChar.VSUSP)) {
+            raise(Signal.SUSP);
+            return true;
+        }
+        if (matchesControlChar(c, Attributes.ControlChar.VSTATUS)) {
+            raise(Signal.INFO);
+        }
+        return false;
+    }
+
+    private boolean matchesControlChar(int c, Attributes.ControlChar cc) {
+        int vcc = attributes.getControlChar(cc);
+        return vcc >= 0 && c == vcc;
     }
 
     /**

@@ -169,12 +169,13 @@ public class ExternalTerminal extends LineDisciplineTerminal {
                 processInputBytes(bBuf, c);
             }
         } catch (IOException e) {
+            boolean wasClosed = closed.get();
             try {
                 close();
             } catch (Throwable t) {
                 e.addSuppressed(t);
             }
-            if (!closed.get()) {
+            if (!wasClosed) {
                 LOGGER.log(Level.WARNING, "Error reading from external terminal", e);
             }
         }
@@ -213,12 +214,13 @@ public class ExternalTerminal extends LineDisciplineTerminal {
                 }
             }
         } catch (IOException e) {
+            boolean wasClosed = closed.get();
             try {
                 close();
             } catch (Throwable t) {
                 e.addSuppressed(t);
             }
-            if (!closed.get()) {
+            if (!wasClosed) {
                 LOGGER.log(Level.WARNING, "Error reading from external terminal", e);
             }
         }
