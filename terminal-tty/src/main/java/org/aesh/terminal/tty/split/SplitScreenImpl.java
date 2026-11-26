@@ -42,7 +42,10 @@ import org.aesh.terminal.utils.LoggerUtil;
  */
 public class SplitScreenImpl implements SplitScreen {
 
-    private static final Logger LOGGER = LoggerUtil.getLogger(SplitScreenImpl.class.getName());
+    private static final class Log {
+        static final Logger LOGGER = LoggerUtil.getLogger(SplitScreenImpl.class.getName());
+    }
+
     private static final int DEFAULT_SCROLLBACK = 1000;
 
     private final Connection connection;
@@ -246,7 +249,7 @@ public class SplitScreenImpl implements SplitScreen {
         Size fullSize = getFullTerminalSize();
         if (fullSize.getHeight() < minRequired) {
             if (!suspended) {
-                LOGGER.log(Level.FINE, "Terminal too small for split ({0} rows, need {1}), auto-suspending",
+                Log.LOGGER.log(Level.FINE, "Terminal too small for split ({0} rows, need {1}), auto-suspending",
                         new Object[] { fullSize.getHeight(), minRequired });
                 autoSuspended = true;
                 suspend();
@@ -391,7 +394,7 @@ public class SplitScreenImpl implements SplitScreen {
                 try {
                     render("\033[r\033[2J\033[1;1H");
                 } catch (Exception e) {
-                    LOGGER.log(Level.FINE, "Failed to reset terminal on close", e);
+                    Log.LOGGER.log(Level.FINE, "Failed to reset terminal on close", e);
                 }
                 // Remove shutdown hook (no longer needed)
                 if (shutdownHook != null) {

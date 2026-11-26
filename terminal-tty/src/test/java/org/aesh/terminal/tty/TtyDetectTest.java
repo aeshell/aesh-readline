@@ -119,4 +119,38 @@ public class TtyDetectTest {
                     java.util.logging.Logger.class.isAssignableFrom(field.getType()));
         }
     }
+
+    @Test
+    public void testTerminalTtyClassesHaveNoEagerLoggers() throws Exception {
+        String[] classNames = {
+                "org.aesh.terminal.tty.TerminalConnection",
+                "org.aesh.terminal.tty.TerminalBuilder",
+                "org.aesh.terminal.tty.DeviceBuilder",
+                "org.aesh.terminal.tty.provider.FfmTerminalProvider",
+                "org.aesh.terminal.tty.impl.AbstractTerminal",
+                "org.aesh.terminal.tty.impl.AbstractExecPty",
+                "org.aesh.terminal.tty.impl.ExecPty",
+                "org.aesh.terminal.tty.impl.CygwinPty",
+                "org.aesh.terminal.tty.impl.ExternalTerminal",
+                "org.aesh.terminal.tty.impl.LineDisciplineTerminal",
+                "org.aesh.terminal.tty.impl.AbstractWindowsTerminal",
+                "org.aesh.terminal.tty.impl.AbstractWindowsTerminal$ConsoleOutput",
+                "org.aesh.terminal.tty.split.SplitScreenImpl",
+                "org.aesh.terminal.tty.utils.ShutdownHooks",
+                "org.aesh.terminal.tty.impl.FfmPty"
+        };
+        for (String name : classNames) {
+            Class<?> clazz = Class.forName(name, false, TtyDetectTest.class.getClassLoader());
+            for (java.lang.reflect.Field field : clazz.getDeclaredFields()) {
+                if (!java.util.logging.Logger.class.isAssignableFrom(field.getType())) {
+                    continue;
+                }
+                int mods = field.getModifiers();
+                assertFalse("eager static Logger field on " + name + ": " + field,
+                        java.lang.reflect.Modifier.isStatic(mods));
+                assertFalse("eager final instance Logger field on " + name + ": " + field,
+                        java.lang.reflect.Modifier.isFinal(mods));
+            }
+        }
+    }
 }

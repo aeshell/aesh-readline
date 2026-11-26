@@ -26,6 +26,7 @@ import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.util.EnumMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -55,7 +56,17 @@ import org.aesh.terminal.utils.OSUtils;
  */
 public class FfmPty implements Pty {
 
-    private static final Logger LOGGER = LoggerUtil.getLogger(FfmPty.class.getName());
+    private static final class Log {
+        static final Logger LOGGER = LoggerUtil.getLogger(FfmPty.class.getName());
+    }
+
+    private static boolean isFineLogEnabled() {
+        return (System.getProperty("java.util.logging.config.file") != null
+                || System.getProperty("java.util.logging.config.class") != null
+                || System.getProperty("java.util.logging.manager") != null
+                || Boolean.getBoolean("org.aesh.terminal.debug"))
+                && Log.LOGGER.isLoggable(Level.FINE);
+    }
 
     /** The long-lived arena for this PTY instance. All native memory is freed on close(). */
     private final Arena arena;
@@ -184,7 +195,9 @@ public class FfmPty implements Pty {
             nbPollfd.set(ValueLayout.JAVA_SHORT, PosixConstants.POLLFD_EVENTS_OFFSET, PosixConstants.POLLIN);
             this.nbReadBuf = arena.allocate(READ_BUF_SIZE);
 
-            LOGGER.log(Level.FINE, "FfmPty created for {0} (fd={1})", new Object[] { ttyName, ttyFd });
+            if (isFineLogEnabled()) {
+                Log.LOGGER.log(Level.FINE, "FfmPty created for {0} (fd={1})", new Object[] { ttyName, ttyFd });
+            }
 
         } catch (Throwable t) {
             arena.close();
@@ -306,7 +319,7 @@ public class FfmPty implements Pty {
             // Use TCSANOW for immediate restore on close (TCSAFLUSH can delay)
             int rc = LibC.tcsetattr(ttyFd, PosixConstants.TCSANOW, savedTermios);
             if (rc != 0) {
-                LOGGER.log(Level.WARNING, "Failed to restore terminal attributes on close");
+                Log.LOGGER.log(Level.WARNING, "Failed to restore terminal attributes on close");
             }
         } finally {
             try {
@@ -340,7 +353,7 @@ public class FfmPty implements Pty {
                                     break;
                                 }
                             } else {
-                                LOGGER.log(Level.FINE, "Arena still in use after retries, ignoring", e);
+                                Log.LOGGER.log(Level.FINE, "Arena still in use after retries, ignoring", e);
                             }
                         }
                     }
@@ -467,9 +480,19 @@ public class FfmPty implements Pty {
      */
     private int bulkPollAndReadSlice(MemorySegment pollfdSeg, MemorySegment readBufSeg,
                                      byte[] b, int off, int len, long timeoutMs) throws IOException {
+        return bulkPollAndReadSlice(pollfdSeg, readBufSeg, b, off, len, timeoutMs, null);
+    }
+
+    private boolean isClosed(AtomicBoolean extraClosed) {
+        return closed.get() || (extraClosed != null && extraClosed.get());
+    }
+
+    private int bulkPollAndReadSlice(MemorySegment pollfdSeg, MemorySegment readBufSeg,
+                                     byte[] b, int off, int len, long timeoutMs,
+                                     AtomicBoolean extraClosed) throws IOException {
         inFlight.incrementAndGet();
         try {
-            if (closed.get()) {
+            if (isClosed(extraClosed)) {
                 return -1;
             }
             int pollTimeout = (int) Math.min(timeoutMs, Integer.MAX_VALUE);
@@ -480,7 +503,7 @@ public class FfmPty implements Pty {
             int result = LibC.poll(pollfdSeg, 1, pollTimeout);
 
             if (result < 0) {
-                if (closed.get()) return -1;
+                if (isClosed(extraClosed)) return -1;
                 return -2; // EINTR — treat as timeout
             }
             if (result == 0) {
@@ -497,7 +520,7 @@ public class FfmPty implements Pty {
                 int toRead = Math.min(len, READ_BUF_SIZE);
                 long bytesRead = LibC.read(ttyFd, readBufSeg, toRead);
                 if (bytesRead <= 0) {
-                    if (bytesRead < 0 && !closed.get()) {
+                    if (bytesRead < 0 && !isClosed(extraClosed)) {
                         return -2; // EINTR between poll and read
                     }
                     return -1; // EOF
@@ -606,7 +629,7 @@ public class FfmPty implements Pty {
         long lflag = getTermiosFlag(termios, PosixConstants.TERMIOS_LFLAG_OFFSET);
 
         // Input flags
-        for (InputFlag flag : InputFlag.values()) {
+        for (InputFlag flag : PosixConstants.INPUT_FLAGS) {
             long bit = PosixConstants.inputFlagBit(flag);
             if (bit >= 0) {
                 attr.setInputFlag(flag, (iflag & bit) != 0);
@@ -614,7 +637,7 @@ public class FfmPty implements Pty {
         }
 
         // Output flags
-        for (OutputFlag flag : OutputFlag.values()) {
+        for (OutputFlag flag : PosixConstants.OUTPUT_FLAGS) {
             long bit = PosixConstants.outputFlagBit(flag);
             if (bit >= 0) {
                 attr.setOutputFlag(flag, (oflag & bit) != 0);
@@ -622,7 +645,7 @@ public class FfmPty implements Pty {
         }
 
         // Control flags — special handling for CSIZE (CS5-CS8) and CIGNORE
-        for (ControlFlag flag : ControlFlag.values()) {
+        for (ControlFlag flag : PosixConstants.CONTROL_FLAGS) {
             if (flag == ControlFlag.CIGNORE) {
                 continue; // no termios equivalent
             }
@@ -640,7 +663,7 @@ public class FfmPty implements Pty {
         }
 
         // Local flags
-        for (LocalFlag flag : LocalFlag.values()) {
+        for (LocalFlag flag : PosixConstants.LOCAL_FLAGS) {
             long bit = PosixConstants.localFlagBit(flag);
             if (bit >= 0) {
                 attr.setLocalFlag(flag, (lflag & bit) != 0);
@@ -648,7 +671,7 @@ public class FfmPty implements Pty {
         }
 
         // Control characters
-        for (ControlChar cc : ControlChar.values()) {
+        for (ControlChar cc : PosixConstants.CONTROL_CHARS) {
             int idx = PosixConstants.ccIndex(cc);
             if (idx >= 0 && idx < PosixConstants.TERMIOS_CC_COUNT) {
                 int value = Byte.toUnsignedInt(
@@ -668,16 +691,9 @@ public class FfmPty implements Pty {
      */
     private void attributesToTermios(Attributes attr, MemorySegment termios) {
         // Input flags: preserve bits not modeled by Attributes
-        long iflag = getTermiosFlag(termios, PosixConstants.TERMIOS_IFLAG_OFFSET);
-        long iflagMask = 0;
-        for (InputFlag flag : InputFlag.values()) {
-            long bit = PosixConstants.inputFlagBit(flag);
-            if (bit >= 0) {
-                iflagMask |= bit;
-            }
-        }
-        iflag &= ~iflagMask;
-        for (InputFlag flag : InputFlag.values()) {
+        long iflag = getTermiosFlag(termios, PosixConstants.TERMIOS_IFLAG_OFFSET)
+                & ~PosixConstants.INPUT_FLAG_MASK;
+        for (InputFlag flag : PosixConstants.INPUT_FLAGS) {
             long bit = PosixConstants.inputFlagBit(flag);
             if (bit >= 0 && attr.getInputFlag(flag)) {
                 iflag |= bit;
@@ -686,16 +702,9 @@ public class FfmPty implements Pty {
         setTermiosFlag(termios, PosixConstants.TERMIOS_IFLAG_OFFSET, iflag);
 
         // Output flags: preserve bits not modeled by Attributes
-        long oflag = getTermiosFlag(termios, PosixConstants.TERMIOS_OFLAG_OFFSET);
-        long oflagMask = 0;
-        for (OutputFlag flag : OutputFlag.values()) {
-            long bit = PosixConstants.outputFlagBit(flag);
-            if (bit >= 0) {
-                oflagMask |= bit;
-            }
-        }
-        oflag &= ~oflagMask;
-        for (OutputFlag flag : OutputFlag.values()) {
+        long oflag = getTermiosFlag(termios, PosixConstants.TERMIOS_OFLAG_OFFSET)
+                & ~PosixConstants.OUTPUT_FLAG_MASK;
+        for (OutputFlag flag : PosixConstants.OUTPUT_FLAGS) {
             long bit = PosixConstants.outputFlagBit(flag);
             if (bit >= 0 && attr.getOutputFlag(flag)) {
                 oflag |= bit;
@@ -704,18 +713,9 @@ public class FfmPty implements Pty {
         setTermiosFlag(termios, PosixConstants.TERMIOS_OFLAG_OFFSET, oflag);
 
         // Control flags: preserve bits not modeled by Attributes
-        long cflag = getTermiosFlag(termios, PosixConstants.TERMIOS_CFLAG_OFFSET);
-        long cflagMask = PosixConstants.CSIZE_MASK;
-        for (ControlFlag flag : ControlFlag.values()) {
-            if (flag == ControlFlag.CIGNORE) continue;
-            long bit = PosixConstants.controlFlagBit(flag);
-            if (bit >= 0 && flag != ControlFlag.CS5 && flag != ControlFlag.CS6
-                    && flag != ControlFlag.CS7 && flag != ControlFlag.CS8) {
-                cflagMask |= bit;
-            }
-        }
-        cflag &= ~cflagMask;
-        for (ControlFlag flag : ControlFlag.values()) {
+        long cflag = getTermiosFlag(termios, PosixConstants.TERMIOS_CFLAG_OFFSET)
+                & ~PosixConstants.CONTROL_FLAG_MASK;
+        for (ControlFlag flag : PosixConstants.CONTROL_FLAGS) {
             if (flag == ControlFlag.CIGNORE) continue;
             long bit = PosixConstants.controlFlagBit(flag);
             if (bit >= 0 && attr.getControlFlag(flag)) {
@@ -725,16 +725,9 @@ public class FfmPty implements Pty {
         setTermiosFlag(termios, PosixConstants.TERMIOS_CFLAG_OFFSET, cflag);
 
         // Local flags: preserve bits not modeled by Attributes
-        long lflag = getTermiosFlag(termios, PosixConstants.TERMIOS_LFLAG_OFFSET);
-        long lflagMask = 0;
-        for (LocalFlag flag : LocalFlag.values()) {
-            long bit = PosixConstants.localFlagBit(flag);
-            if (bit >= 0) {
-                lflagMask |= bit;
-            }
-        }
-        lflag &= ~lflagMask;
-        for (LocalFlag flag : LocalFlag.values()) {
+        long lflag = getTermiosFlag(termios, PosixConstants.TERMIOS_LFLAG_OFFSET)
+                & ~PosixConstants.LOCAL_FLAG_MASK;
+        for (LocalFlag flag : PosixConstants.LOCAL_FLAGS) {
             long bit = PosixConstants.localFlagBit(flag);
             if (bit >= 0 && attr.getLocalFlag(flag)) {
                 lflag |= bit;
@@ -744,7 +737,7 @@ public class FfmPty implements Pty {
 
         // Control characters
         EnumMap<ControlChar, Integer> cchars = attr.getControlChars();
-        for (ControlChar cc : ControlChar.values()) {
+        for (ControlChar cc : PosixConstants.CONTROL_CHARS) {
             int idx = PosixConstants.ccIndex(cc);
             if (idx >= 0 && idx < PosixConstants.TERMIOS_CC_COUNT) {
                 int value = cchars.getOrDefault(cc, 0);
@@ -790,23 +783,42 @@ public class FfmPty implements Pty {
      */
     private class FfmInputStream extends InputStream {
 
-        private final MemorySegment pollfd;
-        private final MemorySegment readBuf;
-        private final Arena streamArena;
-        private final java.util.concurrent.atomic.AtomicBoolean streamClosed =
-                new java.util.concurrent.atomic.AtomicBoolean(false);
+        private volatile Arena streamArena;
+        private MemorySegment pollfd;
+        private MemorySegment readBuf;
+        private final Object streamInitLock = new Object();
+        private final AtomicBoolean streamClosed = new AtomicBoolean(false);
 
         FfmInputStream() {
-            this.streamArena = Arena.ofShared();
-            this.pollfd = streamArena.allocate(PosixConstants.POLLFD_SIZE, 4);
-            this.readBuf = streamArena.allocate(READ_BUF_SIZE);
-            // Pre-populate pollfd with fd and events
-            pollfd.set(ValueLayout.JAVA_INT, PosixConstants.POLLFD_FD_OFFSET, ttyFd);
-            pollfd.set(ValueLayout.JAVA_SHORT, PosixConstants.POLLFD_EVENTS_OFFSET, PosixConstants.POLLIN);
+        }
+
+        private boolean ensureStreamBuffers() {
+            if (streamArena != null) {
+                return !closed.get() && !streamClosed.get();
+            }
+            synchronized (streamInitLock) {
+                if (closed.get() || streamClosed.get()) {
+                    return false;
+                }
+                if (streamArena == null) {
+                    Arena a = Arena.ofShared();
+                    MemorySegment pfd = a.allocate(PosixConstants.POLLFD_SIZE, 4);
+                    MemorySegment buf = a.allocate(READ_BUF_SIZE);
+                    pfd.set(ValueLayout.JAVA_INT, PosixConstants.POLLFD_FD_OFFSET, ttyFd);
+                    pfd.set(ValueLayout.JAVA_SHORT, PosixConstants.POLLFD_EVENTS_OFFSET, PosixConstants.POLLIN);
+                    this.pollfd = pfd;
+                    this.readBuf = buf;
+                    this.streamArena = a;
+                }
+                return true;
+            }
         }
 
         @Override
         public int read() throws IOException {
+            if (!ensureStreamBuffers()) {
+                return -1;
+            }
             while (!closed.get() && !streamClosed.get()) {
                 inFlight.incrementAndGet();
                 try {
@@ -857,17 +869,20 @@ public class FfmPty implements Pty {
             if (b == null) throw new NullPointerException();
             if (off < 0 || len < 0 || len > b.length - off) throw new IndexOutOfBoundsException();
             if (len == 0) return 0;
-
-            // Block until data is available, then read in bulk.
-            // Uses -1 timeout (infinite) to match InputStream.read() contract
-            // which blocks until data is available, EOF, or exception.
-            int result = bulkPollAndRead(pollfd, readBuf, b, off, len, -1);
-            // bulkPollAndRead returns -2 for EINTR/timeout; for InputStream
-            // we should retry on EINTR rather than returning -1
-            while (result == -2 && !closed.get()) {
-                result = bulkPollAndRead(pollfd, readBuf, b, off, len, 100);
+            if (!ensureStreamBuffers()) {
+                return -1;
             }
-            return result == -2 ? -1 : result;
+
+            // Block until data is available, then read in bulk using bounded
+            // poll slices so close() always unblocks promptly.
+            while (!closed.get() && !streamClosed.get()) {
+                int result = bulkPollAndReadSlice(pollfd, readBuf, b, off, len,
+                        CLOSE_POLL_SLICE_MS, streamClosed);
+                if (result != -2) {
+                    return result;
+                }
+            }
+            return -1;
         }
 
         @Override
@@ -875,10 +890,16 @@ public class FfmPty implements Pty {
             if (!streamClosed.compareAndSet(false, true)) {
                 return;
             }
-            // Quiesce first: a concurrent stream read may still hold this
-            // arena inside a downcall section.
-            quiesceReads();
-            streamArena.close();
+            Arena a;
+            synchronized (streamInitLock) {
+                a = this.streamArena;
+            }
+            if (a != null) {
+                // Quiesce first: a concurrent stream read may still hold this
+                // arena inside a downcall section.
+                quiesceReads();
+                a.close();
+            }
         }
     }
 

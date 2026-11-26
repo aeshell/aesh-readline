@@ -39,7 +39,17 @@ public final class ShutdownHooks {
     private ShutdownHooks() {
     }
 
-    private static final Logger LOGGER = LoggerUtil.getLogger(ShutdownHooks.class.getName());
+    private static final class Log {
+        static final Logger LOGGER = LoggerUtil.getLogger(ShutdownHooks.class.getName());
+    }
+
+    private static boolean isFineLogEnabled() {
+        return (System.getProperty("java.util.logging.config.file") != null
+                || System.getProperty("java.util.logging.config.class") != null
+                || System.getProperty("java.util.logging.manager") != null
+                || Boolean.getBoolean("org.aesh.terminal.debug"))
+                && Log.LOGGER.isLoggable(Level.FINE);
+    }
 
     private static final List<Task> tasks = new ArrayList<>();
 
@@ -67,22 +77,29 @@ public final class ShutdownHooks {
         }
 
         // Track the task
-        LOGGER.log(Level.FINE, "Adding shutdown-hook task: ", task);
+        if (isFineLogEnabled()) {
+            Log.LOGGER.log(Level.FINE, "Adding shutdown-hook task: {0}", task);
+        }
         tasks.add(task);
 
         return task;
     }
 
     private static synchronized void runTasks() {
-        LOGGER.log(Level.FINE, "Running all shutdown-hook tasks");
+        boolean fine = isFineLogEnabled();
+        if (fine) {
+            Log.LOGGER.log(Level.FINE, "Running all shutdown-hook tasks");
+        }
 
         // Iterate through copy of tasks list
         for (Task task : tasks.toArray(new Task[0])) {
-            LOGGER.log(Level.FINE, "Running task: ", task);
+            if (fine) {
+                Log.LOGGER.log(Level.FINE, "Running task: {0}", task);
+            }
             try {
                 task.run();
             } catch (Throwable e) {
-                LOGGER.log(Level.WARNING, "Task failed", e);
+                Log.LOGGER.log(Level.WARNING, "Task failed", e);
             }
         }
 
@@ -90,12 +107,14 @@ public final class ShutdownHooks {
     }
 
     private static Thread addHook(final Thread thread) {
-        LOGGER.log(Level.FINE, "Registering shutdown-hook: ", thread);
+        if (isFineLogEnabled()) {
+            Log.LOGGER.log(Level.FINE, "Registering shutdown-hook: {0}", thread);
+        }
         try {
             Runtime.getRuntime().addShutdownHook(thread);
         } catch (AbstractMethodError e) {
             // JDK 1.3+ only method. Bummer.
-            LOGGER.log(Level.FINE, "Failed to register shutdown-hook", e);
+            Log.LOGGER.log(Level.FINE, "Failed to register shutdown-hook", e);
         }
         return thread;
     }
@@ -125,13 +144,15 @@ public final class ShutdownHooks {
     }
 
     private static void removeHook(final Thread thread) {
-        LOGGER.log(Level.FINE, "Removing shutdown-hook: ", thread);
+        if (isFineLogEnabled()) {
+            Log.LOGGER.log(Level.FINE, "Removing shutdown-hook: {0}", thread);
+        }
 
         try {
             Runtime.getRuntime().removeShutdownHook(thread);
         } catch (AbstractMethodError e) {
             // JDK 1.3+ only method. Bummer.
-            LOGGER.log(Level.FINE, "Failed to remove shutdown-hook", e);
+            Log.LOGGER.log(Level.FINE, "Failed to remove shutdown-hook", e);
         } catch (IllegalStateException e) {
             // The VM is shutting down, not a big deal; ignore
         }

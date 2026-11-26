@@ -39,7 +39,9 @@ import java.util.logging.Logger;
  */
 public class ExternalTerminal extends LineDisciplineTerminal {
 
-    private static final Logger LOGGER = Logger.getLogger(ExternalTerminal.class.getName());
+    private static final class Log {
+        static final Logger LOGGER = Logger.getLogger(ExternalTerminal.class.getName());
+    }
 
     /**
      * Idle poll interval for the pump loop. The pump sleeps this long when
@@ -176,7 +178,7 @@ public class ExternalTerminal extends LineDisciplineTerminal {
                 e.addSuppressed(t);
             }
             if (!wasClosed) {
-                LOGGER.log(Level.WARNING, "Error reading from external terminal", e);
+                Log.LOGGER.log(Level.WARNING, "Error reading from external terminal", e);
             }
         }
     }
@@ -221,7 +223,7 @@ public class ExternalTerminal extends LineDisciplineTerminal {
                 e.addSuppressed(t);
             }
             if (!wasClosed) {
-                LOGGER.log(Level.WARNING, "Error reading from external terminal", e);
+                Log.LOGGER.log(Level.WARNING, "Error reading from external terminal", e);
             }
         }
     }

@@ -40,8 +40,7 @@ import org.aesh.terminal.utils.TerminalEnvironment;
  */
 public abstract class AbstractTerminal implements Terminal {
 
-    /** Logger for this terminal instance. */
-    protected final Logger LOGGER = LoggerUtil.getLogger(getClass().getName());
+    private volatile Logger logger;
 
     /** The terminal name. */
     protected final String name;
@@ -93,6 +92,22 @@ public abstract class AbstractTerminal implements Terminal {
         device = DeviceBuilder.builder().name(type).environment(environment).build();
     }
 
+    /**
+     * Returns the logger for this terminal, initialized lazily so constructing
+     * a terminal does not initialize {@code java.util.logging} until a log
+     * message is emitted.
+     *
+     * @return the logger for this terminal class
+     */
+    protected Logger logger() {
+        Logger l = logger;
+        if (l == null) {
+            l = LoggerUtil.getLogger(getClass().getName());
+            logger = l;
+        }
+        return l;
+    }
+
     public SignalHandler handle(Signal signal, SignalHandler handler) {
         assert signal != null;
         assert handler != null;
@@ -141,9 +156,9 @@ public abstract class AbstractTerminal implements Terminal {
             int vcc = getAttributes().getControlChar(cc);
             if (vcc > 0 && vcc < 32) {
                 try {
-                    output().write(new String(new char[] { '^', (char) (vcc + '@') }).getBytes());
+                    output().write(new byte[] { '^', (byte) (vcc + '@') });
                 } catch (IOException e) {
-                    LOGGER.log(Level.WARNING, "Failed to write out ^(C) - or other signals", e);
+                    logger().log(Level.WARNING, "Failed to write out ^(C) - or other signals", e);
                 }
             }
         }

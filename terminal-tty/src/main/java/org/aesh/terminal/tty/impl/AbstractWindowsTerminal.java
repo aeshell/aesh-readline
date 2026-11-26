@@ -28,7 +28,6 @@ import java.io.OutputStreamWriter;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.nio.CharBuffer;
 import java.nio.charset.Charset;
 import java.util.HashMap;
@@ -54,7 +53,9 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
 
     private static class ConsoleOutput implements Consumer<int[]> {
 
-        private static final Logger LOGGER = LoggerUtil.getLogger(AbstractWindowsTerminal.class.getName());
+        private static final class Log {
+            static final Logger LOGGER = LoggerUtil.getLogger(AbstractWindowsTerminal.class.getName());
+        }
 
         // Lazy holder — avoids calling WinConsoleNative in static init,
         // which would fail in GraalVM native-image at build time.
@@ -67,7 +68,7 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
             CharBuffer buffer = Encoder.toCharBuffer(input);
             char[] chars = buffer.array();
             if (!WinConsoleNative.writeConsole(OutputHandle.CONSOLE, chars, chars.length)) {
-                LOGGER.log(Level.WARNING, "Failed to write out.");
+                Log.LOGGER.log(Level.WARNING, "Failed to write out.");
             }
         }
 
@@ -514,7 +515,7 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
                 Thread.currentThread().interrupt();
             }
             if (pump.isAlive()) {
-                LOGGER.log(Level.WARNING,
+                logger().log(Level.WARNING,
                         "Windows input pump still alive after close wait; releasing live slot anyway");
             }
             // Release the single live slot so a later terminal can be created (#289).
@@ -622,9 +623,9 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
     protected String getSequence(Capability cap) {
         String str = device.getStringCapability(cap);
         if (str != null) {
-            StringWriter sw = new StringWriter();
-            Curses.tputs(sw, str);
-            return sw.toString();
+            StringBuilder sb = new StringBuilder();
+            Curses.tputs(sb, str);
+            return sb.toString();
         }
         return null;
     }
@@ -713,7 +714,7 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
             }
         } catch (IOException e) {
             if (!closing) {
-                LOGGER.log(Level.WARNING, "Error in WindowsStreamPump", e);
+                logger().log(Level.WARNING, "Error in WindowsStreamPump", e);
             }
         } finally {
             // Backstop: the pump is dead past this point. If close() already

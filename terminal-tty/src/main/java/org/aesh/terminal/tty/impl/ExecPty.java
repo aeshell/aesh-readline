@@ -46,7 +46,9 @@ import org.aesh.terminal.utils.OSUtils;
  */
 public class ExecPty extends AbstractExecPty {
 
-    private static final Logger LOGGER = LoggerUtil.getLogger(ExecPty.class.getName());
+    private static final class Log {
+        static final Logger LOGGER = LoggerUtil.getLogger(ExecPty.class.getName());
+    }
 
     private final boolean validTTYFile;
     private static final String NOT_A_TTY = "not a tty";
@@ -64,7 +66,10 @@ public class ExecPty extends AbstractExecPty {
      */
     public static Pty current() throws IOException {
         try {
-            LOGGER.log(Level.FINE, "getting pty: " + OSUtils.TTY_COMMAND);
+            boolean fine = isFineLoggingConfigured() && Log.LOGGER.isLoggable(Level.FINE);
+            if (fine) {
+                Log.LOGGER.log(Level.FINE, "getting pty: {0}", OSUtils.TTY_COMMAND);
+            }
             ProcessBuilder starter = new ProcessBuilder(OSUtils.TTY_COMMAND)
                     .redirectInput(Redirect.INHERIT);
             ProcessRunner.Result result = ProcessRunner.execute(starter,
@@ -73,7 +78,9 @@ public class ExecPty extends AbstractExecPty {
                 throw new IOException("Not a tty");
             }
             String tty = result.text(Charset.defaultCharset()).trim();
-            LOGGER.log(Level.FINE, "result: " + tty);
+            if (fine) {
+                Log.LOGGER.log(Level.FINE, "result: {0}", tty);
+            }
             return new ExecPty(tty);
         } catch (InterruptedException e) {
             throw (IOException) new InterruptedIOException("Command interrupted").initCause(e);
@@ -93,7 +100,9 @@ public class ExecPty extends AbstractExecPty {
          * concider tty file invalid.
          */
         validTTYFile = new File(name).exists() && !NOT_A_TTY.equals(name);
-        LOGGER.log(Level.FINE, "tty file " + name + " valid? " + validTTYFile);
+        if (isFineLoggingConfigured() && Log.LOGGER.isLoggable(Level.FINE)) {
+            Log.LOGGER.log(Level.FINE, "tty file {0} valid? {1}", new Object[] { name, validTTYFile });
+        }
     }
 
     @Override
@@ -333,47 +342,26 @@ public class ExecPty extends AbstractExecPty {
     }
 
     private static void doParseLinuxOptions(String options, Attributes attributes) {
-        // Split on newline tolerant of CRLF: stty output and samples use \n,
-        // but files checked out on Windows carry \r\n. Splitting on the
-        // platform separator would glue the last token of each line to the
-        // first token of the next (e.g. "iutf8\nopost"), silently dropping flags.
-        String[] optionLines = options.split("\\r?\\n");
-        for (String line : optionLines)
-            for (String option : line.trim().split(" ")) {
-                //options starting with - are ignored
-                option = option.trim();
-                if (!option.isEmpty() && option.charAt(0) != '-') {
-                    Attributes.ControlFlag controlFlag = getEnumFromString(Attributes.ControlFlag.class, option);
-                    if (controlFlag != null)
-                        attributes.setControlFlag(controlFlag, true);
-                    else {
-                        Attributes.InputFlag inputFlag = getEnumFromString(Attributes.InputFlag.class, option);
-                        if (inputFlag != null)
-                            attributes.setInputFlag(inputFlag, true);
-                        else {
-                            Attributes.LocalFlag localFlag = getEnumFromString(Attributes.LocalFlag.class, option);
-                            if (localFlag != null)
-                                attributes.setLocalFlag(localFlag, true);
-                            else {
-                                Attributes.OutputFlag outputFlag = getEnumFromString(Attributes.OutputFlag.class, option);
-                                if (outputFlag != null)
-                                    attributes.setOutputFlag(outputFlag, true);
-                            }
-                        }
-                    }
-                }
+        // Scan whitespace-delimited tokens directly (tolerant of both LF and
+        // CRLF line endings) and apply positive flags via the cached lookup map.
+        int len = options.length();
+        int i = 0;
+        while (i < len) {
+            while (i < len && Character.isWhitespace(options.charAt(i))) {
+                i++;
             }
+            int start = i;
+            while (i < len && !Character.isWhitespace(options.charAt(i))) {
+                i++;
+            }
+            if (i > start && options.charAt(start) != '-') {
+                applyFlag(attributes, options.substring(start, i), true);
+            }
+        }
     }
 
     private static void setAttr(Attributes.ControlChar cc, String input, Attributes attr) {
         attr.setControlChar(cc, parseControlChar(input.substring(input.lastIndexOf(' ') + 1)));
-    }
-
-    private static <T extends Enum<T>> T getEnumFromString(Class<T> c, String string) {
-        for (T flag : c.getEnumConstants())
-            if (flag.name().toLowerCase().equals(string))
-                return flag;
-        return null;
     }
 
     /**

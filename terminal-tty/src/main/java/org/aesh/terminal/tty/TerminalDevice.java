@@ -26,6 +26,7 @@ import org.aesh.terminal.BaseDevice;
 import org.aesh.terminal.detect.ImageProtocol;
 import org.aesh.terminal.image.ImageProtocolDetector;
 import org.aesh.terminal.utils.ColorDepth;
+import org.aesh.terminal.utils.InfoCmp;
 import org.aesh.terminal.utils.TerminalEnvironment;
 
 /**
@@ -96,6 +97,10 @@ public class TerminalDevice extends BaseDevice {
         return environment != null && environment.getTerminalType() != TerminalType.UNKNOWN
                 ? ImageProtocolDetector.detectFromEnvironment(environment)
                 : super.getImageProtocol();
+    }
+
+    void parseCapabilities(String data) {
+        InfoCmp.parseInfoCmp(data, bools, ints, strings);
     }
 
     /**

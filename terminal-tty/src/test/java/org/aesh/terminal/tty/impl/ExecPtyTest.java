@@ -172,6 +172,21 @@ public class ExecPtyTest {
     }
 
     @Test
+    public void testDoGetAttrWhitespaceAndEqualsVariants() {
+        String sample = "intr=^C; quit= ^\\; erase =^?; kill = =; rprnt = ^R; eol2 <undef>; echo -icanon iutf8";
+        Attributes attr = ExecPty.doGetAttr(sample);
+        assertEquals(3, attr.getControlChar(ControlChar.VINTR));
+        assertEquals(28, attr.getControlChar(ControlChar.VQUIT));
+        assertEquals(127, attr.getControlChar(ControlChar.VERASE));
+        assertEquals('=', attr.getControlChar(ControlChar.VKILL));
+        assertEquals(18, attr.getControlChar(ControlChar.VREPRINT));
+        assertEquals(-1, attr.getControlChar(ControlChar.VEOL2));
+        assertTrue(attr.getLocalFlag(LocalFlag.ECHO));
+        assertFalse(attr.getLocalFlag(LocalFlag.ICANON));
+        assertTrue(attr.getInputFlag(InputFlag.IUTF8));
+    }
+
+    @Test
     public void testParseAttributesLinux() {
         Attributes attributes = ExecPty.doGetAttr(linuxSttySample);
         checkAttributestLinux(attributes);

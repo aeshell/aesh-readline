@@ -278,6 +278,7 @@ public final class QuarkusForkMimic {
         // stack per ProcessBuilder.start() that buries the log. The handler
         // level still gates emission, so org.aesh FINE (e.g. which provider
         // won the chain) flows while java.* stays at its default level.
+        System.setProperty("org.aesh.terminal.debug", "true");
         Logger.getLogger("org.aesh").setLevel(Level.ALL);
         Logger root = Logger.getLogger("");
         for (Handler handler : root.getHandlers()) {

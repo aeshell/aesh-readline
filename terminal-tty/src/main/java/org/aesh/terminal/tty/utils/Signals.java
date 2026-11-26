@@ -19,6 +19,8 @@
  */
 package org.aesh.terminal.tty.utils;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 
 /**
@@ -27,6 +29,46 @@ import java.lang.reflect.Proxy;
  * @author <a href="mailto:gnodet@gmail.com">Guillaume Nodet</a>
  */
 public final class Signals {
+
+    private static final class SignalApi {
+        static final Class<?>[] HANDLER_INTERFACES;
+        static final Constructor<?> SIGNAL_CTOR;
+        static final Method HANDLE_STATIC;
+        static final Method HANDLE_INSTANCE;
+        static final Object SIG_DFL;
+        static final Object SIG_IGN;
+        static final boolean AVAILABLE;
+
+        static {
+            Class<?>[] interfaces = null;
+            Constructor<?> ctor = null;
+            Method handleStatic = null;
+            Method handleInstance = null;
+            Object dfl = null;
+            Object ign = null;
+            boolean ok = false;
+            try {
+                Class<?> signalClass = Class.forName("sun.misc.Signal");
+                Class<?> signalHandlerClass = Class.forName("sun.misc.SignalHandler");
+                interfaces = new Class<?>[] { signalHandlerClass };
+                ctor = signalClass.getConstructor(String.class);
+                handleStatic = signalClass.getMethod("handle", signalClass, signalHandlerClass);
+                handleInstance = signalHandlerClass.getMethod("handle", signalClass);
+                dfl = signalHandlerClass.getField("SIG_DFL").get(null);
+                ign = signalHandlerClass.getField("SIG_IGN").get(null);
+                ok = true;
+            } catch (Exception | LinkageError e) {
+                // sun.misc.Signal API unavailable on this JVM
+            }
+            HANDLER_INTERFACES = interfaces;
+            SIGNAL_CTOR = ctor;
+            HANDLE_STATIC = handleStatic;
+            HANDLE_INSTANCE = handleInstance;
+            SIG_DFL = dfl;
+            SIG_IGN = ign;
+            AVAILABLE = ok;
+        }
+    }
 
     private Signals() {
     }
@@ -56,11 +98,13 @@ public final class Signals {
      *         to unregister the handler, or null if registration failed
      */
     public static Object register(String name, final Runnable handler, ClassLoader loader) {
+        if (!SignalApi.AVAILABLE) {
+            return null;
+        }
         try {
-            Class<?> signalHandlerClass = Class.forName("sun.misc.SignalHandler");
             // Implement signal handler
             Object signalHandler = Proxy.newProxyInstance(loader,
-                    new Class<?>[] { signalHandlerClass }, (proxy, method, args) -> {
+                    SignalApi.HANDLER_INTERFACES, (proxy, method, args) -> {
                         // only method we are proxying is handle()
                         handler.run();
                         return null;
@@ -80,9 +124,11 @@ public final class Signals {
      *         to unregister the handler, or null if registration failed
      */
     public static Object registerDefault(String name) {
+        if (!SignalApi.AVAILABLE) {
+            return null;
+        }
         try {
-            Class<?> signalHandlerClass = Class.forName("sun.misc.SignalHandler");
-            return doRegister(name, signalHandlerClass.getField("SIG_DFL").get(null));
+            return doRegister(name, SignalApi.SIG_DFL);
         } catch (Exception e) {
             // Ignore this one too, if the above failed, the signal API is incompatible with what we're expecting
         }
@@ -97,9 +143,11 @@ public final class Signals {
      *         to unregister the handler, or null if registration failed
      */
     public static Object registerIgnore(String name) {
+        if (!SignalApi.AVAILABLE) {
+            return null;
+        }
         try {
-            Class<?> signalHandlerClass = Class.forName("sun.misc.SignalHandler");
-            return doRegister(name, signalHandlerClass.getField("SIG_IGN").get(null));
+            return doRegister(name, SignalApi.SIG_IGN);
         } catch (Exception e) {
             // Ignore this one too, if the above failed, the signal API is incompatible with what we're expecting
         }
@@ -113,11 +161,12 @@ public final class Signals {
      * @param handler the signal handler to invoke
      */
     public static void invokeHandler(String name, Object handler) {
+        if (!SignalApi.AVAILABLE) {
+            return;
+        }
         try {
-            Class<?> signalClass = Class.forName("sun.misc.Signal");
-            Class<?> signalHandlerClass = Class.forName("sun.misc.SignalHandler");
-            Object signal = signalClass.getConstructor(String.class).newInstance(name);
-            signalHandlerClass.getMethod("handle", signalClass).invoke(handler, signal);
+            Object signal = SignalApi.SIGNAL_CTOR.newInstance(name);
+            SignalApi.HANDLE_INSTANCE.invoke(handler, signal);
         } catch (Exception e) {
         }
     }
@@ -131,7 +180,7 @@ public final class Signals {
     public static void unregister(String name, Object previous) {
         try {
             // We should make sure the current signal is the one we registered
-            if (previous != null) {
+            if (previous != null && SignalApi.AVAILABLE) {
                 doRegister(name, previous);
             }
         } catch (Exception e) {
@@ -139,11 +188,8 @@ public final class Signals {
     }
 
     private static Object doRegister(String name, Object handler) throws Exception {
-        Class<?> signalClass = Class.forName("sun.misc.Signal");
-        Class<?> signalHandlerClass = Class.forName("sun.misc.SignalHandler");
-        Object signal = signalClass.getConstructor(String.class).newInstance(name);
-        return signalClass.getMethod("handle", signalClass, signalHandlerClass)
-                .invoke(null, signal, handler);
+        Object signal = SignalApi.SIGNAL_CTOR.newInstance(name);
+        return SignalApi.HANDLE_STATIC.invoke(null, signal, handler);
     }
 
 }

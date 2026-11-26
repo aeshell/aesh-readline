@@ -213,4 +213,13 @@ public class DeviceTest {
         assertTrue(allowed.supportsOscQueries());
         assertFalse(DeviceBuilder.builder().name("kitty").build().isMultiplexer());
     }
+
+    @Test
+    public void testBuiltDevicesHaveIsolatedCapabilityMaps() {
+        TerminalDevice first = DeviceBuilder.builder().name("xterm-256color").build();
+        TerminalDevice second = DeviceBuilder.builder().name("xterm-256color").build();
+        first.addCapability(Capability.max_colors, 16);
+        assertEquals(Integer.valueOf(16), first.getNumericCapability(Capability.max_colors));
+        assertEquals(Integer.valueOf(256), second.getNumericCapability(Capability.max_colors));
+    }
 }

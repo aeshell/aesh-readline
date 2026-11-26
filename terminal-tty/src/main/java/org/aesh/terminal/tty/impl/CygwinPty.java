@@ -45,7 +45,9 @@ import org.aesh.terminal.utils.OSUtils;
  */
 public class CygwinPty extends AbstractExecPty {
 
-    private static final Logger LOGGER = LoggerUtil.getLogger(CygwinPty.class.getName());
+    private static final class Log {
+        static final Logger LOGGER = LoggerUtil.getLogger(CygwinPty.class.getName());
+    }
 
     // Windows console input mode flags, mirroring AbstractWindowsTerminal.
     // Used when the input is a real console (ConPTY, hidden mintty console)
@@ -193,14 +195,14 @@ public class CygwinPty extends AbstractExecPty {
             try {
                 writeConsoleMode(savedConsoleMode);
             } catch (Throwable t) {
-                LOGGER.log(Level.FINE, "Failed to restore console mode on close", t);
+                Log.LOGGER.log(Level.FINE, "Failed to restore console mode on close", t);
             }
             savedConsoleMode = -1;
         }
         try {
             super.close();
         } catch (IOException e) {
-            LOGGER.log(Level.FINE, "Failed to close PTY streams on close", e);
+            Log.LOGGER.log(Level.FINE, "Failed to close PTY streams on close", e);
         }
     }
 
@@ -219,7 +221,9 @@ public class CygwinPty extends AbstractExecPty {
             return null;
         }
         stashConsoleMode(mode);
-        LOGGER.log(Level.FINE, "Using direct console mode, bypassing stty.exe");
+        if (isFineLoggingConfigured() && Log.LOGGER.isLoggable(Level.FINE)) {
+            Log.LOGGER.log(Level.FINE, "Using direct console mode, bypassing stty.exe");
+        }
         return fromConsoleMode(mode);
     }
 

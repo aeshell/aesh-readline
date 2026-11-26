@@ -27,7 +27,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -69,11 +68,12 @@ public class TerminalConnection extends AbstractConnection {
     private final Charset outputCharset;
     private Terminal terminal;
 
-    private static final Logger LOGGER = LoggerUtil.getLogger(TerminalConnection.class.getName());
+    private static final class Log {
+        static final Logger LOGGER = LoggerUtil.getLogger(TerminalConnection.class.getName());
+    }
 
     private Decoder decoder;
     private Consumer<Connection> handler;
-    private CountDownLatch latch;
     private volatile boolean waiting = false;
     private final AtomicBoolean closed = new AtomicBoolean(false);
     /**
@@ -213,7 +213,7 @@ public class TerminalConnection extends AbstractConnection {
             if (signalHandler() != null) {
                 signalHandler().accept(s);
             } else {
-                LOGGER.log(Level.FINE, "No signal handler is registered, lets stop");
+                Log.LOGGER.log(Level.FINE, "No signal handler is registered, lets stop");
                 close();
             }
         });
@@ -302,7 +302,7 @@ public class TerminalConnection extends AbstractConnection {
     public void openNonBlocking() {
         synchronized (readerLock) {
             if (closed.get()) {
-                LOGGER.log(Level.FINE, "openNonBlocking on a closed connection is a no-op");
+                Log.LOGGER.log(Level.FINE, "openNonBlocking on a closed connection is a no-op");
                 return;
             }
             if (readerFuture != null && !readerFuture.isDone()) {
@@ -321,7 +321,7 @@ public class TerminalConnection extends AbstractConnection {
                     try {
                         openBlocking();
                     } catch (Throwable t) {
-                        LOGGER.log(Level.WARNING, "Reader thread failed, closing connection", t);
+                        Log.LOGGER.log(Level.WARNING, "Reader thread failed, closing connection", t);
                         close();
                     }
                 }
@@ -449,7 +449,7 @@ public class TerminalConnection extends AbstractConnection {
                 }
             }
         } catch (IOException ioe) {
-            LOGGER.log(Level.WARNING, "Failed while reading, exiting", ioe);
+            Log.LOGGER.log(Level.WARNING, "Failed while reading, exiting", ioe);
             close();
         }
     }
@@ -493,7 +493,7 @@ public class TerminalConnection extends AbstractConnection {
                 try {
                     available = terminal.input().available();
                 } catch (IOException ioe) {
-                    LOGGER.log(Level.WARNING, "Failed while reading, exiting", ioe);
+                    Log.LOGGER.log(Level.WARNING, "Failed while reading, exiting", ioe);
                     close();
                     break;
                 }
@@ -512,7 +512,7 @@ public class TerminalConnection extends AbstractConnection {
                 }
             }
         } catch (IOException ioe) {
-            LOGGER.log(Level.WARNING, "Failed while reading, exiting", ioe);
+            Log.LOGGER.log(Level.WARNING, "Failed while reading, exiting", ioe);
             close();
         }
     }
@@ -537,21 +537,14 @@ public class TerminalConnection extends AbstractConnection {
      * The reading thread will wait until {@link #awake()} is called.
      */
     public void suspend() {
-        if (!waiting) {
-            latch = new CountDownLatch(1);
-            waiting = true;
-        }
+        waiting = true;
     }
 
     /**
      * Resumes reading from the terminal input stream after a suspend.
      */
     public void awake() {
-        if (waiting) {
-            waiting = false;
-            if (latch != null)
-                latch.countDown();
-        }
+        waiting = false;
     }
 
     /**
@@ -757,9 +750,9 @@ public class TerminalConnection extends AbstractConnection {
             // connection before Readline.finish() writes cleanup sequences.
             // Log at FINE to avoid noisy WARNING messages during normal exit.
             if (closed.get()) {
-                LOGGER.log(Level.FINE, "Write after close (expected during shutdown)", e);
+                Log.LOGGER.log(Level.FINE, "Write after close (expected during shutdown)", e);
             } else {
-                LOGGER.log(Level.WARNING, "Failed to write out.", e);
+                Log.LOGGER.log(Level.WARNING, "Failed to write out.", e);
             }
         }
     }
@@ -949,7 +942,7 @@ public class TerminalConnection extends AbstractConnection {
             try {
                 split.close();
             } catch (Exception e) {
-                LOGGER.log(Level.FINE, "Failed to close split screen", e);
+                Log.LOGGER.log(Level.FINE, "Failed to close split screen", e);
             }
         }
         try {
@@ -957,7 +950,7 @@ public class TerminalConnection extends AbstractConnection {
             if (closeHandler() != null)
                 closeHandler().accept(null);
         } catch (Exception e) {
-            LOGGER.log(Level.WARNING, "Close handler failed", e);
+            Log.LOGGER.log(Level.WARNING, "Close handler failed", e);
         }
         try {
             //reset signal/size handlers
@@ -965,7 +958,7 @@ public class TerminalConnection extends AbstractConnection {
             terminal.handle(Signal.WINCH, prevWincHandler);
             terminal.handle(Signal.CONT, prevContHandler);
         } catch (Exception e) {
-            LOGGER.log(Level.WARNING, "Failed to reset signal handlers", e);
+            Log.LOGGER.log(Level.WARNING, "Failed to reset signal handlers", e);
         }
         // End synchronized output and focus tracking if active.
         // Leaving BSU (Mode 2026) without ESU causes the terminal
@@ -978,7 +971,7 @@ public class TerminalConnection extends AbstractConnection {
                 writeBytes(cleanupBytes, 0, cleanupBytes.length);
             }
         } catch (Exception e) {
-            LOGGER.log(Level.WARNING, "Failed to disable terminal modes during close", e);
+            Log.LOGGER.log(Level.WARNING, "Failed to disable terminal modes during close", e);
         }
         // NOTE: the input stream is deliberately never closed here.
         // openBlockingLegacy() polls available() instead of blocking in
@@ -987,14 +980,9 @@ public class TerminalConnection extends AbstractConnection {
         // unnecessary and unsafe: it may be JVM-global state such as
         // System.in, and on some platforms (macOS) closing a tty fd while
         // another thread reads from it blocks the closer indefinitely (#288).
-        try {
-            Throwable closeFailure = restoreAndClose(terminal, attributes);
-            if (closeFailure != null) {
-                LOGGER.log(Level.WARNING, "Failed to close the terminal correctly", closeFailure);
-            }
-        } finally {
-            if (latch != null)
-                latch.countDown();
+        Throwable closeFailure = restoreAndClose(terminal, attributes);
+        if (closeFailure != null) {
+            Log.LOGGER.log(Level.WARNING, "Failed to close the terminal correctly", closeFailure);
         }
     }
 

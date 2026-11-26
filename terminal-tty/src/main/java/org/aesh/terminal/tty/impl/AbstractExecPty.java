@@ -26,6 +26,10 @@ import java.io.OutputStream;
 import java.lang.ProcessBuilder.Redirect;
 import java.nio.charset.Charset;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Locale;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
@@ -42,7 +46,49 @@ import org.aesh.terminal.utils.LoggerUtil;
  */
 public abstract class AbstractExecPty implements Pty {
 
-    private static final Logger LOGGER = LoggerUtil.getLogger(AbstractExecPty.class.getName());
+    private static final class Log {
+        static final Logger LOGGER = LoggerUtil.getLogger(AbstractExecPty.class.getName());
+    }
+
+    static boolean isFineLoggingConfigured() {
+        return System.getProperty("java.util.logging.config.file") != null
+                || System.getProperty("java.util.logging.config.class") != null
+                || System.getProperty("java.util.logging.manager") != null
+                || Boolean.getBoolean("org.aesh.terminal.debug");
+    }
+
+    private static final class SttyLookup {
+        static final Map<String, Enum<?>> FLAGS = new HashMap<>(128);
+        static final Map<String, Attributes.ControlChar> CONTROL_CHARS = new HashMap<>(32);
+        static final ConcurrentHashMap<String, Pattern[]> INT_PATTERNS = new ConcurrentHashMap<>();
+
+        static {
+            for (Attributes.InputFlag f : Attributes.InputFlag.values()) {
+                FLAGS.put(f.name().toLowerCase(Locale.ROOT), f);
+            }
+            for (Attributes.OutputFlag f : Attributes.OutputFlag.values()) {
+                FLAGS.put(f.name().toLowerCase(Locale.ROOT), f);
+            }
+            for (Attributes.ControlFlag f : Attributes.ControlFlag.values()) {
+                FLAGS.put(f.name().toLowerCase(Locale.ROOT), f);
+            }
+            for (Attributes.LocalFlag f : Attributes.LocalFlag.values()) {
+                FLAGS.put(f.name().toLowerCase(Locale.ROOT), f);
+            }
+            for (Attributes.ControlChar cc : Attributes.ControlChar.values()) {
+                CONTROL_CHARS.put(cc.name().toLowerCase(Locale.ROOT).substring(1), cc);
+            }
+            CONTROL_CHARS.put("rprnt", Attributes.ControlChar.VREPRINT);
+        }
+
+        static Pattern[] intPatterns(String name) {
+            return INT_PATTERNS.computeIfAbsent(name, n -> new Pattern[] {
+                    Pattern.compile("\\b([0-9]+)\\s+" + n + "\\b"),
+                    Pattern.compile("\\b" + n + "\\s+([0-9]+)\\b"),
+                    Pattern.compile("\\b" + n + "\\s*=\\s*([0-9]+)\\b")
+            });
+        }
+    }
 
     private final String name;
 
@@ -80,46 +126,103 @@ public abstract class AbstractExecPty implements Pty {
 
     static Attributes doGetAttr(String cfg) {
         Attributes attributes = new Attributes();
-        for (Attributes.InputFlag flag : Attributes.InputFlag.values()) {
-            Boolean value = doGetFlag(cfg, flag);
-            if (value != null) {
-                attributes.setInputFlag(flag, value);
+        int len = cfg.length();
+        int i = 0;
+        while (i < len) {
+            i = skipDelim(cfg, i, len);
+            if (i >= len) {
+                break;
             }
-        }
-        for (Attributes.OutputFlag flag : Attributes.OutputFlag.values()) {
-            Boolean value = doGetFlag(cfg, flag);
-            if (value != null) {
-                attributes.setOutputFlag(flag, value);
+            int tokStart = i;
+            int eqIdx = -1;
+            while (i < len && !isDelim(cfg.charAt(i))) {
+                if (eqIdx < 0 && cfg.charAt(i) == '=') {
+                    eqIdx = i;
+                }
+                i++;
             }
-        }
-        for (Attributes.ControlFlag flag : Attributes.ControlFlag.values()) {
-            Boolean value = doGetFlag(cfg, flag);
-            if (value != null) {
-                attributes.setControlFlag(flag, value);
-            }
-        }
-        for (Attributes.LocalFlag flag : Attributes.LocalFlag.values()) {
-            Boolean value = doGetFlag(cfg, flag);
-            if (value != null) {
-                attributes.setLocalFlag(flag, value);
-            }
-        }
-        for (Attributes.ControlChar cchar : Attributes.ControlChar.values()) {
-            String name = cchar.name().toLowerCase().substring(1);
-            if ("reprint".endsWith(name)) {
-                name = "(?:reprint|rprnt)";
-            }
-            Matcher matcher = Pattern.compile("[\\s;]" + name + "\\s*=\\s*(.+?)[\\s;]").matcher(cfg);
-            if (matcher.find()) {
-                attributes.setControlChar(cchar, parseControlChar(matcher.group(1).toUpperCase()));
-            }
+            i = processToken(cfg, tokStart, i, eqIdx, len, attributes);
         }
         return attributes;
     }
 
-    private static Boolean doGetFlag(String cfg, Enum<?> flag) {
-        Matcher matcher = Pattern.compile("(?:^|[\\s;])(\\-?" + flag.name().toLowerCase() + ")(?:[\\s;]|$)").matcher(cfg);
-        return matcher.find() ? !matcher.group(1).startsWith("-") : null;
+    private static int processToken(String cfg, int tokStart, int tokEnd, int eqIdx, int len,
+            Attributes attributes) {
+        if (eqIdx > tokStart) {
+            Attributes.ControlChar cc = SttyLookup.CONTROL_CHARS.get(cfg.substring(tokStart, eqIdx));
+            if (cc == null) {
+                return tokEnd;
+            }
+            if (eqIdx + 1 < tokEnd) {
+                setControlCharValue(attributes, cc, cfg.substring(eqIdx + 1, tokEnd));
+                return tokEnd;
+            }
+            return readControlCharValue(cfg, tokEnd, len, cc, attributes);
+        }
+        String token = cfg.substring(tokStart, tokEnd);
+        Attributes.ControlChar cc = SttyLookup.CONTROL_CHARS.get(token);
+        if (cc != null) {
+            int next = skipWhitespace(cfg, tokEnd, len);
+            if (next < len && cfg.charAt(next) == '=') {
+                return readControlCharValue(cfg, next + 1, len, cc, attributes);
+            }
+            return tokEnd;
+        }
+        boolean negated = !token.isEmpty() && token.charAt(0) == '-';
+        String flagName = negated ? token.substring(1) : token;
+        applyFlag(attributes, flagName, !negated);
+        return tokEnd;
+    }
+
+    private static int readControlCharValue(String cfg, int pos, int len,
+            Attributes.ControlChar cc, Attributes attributes) {
+        int valStart = skipWhitespace(cfg, pos, len);
+        int valEnd = valStart;
+        while (valEnd < len && !isDelim(cfg.charAt(valEnd))) {
+            valEnd++;
+        }
+        if (valEnd > valStart) {
+            setControlCharValue(attributes, cc, cfg.substring(valStart, valEnd));
+        }
+        return valEnd;
+    }
+
+    private static void setControlCharValue(Attributes attributes, Attributes.ControlChar cc, String raw) {
+        attributes.setControlChar(cc, parseControlChar(raw.toUpperCase(Locale.ROOT)));
+    }
+
+    static void applyFlag(Attributes attributes, String flagName, boolean value) {
+        Enum<?> flag = SttyLookup.FLAGS.get(flagName);
+        if (flag == null) {
+            return;
+        }
+        if (flag instanceof Attributes.InputFlag) {
+            attributes.setInputFlag((Attributes.InputFlag) flag, value);
+        } else if (flag instanceof Attributes.OutputFlag) {
+            attributes.setOutputFlag((Attributes.OutputFlag) flag, value);
+        } else if (flag instanceof Attributes.ControlFlag) {
+            attributes.setControlFlag((Attributes.ControlFlag) flag, value);
+        } else if (flag instanceof Attributes.LocalFlag) {
+            attributes.setLocalFlag((Attributes.LocalFlag) flag, value);
+        }
+    }
+
+    private static boolean isDelim(char c) {
+        return c == ';' || Character.isWhitespace(c);
+    }
+
+    private static int skipDelim(String s, int i, int len) {
+        while (i < len && isDelim(s.charAt(i))) {
+            i++;
+        }
+        return i;
+    }
+
+    private static int skipWhitespace(String s, int i, int len) {
+        while (i < len && Character.isWhitespace(s.charAt(i))) {
+            i++;
+        }
+        return i;
     }
 
     static int parseControlChar(String str) {
@@ -171,13 +274,8 @@ public abstract class AbstractExecPty implements Pty {
     }
 
     static int doGetInt(String name, String cfg) throws IOException {
-        String[] patterns = new String[] {
-                "\\b([0-9]+)\\s+" + name + "\\b",
-                "\\b" + name + "\\s+([0-9]+)\\b",
-                "\\b" + name + "\\s*=\\s*([0-9]+)\\b"
-        };
-        for (String pattern : patterns) {
-            Matcher matcher = Pattern.compile(pattern).matcher(cfg);
+        for (Pattern pattern : SttyLookup.intPatterns(name)) {
+            Matcher matcher = pattern.matcher(cfg);
             if (matcher.find()) {
                 return Integer.parseInt(matcher.group(1));
             }
@@ -195,7 +293,10 @@ public abstract class AbstractExecPty implements Pty {
     protected static String exec(final String... cmd) throws IOException {
         assert cmd != null && !cmd[0].isEmpty();
         try {
-            LOGGER.log(Level.FINE, "Running: " + Arrays.toString(cmd));
+            boolean fine = isFineLoggingConfigured() && Log.LOGGER.isLoggable(Level.FINE);
+            if (fine) {
+                Log.LOGGER.log(Level.FINE, "Running: {0}", Arrays.toString(cmd));
+            }
             ProcessBuilder processBuilder = new ProcessBuilder(cmd);
             processBuilder.redirectInput(Redirect.INHERIT);
             // Force C locale so stty and other commands produce English output
@@ -203,7 +304,9 @@ public abstract class AbstractExecPty implements Pty {
             ProcessRunner.Result result = ProcessRunner.execute(processBuilder,
                     ProcessRunner.DEFAULT_TIMEOUT_MS);
             String output = result.text(Charset.defaultCharset());
-            LOGGER.log(Level.FINE, "Result: " + output);
+            if (fine) {
+                Log.LOGGER.log(Level.FINE, "Result: {0}", output);
+            }
             if (result.timedOut() || result.exitCode() != 0) {
                 throw new IOException("Error executing '" + String.join(" ", cmd) + "': " + output);
             }

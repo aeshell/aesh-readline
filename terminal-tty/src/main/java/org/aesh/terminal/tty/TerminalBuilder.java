@@ -26,7 +26,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.ServiceLoader;
-import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -45,7 +44,47 @@ import org.aesh.terminal.utils.PlatformContext;
  */
 public final class TerminalBuilder {
 
-    private static final Logger LOGGER = LoggerUtil.getLogger(TerminalBuilder.class.getName());
+    private static final class Log {
+        static final Logger LOGGER = LoggerUtil.getLogger(TerminalBuilder.class.getName());
+    }
+
+    private static boolean isFineLogEnabled() {
+        return (System.getProperty("java.util.logging.config.file") != null
+                || System.getProperty("java.util.logging.config.class") != null
+                || System.getProperty("java.util.logging.manager") != null
+                || Boolean.getBoolean("org.aesh.terminal.debug"))
+                && Log.LOGGER.isLoggable(Level.FINE);
+    }
+
+    private static void logFine(boolean fine, String msg) {
+        if (fine) {
+            Log.LOGGER.log(Level.FINE, msg);
+        }
+    }
+
+    private static void logFine(boolean fine, String msg, Object param) {
+        if (fine) {
+            Log.LOGGER.log(Level.FINE, msg, param);
+        }
+    }
+
+    private static void logFine(boolean fine, String msg, Throwable thrown) {
+        if (fine) {
+            Log.LOGGER.log(Level.FINE, msg, thrown);
+        }
+    }
+
+    private static void logFine(boolean fine, String msg, Object p1, Object p2) {
+        if (fine) {
+            Log.LOGGER.log(Level.FINE, msg, new Object[] { p1, p2 });
+        }
+    }
+
+    private static void logFine(boolean fine, String msg, Object p1, Object p2, Object p3) {
+        if (fine) {
+            Log.LOGGER.log(Level.FINE, msg, new Object[] { p1, p2, p3 });
+        }
+    }
 
     /**
      * Creates and returns a default system Terminal.
@@ -76,11 +115,6 @@ public final class TerminalBuilder {
     private TerminalBuilder() {
     }
 
-    private TerminalBuilder apply(Consumer<TerminalBuilder> consumer) {
-        consumer.accept(this);
-        return this;
-    }
-
     /**
      * Sets the terminal name.
      *
@@ -88,7 +122,8 @@ public final class TerminalBuilder {
      * @return this builder for method chaining
      */
     public TerminalBuilder name(String name) {
-        return apply(c -> c.name = name);
+        this.name = name;
+        return this;
     }
 
     /**
@@ -98,7 +133,8 @@ public final class TerminalBuilder {
      * @return this builder for method chaining
      */
     public TerminalBuilder input(InputStream in) {
-        return apply(c -> c.in = in);
+        this.in = in;
+        return this;
     }
 
     /**
@@ -108,7 +144,8 @@ public final class TerminalBuilder {
      * @return this builder for method chaining
      */
     public TerminalBuilder output(OutputStream out) {
-        return apply(c -> c.out = out);
+        this.out = out;
+        return this;
     }
 
     /**
@@ -118,7 +155,8 @@ public final class TerminalBuilder {
      * @return this builder for method chaining
      */
     public TerminalBuilder system(boolean system) {
-        return apply(c -> c.system = system);
+        this.system = system;
+        return this;
     }
 
     /**
@@ -128,7 +166,8 @@ public final class TerminalBuilder {
      * @return this builder for method chaining
      */
     public TerminalBuilder nativeSignals(boolean nativeSignals) {
-        return apply(c -> c.nativeSignals = nativeSignals);
+        this.nativeSignals = nativeSignals;
+        return this;
     }
 
     /**
@@ -138,7 +177,8 @@ public final class TerminalBuilder {
      * @return this builder for method chaining
      */
     public TerminalBuilder type(String type) {
-        return apply(c -> c.type = type);
+        this.type = type;
+        return this;
     }
 
     /**
@@ -222,6 +262,7 @@ public final class TerminalBuilder {
         // Discover and sort providers.
         // Catch ServiceConfigurationError for providers that may not be available
         // in the current environment (e.g., FFM provider excluded in GraalVM native-image).
+        boolean fine = isFineLogEnabled();
         List<TerminalProvider> providers = new ArrayList<>();
         try {
             java.util.Iterator<TerminalProvider> it = ServiceLoader.load(TerminalProvider.class).iterator();
@@ -230,17 +271,17 @@ public final class TerminalBuilder {
                     TerminalProvider provider = it.next();
                     if (provider.isSupported(PlatformContext.system())) {
                         providers.add(provider);
-                        LOGGER.log(Level.FINE, "Found supported terminal provider: {0} (priority={1})",
-                                new Object[] { provider.name(), provider.priority() });
+                        logFine(fine, "Found supported terminal provider: {0} (priority={1})",
+                                provider.name(), provider.priority());
                     } else {
-                        LOGGER.log(Level.FINE, "Terminal provider not supported: {0}", provider.name());
+                        logFine(fine, "Terminal provider not supported: {0}", provider.name());
                     }
                 } catch (java.util.ServiceConfigurationError e) {
-                    LOGGER.log(Level.FINE, "Skipping unavailable terminal provider", e);
+                    logFine(fine, "Skipping unavailable terminal provider", e);
                 }
             }
         } catch (java.util.ServiceConfigurationError e) {
-            LOGGER.log(Level.FINE, "Error discovering terminal providers", e);
+            logFine(fine, "Error discovering terminal providers", e);
         }
         providers.sort(Comparator.comparingInt(TerminalProvider::priority).reversed());
 
@@ -249,22 +290,21 @@ public final class TerminalBuilder {
         for (TerminalProvider provider : providers) {
             try {
                 Terminal terminal = provider.createTerminal(name, type, nativeSignals);
-                LOGGER.log(Level.FINE, "Created terminal using provider: {0}", provider.name());
+                logFine(fine, "Created terminal using provider: {0}", provider.name());
                 return terminal;
             } catch (IOException e) {
-                LOGGER.log(Level.FINE, "Provider {0} failed: {1}",
-                        new Object[] { provider.name(), e.getMessage() });
+                logFine(fine, "Provider {0} failed: {1}", provider.name(), e.getMessage());
                 lastException = e;
             } catch (Throwable e) {
                 // Safety net for non-IOException failures such as GraalVM native-image
                 // MissingForeignRegistrationError when FFM downcalls are not registered.
-                LOGGER.log(Level.FINE, "Provider {0} failed with {1}: {2}",
-                        new Object[] { provider.name(), e.getClass().getSimpleName(), e.getMessage() });
+                logFine(fine, "Provider {0} failed with {1}: {2}",
+                        provider.name(), e.getClass().getSimpleName(), e.getMessage());
             }
         }
 
         // No SPI provider succeeded — fall back to external terminal
-        LOGGER.log(Level.FINE, "No terminal provider succeeded, falling back to external terminal");
+        logFine(fine, "No terminal provider succeeded, falling back to external terminal");
         return buildExternalTerminal(name);
     }
 

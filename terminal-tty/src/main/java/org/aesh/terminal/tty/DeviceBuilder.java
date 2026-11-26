@@ -19,10 +19,6 @@
  */
 package org.aesh.terminal.tty;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -38,9 +34,12 @@ import org.aesh.terminal.utils.TerminalEnvironment;
  */
 public class DeviceBuilder {
 
+    private static final class Log {
+        static final Logger LOGGER = LoggerUtil.getLogger(DeviceBuilder.class.getName());
+    }
+
     private String name;
     private TerminalEnvironment environment;
-    private final Logger LOGGER = LoggerUtil.getLogger(getClass().getName());
 
     private DeviceBuilder() {
     }
@@ -91,14 +90,7 @@ public class DeviceBuilder {
         TerminalDevice device = new TerminalDevice(name, environment);
 
         if (data != null) {
-            Set<Capability> bools = new HashSet<>();
-            Map<Capability, Integer> ints = new HashMap<>();
-            Map<Capability, String> strings = new HashMap<>();
-
-            InfoCmp.parseInfoCmp(data, bools, ints, strings);
-            device.addAllCapabilityBooleans(bools);
-            device.addAllCapabilityInts(ints);
-            device.addAllCapabilityStrings(strings);
+            device.parseCapabilities(data);
         }
 
         return device;
@@ -108,7 +100,7 @@ public class DeviceBuilder {
         try {
             return InfoCmp.getDefaultInfoCmp(name);
         } catch (Exception e) {
-            LOGGER.log(Level.WARNING, "Unable to retrieve infocmp for type " + name, e);
+            Log.LOGGER.log(Level.WARNING, "Unable to retrieve infocmp for type " + name, e);
             return null;
         }
     }

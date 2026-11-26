@@ -46,7 +46,17 @@ public class FfmTerminalProvider implements TerminalProvider {
     public FfmTerminalProvider() {
     }
 
-    private static final Logger LOGGER = LoggerUtil.getLogger(FfmTerminalProvider.class.getName());
+    private static final class Log {
+        static final Logger LOGGER = LoggerUtil.getLogger(FfmTerminalProvider.class.getName());
+    }
+
+    private static boolean isFineLogEnabled() {
+        return (System.getProperty("java.util.logging.config.file") != null
+                || System.getProperty("java.util.logging.config.class") != null
+                || System.getProperty("java.util.logging.manager") != null
+                || Boolean.getBoolean("org.aesh.terminal.debug"))
+                && Log.LOGGER.isLoggable(Level.FINE);
+    }
 
     // Cached FfmPty reflection handles. Looked up once on first use —
     // TerminalBuilder probes isSupported() on every provider and then
@@ -131,7 +141,9 @@ public class FfmTerminalProvider implements TerminalProvider {
         }
         try {
             Pty pty = (Pty) cachedCurrent.invoke(null);
-            LOGGER.log(Level.FINE, "Using FFM-based PTY");
+            if (isFineLogEnabled()) {
+                Log.LOGGER.log(Level.FINE, "Using FFM-based PTY");
+            }
             return new PosixSysTerminal(name, type, pty, nativeSignals);
         } catch (InvocationTargetException e) {
             Throwable cause = e.getCause();

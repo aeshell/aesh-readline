@@ -198,7 +198,7 @@ public class WinSysTerminal extends AbstractWindowsTerminal {
         try {
             event = WinConsoleNative.readConsoleInputEvent(Handles.INPUT);
         } catch (Exception e) {
-            LOGGER.log(Level.INFO, "read Windows terminal input error: ", e);
+            logger().log(Level.INFO, "read Windows terminal input error: ", e);
             return new byte[0];
         }
         if (event == null) {
