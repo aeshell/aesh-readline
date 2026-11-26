@@ -32,6 +32,8 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.util.EnumSet;
+import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -184,6 +186,44 @@ public class ExecPtyTest {
         assertTrue(attr.getLocalFlag(LocalFlag.ECHO));
         assertFalse(attr.getLocalFlag(LocalFlag.ICANON));
         assertTrue(attr.getInputFlag(InputFlag.IUTF8));
+    }
+
+    @Test
+    public void testSttyParsingAndArgsUnderTurkishLocale() {
+        Locale prev = Locale.getDefault();
+        try {
+            Locale.setDefault(Locale.forLanguageTag("tr-TR"));
+            Attributes current = new Attributes();
+            Attributes desired = new Attributes();
+            desired.setInputFlag(InputFlag.IGNBRK, true);
+            desired.setInputFlag(InputFlag.IUTF8, true);
+            desired.setLocalFlag(LocalFlag.ICANON, true);
+            desired.setLocalFlag(LocalFlag.ISIG, true);
+            desired.setLocalFlag(LocalFlag.IEXTEN, true);
+            desired.setControlChar(ControlChar.VINTR, 3);
+            desired.setControlChar(ControlChar.VKILL, 21);
+
+            List<String> args = AbstractExecPty.buildSetAttrCommands(desired, current);
+            assertTrue("expected ASCII ignbrk: " + args, args.contains("ignbrk"));
+            assertTrue("expected ASCII iutf8: " + args, args.contains("iutf8"));
+            assertTrue("expected ASCII icanon: " + args, args.contains("icanon"));
+            assertTrue("expected ASCII isig: " + args, args.contains("isig"));
+            assertTrue("expected ASCII iexten: " + args, args.contains("iexten"));
+            assertTrue("expected ASCII intr: " + args, args.contains("intr"));
+            assertTrue("expected ASCII kill: " + args, args.contains("kill"));
+            for (String arg : args) {
+                assertFalse("stty arg must not contain Turkish dotless i: " + arg, arg.indexOf('\u0131') >= 0);
+            }
+
+            Attributes parsed = ExecPty.doGetAttr("intr = ^c; isig icanon iexten iutf8");
+            assertEquals(3, parsed.getControlChar(ControlChar.VINTR));
+            assertTrue(parsed.getLocalFlag(LocalFlag.ISIG));
+            assertTrue(parsed.getLocalFlag(LocalFlag.ICANON));
+            assertTrue(parsed.getLocalFlag(LocalFlag.IEXTEN));
+            assertTrue(parsed.getInputFlag(InputFlag.IUTF8));
+        } finally {
+            Locale.setDefault(prev);
+        }
     }
 
     @Test

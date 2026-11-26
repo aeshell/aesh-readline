@@ -25,8 +25,10 @@ import java.io.InterruptedIOException;
 import java.io.OutputStream;
 import java.lang.ProcessBuilder.Redirect;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -122,6 +124,64 @@ public abstract class AbstractExecPty implements Pty {
     @Override
     public OutputStream getMasterOutput() {
         throw new UnsupportedOperationException();
+    }
+
+    static List<String> buildSetAttrCommands(Attributes attr, Attributes current) {
+        List<String> commands = new ArrayList<>();
+        for (Attributes.InputFlag flag : Attributes.InputFlag.values()) {
+            if (attr.getInputFlag(flag) != current.getInputFlag(flag)) {
+                commands.add(formatFlagArg(flag, attr.getInputFlag(flag)));
+            }
+        }
+        for (Attributes.OutputFlag flag : Attributes.OutputFlag.values()) {
+            if (attr.getOutputFlag(flag) != current.getOutputFlag(flag)) {
+                commands.add(formatFlagArg(flag, attr.getOutputFlag(flag)));
+            }
+        }
+        for (Attributes.ControlFlag flag : Attributes.ControlFlag.values()) {
+            if (attr.getControlFlag(flag) != current.getControlFlag(flag)) {
+                commands.add(formatFlagArg(flag, attr.getControlFlag(flag)));
+            }
+        }
+        for (Attributes.LocalFlag flag : Attributes.LocalFlag.values()) {
+            if (attr.getLocalFlag(flag) != current.getLocalFlag(flag)) {
+                commands.add(formatFlagArg(flag, attr.getLocalFlag(flag)));
+            }
+        }
+        String undef = System.getProperty("os.name", "").toLowerCase(Locale.ROOT).startsWith("hp") ? "^-" : "undef";
+        for (Attributes.ControlChar cchar : Attributes.ControlChar.values()) {
+            int v = attr.getControlChar(cchar);
+            if (v >= 0 && v != current.getControlChar(cchar)) {
+                commands.add(cchar.name().toLowerCase(Locale.ROOT).substring(1));
+                if (cchar == Attributes.ControlChar.VMIN || cchar == Attributes.ControlChar.VTIME) {
+                    commands.add(Integer.toString(v));
+                } else if (v == 0) {
+                    commands.add(undef);
+                } else {
+                    commands.add(formatControlCharArg(v));
+                }
+            }
+        }
+        return commands;
+    }
+
+    private static String formatFlagArg(Enum<?> flag, boolean enabled) {
+        String lower = flag.name().toLowerCase(Locale.ROOT);
+        return enabled ? lower : "-" + lower;
+    }
+
+    private static String formatControlCharArg(int v) {
+        StringBuilder sb = new StringBuilder(4);
+        if (v >= 128) {
+            v -= 128;
+            sb.append("M-");
+        }
+        if (v < 32 || v == 127) {
+            v ^= 0x40;
+            sb.append('^');
+        }
+        sb.append((char) v);
+        return sb.toString();
     }
 
     static Attributes doGetAttr(String cfg) {

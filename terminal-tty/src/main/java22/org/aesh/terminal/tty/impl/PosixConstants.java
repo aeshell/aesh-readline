@@ -20,6 +20,7 @@
 package org.aesh.terminal.tty.impl;
 
 import java.util.Arrays;
+import java.util.Locale;
 
 import org.aesh.terminal.Attributes.ControlChar;
 import org.aesh.terminal.Attributes.ControlFlag;
@@ -37,7 +38,7 @@ final class PosixConstants {
 
     static final boolean IS_MACOS;
     static {
-        String osName = System.getProperty("os.name", "").toLowerCase();
+        String osName = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
         IS_MACOS = osName.startsWith("mac") || osName.contains("darwin");
     }
 

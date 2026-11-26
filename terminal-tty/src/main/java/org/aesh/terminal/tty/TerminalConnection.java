@@ -967,7 +967,7 @@ public class TerminalConnection extends AbstractConnection {
             String cleanup = closeCleanupSequences(supportsAnsi(), focusHandler() != null,
                     keyboardEnhancements());
             if (!cleanup.isEmpty()) {
-                byte[] cleanupBytes = cleanup.getBytes();
+                byte[] cleanupBytes = cleanup.getBytes(StandardCharsets.US_ASCII);
                 writeBytes(cleanupBytes, 0, cleanupBytes.length);
             }
         } catch (Exception e) {

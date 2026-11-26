@@ -29,7 +29,6 @@ import java.io.InterruptedIOException;
 import java.io.OutputStream;
 import java.lang.ProcessBuilder.Redirect;
 import java.nio.charset.Charset;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -209,51 +208,7 @@ public class ExecPty extends AbstractExecPty {
     @Override
     public void setAttr(Attributes attr) throws IOException {
         Attributes current = getAttr();
-        List<String> commands = new ArrayList<>();
-        for (Attributes.InputFlag flag : Attributes.InputFlag.values()) {
-            if (attr.getInputFlag(flag) != current.getInputFlag(flag)) {
-                commands.add((attr.getInputFlag(flag) ? flag.name() : "-" + flag.name()).toLowerCase());
-            }
-        }
-        for (Attributes.OutputFlag flag : Attributes.OutputFlag.values()) {
-            if (attr.getOutputFlag(flag) != current.getOutputFlag(flag)) {
-                commands.add((attr.getOutputFlag(flag) ? flag.name() : "-" + flag.name()).toLowerCase());
-            }
-        }
-        for (Attributes.ControlFlag flag : Attributes.ControlFlag.values()) {
-            if (attr.getControlFlag(flag) != current.getControlFlag(flag)) {
-                commands.add((attr.getControlFlag(flag) ? flag.name() : "-" + flag.name()).toLowerCase());
-            }
-        }
-        for (Attributes.LocalFlag flag : Attributes.LocalFlag.values()) {
-            if (attr.getLocalFlag(flag) != current.getLocalFlag(flag)) {
-                commands.add((attr.getLocalFlag(flag) ? flag.name() : "-" + flag.name()).toLowerCase());
-            }
-        }
-        String undef = System.getProperty("os.name").toLowerCase().startsWith("hp") ? "^-" : "undef";
-        for (Attributes.ControlChar cchar : Attributes.ControlChar.values()) {
-            int v = attr.getControlChar(cchar);
-            if (v >= 0 && v != current.getControlChar(cchar)) {
-                String str = "";
-                commands.add(cchar.name().toLowerCase().substring(1));
-                if (cchar == Attributes.ControlChar.VMIN || cchar == Attributes.ControlChar.VTIME) {
-                    commands.add(Integer.toString(v));
-                } else if (v == 0) {
-                    commands.add(undef);
-                } else {
-                    if (v >= 128) {
-                        v -= 128;
-                        str += "M-";
-                    }
-                    if (v < 32 || v == 127) {
-                        v ^= 0x40;
-                        str += "^";
-                    }
-                    str += (char) v;
-                    commands.add(str);
-                }
-            }
-        }
+        List<String> commands = buildSetAttrCommands(attr, current);
         if (!commands.isEmpty()) {
             if (OSUtils.IS_HPUX || OSUtils.IS_SUNOS) {
                 commands.add(0, OSUtils.STTY_COMMAND);
