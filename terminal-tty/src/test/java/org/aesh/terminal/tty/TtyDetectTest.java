@@ -122,6 +122,14 @@ public class TtyDetectTest {
 
     @Test
     public void testTerminalTtyClassesHaveNoEagerLoggers() throws Exception {
+        // Closed-world native images drop classes nothing reachable
+        // references, so the Class.forName pins below throw
+        // ClassNotFoundException there. The JVM suites are the strict
+        // gate for this structural check, mirroring the
+        // EnvironmentOnlyDetectionTest/ArtifactVerificationTest idiom.
+        org.junit.Assume.assumeTrue("structural logger pins run in the JVM suites, "
+                + "not the closed-world native image",
+                System.getProperty("org.graalvm.nativeimage.imagecode") == null);
         String[] classNames = {
                 "org.aesh.terminal.tty.TerminalConnection",
                 "org.aesh.terminal.tty.TerminalBuilder",
