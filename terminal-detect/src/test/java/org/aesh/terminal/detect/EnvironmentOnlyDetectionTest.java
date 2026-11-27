@@ -1,6 +1,7 @@
 package org.aesh.terminal.detect;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -66,6 +67,10 @@ public class EnvironmentOnlyDetectionTest {
             assertEquals("no optional module may be requested, even if its error was caught", 0, loader.optionalLoads);
             assertTrue("the real capability facade must have run", loader.loaded.contains(PACKAGE + "TerminalCapabilities"));
             assertTrue("the real environment detector must have run", loader.loaded.contains(PACKAGE + "TerminalDetector"));
+            for (String loaded : loader.loaded) {
+                assertFalse("class-init of the facade must not load nested classes on a passive path (#413): " + loaded,
+                        loaded.startsWith(PACKAGE + "TerminalCapabilities$"));
+            }
         }
     }
 

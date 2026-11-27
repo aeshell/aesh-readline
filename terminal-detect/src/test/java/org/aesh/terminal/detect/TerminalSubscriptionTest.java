@@ -103,6 +103,32 @@ public class TerminalSubscriptionTest {
     }
 
     @Test
+    public void testExplicitNullExecutorDeliversSynchronously() {
+        TerminalCapabilities caps = TerminalCapabilities.detect();
+        List<TerminalSnapshot> received = received();
+        // Explicit null executor: same contract as the one-arg overload —
+        // replay plus later events, all inline on the calling thread.
+        TerminalSubscription subscription = caps.subscribe(recordInto(received), null);
+        try {
+            assertEquals("registration replays current state", 1, received.size());
+
+            TerminalColorQuery first = new TerminalColorQuery();
+            first.background = new int[] { 10, 10, 10 };
+            caps.applyColorResult(first);
+            assertEquals("null executor delivers the first later event inline", 2, received.size());
+
+            TerminalColorQuery second = new TerminalColorQuery();
+            second.background = new int[] { 20, 20, 20 };
+            caps.applyColorResult(second);
+            assertEquals("null executor delivers every later event inline", 3, received.size());
+            assertEquals("coalescing keeps the newest delivered revision",
+                    received.get(2).revision(), received.get(1).revision() + 1);
+        } finally {
+            subscription.close();
+        }
+    }
+
+    @Test
     public void testClosedSubscriptionReceivesNothing() {
         TerminalCapabilities caps = TerminalCapabilities.detect();
         List<TerminalSnapshot> received = received();

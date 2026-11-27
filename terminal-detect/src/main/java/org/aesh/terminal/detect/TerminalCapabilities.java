@@ -124,14 +124,6 @@ public final class TerminalCapabilities {
     /** Live subscribers, in registration order. Allocated lazily under this monitor. */
     private CopyOnWriteArrayList<Subscription> subscribers;
 
-    /** Synchronous delivery on the publisher's thread. */
-    private static final Executor DIRECT = new Executor() {
-        @Override
-        public void execute(Runnable command) {
-            command.run();
-        }
-    };
-
     private TerminalCapabilities(TerminalDetector detector, Discovery discovery) {
         this.detector = detector;
         this.discovery = discovery;
@@ -677,8 +669,11 @@ public final class TerminalCapabilities {
     TerminalSubscription subscribeWithReplayBarrierForTests(Consumer<TerminalSnapshot> listener,
             Executor executor, Runnable beforeReplay) {
         Objects.requireNonNull(listener, "listener");
-        Subscription subscription = new Subscription(this,
-                listener, executor == null ? DIRECT : executor);
+        // A null executor means synchronous delivery, resolved inside the
+        // subscription: resolving it here would need a DIRECT Executor
+        // constant, whose <clinit> allocation loads TerminalCapabilities$1
+        // on every path that never subscribes (#413).
+        Subscription subscription = new Subscription(this, listener, executor);
         TerminalSnapshot replay;
         synchronized (this) {
             if (subscribers == null) {
@@ -760,6 +755,11 @@ public final class TerminalCapabilities {
      * One subscriber: newest-revision delivery with bounded coalescing.
      * Locking order is always owner instance monitor before this
      * subscription's monitor; listener callbacks hold no monitor.
+     * <p>
+     * A null executor means synchronous delivery on the publisher's
+     * thread; only a caller-supplied executor gets the drain wrapped
+     * in a Runnable, so subscribing without an executor allocates
+     * nothing per delivery.
      */
     private static final class Subscription implements TerminalSubscription {
         private final TerminalCapabilities owner;
@@ -847,6 +847,11 @@ public final class TerminalCapabilities {
         }
 
         private void executeDrain() {
+            if (executor == null) {
+                // Synchronous delivery: run inline on the publisher's thread.
+                drain();
+                return;
+            }
             executor.execute(new Runnable() {
                 @Override
                 public void run() {
